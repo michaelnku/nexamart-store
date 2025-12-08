@@ -6,12 +6,19 @@ export const registerSchema = z
       message: "Username must be at least 2 characters.",
     }),
     email: z.string().email({ message: "Invalid email address." }),
-    password: z.string().min(4, {
-      message: "Password must be at least 4 characters.",
-    }),
-    confirmPassword: z.string().min(4, {
-      message: "Please confirm your password.",
-    }),
+
+    role: z.enum(["USER", "SELLER", "RIDER", "ADMIN"]),
+
+    password: z
+      .string()
+      .min(6)
+      .regex(/^(?=.*[A-Z])(?=.*\d)/, {
+        message:
+          "Password must contain at least one uppercase letter and one number.",
+      }),
+    confirmPassword: z
+      .string()
+      .min(4, { message: "Please confirm your password." }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match.",
