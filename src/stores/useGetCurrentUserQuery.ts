@@ -1,7 +1,7 @@
 "use client";
 
+import { CurrentUser } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
-import type { CurrentUser } from "@/types/user";
 
 export function useCurrentUserQuery(initialUser?: CurrentUser | null) {
   return useQuery<CurrentUser | null>({

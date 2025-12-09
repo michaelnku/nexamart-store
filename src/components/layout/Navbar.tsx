@@ -38,8 +38,8 @@ import { useLogout } from "@/hooks/useLogout";
 import { Separator } from "../ui/separator";
 import { CartBadge } from "../market-place/BadgeCounts";
 import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
-import { CurrentUser } from "@/types/user";
 import CurrencySelector from "../currency/CurrencySelector";
+import { CurrentUser } from "@/lib/types";
 
 const menuItems = [
   {

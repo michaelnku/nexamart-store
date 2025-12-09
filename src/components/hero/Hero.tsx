@@ -1,15 +1,14 @@
 import Link from "next/link";
-import StackedProductCards from "./StackedProductCards";
 
 export default function Hero() {
   return (
-    <main>
-      <section className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between px-4 gap-8 md:px-16 py-8">
+    <main className="">
+      <section className="max-w-7xl mx-auto hidden flex-col md:flex-row items-center justify-between px-4 gap-8 md:px-16 ">
         {/* Left Side: Text */}
         <div className="gap-6 flex flex-1 flex-col">
           <section className="max-w-lg  space-y-6 text-center md:text-left">
             <h2 className="text-4xl md:text-6xl font-extrabold text-zinc-900 dark:text-white mb-4 leading-tight ">
-              Welcome to Nexa-Mart
+              Welcome to Mini-Mart
             </h2>
             <p className="text-lg md:text-xl text-zinc-600 dark:text-zinc-300 max-w-3xl">
               Shop premium quality products across Electronics, Fashion,
@@ -32,10 +31,6 @@ export default function Hero() {
               Learn More
             </Link>
           </div>
-        </div>
-        {/* Right Side: Animated Cards */}
-        <div className="flex-1 flex justify-center md:justify-end">
-          <StackedProductCards />
         </div>
       </section>
     </main>

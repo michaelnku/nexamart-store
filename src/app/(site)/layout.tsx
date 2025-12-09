@@ -1,13 +1,44 @@
+"use client";
+
 import Footer from "@/components/layout/Footer";
+import MarketPlaceNavbar from "@/components/layout/MarketPlaceNavbar";
 import SiteNavbar from "@/components/layout/Navbar";
+import { useCurrentUser } from "@/hooks/getCurrentUser";
+import { usePathname } from "next/navigation";
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function SiteLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const user = useCurrentUser();
+  const pathname = usePathname();
+
+  // Check if route belongs to marketplace dashboard
+  const isDashboardRoute = pathname.startsWith("/market-place/dashboard");
+
+  // Check if user role is allowed for marketplace dashboard
+  const isMarketplaceDashboard =
+    isDashboardRoute &&
+    ["SELLER", "RIDER", "ADMIN", "MODERATOR"].includes(user?.role ?? "");
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
-      <SiteNavbar />
-      <main className="flex-1 p-6">{children}</main>
+    <>
+      <main>
+        {/* Public navbar or normal user navbar */}
+        {(!user || user.role === "USER") && (
+          <SiteNavbar initialUser={user ?? null} />
+        )}
 
-      <Footer />
-    </div>
+        {/* Marketplace dashboard navbar */}
+        {isMarketplaceDashboard && (
+          <MarketPlaceNavbar initialUser={user ?? null} />
+        )}
+
+        {children}
+
+        <Footer />
+      </main>
+    </>
   );
 }

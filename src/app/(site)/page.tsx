@@ -1,16 +1,19 @@
-import Content from "@/components/content/Content";
-import Hero from "@/components/hero/Hero";
+import HomeSkeleton from "@/components/skeletons/HomeSkeleton";
+import dynamic from "next/dynamic";
 
-export default function Home() {
+const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+const HomeContent = dynamic(() => import("./HomeContent"), {
+  loading: () => <HomeSkeleton />,
+  ssr: true,
+});
+
+export default async function Home() {
+  await wait(1800);
+
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-50 dark:bg-black font-sans">
-      {/* Hero Section */}
-      <Hero />
-
-      {/* Main Content */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-12">
-        <Content />
-      </main>
-    </div>
+    <main className="max-w-7xl mx-auto px-6 py-6 space-y-12">
+      <HomeContent />
+    </main>
   );
 }
