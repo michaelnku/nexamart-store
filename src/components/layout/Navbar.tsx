@@ -28,7 +28,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { ModeToggle } from "./ModeToggle";
 import { signOut } from "next-auth/react";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { DialogTitle } from "@radix-ui/react-dialog";
@@ -39,7 +38,8 @@ import { Separator } from "../ui/separator";
 import { CartBadge } from "../market-place/BadgeCounts";
 import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
 import CurrencySelector from "../currency/CurrencySelector";
-import { CurrentUser } from "@/lib/types";
+import { UserDTO } from "@/lib/types";
+import { ModeToggle } from "./ModeToggle";
 
 const menuItems = [
   {
@@ -81,7 +81,7 @@ const menuItems = [
 export default function SiteNavbar({
   initialUser,
 }: {
-  initialUser?: CurrentUser | null;
+  initialUser?: UserDTO | null;
 }) {
   const [isVisible, setIsVisible] = useState(true);
   const lastScroll = useRef(0);
@@ -181,7 +181,7 @@ export default function SiteNavbar({
                 {!user && (
                   <>
                     <div className="p-3">
-                      <Link href={"/login"} className="mb-4">
+                      <Link href={"/auth/login"} className="mb-4">
                         <Button size="lg" className="w-full">
                           Sign in / Create Account
                         </Button>

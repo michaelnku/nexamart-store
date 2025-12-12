@@ -11,7 +11,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { DashboardMenu } from "@/constants/dashboard-menu";
 import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
-import { AppUser } from "@/types/user";
+import { AppUser } from "@/lib/types";
 
 type DashboardRole = keyof typeof DashboardMenu;
 
@@ -150,6 +150,7 @@ export const DashboardSidebar = ({ initialUser }: DashboardSidebarProps) => {
   return (
     <aside className="hidden md:flex fixed top-23 left-0 min-h-screen w-64 light:bg-white border-r shadow-sm z-20">
       <SidebarContent user={user ?? null} pathname={pathname} />
+      hello
     </aside>
   );
 };

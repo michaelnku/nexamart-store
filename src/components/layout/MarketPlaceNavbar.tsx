@@ -24,7 +24,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { ModeToggle } from "./ModeToggle";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -34,10 +33,13 @@ import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
 import { VerifiedBadge } from "../market-place/BadgeCounts";
 import { MobileSideNav } from "../dashboard/SideNavbar";
 import { useDashboardEvents } from "@/hooks/useDashboardEvents";
-import { CurrentUser } from "@/lib/types";
+import { UserDTO } from "@/lib/types";
+import { ModeToggle } from "./ModeToggle";
+
+type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
 type QuickNavItem = {
-  icon: React.ComponentType<any>;
+  icon: IconType;
   label: string;
   href: string;
 };
@@ -45,7 +47,7 @@ type QuickNavItem = {
 export default function MarketPlaceNavbar({
   initialUser,
 }: {
-  initialUser: CurrentUser | null;
+  initialUser: UserDTO | null;
 }) {
   const pathname = usePathname();
   const { data: user } = useCurrentUserQuery(initialUser);
@@ -186,7 +188,9 @@ export default function MarketPlaceNavbar({
                 <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
               )}
 
-              <span>alert</span>
+              <span className="text-[11px] hidden lg:block mt-[2px]">
+                alert
+              </span>
             </div>
           </Link>
 
@@ -210,7 +214,6 @@ export default function MarketPlaceNavbar({
                 <span className="hidden lg:block font-semibold">
                   {user ? `Hi, ${user?.name?.split(" ")[0]}` : "Account"}
                 </span>
-                {/* <ChevronDown className="w-4 h-4" /> */}
               </button>
             </DropdownMenuTrigger>
 

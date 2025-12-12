@@ -5,7 +5,6 @@ import {
   apiAuthPrefix,
   authRoutes,
   adminRoutePrefix,
-  buyerRoutePrefix,
   sellerRoutePrefix,
   riderRoutePrefix,
   ADMIN_LOGIN_REDIRECT,
@@ -20,15 +19,15 @@ export default Middleware((req) => {
   const { nextUrl } = req;
   const pathname = nextUrl.pathname;
   const isLoggedIn = !!req.auth;
+  const role = req.auth?.user.role;
 
   const isPublicRoute = publicRoutes.includes(pathname);
   const isAuthRoute = authRoutes.includes(pathname);
   const isApiAuthRoute = pathname.startsWith(apiAuthPrefix);
 
   const isAdminRoute = pathname.startsWith(adminRoutePrefix);
-  const isBuyerRoute = pathname.startsWith(buyerRoutePrefix);
   const isSellerRoute = pathname.startsWith(sellerRoutePrefix);
-  const isriderRoute = pathname.startsWith(riderRoutePrefix);
+  const isRiderRoute = pathname.startsWith(riderRoutePrefix);
 
   console.log("Middleware isLoggedIn:", !!req.auth);
 
@@ -67,6 +66,29 @@ export default Middleware((req) => {
   if (!isLoggedIn && !isPublicRoute && !isAuthRoute) {
     console.log("🚫 Not logged in → redirecting to /login\n");
     return Response.redirect(new URL("/login", nextUrl));
+  }
+
+  // 🚫 Role-based route protection
+  // if (isAdminRoute && role !== "ADMIN") {
+  //   return Response.redirect(new URL(ADMIN_LOGIN_REDIRECT, nextUrl));
+  // }
+
+  // if (isSellerRoute && role !== "SELLER") {
+  //   return Response.redirect(new URL(SELLER_LOGIN_REDIRECT, nextUrl));
+  // }
+
+  // if (isRiderRoute && role !== "RIDER") {
+  //   return Response.redirect(new URL(RIDER_LOGIN_REDIRECT, nextUrl));
+  // }
+
+  // 🔁 Redirect logged-in users away from "/" based on role
+  if (pathname === "/" && isLoggedIn) {
+    if (role === "ADMIN")
+      return Response.redirect(new URL(ADMIN_LOGIN_REDIRECT, nextUrl));
+    if (role === "SELLER")
+      return Response.redirect(new URL(SELLER_LOGIN_REDIRECT, nextUrl));
+    if (role === "RIDER")
+      return Response.redirect(new URL(RIDER_LOGIN_REDIRECT, nextUrl));
   }
 
   console.log("✅ Access allowed\n");

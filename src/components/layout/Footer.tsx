@@ -19,7 +19,7 @@ const Footer = () => {
   const [currency, setCurrency] = useState("USD");
 
   return (
-    <footer className="bg-[#232F3E] text-white mt-10 pt-10 stick to-bottom">
+    <footer className="bg-[#232F3E] text-white mt-10 pt-10 sticky to-bottom w-full">
       {/* ================= TRUST + CTA ================= */}
       <div className="bg-[#37475A] py-10 px-6 text-center space-y-6">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-8 text-sm font-medium">
@@ -39,21 +39,15 @@ const Footer = () => {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <form action={becomeSellerAction}>
-            <Link
-              href="/seller/login"
-              className="hover:text-blue-400 transition"
-            >
+            <button className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-6 py-2 rounded-lg shadow transition">
               🚀 Sell on Nexa-Mart
-            </Link>
+            </button>
           </form>
 
           <form action={becomeRiderAction}>
-            <Link
-              href="/rider/login"
-              className="hover:text-blue-400 transition"
-            >
+            <button className="bg-[#3c9ee0] hover:bg-[#318bc4] text-white font-semibold px-6 py-2 rounded-lg shadow transition">
               🛵 Become a Rider
-            </Link>
+            </button>
           </form>
         </div>
       </div>

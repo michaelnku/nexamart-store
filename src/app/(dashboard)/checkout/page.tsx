@@ -24,5 +24,8 @@ export default async function CheckoutPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  return <CheckoutSummary cart={cart} address={address} userId={userId} />;
+  if (!cart)
+    return <p className="text-center p-10 min-h-screen">Your cart is empty.</p>;
+
+  return <CheckoutSummary cart={cart} address={address} />;
 }

@@ -1,5 +1,4 @@
 import WishListPage from "@/components/product/WishListPage";
-import { getWishlistAction } from "@/actions/getWishlistItems";
 
 export default async function Page() {
   const wishlistProducts = await getWishlistAction();
@@ -9,4 +8,7 @@ export default async function Page() {
       <WishListPage initialData={wishlistProducts} />
     </div>
   );
+}
+function getWishlistAction() {
+  throw new Error("Function not implemented.");
 }

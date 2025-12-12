@@ -25,17 +25,13 @@ export default function RegisterForm() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [capsLock, setCapsLock] = useState(false);
-  const [strength, setStrength] = useState<"Weak" | "Medium" | "Strong" | "">(
-    ""
-  );
 
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<registerSchemaType>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      fullName: "",
+      name: "",
       username: "",
       email: "",
       password: "",
@@ -56,15 +52,6 @@ export default function RegisterForm() {
         }
       });
     });
-  };
-
-  const updateStrength = (value: string) => {
-    if (!value) return setStrength("");
-    const strong = /(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&#])/.test(value);
-    const medium = /(?=.*[A-Z])(?=.*[a-z])(?=.*\d)/.test(value);
-    if (strong) setStrength("Strong");
-    else if (medium && value.length >= 6) setStrength("Medium");
-    else setStrength("Weak");
   };
 
   return (
@@ -92,7 +79,7 @@ export default function RegisterForm() {
             <FormField
               control={form.control}
               disabled={isPending}
-              name="fullName"
+              name="name"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="font-medium">Full Name</FormLabel>
@@ -164,11 +151,7 @@ export default function RegisterForm() {
                         {...field}
                         onChange={(e) => {
                           field.onChange(e);
-                          updateStrength(e.target.value);
                         }}
-                        onKeyUp={(e) =>
-                          setCapsLock(e.getModifierState("CapsLock"))
-                        }
                         className="rounded-lg h-11 focus:ring-2 focus:ring-[var(--brand-blue)]"
                       />
 
@@ -186,34 +169,6 @@ export default function RegisterForm() {
                     </div>
                   </FormControl>
 
-                  {/* Caps Lock */}
-                  {capsLock && (
-                    <p className="text-xs text-yellow-500 mt-1">
-                      ⚠ Caps Lock is ON
-                    </p>
-                  )}
-
-                  {/* Strength Meter */}
-                  {strength && (
-                    <div className="mt-1">
-                      <div
-                        className={`h-1 rounded-full transition-all
-                          ${strength === "Weak" && "bg-red-500 w-1/3"}
-                          ${strength === "Medium" && "bg-yellow-500 w-2/3"}
-                          ${strength === "Strong" && "bg-green-600 w-full"}
-                        `}
-                      />
-                      <p
-                        className={`text-xs mt-1 font-medium
-                          ${strength === "Weak" && "text-red-600"}
-                          ${strength === "Medium" && "text-yellow-600"}
-                          ${strength === "Strong" && "text-green-600"}
-                        `}
-                      >
-                        {strength} password
-                      </p>
-                    </div>
-                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -235,9 +190,6 @@ export default function RegisterForm() {
                         placeholder="Re-enter password"
                         type={showConfirm ? "text" : "password"}
                         {...field}
-                        onKeyUp={(e) =>
-                          setCapsLock(e.getModifierState("CapsLock"))
-                        }
                         className="rounded-lg h-11 focus:ring-2 focus:ring-[var(--brand-blue)]"
                       />
                       <button
@@ -254,11 +206,6 @@ export default function RegisterForm() {
                     </div>
                   </FormControl>
 
-                  {capsLock && (
-                    <p className="text-xs text-yellow-500 mt-1">
-                      ⚠ Caps Lock is ON
-                    </p>
-                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -289,7 +236,7 @@ export default function RegisterForm() {
         <p className="text-sm text-center text-gray-600 dark:text-gray-400 mt-4">
           Already have an account?{" "}
           <Link
-            href="/login"
+            href="/auth/login"
             className="text-[var(--brand-blue)] hover:underline font-medium"
           >
             Sign in

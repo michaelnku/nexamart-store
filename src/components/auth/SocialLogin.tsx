@@ -11,7 +11,7 @@ const SocialLogin = () => {
     setLoading(true);
     try {
       await signIn(provider, {
-        callbackUrl: `/market-place/dashboard`,
+        callbackUrl: `/auth/redirecting`,
       });
     } catch (error) {
       console.error("Error logging in:", error);

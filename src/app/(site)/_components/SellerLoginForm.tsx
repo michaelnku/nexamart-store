@@ -25,7 +25,7 @@ import SocialLogin from "@/components/auth/SocialLogin";
 import { useRouter } from "next/navigation";
 import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 
-const LoginForm = () => {
+const SellerLoginForm = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -142,4 +142,4 @@ const LoginForm = () => {
   );
 };
 
-export default LoginForm;
+export default SellerLoginForm;

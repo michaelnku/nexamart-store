@@ -5,6 +5,8 @@ import {
   ProductVariant,
   Review,
   Store,
+  User,
+  UserRole,
 } from "@/generated/prisma/client";
 
 export type FullProductVariant = ProductVariant & {
@@ -90,14 +92,23 @@ export type ProductCardType = Product & {
   }[];
 };
 
-export type CurrentUser = {
+export type UserDTO = {
   id: string;
+  email: string;
+  role: UserRole;
+
   name: string;
   username: string;
-  fullName: string;
-  email: string;
-  role: "USER" | "ADMIN" | "MODERATOR" | "SELLER" | "RIDER";
   image?: string | null;
+  isBanned: boolean;
 };
 
-export type AppUser = CurrentUser | null;
+export type AppUser = UserDTO | null;
+
+export type SessionUser = {
+  id?: string | null;
+  email?: string | null;
+  name?: string | null;
+  image?: string | null;
+  role?: string | null;
+};

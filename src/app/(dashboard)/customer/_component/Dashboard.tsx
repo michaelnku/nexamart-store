@@ -11,13 +11,12 @@ import {
   MessageSquareOffIcon,
   Mail,
 } from "lucide-react";
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useLogout } from "@/hooks/useLogout";
-import { useCurrentUserQuery } from "@/stores/getCurrentUser";
+import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
 
 const accountLinks = [
   { name: "Orders", href: "/customer/order/history", icon: ShoppingBag },
@@ -39,6 +38,8 @@ const accountLinks = [
   { name: "Settings", href: "/customer/settings", icon: Settings },
 ];
 
+type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
+
 export default function Dashboard() {
   const { data: user } = useCurrentUserQuery();
   const pathname = usePathname();
@@ -49,7 +50,7 @@ export default function Dashboard() {
 
   const logout = useLogout();
 
-  const navItem = (href: string, IconComponent: any, name: string) => (
+  const navItem = (href: string, IconComponent: IconType, name: string) => (
     <Link
       key={name}
       href={href}

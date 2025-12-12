@@ -1,20 +1,31 @@
-import DashboardNavbar from "@/app/(dashboard)/market-place/dashboard/_components/SharedNavbar";
+"use client";
+
+import { DashboardSidebar } from "@/components/dashboard/SideNavbar";
+import MarketPlaceNavbar from "@/components/layout/MarketPlaceNavbar";
+import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
+import { redirect } from "next/navigation";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="flex">
-      <div className="flex flex-col flex-1 ml-64">
-        {/* Topbar */}
-        <DashboardNavbar />
+  const { data: user } = useCurrentUserQuery();
 
-        {/* Scrollable main content */}
-        <main className="mt-16 p-6 h-[calc(100vh-4rem)] overflow-y-auto bg-background">
-          {children}
-        </main>
+  // in marketplace layout
+  if (user?.role === "USER") redirect("/");
+
+  return (
+    <div>
+      {/* TOP NAVBAR */}
+      <MarketPlaceNavbar initialUser={user ?? null} />
+
+      <div className="flex">
+        {/* LEFT SIDEBAR */}
+        <DashboardSidebar initialUser={user ?? null} />
+
+        {/* MAIN CONTENT */}
+        <main className="flex-1 ml-0 md:ml-64 px-6 py-4">{children}</main>
       </div>
     </div>
   );

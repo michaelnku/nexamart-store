@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useCartStore } from "@/stores/CartStore";
 import { clearUserCartAction } from "@/actions/checkout/clearCart";
+import { useCartStore } from "@/stores/useCartstore";
 
 export function ClearCartOnSuccess() {
   const clearLocalCart = useCartStore((s) => s.clear);
