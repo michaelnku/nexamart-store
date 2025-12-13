@@ -10,8 +10,12 @@ const currencySymbol = (code: string | null) => {
   return { NGN: "₦", USD: "$", EUR: "€", GBP: "£" }[code] ?? code;
 };
 
-export default async function OrderDetailsPage(props: any) {
-  const { orderId } = props.params;
+export default async function OrderDetailsPage({
+  params,
+}: {
+  params: Promise<{ orderId: string }>;
+}) {
+  const { orderId } = await params;
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },

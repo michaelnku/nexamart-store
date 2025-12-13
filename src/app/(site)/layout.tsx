@@ -3,7 +3,7 @@
 import Footer from "@/components/layout/Footer";
 import MarketPlaceNavbar from "@/components/layout/MarketPlaceNavbar";
 import SiteNavbar from "@/components/layout/Navbar";
-import { useCurrentUser } from "@/hooks/getCurrentUser";
+import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
 import { usePathname } from "next/navigation";
 
 export default function SiteLayout({
@@ -11,7 +11,7 @@ export default function SiteLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = useCurrentUser();
+  const { data: user } = useCurrentUserQuery();
   const pathname = usePathname();
 
   // Check if route belongs to marketplace dashboard
