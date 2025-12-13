@@ -9,7 +9,9 @@ const page = async () => {
 
   const products = await prisma.product.findMany({
     where: {
-      userId: user?.id,
+      store: {
+        userId: user?.id,
+      },
     },
   });
 
