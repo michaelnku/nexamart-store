@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   User,
   HelpCircle,
@@ -80,6 +80,8 @@ export default function SiteNavbar({
 }) {
   const [isVisible, setIsVisible] = useState(true);
   const lastScroll = useRef(0);
+
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -165,7 +167,7 @@ export default function SiteNavbar({
                   <span className="text-xs">
                     Hello,{" "}
                     {user
-                      ? user.name?.split(" ")[0] || user.username.split("")[0]
+                      ? user.name?.split(" ")[0] || user.username
                       : "Sign in"}
                   </span>
                   <span className="font-semibold flex items-center gap-1">
@@ -179,11 +181,13 @@ export default function SiteNavbar({
                 {!user && (
                   <>
                     <div className="p-3">
-                      <Link href={"/auth/login"} className="mb-4">
-                        <Button size="lg" className="w-full">
-                          Sign in / Create Account
-                        </Button>
-                      </Link>
+                      <Button
+                        size="lg"
+                        className="w-full mb-4"
+                        onClick={() => router.push("/auth/login")}
+                      >
+                        Sign in / Create Account
+                      </Button>
                     </div>
                     <DropdownMenuSeparator />
                   </>
@@ -356,10 +360,7 @@ export default function SiteNavbar({
                   <span>
                     <div className="font-medium text-base">
                       {user
-                        ? `Hi, ${
-                            user.name?.split(" ")[0] ||
-                            user.username.split(" ")[0]
-                          }`
+                        ? `Hi, ${user.name?.split(" ")[0] || user.username}`
                         : "Welcome to NexaMart"}
                     </div>
                     <p className="text-sm text-gray-500">{user?.email}</p>

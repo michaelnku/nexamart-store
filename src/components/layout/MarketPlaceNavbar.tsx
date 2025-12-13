@@ -31,10 +31,10 @@ import { Separator } from "../ui/separator";
 import { useLogout } from "@/hooks/useLogout";
 import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
 import { VerifiedBadge } from "../market-place/BadgeCounts";
-import { MobileSideNav } from "../dashboard/SideNavbar";
 import { useDashboardEvents } from "@/hooks/useDashboardEvents";
 import { UserDTO } from "@/lib/types";
 import { ModeToggle } from "./ModeToggle";
+import { MobileSideNav } from "@/app/(dashboard)/market-place/_components/SideNavbar";
 
 type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
