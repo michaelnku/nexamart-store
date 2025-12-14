@@ -1,9 +1,11 @@
-import { RoleBasedSettingsPage } from "@/app/market-place/_component/RoleBasedPageContent";
+import { RoleBasedSettingsPage } from "@/app/market-place/_components/RoleBasedPageContent";
+import { CurrentUser } from "@/lib/currentUser";
 
-const page = () => {
+const page = async () => {
+  const user = await CurrentUser();
   return (
     <div>
-      <RoleBasedSettingsPage />
+      <RoleBasedSettingsPage initialUser={user} />
     </div>
   );
 };

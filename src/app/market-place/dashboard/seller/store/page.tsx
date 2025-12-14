@@ -1,6 +1,6 @@
+import StoreFrontRedirectLoading from "@/app/market-place/_components/StoreFrontRedirectLoading";
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import StoreFrontRedirectLoading from "../_component/StoreFrontRedirectLoading";
 
 const Page = async () => {
   const user = await CurrentUser();
