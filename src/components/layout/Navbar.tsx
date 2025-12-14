@@ -433,7 +433,13 @@ export default function SiteNavbar({
                       <LogOut className="w-4 h-4" /> Logout
                     </Button>
                   ) : (
-                    <Button asChild className="w-full">
+                    <Button
+                      asChild
+                      className="w-full"
+                      onClick={() => {
+                        setOpen(false);
+                      }}
+                    >
                       <Link href="/auth/login">Sign In / Create Account</Link>
                     </Button>
                   )}
