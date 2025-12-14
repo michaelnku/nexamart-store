@@ -171,7 +171,7 @@ const Footer = () => {
       {/* ================= COPYRIGHT ================= */}
       <div className="border-t border-white/20 text-center py-6 text-gray-300 text-xs">
         © {new Date().getFullYear()}{" "}
-        <span className="font-semibold">Nexa-mart</span>. All rights reserved.
+        <span className="font-semibold">Nexamart</span>. All rights reserved.
       </div>
     </footer>
   );
