@@ -25,9 +25,9 @@ type ActionButton = {
 export default async function SellerOrderDetails({
   params,
 }: {
-  params: { orderId: string };
+  params: Promise<{ orderId: string }>;
 }) {
-  const { orderId } = params;
+  const { orderId } = await params;
 
   const user = await CurrentUser();
   if (!user) return "Unauthorized";
