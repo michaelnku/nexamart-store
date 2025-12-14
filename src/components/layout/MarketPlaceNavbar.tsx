@@ -293,11 +293,7 @@ export default function MarketPlaceNavbar({
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setOpen(false)}
-              >
+              <Button variant="ghost" size="icon">
                 <Menu className="w-6 h-6" />
               </Button>
             </SheetTrigger>
@@ -352,7 +348,10 @@ export default function MarketPlaceNavbar({
 
               {/* Drawer Side Nav */}
               <div className="py-2 px-2">
-                <MobileSideNav initialUser={user ?? null} />
+                <MobileSideNav
+                  initialUser={user ?? null}
+                  onNavigate={() => setOpen(false)}
+                />
               </div>
 
               <Separator />

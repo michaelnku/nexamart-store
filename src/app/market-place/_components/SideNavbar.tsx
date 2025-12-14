@@ -19,16 +19,16 @@ function SidebarContent({
   user,
   pathname,
   isMobile,
+  onNavigate,
 }: {
   user: UserDTO | null | undefined;
   pathname: string;
   isMobile?: boolean;
+  onNavigate?: () => void;
 }) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const role = user?.role as "SELLER" | "RIDER" | "ADMIN";
   const menu = DashboardMenu[role] || [];
-
-  const [open, setOpen] = useState(false);
 
   const toggle = (title: string) =>
     setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));
@@ -84,7 +84,7 @@ function SidebarContent({
                         : "text-gray-600 hover:bg-gray-100 hover:text-black"
                     )}
                     onClick={() => {
-                      setOpen(false);
+                      onNavigate?.();
                     }}
                   >
                     <Icon className="w-5 h-5" />
@@ -134,7 +134,7 @@ function SidebarContent({
             className="w-full flex gap-2 text-red-500 hover:text-red-600"
             onClick={() => {
               logout();
-              setOpen(false);
+              onNavigate?.();
             }}
           >
             <LogOut className="w-4 h-4" /> Logout
@@ -166,11 +166,20 @@ export const DashboardSidebar = ({
 
 export const MobileSideNav = ({
   initialUser,
+  onNavigate,
 }: {
   initialUser: UserDTO | null;
+  onNavigate?: () => void;
 }) => {
   const { data: user } = useCurrentUserQuery(initialUser);
   const pathname = usePathname();
 
-  return <SidebarContent user={user} pathname={pathname} isMobile />;
+  return (
+    <SidebarContent
+      user={user}
+      pathname={pathname}
+      isMobile
+      onNavigate={onNavigate}
+    />
+  );
 };
