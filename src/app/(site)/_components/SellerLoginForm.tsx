@@ -157,6 +157,15 @@ const SellerLoginForm = () => {
                       </button>
                     </div>
 
+                    <div className="flex justify-end mt-1">
+                      <Link
+                        href="/auth/forgot-password"
+                        className="text-xs font-medium text-[var(--brand-blue)] hover:underline"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
+
                     <FormMessage />
                   </FormItem>
                 )}

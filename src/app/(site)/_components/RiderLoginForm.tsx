@@ -138,7 +138,7 @@ export default function RiderLoginForm() {
 
                   <div className="flex justify-end mt-1">
                     <Link
-                      href="/reset-password"
+                      href="/auth/forgot-password"
                       className="text-xs font-medium text-[var(--brand-blue)] hover:underline"
                     >
                       Forgot password?

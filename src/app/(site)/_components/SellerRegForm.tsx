@@ -121,7 +121,7 @@ const SellerRegisterForm = () => {
                   <FormLabel className="font-medium">Username</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="your_store_name"
+                      placeholder="seller_Doe"
                       {...field}
                       className="h-11 rounded-lg focus:ring-2 focus:ring-[var(--brand-blue)]"
                     />
