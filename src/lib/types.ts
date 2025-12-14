@@ -101,6 +101,8 @@ export type UserDTO = {
   username: string;
   image?: string | null;
   isBanned: boolean;
+
+  isVerified: boolean;
 };
 
 export type AppUser = UserDTO | null;

@@ -13,6 +13,7 @@ import { useState } from "react";
 import { useCurrentUser } from "@/hooks/getCurrentUser";
 import { useCartStore } from "@/stores/useCartstore";
 import { useWishlistStore } from "@/stores/useWishlistStore";
+import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
 
 const AnimatedBadge = ({ count }: { count: number }) => {
   const display = count > 99 ? "99+" : count;
@@ -76,25 +77,14 @@ const WishlistBadge = () => {
 };
 
 const VerifiedBadge = () => {
-  const [verified, setVerified] = useState(false);
-  const user = useCurrentUser();
+  const { data: user } = useCurrentUserQuery();
 
-  return verified ? (
-    <Badge
-      variant="outline"
-      className="border-green-500 text-green-700 bg-green-50 dark:bg-green-900/30 dark:text-green-200 flex items-center gap-1 px-2.5 py-1 text-xs font-semibold"
-    >
-      <BadgeCheck className="w-3.5 h-3.5" />
-      {user?.role === "SELLER" ? "Verified Seller" : "Verified Rider"}
-    </Badge>
+  if (!user) return null;
+
+  return user.isVerified ? (
+    <Badge className="border-green-500 text-green-700">Verified</Badge>
   ) : (
-    <Badge
-      variant="outline"
-      className="border-amber-500 text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-200 flex items-center gap-1 px-2.5 py-1 text-xs font-semibold"
-    >
-      <ShieldAlert className="w-3.5 h-3.5" />
-      Not Verified
-    </Badge>
+    <Badge className="border-amber-500 text-amber-700">Not Verified</Badge>
   );
 };
 
