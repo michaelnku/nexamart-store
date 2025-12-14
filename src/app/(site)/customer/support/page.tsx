@@ -1,4 +1,4 @@
-import SupportPage from "../../market-place/_components/SupportForm";
+import SupportPage from "../../../market-place/_components/SupportForm";
 
 const page = () => {
   return <SupportPage role="buyer" />;

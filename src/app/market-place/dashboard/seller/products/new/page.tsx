@@ -1,4 +1,4 @@
-import ProductForm from "@/app/(dashboard)/market-place/_components/ProductForm";
+import ProductForm from "@/app/market-place/_components/ProductForm";
 import { prisma } from "@/lib/prisma";
 
 const page = async () => {

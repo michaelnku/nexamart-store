@@ -1,5 +1,5 @@
 import { CurrentUser } from "@/lib/currentUser";
-import RoleBasedPageContent from "../_components/RoleBasedPageContent";
+import { RoleBasedPageContent } from "../_components/RoleBasedPageContent";
 
 const page = async () => {
   const user = await CurrentUser();

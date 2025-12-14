@@ -3,7 +3,7 @@
 import MarketPlaceNavbar from "@/components/layout/MarketPlaceNavbar";
 import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
 import { redirect } from "next/navigation";
-import { DashboardSidebar } from "../_components/SideNavbar";
+import { DashboardSidebar } from "./_components/SideNavbar";
 
 export default function DashboardLayout({
   children,

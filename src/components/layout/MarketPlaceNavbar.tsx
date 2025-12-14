@@ -34,7 +34,7 @@ import { VerifiedBadge } from "../market-place/BadgeCounts";
 import { useDashboardEvents } from "@/hooks/useDashboardEvents";
 import { UserDTO } from "@/lib/types";
 import { ModeToggle } from "./ModeToggle";
-import { MobileSideNav } from "@/app/(dashboard)/market-place/_components/SideNavbar";
+import { MobileSideNav } from "@/app/market-place/_components/SideNavbar";
 import DashboardPageSkeleton from "../skeletons/DashboardPageSkeleton";
 
 type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;

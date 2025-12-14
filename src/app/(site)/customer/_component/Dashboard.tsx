@@ -71,7 +71,7 @@ export default function Dashboard() {
       {/* Greeting */}
       <div className="px-4 pb-3">
         <p className="font-semibold text-[17px] text-gray-900">
-          Hello, {user?.name?.split(" ")[0]}
+          Hello, {user?.name?.split(" ")[0] || user?.username}
         </p>
         <p className="text-sm text-gray-500">{user?.email}</p>
       </div>
