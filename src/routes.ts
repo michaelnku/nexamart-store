@@ -4,9 +4,12 @@ export const authRoutes = [
   "/auth/login",
   "/auth/register",
   "/error",
-  "/seller/login",
-  "/rider/login",
-  "/admin/login",
+  "/auth/seller/login",
+  "/auth/rider/login",
+  "/auth/admin/login",
+  "/auth/seller/register",
+  "/auth/rider/register",
+  "/auth/admin/register",
 ];
 
 export const apiAuthPrefix = "/api/auth";

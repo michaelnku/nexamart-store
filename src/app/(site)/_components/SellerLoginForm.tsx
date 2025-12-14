@@ -50,7 +50,8 @@ const SellerLoginForm = () => {
           setError(res.error);
           form.reset();
         } else {
-          router.push(DEFAULT_LOGIN_REDIRECT);
+          router.push("/auth/redirecting");
+          router.refresh();
         }
       });
     });

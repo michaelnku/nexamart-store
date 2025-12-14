@@ -9,6 +9,9 @@ export const registerSchema = z
     username: z.string().min(2, {
       message: "Username must be at least 2 characters.",
     }),
+
+    role: z.enum(["USER", "SELLER", "RIDER", "MODERATOR", "ADMIN"]),
+
     email: z.string().email({ message: "Invalid email address." }),
     password: z
       .string()
@@ -19,7 +22,7 @@ export const registerSchema = z
       }),
     confirmPassword: z
       .string()
-      .min(4, { message: "Please confirm your password." }),
+      .min(6, { message: "Please confirm your password." }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match.",
@@ -31,7 +34,7 @@ export type registerSchemaType = z.infer<typeof registerSchema>;
 //login a user
 export const loggedInUserSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(4, {
+  password: z.string().min(6, {
     message: "Password must be at least 4 characters.",
   }),
 });

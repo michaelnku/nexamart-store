@@ -14,9 +14,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useState, useTransition } from "react";
+import { createUser } from "@/actions/auth/user";
 import Link from "next/link";
 import SocialLogin from "@/components/auth/SocialLogin";
-import { createRoleUserAction } from "@/actions/auth/auth";
 
 const SellerRegisterForm = () => {
   const [error, setError] = useState<string | undefined>("");
@@ -36,7 +36,7 @@ const SellerRegisterForm = () => {
 
   const handleSubmit = (values: registerSchemaType) => {
     startTransition(async () => {
-      createRoleUserAction({ ...values, role: "SELLER" }).then((res) => {
+      createUser(values).then((res) => {
         if (res?.error) {
           setError(res.error);
           setSuccess("");

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { FaWhatsapp } from "react-icons/fa";
 import { useState } from "react";
-import { becomeSellerAction, becomeRiderAction } from "@/actions/auth/roles";
 import {
   Mail,
   ShieldCheck,
@@ -38,17 +37,16 @@ const Footer = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <form action={becomeSellerAction}>
+          <Link href="/auth/seller/register">
             <button className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-6 py-2 rounded-lg shadow transition">
               🚀 Sell on Nexa-Mart
             </button>
-          </form>
-
-          <form action={becomeRiderAction}>
+          </Link>
+          <Link href="/auth/rider/register">
             <button className="bg-[#3c9ee0] hover:bg-[#318bc4] text-white font-semibold px-6 py-2 rounded-lg shadow transition">
               🛵 Become a Rider
             </button>
-          </form>
+          </Link>
         </div>
       </div>
 

@@ -33,6 +33,7 @@ export default function RegisterForm() {
     defaultValues: {
       name: "",
       username: "",
+      role: "USER",
       email: "",
       password: "",
       confirmPassword: "",
