@@ -6,7 +6,10 @@ const Page = async () => {
   const user = await CurrentUser();
   if (!user)
     return (
-      <StoreFrontRedirectLoading to="/login" message="Checking account..." />
+      <StoreFrontRedirectLoading
+        to="/auth/login"
+        message="Checking account..."
+      />
     );
 
   const store = await prisma.store.findUnique({
