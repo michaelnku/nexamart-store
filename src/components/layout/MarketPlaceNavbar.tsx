@@ -55,6 +55,8 @@ export default function MarketPlaceNavbar({
   const [searchQuery, setSearchQuery] = useState("");
   const [hasNewAlert, setHasNewAlert] = useState(false);
 
+  const [open, setOpen] = useState(false);
+
   if (isLoading) return <DashboardPageSkeleton />;
   if (isError) return null;
 
@@ -172,6 +174,9 @@ export default function MarketPlaceNavbar({
                   ? "text-[var(--brand-blue)]"
                   : "text-gray-600 hover:text-[var(--brand-blue)]"
               }`}
+              onClick={() => {
+                setOpen(false);
+              }}
             >
               <item.icon className="w-5 h-5" />
               <span className="text-[11px] hidden lg:block mt-[2px]">
@@ -230,19 +235,37 @@ export default function MarketPlaceNavbar({
               <DropdownMenuSeparator />
 
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/account" className="flex gap-2">
+                <Link
+                  href="/dashboard/account"
+                  className="flex gap-2"
+                  onClick={() => {
+                    setOpen(false);
+                  }}
+                >
                   <User className="w-4 h-4" /> Account Settings
                 </Link>
               </DropdownMenuItem>
 
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/wallet" className="flex gap-2">
+                <Link
+                  href="/dashboard/wallet"
+                  className="flex gap-2"
+                  onClick={() => {
+                    setOpen(false);
+                  }}
+                >
                   <Wallet className="w-4 h-4" /> Wallet
                 </Link>
               </DropdownMenuItem>
 
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/support" className="flex gap-2">
+                <Link
+                  href="/dashboard/support"
+                  className="flex gap-2"
+                  onClick={() => {
+                    setOpen(false);
+                  }}
+                >
                   <HelpCircle className="w-4 h-4" /> Support Center
                 </Link>
               </DropdownMenuItem>
@@ -253,7 +276,10 @@ export default function MarketPlaceNavbar({
                 <Button
                   variant="ghost"
                   className="w-full flex gap-2 text-red-500 hover:text-red-600"
-                  onClick={logout}
+                  onClick={() => {
+                    logout();
+                    setOpen(false);
+                  }}
                 >
                   <LogOut className="w-4 h-4" /> Logout
                 </Button>
@@ -267,9 +293,14 @@ export default function MarketPlaceNavbar({
         {/* MOBILE DRAWER */}
         <div className="flex md:hidden items-center gap-2">
           <ModeToggle />
-          <Sheet>
+
+          <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setOpen(false)}
+              >
                 <Menu className="w-6 h-6" />
               </Button>
             </SheetTrigger>
@@ -332,7 +363,10 @@ export default function MarketPlaceNavbar({
                 <Button
                   variant="destructive"
                   className="w-full flex gap-2"
-                  onClick={logout}
+                  onClick={() => {
+                    logout();
+                    setOpen(false);
+                  }}
                 >
                   <LogOut className="w-4 h-4" /> Logout
                 </Button>
