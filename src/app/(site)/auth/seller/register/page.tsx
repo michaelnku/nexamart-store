@@ -1,7 +1,11 @@
-import React from "react";
+import SellerRegisterForm from "@/app/(site)/_components/SellerRegForm";
 
 const page = () => {
-  return <div>page</div>;
+  return (
+    <div>
+      <SellerRegisterForm />
+    </div>
+  );
 };
 
 export default page;
