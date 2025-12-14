@@ -4,6 +4,14 @@ import { pusherClient } from "@/lib/pusher";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
+type PaymentSuccessEvent = {
+  orderId: string;
+};
+
+type NewOrderEvent = {
+  storeId: string;
+};
+
 export function useDashboardEvents(
   userId: string | undefined,
   role: string | undefined,
@@ -12,9 +20,12 @@ export function useDashboardEvents(
   useEffect(() => {
     if (!userId || !role) return;
 
-    const userChannel = pusherClient.subscribe(`user-${userId}`);
+    const userChannelName = `user-${userId}`;
+    const sellerChannelName = `seller-${userId}`;
 
-    userChannel.bind("payment-success", (data: any) => {
+    const userChannel = pusherClient.subscribe(userChannelName);
+
+    userChannel.bind("payment-success", (data: PaymentSuccessEvent) => {
       toast.success(`Payment received for Order #${data.orderId}`);
     });
 
@@ -23,9 +34,9 @@ export function useDashboardEvents(
     });
 
     if (role === "SELLER") {
-      const sellerChannel = pusherClient.subscribe(`seller-${userId}`);
+      const sellerChannel = pusherClient.subscribe(sellerChannelName);
 
-      sellerChannel.bind("new-order", (data: any) => {
+      sellerChannel.bind("new-order", (data: NewOrderEvent) => {
         toast.info(`New Order! Store: ${data.storeId}`);
         setHasNewAlert(true);
       });
@@ -35,12 +46,13 @@ export function useDashboardEvents(
       });
 
       return () => {
-        pusherClient.unsubscribe(`seller-${userId}`);
+        pusherClient.unsubscribe(sellerChannelName);
+        pusherClient.unsubscribe(userChannelName);
       };
     }
 
     return () => {
-      pusherClient.unsubscribe(`user-${userId}`);
+      pusherClient.unsubscribe(userChannelName);
     };
   }, [userId, role, setHasNewAlert]);
 }

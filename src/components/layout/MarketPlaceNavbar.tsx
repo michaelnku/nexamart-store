@@ -57,12 +57,13 @@ export default function MarketPlaceNavbar({
 
   const [open, setOpen] = useState(false);
 
+  useDashboardEvents(user?.id, user?.role, setHasNewAlert);
+  const logout = useLogout();
+
   if (isLoading) return <DashboardPageSkeleton />;
   if (isError) return null;
 
-  if (!user) return null;
-
-  const role = user.role;
+  const role = user?.role;
   const dashboardTitle =
     role === "SELLER"
       ? "Seller Center"
@@ -77,8 +78,6 @@ export default function MarketPlaceNavbar({
   if (!role || role === "USER") {
     return null;
   }
-
-  useDashboardEvents(user.id, user.role, setHasNewAlert);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,8 +116,6 @@ export default function MarketPlaceNavbar({
   if (role === "MODERATOR") quickNav = moderatorNav;
 
   const isActive = (href: string) => pathname.startsWith(href);
-
-  const logout = useLogout();
 
   return (
     <header className="sticky top-0 z-50 light:bg-white/90 backdrop-blur border-b shadow-sm">
