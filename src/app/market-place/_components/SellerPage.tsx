@@ -43,7 +43,7 @@ export default function SellerPage() {
           return (
             <div
               key={stat.title}
-              className="p-5 bg-white border rounded-xl shadow-sm hover:shadow-md transition-all"
+              className="p-5 bg-white dark:bg-neutral-950 border rounded-xl shadow-sm hover:shadow-md transition-all"
             >
               <div className="flex justify-between items-center">
                 <div>
