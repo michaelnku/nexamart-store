@@ -16,7 +16,7 @@ export async function forgotPassword(email: string) {
     data: { email, token, expiresAt },
   });
 
-  const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
+  const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${token}`;
 
   await sendEmail({
     to: email,
