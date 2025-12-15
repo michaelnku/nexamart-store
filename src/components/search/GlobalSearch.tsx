@@ -9,16 +9,20 @@ import { globalSearchAction } from "@/actions/search";
 import { GlobalSearchResult } from "@/lib/types";
 import SearchSkeleton from "../skeletons/SearchSkeleton";
 import { useRouter } from "next/navigation";
+import { SearchInput } from "./SearchInput";
 
-export function GlobalSearch() {
+type GlobalSearchProps = {
+  variant?: "site" | "marketplace";
+};
+
+export function GlobalSearch({ variant = "site" }: GlobalSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GlobalSearchResult | null>(null);
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
   const containerRef = useRef<HTMLDivElement>(null);
-
   const router = useRouter();
 
   useEffect(() => {
@@ -49,6 +53,7 @@ export function GlobalSearch() {
     const handler = (e: MouseEvent) => {
       if (!containerRef.current?.contains(e.target as Node)) {
         setOpen(false);
+        setActiveIndex(-1);
       }
     };
 
@@ -71,42 +76,46 @@ export function GlobalSearch() {
       setActiveIndex((i) => Math.max(i - 1, 0));
     }
 
-    if (e.key === "Enter" && activeIndex >= 0) {
+    if (e.key === "Enter") {
       e.preventDefault();
-      router.push(`/search?q=${encodeURIComponent(query)}`);
+
+      if (activeIndex >= 0) {
+        router.push(`/product/${items[activeIndex].id}`);
+      } else {
+        router.push(`/search?q=${encodeURIComponent(query)}`);
+      }
+
       setOpen(false);
     }
 
     if (e.key === "Escape") {
       setOpen(false);
+      setActiveIndex(-1);
     }
   };
 
   return (
     <div ref={containerRef} className="relative w-full max-w-2xl">
       {/* INPUT */}
-      <div className="flex items-center bg-white rounded-full border shadow focus-within:ring-2 ring-[var(--brand-blue)]">
-        <Input
-          value={query}
-          onFocus={() => setOpen(true)}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder="Search products, stores, categories..."
-          className="border-none rounded-full focus-visible:ring-0"
-        />
-        <Search className="mr-4 text-gray-400" />
-      </div>
+      <SearchInput
+        variant={variant}
+        value={query}
+        onChange={setQuery}
+        onFocus={() => setOpen(true)}
+        onKeyDown={onKeyDown}
+        onSubmit={() => {
+          if (query.trim().length >= 2) {
+            router.push(`/search?q=${encodeURIComponent(query)}`);
+            setOpen(false);
+          }
+        }}
+      />
 
-      {open && (
+      {/* DROPDOWN */}
+      {open && query.length >= 2 && (
         <div className="absolute top-full mt-2 w-full bg-white rounded-xl shadow-xl border z-50">
           <div className="p-3 max-h-[420px] overflow-y-auto space-y-2">
-            {open && query.length >= 2 && !results && (
-              <div className="absolute top-full mt-2 w-full bg-white rounded-xl shadow-xl border z-50">
-                <div className="p-3">
-                  <SearchSkeleton />
-                </div>
-              </div>
-            )}
+            {isLoading && <SearchSkeleton />}
 
             {!isLoading && results && results.products.length > 0 && (
               <Section title="Products">
@@ -134,7 +143,7 @@ export function GlobalSearch() {
 
                     <div className="min-w-0">
                       <p className="font-medium text-sm truncate">
-                        {highlight(p.name, query)}
+                        {highlightMatch(p.name, query)}
                       </p>
                       <p className="text-xs text-gray-500 truncate">
                         {p.store.name}
@@ -174,10 +183,11 @@ function Section({
   );
 }
 
-function highlight(text: string, query: string) {
+function highlightMatch(text: string, query: string) {
   if (!query) return text;
 
   const regex = new RegExp(`(${query})`, "ig");
+
   return text.split(regex).map((part, i) =>
     part.toLowerCase() === query.toLowerCase() ? (
       <mark

@@ -7,12 +7,12 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const searchVariants = cva(
-  "flex items-center w-full focus-within:ring-2 transition",
+  "flex items-center w-full focus-within:ring-2 ring-offset-2 transition",
   {
     variants: {
       variant: {
         site: "h-11 rounded-md bg-white focus-within:ring-[#3c9ee0]",
-        dashboard:
+        marketplace:
           "py-[5px] rounded-full border shadow focus-within:ring-[var(--brand-blue)]",
       },
     },
@@ -26,6 +26,8 @@ type SearchInputProps = VariantProps<typeof searchVariants> & {
   value: string;
   onChange: (v: string) => void;
   onSubmit?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onFocus?: () => void;
   placeholder?: string;
 };
 
@@ -33,9 +35,16 @@ export function SearchInput({
   value,
   onChange,
   onSubmit,
+  onKeyDown,
+  onFocus,
   placeholder,
   variant,
 }: SearchInputProps) {
+  const placeholders = {
+    site: "Search products, brands & categories",
+    marketplace: "Search inventory, orders, customers...",
+  };
+
   return (
     <form
       onSubmit={(e) => {
@@ -47,7 +56,9 @@ export function SearchInput({
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
+        onKeyDown={onKeyDown}
+        onFocus={onFocus}
+        placeholder={placeholder ?? placeholders[variant ?? "site"]}
         className={cn(
           "border-none focus-visible:ring-0",
           variant === "site" ? "rounded-none text-black" : "text-[15px]"

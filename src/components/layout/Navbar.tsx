@@ -39,6 +39,7 @@ import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
 import CurrencySelector from "../currency/CurrencySelector";
 import { UserDTO } from "@/lib/types";
 import { ModeToggle } from "./ModeToggle";
+import { GlobalSearch } from "../search/GlobalSearch";
 
 const menuItems = [
   { href: "/help", icon: HelpCircle, label: "Help Center" },
@@ -140,24 +141,7 @@ export default function SiteNavbar({
 
           {/* SEARCH BAR */}
           <div className="hidden md:block flex-1 max-w-3xl mx-5">
-            <form
-              onSubmit={handleSearch}
-              className="w-full flex items-center h-11 rounded-md overflow-hidden bg-white focus-within:ring-2 focus-within:ring-[#3c9ee0]"
-            >
-              <Input
-                type="search"
-                placeholder="Search products, brands & categories"
-                className="flex-1 border-none rounded-none text-black focus-visible:ring-0"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Button
-                type="submit"
-                className="h-full rounded-none bg-[#3c9ee0] hover:bg-[#318bc4]"
-              >
-                🔍
-              </Button>
-            </form>
+            <GlobalSearch variant="site" />
           </div>
 
           <div className="hidden md:flex items-center gap-8">

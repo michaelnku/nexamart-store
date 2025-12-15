@@ -36,6 +36,7 @@ import { UserDTO } from "@/lib/types";
 import { ModeToggle } from "./ModeToggle";
 import { MobileSideNav } from "@/app/market-place/_components/SideNavbar";
 import DashboardPageSkeleton from "../skeletons/DashboardPageSkeleton";
+import { GlobalSearch } from "../search/GlobalSearch";
 
 type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -143,21 +144,7 @@ export default function MarketPlaceNavbar({
 
         {/* CENTER — SEARCH BAR */}
         <div className="hidden md:flex flex-1 max-w-2xl mx-6">
-          <form
-            onSubmit={handleSearch}
-            className="w-full flex items-center gap-2 pl-4 pr-1 py-[5px] border rounded-full shadow focus-within:ring-2 ring-[var(--brand-blue)]"
-          >
-            <Input
-              type="search"
-              placeholder="Search inventory, orders, customers..."
-              className="border-none text-[15px] focus-visible:ring-0"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <Button className="rounded-full bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)]">
-              🔍
-            </Button>
-          </form>
+          <GlobalSearch variant="marketplace" />
         </div>
 
         {/* RIGHT — QUICK ICONS + ACCOUNT */}
