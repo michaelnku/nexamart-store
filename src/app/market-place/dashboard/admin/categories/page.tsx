@@ -121,7 +121,7 @@ export default function CategoryPageClient({
       parentId: editParentId,
       iconUrl: editIconUrl,
       bannerUrl: editBannerUrl,
-    } as any); // ensure your CategorySchemaType includes these fields
+    } as any);
 
     if (res?.error) {
       toast.error(res.error);
@@ -175,7 +175,7 @@ export default function CategoryPageClient({
         <CardHeader>
           <CardTitle>Create Category</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             placeholder="Category name (e.g., Electronics)"
             value={name}
@@ -198,7 +198,7 @@ export default function CategoryPageClient({
           <Button
             onClick={handleCreate}
             disabled={saving}
-            className="bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white font-medium rounded-lg shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+            className="bg-[var(--brand-blue)] md:col-span-2 w-full md:w-auto hover:bg-[var(--brand-blue-hover)] text-white font-medium rounded-lg shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? (
               <span className="flex items-center gap-2">
@@ -212,12 +212,12 @@ export default function CategoryPageClient({
         </CardContent>
       </Card>
 
-      {/* TABLE CARD */}
+      {/*desktop TABLE CARD */}
       <Card>
         <CardHeader>
           <CardTitle>Categories (Hierarchy View)</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="hidden md:block overflow-x-auto">
           <table className="w-full border text-sm">
             <thead className="bg-gray-100">
               <tr>
@@ -251,7 +251,7 @@ export default function CategoryPageClient({
                   <td className="p-3 border font-medium">{cat.name}</td>
 
                   {/* Hierarchy */}
-                  <td className="p-3 border text-xs md:text-sm">
+                  <td className="p-3 border text-xs md:text-sm break-words line-clamp-2 max-w-[320px]">
                     {formatHierarchy(cat)}
                   </td>
 
@@ -319,6 +319,79 @@ export default function CategoryPageClient({
             </tbody>
           </table>
         </CardContent>
+        {/* MOBILE LIST */}
+        <CardContent className="md:hidden space-y-4">
+          {categories.map((cat) => (
+            <Card key={cat.id} className="p-4">
+              <div className="flex items-start gap-3">
+                {/* Icon */}
+                {cat.iconUrl ? (
+                  <div className="relative w-10 h-10 rounded-full overflow-hidden border shrink-0">
+                    <Image
+                      src={cat.iconUrl}
+                      alt={cat.name}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-full border flex items-center justify-center text-xs text-gray-400">
+                    None
+                  </div>
+                )}
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{cat.name}</p>
+                  <p className="text-xs text-gray-500 line-clamp-2">
+                    {formatHierarchy(cat)}
+                  </p>
+
+                  {cat.bannerUrl && (
+                    <div className="relative w-full h-20 mt-2 rounded-md overflow-hidden border">
+                      <Image
+                        src={cat.bannerUrl}
+                        alt="Banner"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="p-2 rounded-full hover:bg-gray-100">
+                      <MoreVertical size={18} />
+                    </button>
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setEditing(cat);
+                        setEditName(cat.name);
+                        setEditParentId(cat.parentId ?? null);
+                        setEditIconUrl(cat.iconUrl ?? null);
+                        setEditBannerUrl(cat.bannerUrl ?? null);
+                      }}
+                    >
+                      <Pencil size={14} /> Edit
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      className="text-red-600"
+                      onClick={() => setDeleting(cat)}
+                    >
+                      <Trash2 size={14} /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </Card>
+          ))}
+        </CardContent>
       </Card>
 
       {/* EDIT MODAL */}
@@ -376,7 +449,7 @@ export default function CategoryPageClient({
                       src={editIconUrl}
                       alt="Icon preview"
                       fill
-                      className="object-cover"
+                      className="object-cover max-w-full"
                     />
                   </div>
                 ) : (
@@ -417,7 +490,7 @@ export default function CategoryPageClient({
                     src={editBannerUrl}
                     alt="Banner preview"
                     fill
-                    className="object-cover"
+                    className="object-cover max-w-full"
                   />
                 </div>
               ) : (
