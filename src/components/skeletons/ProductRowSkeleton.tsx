@@ -1,12 +1,22 @@
+"use client";
+
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function ProductRowSkeleton({ title }: { title: string }) {
+  const heights = [240, 260, 220, 280, 250, 270, 230, 260];
+
   return (
-    <section className="mb-10 space-y-3 animate-pulse">
-      <h2 className="h-5 w-48 bg-gray-300 rounded"></h2>
+    <section className="mb-10 space-y-4">
+      {/* Section title */}
+      <Skeleton className="h-5 w-48 rounded-md" />
+
+      {/* Product cards */}
       <div className="flex gap-4 overflow-hidden">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div
+        {heights.map((h, i) => (
+          <Skeleton
             key={i}
-            className="min-w-[200px] h-[260px] bg-gray-200 rounded-xl"
+            className="min-w-[200px] rounded-xl ring-1 ring-[var(--brand-blue)]/5"
+            style={{ height: h }}
           />
         ))}
       </div>

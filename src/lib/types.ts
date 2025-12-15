@@ -114,3 +114,35 @@ export type SessionUser = {
   image?: string | null;
   role?: string | null;
 };
+
+export type SearchImage = {
+  id: string;
+  imageUrl: string;
+};
+
+export type SearchStore = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type SearchCategory = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type SearchProduct = {
+  id: string;
+  name: string;
+  images: SearchImage[];
+  store: SearchStore;
+  category: SearchCategory;
+};
+
+export type GlobalSearchResult = {
+  products: SearchProduct[];
+  nextCursor: string | null;
+  stores?: SearchStore[];
+  categories?: SearchCategory[];
+};

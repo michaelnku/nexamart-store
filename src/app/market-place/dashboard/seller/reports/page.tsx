@@ -16,22 +16,22 @@ import { Separator } from "@/components/ui/separator";
 const stats = [
   {
     label: "Total Revenue",
-    value: "$12,430",
+    value: "$0",
     icon: DollarSign,
   },
   {
     label: "Orders",
-    value: "342",
+    value: "0",
     icon: ShoppingBag,
   },
   {
     label: "Products Sold",
-    value: "1,128",
+    value: "0",
     icon: Package,
   },
   {
     label: "Growth",
-    value: "+18%",
+    value: "+1%",
     icon: TrendingUp,
   },
 ];
@@ -39,10 +39,9 @@ const stats = [
 export default function SellerReportsPage() {
   return (
     <div className="space-y-6">
-      {/* ───────── HEADER ───────── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Reports & Analytics</h1>
+          <h1 className="text-2xl font-semibold">Sales Reports</h1>
           <p className="text-sm text-gray-500">
             Track sales, orders, and performance of your store
           </p>

@@ -1,26 +1,30 @@
+"use client";
+
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function HomeSkeleton() {
   return (
-    <div className="space-y-10 animate-fade">
+    <div className="space-y-10">
       {/* Banner */}
-      <div className="h-48 w-full rounded-lg bg-gray-200 animate-pulse" />
+      <Skeleton className="h-48 w-full rounded-lg" />
 
       {/* Categories */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div
+          <Skeleton
             key={i}
-            className="h-20 rounded-lg bg-gray-200 animate-pulse ring-1 ring-[#3c9ee0]/5"
+            className="h-20 rounded-lg ring-1 ring-[var(--brand-blue)]/5"
           />
         ))}
       </div>
 
-      {/* Product rows */}
+      {/* Product Rows */}
       {Array.from({ length: 3 }).map((_, i) => (
         <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-6">
           {Array.from({ length: 4 }).map((_, j) => (
-            <div
+            <Skeleton
               key={j}
-              className="h-60 rounded-xl bg-gray-200 animate-pulse ring-1 ring-[#3c9ee0]/5"
+              className="h-60 rounded-xl ring-1 ring-[var(--brand-blue)]/5"
             />
           ))}
         </div>

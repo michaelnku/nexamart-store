@@ -11,6 +11,7 @@ import { FullProduct } from "@/lib/types";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Swiper as SwiperType } from "swiper";
+import { FadeIn } from "../animations/FadeIn";
 
 type Props = {
   title: string;
@@ -90,9 +91,11 @@ export default function ProductRowUI({
           }}
           className="pb-8"
         >
-          {products.map((p) => (
+          {products.map((p, i) => (
             <SwiperSlide key={p.id}>
-              <PublicProductCard product={p} isWishlisted={false} />
+              <FadeIn delay={i * 0.04}>
+                <PublicProductCard product={p} isWishlisted={false} />
+              </FadeIn>
             </SwiperSlide>
           ))}
         </Swiper>

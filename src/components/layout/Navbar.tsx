@@ -28,7 +28,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { signOut } from "next-auth/react";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { DialogTitle } from "@radix-ui/react-dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
