@@ -7,6 +7,7 @@ import {
   BarChart3,
   AlertTriangle,
 } from "lucide-react";
+import { useState } from "react";
 
 export default function SellerPage() {
   const stats = [
@@ -15,6 +16,8 @@ export default function SellerPage() {
     { title: "Total Revenue", value: "$0.00", icon: DollarSign },
     { title: "Performance", value: "View Report", icon: BarChart3 },
   ];
+
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <main className="space-y-8">
@@ -25,12 +28,14 @@ export default function SellerPage() {
         </p>
       </div>
 
-      <div className="p-4 bg-yellow-50 border rounded-xl flex items-center gap-3">
-        <AlertTriangle className="w-5 h-5 text-yellow-700" />
-        <p className="text-sm text-yellow-800">
-          Action required: Please update inventory for 6 low–stock products.
-        </p>
-      </div>
+      {error && (
+        <div className="p-4 bg-yellow-50 border rounded-xl flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-yellow-700" />
+          <p className="text-sm text-yellow-800">
+            Action required: Please update inventory for 6 low–stock products.
+          </p>
+        </div>
+      )}
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {stats.map((stat) => {
