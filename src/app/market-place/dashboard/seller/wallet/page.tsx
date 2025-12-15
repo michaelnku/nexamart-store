@@ -56,10 +56,10 @@ export default function SellerWalletPage() {
         </Link>
       </div>
 
-      {/* BALANCE SUMMARY — Amazon Styled */}
+      {/* BALANCE SUMMARY*/}
       <section className="grid md:grid-cols-3 gap-6">
         {/* Available */}
-        <div className="border rounded-xl shadow-sm p-5 bg-white hover:shadow-md transition-all">
+        <div className="border rounded-xl shadow-sm p-5 bg-white dark:bg-neutral-950 hover:shadow-md transition-all">
           <p className="text-sm text-gray-500">Available Balance</p>
           <h2 className="text-3xl font-bold text-[#3c9ee0] mt-2">
             {formattedBalance}
