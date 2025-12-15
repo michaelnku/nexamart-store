@@ -55,9 +55,9 @@ const topProducts = [
 ];
 
 const performance = {
-  products: { total: 24, growth: 5 },
-  orders: { total: 136, growth: -8 },
-  revenue: { total: 3500000, growth: 12 },
+  products: { total: 0, growth: 5 },
+  orders: { total: 0, growth: -8 },
+  revenue: { total: 0, growth: 12 },
 };
 
 const SellerAnalyticsPage = () => {
