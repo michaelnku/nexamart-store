@@ -2,6 +2,7 @@
 
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
+import { makeSlug } from "@/lib/slugify";
 import {
   storeFormType,
   storeSchema,
@@ -52,7 +53,7 @@ export const createStoreAction = async (values: storeFormType) => {
 
     if (!user.id) return { error: "Invalid user account" };
 
-    const baseSlug = name.toLowerCase().replace(/\s+/g, "-");
+    const baseSlug = makeSlug(name);
     const slug = `${baseSlug}-${user.id.slice(0, 6)}`;
 
     const requiresAddress =
