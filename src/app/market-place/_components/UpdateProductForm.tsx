@@ -243,7 +243,7 @@ const UpdateProductForm = ({ initialData, categories }: UpdateProductProps) => {
   };
 
   return (
-    <main className="flex justify-center px-2 py-4">
+    <main className="flex justify-center p-4 md:p-8 lg:p-12 bg-gray-100 dark:bg-neutral-950 min-h-screen">
       <div className="w-full max-w-4xl border px-8 py-6 rounded-2xl shadow light:bg-white space-y-10">
         <h1 className="text-3xl font-bold text-center text-[var(--brand-blue)]">
           Update Product

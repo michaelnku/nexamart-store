@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import dynamic from "next/dynamic";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -34,6 +33,13 @@ type ProductFormProps = {
   categories: Category[];
 };
 
+type PreviewImage = {
+  id: string;
+  url: string;
+  key: string;
+  deleting?: boolean;
+};
+
 const ProductForm = ({ categories }: ProductFormProps) => {
   const router = useRouter();
 
@@ -41,7 +47,8 @@ const ProductForm = ({ categories }: ProductFormProps) => {
   const [level2, setLevel2] = useState<string | null>(null);
   const [level3, setLevel3] = useState<string | null>(null);
 
-  const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [images, setImages] = useState<PreviewImage[]>([]);
+
   const [error, setError] = useState<string | undefined>();
 
   const [hasVariants, setHasVariants] = useState(true);
@@ -207,21 +214,36 @@ const ProductForm = ({ categories }: ProductFormProps) => {
     console.log("product data uploaded:", values);
   };
 
-  const deleteImage = async (index: number) => {
+  const deleteImage = async (id: string) => {
     setIsDeletingImage(true);
-    const image = getValues("images")[index];
-    await deleteFileAction(image.key);
+    try {
+      setImages((prev) =>
+        prev.map((img) => (img.id === id ? { ...img, deleting: true } : img))
+      );
 
-    const remaining = getValues("images").filter((_, i) => i !== index);
-    setValue("images", remaining);
-    setPreviewImages(remaining.map((i) => i.url));
-    setIsDeletingImage(false);
-    toast.success("Image deleted");
+      const image = images.find((img) => img.id === id);
+      if (!image) return;
+
+      await deleteFileAction(image.key);
+
+      setImages((prev) => prev.filter((img) => img.id !== id));
+
+      setValue(
+        "images",
+        getValues("images").filter((img) => img.key !== image.key)
+      );
+
+      toast.success("Image deleted");
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsDeletingImage(false);
+    }
   };
 
   return (
-    <main className="flex justify-center">
-      <div className="w-full max-w-4xl border px-8 py-4 rounded-2xl shadow bg-white space-y-10">
+    <main className="flex justify-center p-4 md:p-8 lg:p-12 bg-gray-100 dark:bg-neutral-950 min-h-screen">
+      <div className="w-full max-w-4xl border px-8 py-4 rounded-2xl shadow space-y-10">
         <h1 className="text-3xl font-bold text-center text-[var(--brand-blue)]">
           New Product
         </h1>
@@ -926,18 +948,18 @@ Dual SIM`}
                 onClientUploadComplete={(res) => {
                   setUploading(false);
 
-                  const uploaded = res.map((file) => ({
+                  const uploaded: PreviewImage[] = res.map((file) => ({
+                    id: crypto.randomUUID(),
                     url: file.url,
                     key: file.key,
                   }));
 
-                  setPreviewImages((prev) => [
-                    ...prev,
-                    ...uploaded.map((i) => i.url),
-                  ]);
+                  setImages((prev) => [...prev, ...uploaded]);
 
-                  const current = getValues("images") ?? [];
-                  setValue("images", [...current, ...uploaded]);
+                  setValue("images", [
+                    ...getValues("images"),
+                    ...uploaded.map(({ url, key }) => ({ url, key })),
+                  ]);
 
                   toast.success("Images uploaded");
                 }}
@@ -945,23 +967,30 @@ Dual SIM`}
               />
 
               <div className="flex flex-wrap gap-4">
-                {previewImages.map((url, index) => (
+                {images.map((img) => (
                   <div
-                    key={index}
+                    key={img.id}
                     className="relative w-40 h-40 rounded-lg overflow-hidden border"
                   >
                     <button
                       type="button"
-                      onClick={() => deleteImage(index)}
-                      className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full"
+                      onClick={() => deleteImage(img.id)}
+                      className="absolute top-2 right-2 z-10 bg-red-600 text-white p-1 rounded-full"
+                      disabled={img.deleting}
                     >
-                      {isDeletingImage ? (
-                        <Loader2 className="animate-spin" />
+                      {img.deleting ? (
+                        <Loader2 className="animate-spin w-4 h-4" />
                       ) : (
-                        <Trash />
+                        <Trash className="w-4 h-4" />
                       )}
                     </button>
-                    <Image src={url} alt="img" fill className="object-cover" />
+
+                    <Image
+                      src={img.url}
+                      alt="product image"
+                      fill
+                      className="object-cover"
+                    />
                   </div>
                 ))}
               </div>
