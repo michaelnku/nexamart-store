@@ -6,8 +6,6 @@ import {
 import { SearchChip } from "@/components/search/SearchChip";
 import SearchEmptyState from "@/components/search/SearchEmptyState";
 import SearchResultsGrid from "@/components/search/SearchResultsGrid";
-import Image from "next/image";
-import Link from "next/link";
 
 type SearchPageProps = {
   searchParams: {
@@ -24,7 +22,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   ]);
   if (query.length < 2) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-10">
+      <div className="max-w-7xl min-h-screen text-center mx-auto py-10">
         <p className="text-gray-500 text-sm">
           Please enter at least 2 characters to search.
         </p>
