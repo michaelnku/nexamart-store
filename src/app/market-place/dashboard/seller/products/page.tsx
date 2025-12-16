@@ -3,17 +3,26 @@ import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 const page = async () => {
   const user = await CurrentUser();
 
+  if (!user || user.role !== "SELLER") {
+    redirect("/403");
+  }
+
   const store = await prisma.store.findUnique({
-    where: { userId: user?.id },
+    where: { userId: user.id },
   });
+
+  if (!store) {
+    redirect("/market-place/dashboard/seller/store/create-store");
+  }
 
   const products = await prisma.product.findMany({
     where: {
-      storeId: store?.id,
+      storeId: store.id,
     },
     include: {
       images: true,
