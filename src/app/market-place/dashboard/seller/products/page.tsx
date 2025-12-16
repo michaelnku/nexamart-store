@@ -12,7 +12,7 @@ const page = async () => {
     redirect("/403");
   }
 
-  const store = await prisma.store.findUnique({
+  const store = await prisma.store.findFirst({
     where: { userId: user.id },
   });
 
@@ -22,7 +22,9 @@ const page = async () => {
 
   const products = await prisma.product.findMany({
     where: {
-      storeId: store.id,
+      store: {
+        userId: user.id,
+      },
     },
     include: {
       images: true,
