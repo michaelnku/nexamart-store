@@ -17,7 +17,7 @@ export default function SearchResultsGrid({ products }: Props) {
       {products.map((product) => (
         <div
           key={product.id}
-          className="border rounded-xl bg-white shadow-sm hover:shadow-md transition"
+          className="border rounded-xl light:bg-white shadow-sm hover:shadow-md transition"
         >
           <SearchResultCard product={product} />
         </div>

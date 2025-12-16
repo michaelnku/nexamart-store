@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export default function Loading() {
   return (
-    <main className="fixed inset-0 z-[9999] bg-white flex flex-col justify-between items-center px-6 py-10 fade-out animate-splash">
+    <main className="fixed inset-0 z-[9999] bg-white dark:bg-neutral-950 flex flex-col justify-between items-center px-6 py-10 fade-out animate-splash">
       {/* TOP LOGO */}
       <header className="flex justify-center items-center w-full mt-10 sm:mt-14">
         <h1 className="text-4xl font-extrabold tracking-wide md:text-5xl">

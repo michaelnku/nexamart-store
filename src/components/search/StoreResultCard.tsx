@@ -44,7 +44,9 @@ export default function StoreResultCard({
         )}
       </div>
 
-      <span className="text-sm font-medium truncate">{store.name}</span>
+      <span className="text-sm font-medium text-gray-700 truncate">
+        {store.name}
+      </span>
     </Link>
   );
 }

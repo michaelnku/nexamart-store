@@ -46,7 +46,7 @@ export function SearchResultsDropdown({
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 ">
       {/* PRODUCTS */}
       {products.length > 0 && (
         <Section title="Products">

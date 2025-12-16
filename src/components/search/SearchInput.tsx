@@ -7,7 +7,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const searchVariants = cva(
-  "flex items-center w-full focus-within:ring-2 ring-offset-2 transition",
+  "flex items-center w-full focus-within:ring-2 light:bg-white ring-offset-2 transition",
   {
     variants: {
       variant: {

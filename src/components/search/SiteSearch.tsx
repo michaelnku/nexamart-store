@@ -20,7 +20,7 @@ export function SiteSearch() {
       />
 
       {search.open && search.query.length >= 2 && (
-        <div className="absolute top-full mt-2 w-full bg-white rounded-xl shadow-xl border z-50 p-3">
+        <div className="absolute top-full mt-2 w-full light:bg-white dark:bg-neutral-950 rounded-xl shadow-xl border z-50 p-3">
           <SearchResultsDropdown
             results={search.results}
             isLoading={search.isLoading}

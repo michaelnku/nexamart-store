@@ -24,6 +24,7 @@ import { deleteBannerAction, deleteLogoAction } from "@/actions/actions";
 import { useRouter } from "next/navigation";
 import { UpdateStoreAction } from "@/actions/auth/store";
 import { StoreDTO } from "@/lib/types";
+import { StoreSettingsSkeleton } from "@/components/skeletons/StoreSettingsSkeleton";
 
 const BuyerSettingsPage = () => {
   return (
@@ -110,55 +111,7 @@ const SellerSettingsPage = () => {
 
   // LOADING UI
   if (store === undefined) {
-    return (
-      <main className="max-w-3xl mx-auto animate-fadeIn">
-        <h1 className="text-3xl font-semibold mb-8">Store Settings</h1>
-
-        <div className="space-y-10">
-          {/* -- Business Profile Skeleton -- */}
-          <section className="bg-white rounded-2xl shadow p-6 space-y-6">
-            <div className="h-6 w-40 bg-gray-200 dark:bg-neutral-800 rounded animate-pulse" />
-
-            <div className="space-y-4">
-              <div className="h-10 bg-gray-200 dark:bg-neutral-800 rounded animate-pulse" />
-              <div className="h-10 bg-gray-200 dark:bg-neutral-800 rounded animate-pulse" />
-              <div className="h-10 bg-gray-200 dark:bg-neutral-800 rounded animate-pulse" />
-              <div className="h-20 bg-gray-200 dark:bg-neutral-800 rounded animate-pulse" />
-            </div>
-
-            {/* Logo Skeleton */}
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-full bg-gray-200 dark:bg-neutral-800 animate-pulse" />
-              <div className="h-8 w-32 bg-gray-200 dark:bg-neutral-800 rounded animate-pulse" />
-            </div>
-          </section>
-
-          {/* -- Preferences Skeleton -- */}
-          <section className="bg-white rounded-2xl shadow p-6 space-y-6">
-            <div className="h-6 w-40 bg-gray-200 dark:bg-neutral-800 rounded animate-pulse" />
-
-            <div className="flex items-center justify-between">
-              <div className="h-5 w-40 bg-gray-200 dark:bg-neutral-800 rounded animate-pulse" />
-              <div className="h-7 w-14 bg-gray-200 dark:bg-neutral-800 rounded animate-pulse" />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="h-5 w-40 bg-gray-200 dark:bg-neutral-800 rounded animate-pulse" />
-              <div className="h-7 w-14 bg-gray-200 dark:bg-neutral-800 rounded animate-pulse" />
-            </div>
-          </section>
-
-          {/* Save button skeleton */}
-          <div className="h-12 w-full rounded-xl bg-gray-200 dark:bg-neutral-800 animate-pulse" />
-
-          {/* Loading Indicator */}
-          <div className="flex justify-center pt-6 text-gray-500">
-            <Loader2 className="w-5 h-5 animate-spin mr-2" />
-            <span>Loading store settings...</span>
-          </div>
-        </div>
-      </main>
-    );
+    return <StoreSettingsSkeleton />;
   }
 
   // DELETE LOGO & Banner

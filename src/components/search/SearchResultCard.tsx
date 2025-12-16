@@ -16,7 +16,7 @@ export function SearchResultCard({ product, active, onHover, onClick }: Props) {
       href={`/product/${createProductSlug(product.name, product.id)}`}
       onMouseEnter={onHover}
       onClick={onClick}
-      className={`flex gap-3 p-2 rounded transition ${
+      className={`flex  gap-3 p-2 rounded transition ${
         active ? "bg-[var(--brand-blue-light)]" : "hover:bg-muted"
       }`}
     >
@@ -31,7 +31,9 @@ export function SearchResultCard({ product, active, onHover, onClick }: Props) {
       )}
 
       <div className="min-w-0">
-        <p className="font-medium text-sm truncate">{product.name}</p>
+        <p className="font-bold text-gray-700 text-sm truncate">
+          {product.name}
+        </p>
         <p className="text-xs text-gray-500 truncate">{product.store.name}</p>
       </div>
     </Link>

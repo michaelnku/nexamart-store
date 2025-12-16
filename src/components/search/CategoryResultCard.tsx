@@ -28,11 +28,13 @@ export default function CategoryResultCard({
         active ? "bg-[var(--brand-blue-light)]" : "hover:bg-muted"
       )}
     >
-      <div className="size-8 rounded bg-gray-100 flex items-center justify-center">
-        <Folder className="w-4 h-4 text-gray-600" />
+      <div className="size-8 rounded light:bg-gray-100 flex items-center justify-center">
+        <Folder className="w-4 h-4 text-gray-700 " />
       </div>
 
-      <span className="text-sm font-medium truncate">{category.name}</span>
+      <span className="text-sm font-medium text-gray-700 truncate">
+        {category.name}
+      </span>
     </Link>
   );
 }

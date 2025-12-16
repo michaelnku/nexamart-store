@@ -10,7 +10,7 @@ export function MarketplaceSearch() {
   const search = useGlobalSearch(6);
 
   return (
-    <div ref={ref} className="relative w-full max-w-2xl">
+    <div ref={ref} className="relative w-full max-w-2xl ">
       <SearchInput
         variant="marketplace"
         value={search.query}
@@ -20,7 +20,7 @@ export function MarketplaceSearch() {
       />
 
       {search.open && search.query.length >= 2 && (
-        <div className="absolute top-full mt-2 w-full bg-white rounded-xl shadow-lg border z-50 p-2">
+        <div className="absolute top-full mt-2 w-full light:bg-white dark:bg-neutral-950 rounded-xl shadow-lg border z-50 p-2">
           <SearchResultsDropdown
             results={search.results}
             isLoading={search.isLoading}
