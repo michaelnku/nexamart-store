@@ -2,33 +2,21 @@
 
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { storeFormType, storeSchema } from "@/lib/zodValidation";
+import {
+  storeFormType,
+  storeSchema,
+  updateStoreFormType,
+} from "@/lib/zodValidation";
 import { revalidatePath } from "next/cache";
 import { UTApi } from "uploadthing/server";
 
 const utapi = new UTApi();
-
-interface UpdateStoreInput {
-  id: string;
-  name: string;
-  description: string;
-  location: string;
-  address?: string;
-  tagline?: string;
-  logo?: string | null;
-  logoKey?: string | null;
-  bannerImage?: string | null;
-  bannerKey?: string | null;
-  isActive: boolean;
-  emailNotificationsEnabled: boolean;
-}
 
 export const createStoreAction = async (values: storeFormType) => {
   const user = await CurrentUser();
   if (!user) return { error: "Unauthorized access" };
 
   try {
-    // Only sellers can create a store
     if (user.role !== "SELLER") {
       return { error: "Only sellers can create a store" };
     }
@@ -36,9 +24,22 @@ export const createStoreAction = async (values: storeFormType) => {
     const validated = storeSchema.safeParse(values);
     if (!validated.success) return { error: "Invalid store data" };
 
-    const { name, description, location, logo } = validated.data;
+    const {
+      name,
+      description,
+      location,
+      logo,
+      type,
+      fulfillmentType,
+      address,
+    } = validated.data;
 
-    // Seller must not already have a store
+    if (type === "FOOD" && fulfillmentType === "DIGITAL") {
+      return {
+        error: "Food stores cannot be digital-only.",
+      };
+    }
+
     const existingStore = await prisma.store.findUnique({
       where: { userId: user.id },
     });
@@ -51,15 +52,27 @@ export const createStoreAction = async (values: storeFormType) => {
 
     if (!user.id) return { error: "Invalid user account" };
 
-    // Create new store
+    const baseSlug = name.toLowerCase().replace(/\s+/g, "-");
+    const slug = `${baseSlug}-${user.id.slice(0, 6)}`;
+
+    const requiresAddress =
+      fulfillmentType === "PHYSICAL" || fulfillmentType === "HYBRID";
+
+    if (requiresAddress && !address) {
+      return { error: "Address is required for physical fulfillment." };
+    }
+
     await prisma.store.create({
       data: {
         name,
         description,
-        location,
+        location: location.trim(),
+        address: requiresAddress ? address ?? null : null,
         logo,
+        type,
+        fulfillmentType,
         userId: user.id,
-        slug: name.toLowerCase().replace(/\s+/g, "-"),
+        slug: slug,
         isActive: true,
       },
     });
@@ -73,7 +86,7 @@ export const createStoreAction = async (values: storeFormType) => {
   }
 };
 
-export const UpdateStoreAction = async (values: UpdateStoreInput) => {
+export const UpdateStoreAction = async (values: updateStoreFormType) => {
   const user = await CurrentUser();
   if (!user) return { error: "Unauthorized access" };
 
@@ -84,16 +97,13 @@ export const UpdateStoreAction = async (values: UpdateStoreInput) => {
 
     if (!store) return { error: "Store not found" };
 
-    // If user is not the owner
     if (store.userId !== user.id) {
       return { error: "Unauthorized — not your store" };
     }
 
-    // Detect logo change
     const newLogoUrl = values.logo;
     const isLogoChanged = newLogoUrl && newLogoUrl !== store.logo;
 
-    // Delete old logo from UploadThing if changed
     if (isLogoChanged && store.logoKey) {
       try {
         await utapi.deleteFiles([store.logoKey]);
@@ -102,7 +112,6 @@ export const UpdateStoreAction = async (values: UpdateStoreInput) => {
       }
     }
 
-    /** BANNER CLEANUP IF UPDATED */
     const newBannerUrl = values.bannerImage;
     const bannerChanged = newBannerUrl && newBannerUrl !== store.bannerImage;
     if (bannerChanged && store.bannerKey) {
@@ -119,8 +128,9 @@ export const UpdateStoreAction = async (values: UpdateStoreInput) => {
       data: {
         name: values.name,
         description: values.description,
-        location: values.location,
+        location: values.location.trim(),
         address: values.address ?? null,
+        type: values.type,
         tagline: values.tagline ?? null,
 
         logo: newLogoUrl ?? null,

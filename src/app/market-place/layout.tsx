@@ -14,7 +14,7 @@ export default async function DashboardLayout({
   if (user.role === "USER") redirect("/");
 
   return (
-    <div className="max-w-full overflow-x-hidden">
+    <div>
       {/* TOP NAVBAR */}
       <MarketPlaceNavbar initialUser={user} />
 

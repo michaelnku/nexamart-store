@@ -624,7 +624,8 @@ model Store {
   StoreReview   StoreReview[]
   Brand         Brand[]
 
-  type StoreType @default(GENERAL)
+  fulfillmentType FulfillmentType @default(PHYSICAL)
+  type            StoreType       @default(GENERAL)
 
   @@index([userId])
   @@index([slug])
@@ -634,15 +635,12 @@ model Store {
 enum StoreType {
   GENERAL
   FOOD
-  GROCERY
-  PHARMACY
-  ELECTRONICS
-  FASHION
-  HOME_GOODS
-  BEAUTY
-  SPORTS
-  BOOKS
-  TOYS
+}
+
+enum FulfillmentType {
+  PHYSICAL
+  DIGITAL
+  HYBRID
 }
 
 model StoreFollower {

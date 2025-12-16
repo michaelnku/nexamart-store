@@ -153,24 +153,26 @@ export type CategorySchemaType = z.infer<typeof categorySchema>;
 
 //create store
 export const storeSchema = z.object({
-  name: z.string().min(2, "Store name is required."),
-  location: z.string().min(2, "Business location is required."),
-  address: z.string().min(2, "Business address is required."),
-  description: z.string().min(5, "Description is required."),
+  name: z.string().min(2, "Store name is required"),
+  description: z.string().min(5, "Description is required"),
+
+  location: z.string().min(2, "Business location is required"),
+
+  address: z.string().optional(),
+
   logo: z.string().optional(),
+
+  fulfillmentType: z.enum(["PHYSICAL", "DIGITAL", "HYBRID"]),
+
+  type: z.enum(["GENERAL", "FOOD"]),
 });
 
 export type storeFormType = z.infer<typeof storeSchema>;
 
 //update store
-export const updateStoreSchema = z.object({
+export const updateStoreSchema = storeSchema.extend({
   id: z.string(),
-  name: z.string().min(1),
-  description: z.string().optional(),
-  location: z.string().optional(),
-  address: z.string().optional(),
 
-  logo: z.string().nullable().optional(),
   logoKey: z.string().nullable().optional(),
 
   bannerImage: z.string().nullable().optional(),
@@ -181,4 +183,4 @@ export const updateStoreSchema = z.object({
   emailNotificationsEnabled: z.boolean(),
 });
 
-export type UpdateStoreInput = z.infer<typeof updateStoreSchema>;
+export type updateStoreFormType = z.infer<typeof updateStoreSchema>;

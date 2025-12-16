@@ -2,17 +2,32 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 import { SearchStore } from "@/lib/types";
+import { Store } from "lucide-react";
 
 type Props = {
   store: SearchStore;
+  active?: boolean;
+  onHover?: () => void;
+  onClick?: () => void;
 };
 
-export default function StoreResultCard({ store }: Props) {
+export default function StoreResultCard({
+  store,
+  active,
+  onHover,
+  onClick,
+}: Props) {
   return (
     <Link
       href={`/store/${store.slug}`}
-      className="flex items-center gap-4 border rounded-xl p-4 bg-white shadow-sm hover:shadow-md transition"
+      onMouseEnter={onHover}
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-3 p-2 rounded-md transition",
+        active ? "bg-[var(--brand-blue-light)]" : "hover:bg-muted"
+      )}
     >
       <div className="relative w-12 h-12 rounded-full bg-gray-100 overflow-hidden">
         {store.logo ? (
@@ -23,16 +38,13 @@ export default function StoreResultCard({ store }: Props) {
             className="object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">
-            Store
+          <div className="size-8 rounded bg-gray-100 flex items-center justify-center">
+            <Store className="w-4 h-4 text-gray-600" />
           </div>
         )}
       </div>
 
-      <div className="min-w-0">
-        <p className="font-medium truncate">{store.name}</p>
-        <p className="text-xs text-gray-500">Visit store</p>
-      </div>
+      <span className="text-sm font-medium truncate">{store.name}</span>
     </Link>
   );
 }
