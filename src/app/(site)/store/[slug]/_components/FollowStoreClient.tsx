@@ -25,7 +25,7 @@ const FollowStoreClient = ({
   const toggleFollow = async () => {
     if (!userId) return toast.error("Login to follow this store");
 
-    startTransition(() => setState((p) => p)); // just marks UI transition
+    startTransition(() => setState((p) => p));
 
     const res = await fetch(`/api/store/${storeId}/follow-toggle`, {
       method: "POST",
@@ -57,7 +57,7 @@ const FollowStoreClient = ({
         variant={state ? "secondary" : "default"}
         onClick={toggleFollow}
         disabled={pending}
-        className="flex items-center gap-2"
+        className="flex items-center gap-2 bg-[#146EB4] hover:bg-[#125c99]"
       >
         <Heart
           className={`w-4 h-4 ${state ? "fill-red-500 stroke-red-500" : ""}`}
