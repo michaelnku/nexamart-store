@@ -3,9 +3,11 @@ import {
   getUserRecentSearches,
   globalSearchAction,
 } from "@/actions/search";
+import CategoryResultCard from "@/components/search/CategoryResultCard";
 import { SearchChip } from "@/components/search/SearchChip";
 import SearchEmptyState from "@/components/search/SearchEmptyState";
 import SearchResultsGrid from "@/components/search/SearchResultsGrid";
+import StoreResultCard from "@/components/search/StoreResultCard";
 
 type SearchPageProps = {
   searchParams: Promise<{
@@ -20,6 +22,33 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     getTrendingSearches(),
     getUserRecentSearches(),
   ]);
+
+  if (!query) {
+    return (
+      <main className="max-w-7xl min-h-screen mx-auto px-4 py-10 space-y-8">
+        <section>
+          <h2 className="font-semibold mb-3">Trending searches</h2>
+          <div className="flex flex-wrap gap-2">
+            {trending.map((t) => (
+              <SearchChip key={t.keyword} label={t.keyword} />
+            ))}
+          </div>
+        </section>
+
+        {recent.length > 0 && (
+          <section>
+            <h2 className="font-semibold mb-3">Recent searches</h2>
+            <div className="flex flex-wrap gap-2">
+              {recent.map((r) => (
+                <SearchChip key={r.id} label={r.query} />
+              ))}
+            </div>
+          </section>
+        )}
+      </main>
+    );
+  }
+
   if (query.length < 2) {
     return (
       <div className="max-w-7xl min-h-screen text-center mx-auto py-10">
@@ -36,8 +65,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     cursor: null,
   });
 
+  const stores = results.stores ?? [];
+  const categories = results.categories ?? [];
+
   return (
-    <main className="max-w-7xl mx-auto px-4 py-10 space-y-6">
+    <main className="max-w-7xl min-h-screen mx-auto px-4 py-10 space-y-6">
       {/* HEADER */}
       <div>
         <h1 className="text-xl font-semibold">
@@ -50,23 +82,31 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         </p>
       </div>
 
-      {!query && (
-        <>
-          <section title="Trending Searches">
-            {trending.map((t) => (
-              <SearchChip key={t.keyword} label={t.keyword} />
+      {/* STORES */}
+      {stores.length > 0 && (
+        <section>
+          <h2 className="font-semibold mb-4">Stores</h2>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {stores.map((store) => (
+              <StoreResultCard key={store.id} store={store} />
             ))}
-          </section>
-
-          <section title="Recent Searches">
-            {recent.map((r) => (
-              <SearchChip key={r.id} label={r.query} />
-            ))}
-          </section>
-        </>
+          </div>
+        </section>
       )}
 
-      {/* RESULTS */}
+      {/* CATEGORIES */}
+      {categories.length > 0 && (
+        <section>
+          <h2 className="font-semibold mb-4">Categories</h2>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {categories.map((category) => (
+              <CategoryResultCard key={category.id} category={category} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/*Product RESULTS */}
       {results.products.length === 0 ? (
         <SearchEmptyState query={query} />
       ) : (

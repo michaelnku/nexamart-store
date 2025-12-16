@@ -1,13 +1,23 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useCurrentUser } from "@/hooks/getCurrentUser";
 import { useRouter } from "next/navigation";
 
 const NotFoundError: React.FC = () => {
   const router = useRouter();
+  const user = useCurrentUser();
 
   const goHome = () => {
-    router.push("/");
+    if (user?.role === "MODERATOR")
+      router.push("/market-place/dashboard/moderator");
+    else if (user?.role === "ADMIN")
+      router.push("/market-place/dashboard/admin");
+    else if (user?.role === "SELLER")
+      router.push("/market-place/dashboard/seller");
+    else if (user?.role === "RIDER")
+      router.push("/market-place/dashboard/rider");
+    else router.push("/customer");
   };
 
   return (

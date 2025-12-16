@@ -124,12 +124,14 @@ export type SearchStore = {
   id: string;
   name: string;
   slug: string;
+  logo?: string | null;
 };
 
 export type SearchCategory = {
   id: string;
   name: string;
   slug: string;
+  logo?: string | null;
 };
 
 export type GlobalSearchResult = {

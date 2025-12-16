@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   User,
   HelpCircle,
@@ -56,6 +56,8 @@ export default function MarketPlaceNavbar({
   const [hasNewAlert, setHasNewAlert] = useState(false);
 
   const [open, setOpen] = useState(false);
+
+  const router = useRouter();
 
   useDashboardEvents(user?.id, user?.role, setHasNewAlert);
   const logout = useLogout();
@@ -113,12 +115,29 @@ export default function MarketPlaceNavbar({
 
   const isActive = (href: string) => pathname.startsWith(href);
 
+  const getHomePath = (role?: string) => {
+    switch (role) {
+      case "MODERATOR":
+        return "/market-place/dashboard/moderator";
+      case "ADMIN":
+        return "/market-place/dashboard/admin";
+      case "SELLER":
+        return "/market-place/dashboard/seller";
+      case "RIDER":
+        return "/market-place/dashboard/rider";
+      default:
+        return "/customer";
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 light:bg-white/90 backdrop-blur border-b shadow-sm">
       <div className="flex items-center justify-between h-16 px-4 md:px-8">
-        {/* LEFT — LOGO + DASHBOARD TITLE */}
         <div className="flex items-center gap-3 cursor-pointer">
-          <Link href="/" className="flex items-center gap-2">
+          <Link
+            href={getHomePath(user?.role)}
+            className="flex items-center gap-2"
+          >
             <Image
               src="https://ijucjait38.ufs.sh/f/rO7LkXAj4RVlnNw2KuOByscQRmqV3jX4rStz8G2Mv0IpxKJA"
               alt="NexaMart Logo"

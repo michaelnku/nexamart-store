@@ -18,6 +18,8 @@ export async function globalSearchAction({
   if (!query || query.trim().length < 2) {
     return {
       products: [],
+      stores: [],
+      categories: [],
       nextCursor: null,
     };
   }
@@ -30,62 +32,63 @@ export async function globalSearchAction({
       OR: [
         { name: { contains: q, mode: "insensitive" } },
         { description: { contains: q, mode: "insensitive" } },
-        {
-          category: {
-            name: { contains: q, mode: "insensitive" },
-          },
-        },
-        {
-          store: {
-            name: { contains: q, mode: "insensitive" },
-          },
-        },
       ],
     },
-
     take: limit + 1,
     cursor: cursor ? { id: cursor } : undefined,
     skip: cursor ? 1 : 0,
-
     include: {
       images: { take: 1 },
-      store: {
-        select: { id: true, name: true, slug: true },
-      },
-      category: {
-        select: { id: true, name: true, slug: true },
-      },
+      store: { select: { id: true, name: true, slug: true } },
+      category: { select: { id: true, name: true, slug: true } },
     },
-
-    orderBy: {
-      createdAt: "desc",
-    },
+    orderBy: { createdAt: "desc" },
   });
 
   let nextCursor: string | null = null;
-
   if (products.length > limit) {
     const nextItem = products.pop();
     nextCursor = nextItem!.id;
   }
 
+  const stores = await prisma.store.findMany({
+    where: {
+      name: { contains: q, mode: "insensitive" },
+    },
+    take: 6,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      logo: true,
+    },
+  });
+
+  const categories = await prisma.category.findMany({
+    where: {
+      name: { contains: q, mode: "insensitive" },
+    },
+    take: 6,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+    },
+  });
+
   return {
     products: products.map((p) => ({
       id: p.id,
       name: p.name,
-
       price: p.basePrice,
-
       images: p.images.map((img) => ({
         imageUrl: img.imageUrl,
       })),
-
       store: {
         id: p.store.id,
         name: p.store.name,
         slug: p.store.slug ?? undefined,
       },
-
       category: p.category
         ? {
             id: p.category.id,
@@ -94,6 +97,20 @@ export async function globalSearchAction({
           }
         : null,
     })),
+
+    stores: stores.map((s) => ({
+      id: s.id,
+      name: s.name,
+      slug: s.slug,
+      logo: s.logo ?? null,
+    })),
+
+    categories: categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+    })),
+
     nextCursor,
   };
 }
