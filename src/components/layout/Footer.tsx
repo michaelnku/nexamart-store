@@ -18,7 +18,7 @@ const Footer = () => {
   const [currency, setCurrency] = useState("USD");
 
   return (
-    <footer className="bg-[#232F3E] text-white mt-10 pt-10 sticky to-bottom w-full">
+    <footer className="bg-[#232F3E] text-white mt-10 pt-10 w-full">
       {/* ================= TRUST + CTA ================= */}
       <div className="bg-[#37475A] py-10 px-6 text-center space-y-6">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-8 text-sm font-medium">

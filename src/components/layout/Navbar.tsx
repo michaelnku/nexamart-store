@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   User,
@@ -80,27 +80,7 @@ export default function SiteNavbar({
 }) {
   const [open, setOpen] = useState(false);
 
-  const [isVisible, setIsVisible] = useState(true);
-  const lastScroll = useRef(0);
-
   const router = useRouter();
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const current = window.scrollY;
-
-      if (current > lastScroll.current && current > 80) {
-        setIsVisible(false);
-      } else {
-        setIsVisible(true);
-      }
-
-      lastScroll.current = current;
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   const pathname = usePathname();
   const { data: user } = useCurrentUserQuery(initialUser);
@@ -110,12 +90,11 @@ export default function SiteNavbar({
   return (
     <nav>
       <header
-        className={`
-    sticky to-top border top-0 w-full z-50
-    bg-black/90 backdrop-blur-lg text-white shadow-lg
-    transition-transform duration-300
-    ${isVisible ? "translate-y-0" : "-translate-y-full"}
-  `}
+        className="
+    sticky top-0 z-50 w-full
+    bg-black/90 backdrop-blur-lg text-white
+    border-b shadow-lg
+  "
       >
         <div className="flex items-center justify-between gap-6 h-16 px-4 md:px-8 lg:px-12">
           {/* LOGO */}
