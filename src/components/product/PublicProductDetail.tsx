@@ -77,7 +77,7 @@ export default function ProductPublicDetail({
 
   /* Pricing logic */
   const price = selectedVariant?.priceUSD ?? data.basePriceUSD;
-  const oldPrice = selectedVariant?.oldPriceUSD ?? data.oldPriceUSD ?? 0;
+  const oldPrice = selectedVariant?.oldPriceUSD ?? data.oldPriceUSD ?? null;
   const discount =
     oldPrice && oldPrice > price
       ? Math.round(((oldPrice - price) / oldPrice) * 100)
@@ -189,7 +189,7 @@ export default function ProductPublicDetail({
               {usePrice(price)}
             </div>
 
-            {discount && (
+            {discount && oldPrice !== null && (
               <p className="flex items-center gap-2 text-red-600 text-sm">
                 <span className="font-bold bg-red-100 px-2 py-0.5 rounded">
                   {discount}% OFF
