@@ -142,13 +142,6 @@ export type SearchCategory = {
   logo?: string | null;
 };
 
-export type GlobalSearchResult = {
-  products: SearchProduct[];
-  nextCursor: string | null;
-  stores?: SearchStore[];
-  categories?: SearchCategory[];
-};
-
 export type SearchProduct = {
   id: string;
   name: string;
@@ -161,6 +154,13 @@ export type SearchProduct = {
     id: string;
     name: string;
   };
+};
+
+export type GlobalSearchResult = {
+  products: SearchProduct[];
+  nextCursor: string | null;
+  stores?: SearchStore[];
+  categories?: SearchCategory[];
 };
 
 export type SearchProductCard = Pick<
