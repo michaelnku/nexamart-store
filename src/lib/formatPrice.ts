@@ -1,3 +1,4 @@
+//for client pages
 import { useCurrencyStore } from "@/stores/useCurrencyStore";
 
 const symbols: Record<string, string> = {

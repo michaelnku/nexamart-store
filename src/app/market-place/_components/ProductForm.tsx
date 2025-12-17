@@ -300,7 +300,7 @@ const ProductForm = ({ categories }: ProductFormProps) => {
 
             {/* VARIANTS */}
             <section className="space-y-6">
-              <h2 className="font-semibold text-xl">Variants (Price in USD)</h2>
+              <h2 className="font-semibold text-xl">Variants Section</h2>
               {fields.map((_, index) => (
                 <div key={index} className="border rounded-lg p-5 space-y-5">
                   {fields.length > 1 && (
@@ -373,7 +373,12 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                         <FormItem>
                           <FormLabel>Price (USD)</FormLabel>
                           <FormControl>
-                            <Input type="number" {...field} />
+                            <Input
+                              type="number"
+                              className="focus-visible:ring-[var(--brand-blue)]"
+                              {...field}
+                              onChange={(e) => e.target.value}
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -386,7 +391,12 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                         <FormItem>
                           <FormLabel>Stock</FormLabel>
                           <FormControl>
-                            <Input type="number" {...field} />
+                            <Input
+                              type="number"
+                              {...field}
+                              onChange={(e) => e.target.value}
+                              className="focus-visible:ring-[var(--brand-blue)]"
+                            />
                           </FormControl>
                         </FormItem>
                       )}

@@ -1,3 +1,4 @@
+//for server pages
 const symbols: Record<string, string> = {
   USD: "$",
   NGN: "₦",
