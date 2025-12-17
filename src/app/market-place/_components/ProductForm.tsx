@@ -212,7 +212,11 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                   <FormItem>
                     <FormLabel>Product Name</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input
+                        placeholder="e.g., Samsung TV 55 inch"
+                        {...field}
+                        className="focus-visible:ring-[var(--brand-blue)]"
+                      />
                     </FormControl>
                   </FormItem>
                 )}
@@ -225,7 +229,11 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                   <FormItem>
                     <FormLabel>Brand (optional)</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input
+                        placeholder="Nike / LG / Generic / None"
+                        {...field}
+                        className="focus-visible:ring-[var(--brand-blue)]"
+                      />
                     </FormControl>
                   </FormItem>
                 )}
@@ -323,6 +331,7 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                           <FormControl>
                             <Input
                               {...field}
+                              placeholder="Black"
                               onChange={(e) => {
                                 field.onChange(e);
                                 setValue(
@@ -348,6 +357,7 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                           <FormControl>
                             <Input
                               {...field}
+                              placeholder="M / L / XL"
                               onChange={(e) => {
                                 field.onChange(e);
                                 setValue(
