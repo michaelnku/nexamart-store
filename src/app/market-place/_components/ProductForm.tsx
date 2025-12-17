@@ -459,6 +459,7 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                     ...res.map((f) => ({ url: f.url, key: f.key })),
                   ]);
                 }}
+                className="ut-button:bg-[var(--brand-blue)] ut-button:text-white ut-button:rounded-lg"
               />
 
               <div className="flex flex-wrap gap-4">
