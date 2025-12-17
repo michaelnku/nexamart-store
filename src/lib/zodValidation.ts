@@ -90,11 +90,14 @@ export type updateUserSchemaType = z.infer<typeof updateUserSchema>;
 // Product Variant Schema
 export const productVariantSchema = z.object({
   sku: z.string().min(1, "SKU is required"),
-  price: z.number().min(1, "Price must be greater than 0"),
+
+  priceUSD: z.number().min(1, "Price must be greater than 0"),
+
   stock: z.number().min(0, "Stock cannot be negative"),
   color: z.string().optional(),
   size: z.string().optional(),
-  oldPrice: z.number().optional(),
+
+  oldPriceUSD: z.number().optional(),
   discount: z.number().optional(),
 });
 
@@ -113,14 +116,16 @@ export const productSchema = z.object({
   name: z.string().min(1),
   brand: z.string().optional(),
   description: z.string().min(1),
+
   specifications: z.string().optional(),
   technicalDetails: z.array(technicalDetailSchema).optional(),
 
   categoryId: z.string().min(1),
-  currency: z.string().min(1),
-  shippingFee: z.number().min(0),
-  oldPrice: z.number().optional(),
+
+  shippingFeeUSD: z.number().min(0),
+  oldPriceUSD: z.number().optional(),
   discount: z.number().optional(),
+
   nonVariantStock: z.number().optional(),
 
   images: z.array(productImageSchema).min(1),
@@ -132,7 +137,7 @@ export type productSchemaType = z.infer<typeof productSchema>;
 
 // Updating Product
 export const updateProductSchema = productSchema.extend({
-  variants: z.array(productVariantSchema).min(1, "Add at least one variant"),
+  variants: z.array(productVariantSchema).min(1),
 });
 
 export type updateProductSchemaType = z.infer<typeof updateProductSchema>;

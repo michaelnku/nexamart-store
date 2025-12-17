@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Loader2, Plus, Trash } from "lucide-react";
 import Image from "next/image";
+import { deleteProductImageAction } from "@/actions/actions";
 
 type UpdateProductProps = {
   initialData: FullProduct;
@@ -41,6 +42,11 @@ type PreviewImage = {
   url: string;
   key: string;
   deleting?: boolean;
+};
+
+type TechnicalDetail = {
+  key: string;
+  value: string;
 };
 
 const UpdateProductForm = ({ initialData, categories }: UpdateProductProps) => {
@@ -68,16 +74,43 @@ const UpdateProductForm = ({ initialData, categories }: UpdateProductProps) => {
     }))
   );
 
-  const initialHasVariants =
-    initialData.variants.length > 1 ||
-    initialData.variants.some((v) => v.color || v.size);
-
-  const [hasVariants, setHasVariants] = useState<boolean>(initialHasVariants);
   const [isPending, startTransition] = useTransition();
 
   const generateSimpleSku = (name: string) => {
     const id = Math.floor(100000 + Math.random() * 900000);
     return `${name.slice(0, 3).toUpperCase()}-${id}`;
+  };
+
+  const generateVariantSku = (color?: string, size?: string) => {
+    const rand = Math.floor(100000 + Math.random() * 900000);
+    const c = (color || "NA").slice(0, 2).toUpperCase();
+    const s = (size || "NA").slice(0, 2).toUpperCase();
+    return `${c}-${s}-${rand}`;
+  };
+
+  const isKeyValueObject = (value: unknown): value is TechnicalDetail => {
+    if (typeof value !== "object" || value === null) return false;
+
+    return (
+      "key" in value &&
+      "value" in value &&
+      typeof (value as Record<string, unknown>).key === "string" &&
+      typeof (value as Record<string, unknown>).value === "string"
+    );
+  };
+
+  const normalizeTechnicalDetails = (input: unknown): TechnicalDetail[] => {
+    if (!input) return [];
+
+    if (Array.isArray(input)) {
+      return input.filter(isKeyValueObject);
+    }
+
+    if (isKeyValueObject(input)) {
+      return [input];
+    }
+
+    return [];
   };
 
   const form = useForm<updateProductSchemaType>({
@@ -86,75 +119,26 @@ const UpdateProductForm = ({ initialData, categories }: UpdateProductProps) => {
       name: initialData.name,
       brand: initialData.brand ?? "",
       description: initialData.description,
-      nonVariantStock: initialData.nonVariantStock ?? 0,
-      specifications: Array.isArray(initialData.specifications)
-        ? initialData.specifications.join("\n")
-        : initialData.specifications ?? "",
-
-      technicalDetails: Array.isArray(initialData.technicalDetails)
-        ? initialData.technicalDetails.map((item: any) => {
-            if (
-              typeof item === "object" &&
-              item !== null &&
-              "key" in item &&
-              "value" in item
-            ) {
-              return {
-                key: String(item.key ?? ""),
-                value: String(item.value ?? ""),
-              };
-            }
-            if (typeof item === "string" && item.includes(":")) {
-              const [key, value] = item.split(":");
-              return { key: key.trim(), value: value.trim() };
-            }
-            return { key: "", value: "" };
-          })
-        : typeof initialData.technicalDetails === "object" &&
-          initialData.technicalDetails !== null
-        ? [
-            {
-              key: String((initialData.technicalDetails as any).key ?? ""),
-              value: String((initialData.technicalDetails as any).value ?? ""),
-            },
-          ]
-        : [],
-
+      specifications: initialData.specifications.join("\n"),
+      technicalDetails: normalizeTechnicalDetails(initialData.technicalDetails),
       categoryId: initialData.categoryId,
-      currency: (initialData as any).currency ?? "USD",
-      shippingFee: (initialData as any).shippingFee ?? 0,
-      oldPrice: initialData.oldPrice ?? 0,
-      discount: initialData.discount ?? 0,
       images: initialData.images.map((img) => ({
         url: img.imageUrl,
         key: img.imageKey,
       })),
-      variants:
-        initialData.variants.length > 0
-          ? initialData.variants.map((v) => ({
-              color: v.color || "",
-              size: v.size || "",
-              price: v.price,
-              stock: v.stock,
-              sku: v.sku,
-              oldPrice: v.oldPrice ?? 0,
-              discount: v.discount ?? 0,
-            }))
-          : [
-              {
-                color: "",
-                size: "",
-                price: 0,
-                stock: initialData.nonVariantStock ?? 0,
-                sku: generateSimpleSku(initialData.name),
-                oldPrice: initialData.oldPrice ?? 0,
-                discount: initialData.discount ?? 0,
-              },
-            ],
+      variants: initialData.variants.map((v) => ({
+        color: v.color ?? "",
+        size: v.size ?? "",
+        priceUSD: v.priceUSD,
+        stock: v.stock,
+        sku: v.sku,
+        oldPriceUSD: v.oldPriceUSD ?? undefined,
+        discount: v.discount ?? undefined,
+      })),
     },
   });
 
-  const { control, setValue, getValues } = form;
+  const { control, handleSubmit, setValue, getValues } = form;
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -170,90 +154,87 @@ const UpdateProductForm = ({ initialData, categories }: UpdateProductProps) => {
     name: "technicalDetails",
   });
 
-  const generateVariantSku = (color?: string, size?: string) => {
-    const rand = Math.floor(100000 + Math.random() * 900000);
-    const c = (color || "NA").slice(0, 2).toUpperCase();
-    const s = (size || "NA").slice(0, 2).toUpperCase();
-    return `${c}-${s}-${rand}`;
-  };
+  useEffect(() => {
+    const finalId = level3 || level2 || level1 || "";
+    setValue("categoryId", finalId);
+  }, [level1, level2, level3, setValue]);
 
-  const deleteImage = (index: number) => {
-    const current = form.getValues("images");
-    form.setValue(
-      "images",
-      current.filter((_, i) => i !== index)
-    );
-    setPreviewImages((prev) => prev.filter((_, i) => i !== index));
-    toast.success("Image removed");
+  useEffect(() => {
+    const name = getValues("name");
+    const variants = getValues("variants");
+
+    variants.forEach((v, index) => {
+      if (v.sku) return;
+
+      setValue(
+        `variants.${index}.sku`,
+        v.color || v.size
+          ? generateVariantSku(v.color, v.size)
+          : generateSimpleSku(name)
+      );
+    });
+  }, [getValues, setValue]);
+
+  const hasDuplicateSkus = (variants: { sku: string }[]) => {
+    const skus = variants.map((v) => v.sku.trim());
+    return new Set(skus).size !== skus.length;
   };
 
   const onSubmit = (values: updateProductSchemaType) => {
-    values.images = form.getValues("images");
+    const variants = values.variants;
 
-    if (!hasVariants) {
-      const old = values.oldPrice ?? 0;
-      const discount = values.discount ?? 0;
-
-      const rawPrice =
-        old > 0 && discount > 0 ? old - (old * discount) / 100 : old;
-
-      const finalPrice = Math.round(rawPrice * 100) / 100;
-
-      const existingVariant = values.variants?.[0];
-
-      values.variants = [
-        {
-          color: "",
-          size: "",
-          price: finalPrice,
-          stock: existingVariant?.stock ?? 0,
-          sku: existingVariant?.sku || generateSimpleSku(values.name),
-          oldPrice: old,
-          discount,
-        },
-      ];
+    if (!variants || variants.length === 0) {
+      toast.error("At least one variant is required");
+      return;
     }
 
-    if (hasVariants) {
-      values.variants = (values.variants ?? []).map((v) => {
-        const old = v.oldPrice ?? 0;
-        const discount = v.discount ?? 0;
-        const manualPrice = v.price ?? 0;
+    if (hasDuplicateSkus(variants)) {
+      toast.error(
+        "Duplicate SKUs detected. Each variant must have a unique SKU."
+      );
+      return;
+    }
 
-        const rawPrice =
-          old > 0 && discount > 0
-            ? old - (old * discount) / 100
-            : old || manualPrice;
-
-        const finalPrice = Math.round(rawPrice * 100) / 100;
-
-        return {
-          ...v,
-          price: finalPrice,
-          oldPrice: old,
-          discount,
-        };
-      });
+    if (uploading) {
+      toast.error("Wait for images to finish uploading");
+      return;
     }
 
     startTransition(async () => {
       try {
-        setError(undefined);
         const res = await updateProductAction(initialData.id, values);
-
         if (res?.error) {
           setError(res.error);
           toast.error(res.error);
           return;
         }
 
-        toast.success("Product updated successfully!");
+        toast.success("Product updated successfully");
         router.push("/market-place/dashboard/seller/products");
       } catch {
-        setError("Something went wrong.");
-        toast.error("Something went wrong. Try again.");
+        toast.error("Something went wrong");
       }
     });
+  };
+
+  const deleteImage = async (id: string) => {
+    setImages((prev) =>
+      prev.map((img) => (img.id === id ? { ...img, deleting: true } : img))
+    );
+
+    const image = images.find((img) => img.id === id);
+    if (!image) return;
+
+    await deleteProductImageAction(image.key);
+
+    setImages((prev) => prev.filter((img) => img.id !== id));
+
+    setValue(
+      "images",
+      getValues("images").filter((img) => img.key !== image.key)
+    );
+
+    toast.success("Image deleted");
   };
 
   return (
@@ -271,7 +252,7 @@ const UpdateProductForm = ({ initialData, categories }: UpdateProductProps) => {
         )}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-12">
             {/* GENERAL INFO */}
             <section className="space-y-5">
               <h2 className="font-semibold text-xl border-b pb-1">
@@ -453,362 +434,136 @@ Dual SIM`}
               />
             </section>
 
-            {/* VARIANT TOGGLE */}
-            <div className="flex items-center gap-3 border p-4 rounded-lg bg-[var(--brand-blue-light)]">
-              <input
-                checked={hasVariants}
-                type="checkbox"
-                onChange={() => {
-                  const next = !hasVariants;
-                  setHasVariants(next);
-                  if (!next) {
-                    setValue("variants", [
-                      {
-                        color: "",
-                        size: "",
-                        price: 0,
-                        stock: 0,
-                        sku: "",
-                        oldPrice: 0,
-                        discount: 0,
-                      },
-                    ]);
-                  } else {
-                    if (
-                      !getValues("variants") ||
-                      getValues("variants").length === 0
-                    ) {
-                      setValue("variants", [
-                        {
-                          color: "",
-                          size: "",
-                          price: 0,
-                          stock: 0,
-                          sku: "",
-                          oldPrice: undefined,
-                          discount: undefined,
-                        },
-                      ]);
-                    }
-                  }
-                }}
-                className="w-4 h-4 accent-[var(--brand-blue)]"
-              />
-              <span className="font-medium">
-                This product has variants (color, size, different price)
-              </span>
-            </div>
-
-            {/* 🟥 Price — Non Variant Product update product form */}
-            {!hasVariants && (
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <FormField
-                  control={control}
-                  name="oldPrice"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Original Price</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step={1}
-                          {...field}
-                          value={field.value ?? ""}
-                          className="focus-visible:ring-[var(--brand-blue)]"
-                          onChange={(e) =>
-                            field.onChange(
-                              Math.max(
-                                0,
-                                Math.round(Number(e.target.value || 0))
-                              )
-                            )
-                          }
-                        />
-                      </FormControl>
-                    </FormItem>
+            {/* VARIANTS */}
+            <section className="space-y-6">
+              <h2 className="font-semibold text-xl">Variants (Price in USD)</h2>
+              {fields.map((_, index) => (
+                <div key={index} className="border rounded-lg p-5 space-y-5">
+                  {fields.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => remove(index)}
+                      className="text-red-500"
+                    >
+                      <Trash />
+                    </button>
                   )}
-                />
 
-                <FormField
-                  control={control}
-                  name="discount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Discount % (optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step={1}
-                          {...field}
-                          value={field.value ?? ""}
-                          className="focus-visible:ring-[var(--brand-blue)]"
-                          onChange={(e) =>
-                            field.onChange(
-                              Math.max(
-                                0,
-                                Math.round(Number(e.target.value || 0))
-                              )
-                            )
-                          }
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={control}
-                  name="nonVariantStock"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Stock</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step={1}
-                          {...field}
-                          value={field.value ?? ""}
-                          className="focus-visible:ring-[var(--brand-blue)]"
-                          onChange={(e) =>
-                            field.onChange(
-                              Math.max(
-                                0,
-                                Math.round(Number(e.target.value || 0))
-                              )
-                            )
-                          }
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </section>
-            )}
-
-            {/* VARIANTS SECTION */}
-            {hasVariants && (
-              <section className="space-y-6">
-                <h2 className="font-semibold text-xl">Variants</h2>
-
-                {fields.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className="border rounded-lg p-5 grid gap-5 relative"
-                  >
-                    {fields.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => remove(index)}
-                        className="absolute top-3 right-3 text-red-500"
-                      >
-                        <Trash />
-                      </button>
-                    )}
-
-                    {/* COLOR & SIZE */}
-                    <div className="grid md:grid-cols-2 gap-5">
-                      <FormField
-                        control={form.control}
-                        name={`variants.${index}.color`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Color</FormLabel>
-                            <Input
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                const size = form.getValues(
-                                  `variants.${index}.size`
-                                );
-                                const currentSku = form.getValues(
-                                  `variants.${index}.sku`
-                                );
-                                if (!currentSku)
-                                  form.setValue(
-                                    `variants.${index}.sku`,
-                                    generateVariantSku(e.target.value, size)
-                                  );
-                              }}
-                            />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`variants.${index}.size`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Size</FormLabel>
-                            <Input
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                const color = form.getValues(
-                                  `variants.${index}.color`
-                                );
-                                const currentSku = form.getValues(
-                                  `variants.${index}.sku`
-                                );
-                                if (!currentSku)
-                                  form.setValue(
-                                    `variants.${index}.sku`,
-                                    generateVariantSku(color, e.target.value)
-                                  );
-                              }}
-                            />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {/* PRICE & STOCK */}
-                    <div className="grid md:grid-cols-2 gap-5">
-                      <FormField
-                        control={form.control}
-                        name={`variants.${index}.price`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Price</FormLabel>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) => {
-                                const price = Number(e.target.value);
-                                field.onChange(price);
-
-                                const old = Number(
-                                  form.getValues(`variants.${index}.oldPrice`)
-                                );
-                                if (old > 0 && price > 0) {
-                                  const discount = ((old - price) / old) * 100;
-                                  form.setValue(
-                                    `variants.${index}.discount`,
-                                    Math.max(0, Math.round(discount))
-                                  );
-                                }
-                              }}
-                            />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`variants.${index}.stock`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Stock</FormLabel>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) =>
-                                field.onChange(Number(e.target.value))
-                              }
-                            />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {/* OLD PRICE & DISCOUNT */}
-                    <div className="grid md:grid-cols-2 gap-5">
-                      <FormField
-                        control={form.control}
-                        name={`variants.${index}.oldPrice`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Old Price</FormLabel>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) => {
-                                const old = Number(e.target.value);
-                                field.onChange(old);
-                                const price = form.getValues(
-                                  `variants.${index}.price`
-                                );
-                                if (old > 0 && price > 0) {
-                                  const discount = ((old - price) / old) * 100;
-                                  form.setValue(
-                                    `variants.${index}.discount`,
-                                    Math.max(0, Math.round(discount))
-                                  );
-                                }
-                              }}
-                            />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`variants.${index}.discount`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Discount %</FormLabel>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) => {
-                                const discount = Number(e.target.value);
-                                field.onChange(discount);
-
-                                const old = Number(
-                                  form.getValues(`variants.${index}.oldPrice`)
-                                );
-                                if (old > 0 && discount > 0) {
-                                  const newPrice = old - (old * discount) / 100;
-                                  form.setValue(
-                                    `variants.${index}.price`,
-                                    Math.max(0, Math.round(newPrice))
-                                  );
-                                }
-                              }}
-                            />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {/* SKU */}
+                  <div className="grid md:grid-cols-2 gap-5">
                     <FormField
-                      control={form.control}
-                      name={`variants.${index}.sku`}
+                      control={control}
+                      name={`variants.${index}.color`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>SKU</FormLabel>
-                          <Input {...field} />
+                          <FormLabel>Color</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                setValue(
+                                  `variants.${index}.sku`,
+                                  generateVariantSku(
+                                    e.target.value,
+                                    getValues(`variants.${index}.size`)
+                                  )
+                                );
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`variants.${index}.size`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Size</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                setValue(
+                                  `variants.${index}.sku`,
+                                  generateVariantSku(
+                                    e.target.value,
+                                    getValues(`variants.${index}.size`)
+                                  )
+                                );
+                              }}
+                            />
+                          </FormControl>
                         </FormItem>
                       )}
                     />
                   </div>
-                ))}
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() =>
-                    append({
-                      color: "",
-                      size: "",
-                      price: 0,
-                      stock: 0,
-                      sku: "",
-                      oldPrice: 0,
-                      discount: 0,
-                    })
-                  }
-                >
-                  <Plus className="mr-2 h-4 w-4" /> Add Variant
-                </Button>
-              </section>
-            )}
+                  <div className="grid md:grid-cols-2 gap-5">
+                    <FormField
+                      control={control}
+                      name={`variants.${index}.priceUSD`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Price (USD)</FormLabel>
+                          <FormControl>
+                            <Input type="number" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`variants.${index}.stock`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock</FormLabel>
+                          <FormControl>
+                            <Input type="number" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={control}
+                    name={`variants.${index}.sku`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>SKU</FormLabel>
+                        <FormControl>
+                          <Input disabled {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              ))}
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  append({
+                    color: "",
+                    size: "",
+                    priceUSD: 0,
+                    stock: 0,
+                    sku: "",
+                  })
+                }
+              >
+                <Plus className="mr-2 h-4 w-4" /> Add Variant
+              </Button>
+            </section>
 
             {/* IMAGES */}
             <section className="space-y-5">
               <h2 className="font-semibold text-xl">Product Images</h2>
-
               <UploadButton
                 endpoint="productImages"
                 onUploadBegin={() => setUploading(true)}
@@ -826,20 +581,26 @@ Dual SIM`}
                 className="ut-button:bg-[var(--brand-blue)] ut-button:text-white ut-button:rounded-lg"
               />
 
+              {/* IMAGE PREVIEW */}
               <div className="flex flex-wrap gap-4">
-                {previewImages.map((url, index) => (
+                {images.map((img) => (
                   <div
-                    key={index}
+                    key={img.id}
                     className="relative w-40 h-40 rounded-lg overflow-hidden border"
                   >
                     <button
                       type="button"
-                      onClick={() => deleteImage(index)}
+                      onClick={() => deleteImage(img.id)}
                       className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full"
                     >
                       <Trash />
                     </button>
-                    <Image src={url} alt="img" fill className="object-cover" />
+                    <Image
+                      src={img.url}
+                      alt="img"
+                      fill
+                      className="object-cover"
+                    />
                   </div>
                 ))}
               </div>

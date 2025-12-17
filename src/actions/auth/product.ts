@@ -18,52 +18,35 @@ const utapi = new UTApi();
 --------------------------------------------------------------------------- */
 export const createProductAction = async (values: productSchemaType) => {
   const user = await CurrentUser();
-  if (!user) return { error: "Unauthorized access" };
-  if (user.role !== "SELLER")
-    return { error: "Only sellers can create products" };
+  if (!user || user.role !== "SELLER") return { error: "Unauthorized access" };
 
-  const validated = productSchema.safeParse(values);
-  if (!validated.success) return { error: "Invalid product data" };
+  const parsed = productSchema.safeParse(values);
+  if (!parsed.success) return { error: "Invalid product data" };
 
   const {
     name,
     brand,
     description,
     categoryId,
-    currency,
     nonVariantStock,
-    shippingFee,
-    oldPrice,
+    shippingFeeUSD,
+    oldPriceUSD,
     discount,
     images,
     variants = [],
-  } = validated.data;
+  } = parsed.data;
 
   const store = await prisma.store.findUnique({
     where: { userId: user.id },
   });
-  if (!store) return { error: "Create a store before adding products" };
 
-  const calculateFinalPrice = (old: number, disc: number) =>
-    Math.round(old - (old * disc) / 100);
-
-  const basePrice = variants.length
-    ? Math.min(
-        ...variants.map((v) =>
-          Math.round(
-            v.oldPrice && v.discount
-              ? calculateFinalPrice(v.oldPrice, v.discount)
-              : v.price
-          )
-        )
-      )
-    : oldPrice && discount
-    ? calculateFinalPrice(oldPrice, discount)
-    : oldPrice ?? 0;
+  if (!store) return { error: "Create a store first" };
 
   if (!variants.length) {
     return { error: "At least one variant is required" };
   }
+
+  const basePriceUSD = Math.min(...variants.map((v) => v.priceUSD));
 
   const specsArray =
     values.specifications
@@ -81,11 +64,12 @@ export const createProductAction = async (values: productSchemaType) => {
       categoryId,
       storeId: store.id,
       brand,
-      currency,
-      shippingFee,
-      oldPrice,
+
+      basePriceUSD,
+      shippingFeeUSD,
+      oldPriceUSD,
       discount,
-      basePrice,
+
       images: {
         createMany: {
           data: images.map((i) => ({
@@ -94,24 +78,18 @@ export const createProductAction = async (values: productSchemaType) => {
           })),
         },
       },
+
       variants: {
         createMany: {
-          data: variants.map((v) => {
-            const finalPrice =
-              v.oldPrice && v.discount
-                ? calculateFinalPrice(v.oldPrice, v.discount)
-                : Math.round(v.price);
-
-            return {
-              sku: v.sku,
-              price: finalPrice,
-              stock: v.stock,
-              color: v.color,
-              size: v.size,
-              oldPrice: v.oldPrice,
-              discount: v.discount,
-            };
-          }),
+          data: variants.map((v) => ({
+            sku: v.sku,
+            priceUSD: v.priceUSD,
+            stock: v.stock,
+            color: v.color,
+            size: v.size,
+            oldPriceUSD: v.oldPriceUSD,
+            discount: v.discount,
+          })),
         },
       },
     },
@@ -150,9 +128,8 @@ export const updateProductAction = async (
     brand,
     categoryId,
     nonVariantStock,
-    currency,
-    shippingFee,
-    oldPrice,
+    shippingFeeUSD,
+    oldPriceUSD,
     discount,
     images,
     variants,
@@ -164,17 +141,10 @@ export const updateProductAction = async (
       .map((s) => s.trim())
       .filter(Boolean) ?? [];
 
-  const hasVariants =
-    variants.length > 1 || variants.some((v) => v.color || v.size);
-
-  const computeDiscountPrice = (old: number, disc: number) =>
-    Math.round(old - (old * disc) / 100);
-
-  const basePrice = hasVariants
-    ? Math.min(...variants.map((v) => Number(v.price) || 0))
-    : oldPrice && discount
-    ? computeDiscountPrice(oldPrice, discount)
-    : oldPrice ?? 0;
+  if (!variants.length) {
+    return { error: "At least one variant is required" };
+  }
+  const basePriceUSD = Math.min(...variants.map((v) => v.priceUSD));
 
   await prisma.$transaction(async (tx) => {
     await tx.product.update({
@@ -186,12 +156,11 @@ export const updateProductAction = async (
         technicalDetails: values.technicalDetails ?? [],
         brand,
         categoryId,
-        currency,
-        shippingFee,
-        oldPrice,
+        shippingFeeUSD,
+        oldPriceUSD,
         discount,
-        basePrice,
-        nonVariantStock: hasVariants ? null : nonVariantStock ?? 0,
+        basePriceUSD,
+        nonVariantStock: null,
       },
     });
 
@@ -218,28 +187,27 @@ export const updateProductAction = async (
       });
     }
 
-    if (hasVariants) {
+    if (variants.length > 0) {
       await Promise.all(
         variants.map((v) => {
-          const price = Math.round(v.price);
           return tx.productVariant.upsert({
             where: { productId_sku: { productId, sku: v.sku } },
             update: {
-              price,
+              priceUSD: v.priceUSD,
               stock: v.stock,
               color: v.color,
               size: v.size,
-              oldPrice: v.oldPrice,
+              oldPriceUSD: v.oldPriceUSD,
               discount: v.discount,
             },
             create: {
               productId,
               sku: v.sku,
-              price,
+              priceUSD: v.priceUSD,
               stock: v.stock,
               color: v.color,
               size: v.size,
-              oldPrice: v.oldPrice,
+              oldPriceUSD: v.oldPriceUSD,
               discount: v.discount,
             },
           });
@@ -250,26 +218,6 @@ export const updateProductAction = async (
         where: {
           productId,
           sku: { notIn: variants.map((v) => v.sku) },
-        },
-      });
-    } else {
-      await tx.productVariant.deleteMany({ where: { productId } });
-
-      const finalPrice =
-        oldPrice && discount
-          ? computeDiscountPrice(oldPrice, discount)
-          : oldPrice ?? 0;
-
-      await tx.productVariant.create({
-        data: {
-          productId,
-          sku: `${name.slice(0, 3).toUpperCase()}-${Date.now()}`,
-          price: Math.round(finalPrice),
-          stock: nonVariantStock ?? 0,
-          color: "",
-          size: "",
-          oldPrice: oldPrice ?? 0,
-          discount: discount ?? 0,
         },
       });
     }

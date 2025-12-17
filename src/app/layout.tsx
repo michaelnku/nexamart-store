@@ -11,6 +11,7 @@ import QueryProvider from "@/providers/queryProvider";
 import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
 import { ourFileRouter } from "./api/uploadthing/core";
+import { CurrencyProvider } from "@/providers/currencyProvider";
 
 /* ===========================
    Fonts
@@ -153,7 +154,7 @@ export default async function RootLayout({
               disableTransitionOnChange
             >
               {/* App Content */}
-              {children}
+              <CurrencyProvider>{children}</CurrencyProvider>
 
               {/* Global Toasts */}
               <Toaster richColors closeButton />
