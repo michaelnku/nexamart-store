@@ -38,7 +38,8 @@ export const placeOrderAction = async ({
 
   const subtotal = cart.items.reduce(
     (sum, item) =>
-      sum + item.quantity * (item.variant?.price ?? item.product.basePrice),
+      sum +
+      item.quantity * (item.variant?.priceUSD ?? item.product.basePriceUSD),
     0
   );
 
@@ -92,7 +93,7 @@ export const placeOrderAction = async ({
               productId: item.productId,
               variantId: item.variantId,
               quantity: item.quantity,
-              price: item.variant?.price ?? item.product.basePrice,
+              price: item.variant?.priceUSD ?? item.product.basePriceUSD,
             })),
           },
         },
