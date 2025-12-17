@@ -13,8 +13,12 @@ const symbols: Record<string, string> = {
 export function usePrice(amountUSD: number) {
   const { currency, rates } = useCurrencyStore();
 
-  const rate = rates[currency] ?? 1;
+  const safeRates = rates ?? { USD: 1 };
+  const rate = safeRates[currency] ?? 1;
+
   const converted = amountUSD * rate;
 
-  return `${symbols[currency] ?? ""}${converted.toLocaleString()}`;
+  return `${symbols[currency] ?? ""}${converted.toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+  })}`;
 }

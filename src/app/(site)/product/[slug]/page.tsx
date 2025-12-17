@@ -19,7 +19,9 @@ export default async function Page({ params }: PageProps) {
     where: { id: productId },
     include: {
       images: true,
-      variants: true,
+      variants: {
+        orderBy: { priceUSD: "asc" },
+      },
       store: {
         select: { id: true, userId: true, name: true, slug: true, logo: true },
       },
@@ -30,8 +32,7 @@ export default async function Page({ params }: PageProps) {
       },
     },
   });
-
-  if (!product) {
+  if (!product || product.variants.length === 0) {
     return <div>Product not found</div>;
   }
 
@@ -58,9 +59,12 @@ export default async function Page({ params }: PageProps) {
       })
     : null;
 
+  const defaultVariant = product.variants[0];
+
   return (
     <ProductPublicDetail
       data={product}
+      defaultVariant={defaultVariant}
       isWishlisted={isWishlisted}
       cartItems={cart?.items ?? []}
       userId={userId}

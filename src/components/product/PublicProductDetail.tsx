@@ -27,8 +27,11 @@ import { useCartStore } from "@/stores/useCartstore";
 import { useWishlistStore } from "@/stores/useWishlistStore";
 import { usePrice } from "@/lib/formatPrice";
 
+type ProductVariant = FullProduct["variants"][number];
+
 type Props = {
   data: FullProduct;
+  defaultVariant: ProductVariant;
   cartItems: {
     productId: string;
     variantId: string | null;
@@ -40,6 +43,7 @@ type Props = {
 
 export default function ProductPublicDetail({
   data,
+  defaultVariant,
   cartItems,
   isWishlisted,
   userId,
@@ -65,30 +69,36 @@ export default function ProductPublicDetail({
 
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
-
-  /* Variant selection logic */
-  const selectedVariant = useMemo(() => {
-    return data.variants.find(
-      (v) =>
-        (selectedColor ? v.color === selectedColor : true) &&
-        (selectedSize ? v.size === selectedSize : true)
-    );
-  }, [selectedColor, selectedSize, data.variants]);
+  const [selectedVariant, setSelectedVariant] = useState(defaultVariant);
 
   /* Pricing logic */
-  const price = selectedVariant?.priceUSD ?? data.basePriceUSD;
-  const oldPrice = selectedVariant?.oldPriceUSD ?? data.oldPriceUSD ?? null;
+  const price = selectedVariant.priceUSD;
+  const oldPrice = selectedVariant.oldPriceUSD ?? null;
+
   const discount =
     oldPrice && oldPrice > price
       ? Math.round(((oldPrice - price) / oldPrice) * 100)
       : null;
 
-  const totalStock = useMemo(() => {
-    if (selectedVariant) return selectedVariant.stock;
-    return data.variants.reduce((sum, v) => sum + v.stock, 0);
-  }, [data.variants, selectedVariant]);
-
+  const totalStock = selectedVariant.stock;
   const inStock = totalStock > 0;
+
+  useEffect(() => {
+    setSelectedColor(defaultVariant.color ?? null);
+    setSelectedSize(defaultVariant.size ?? null);
+  }, [defaultVariant]);
+
+  useEffect(() => {
+    const match = data.variants.find(
+      (v) =>
+        (selectedColor ? v.color === selectedColor : true) &&
+        (selectedSize ? v.size === selectedSize : true)
+    );
+
+    if (match) {
+      setSelectedVariant(match);
+    }
+  }, [selectedColor, selectedSize, data.variants]);
 
   return (
     <main className="max-w-7xl mx-auto space-y-10 py-8 px-3 sm:px-6">
