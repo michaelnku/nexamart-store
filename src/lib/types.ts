@@ -5,7 +5,6 @@ import {
   ProductVariant,
   Review,
   Store,
-  User,
   UserRole,
 } from "@/generated/prisma/client";
 
@@ -62,7 +61,7 @@ export type FullCart = {
 export type WishlistProduct = {
   id: string;
   name: string;
-  basePrice: number;
+  basePriceUSD: number;
   discount?: number;
   images: ProductImage[];
   store: { name: string; slug: string };
@@ -77,16 +76,16 @@ export type Wishlist = WishlistItem[];
 export type ProductCardType = Product & {
   id: string;
   name: string;
-  basePrice: number;
-  oldPrice?: number | null;
+  basePriceUSD: number;
+  oldPriceUSD?: number | null;
   images: { imageUrl: string }[];
   store: { name: string; slug: string };
   variants: {
     id: string;
     color: string | null;
     size: string | null;
-    price: number;
-    oldPrice?: number | null;
+    priceUSD: number;
+    oldPriceUSD?: number | null;
     stock: number;
   }[];
 };
@@ -154,7 +153,7 @@ export type SearchProduct = {
   id: string;
   name: string;
 
-  price: number;
+  priceUSD: number;
   images: {
     imageUrl: string;
   }[];
@@ -166,7 +165,7 @@ export type SearchProduct = {
 
 export type SearchProductCard = Pick<
   SearchProduct,
-  "id" | "name" | "price" | "images" | "store"
+  "id" | "name" | "priceUSD" | "images" | "store"
 >;
 
 export type StoreDTO = {
@@ -190,4 +189,30 @@ export type StoreDTO = {
 
   isActive: boolean;
   emailNotificationsEnabled: boolean;
+};
+
+export type WalletTransactionType =
+  | "DEPOSIT"
+  | "REFUND"
+  | "EARNING"
+  | "ORDER_PAYMENT"
+  | "WITHDRAWAL"
+  | "SELLER_PAYOUT";
+
+export type WalletTransactionStatus = "SUCCESS" | "PENDING" | "FAILED";
+
+export type WalletTransaction = {
+  id: string;
+  type: WalletTransactionType;
+  amount: number;
+  status: WalletTransactionStatus;
+  description?: string | null;
+  createdAt: string | Date;
+};
+
+export type BuyerWallet = {
+  id: string;
+  balance: number;
+  currency: string;
+  transactions: WalletTransaction[];
 };

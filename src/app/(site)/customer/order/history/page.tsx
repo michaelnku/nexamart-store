@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { formatUSD } from "@/lib/formatPriceServer";
 
 export default async function OrdersPage() {
   const userId = await CurrentUserId();
@@ -58,19 +59,19 @@ export default async function OrdersPage() {
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">
-                    ORDER PLACED:{" "}
+                    ORDER PLACED:
                     <span className="font-medium text-gray-900 dark:text-gray-100">
                       {new Date(order.createdAt).toLocaleDateString()}
                     </span>
                   </p>
                   <p className="text-sm text-gray-500">
-                    TOTAL:{" "}
+                    TOTAL:
                     <span className="font-medium text-gray-900 dark:text-gray-100">
-                      ₦{order.totalAmount.toLocaleString()}
+                      {formatUSD(order.totalAmount)}
                     </span>
                   </p>
                   <p className="text-sm text-gray-500">
-                    ORDER ID:{" "}
+                    ORDER ID:
                     <span className="text-[13px] font-mono">
                       {order.id.slice(0, 12)}...
                     </span>

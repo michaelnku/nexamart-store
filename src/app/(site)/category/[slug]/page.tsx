@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Category } from "@/lib/types";
 import Image from "next/image";
 import Link from "next/link";
+import { usePrice } from "@/lib/formatPrice";
 
 type Props = {
   params: Promise<{ slug: string }>;

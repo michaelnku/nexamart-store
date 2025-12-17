@@ -13,18 +13,7 @@ import {
   XCircle,
   Package,
 } from "lucide-react";
-
-/* Currency symbol helper */
-const currencySymbol = (code: string | null) => {
-  if (!code) return "";
-  const map: Record<string, string> = {
-    NGN: "₦",
-    USD: "$",
-    EUR: "€",
-    GBP: "£",
-  };
-  return map[code] ?? code;
-};
+import { formatUSD } from "@/lib/formatPriceServer";
 
 export default async function TrackOrderPage({
   params,
@@ -74,7 +63,6 @@ export default async function TrackOrderPage({
   }
 
   const delivery = order.delivery;
-  const symbol = currencySymbol(order.items[0]?.product.currency ?? "NGN");
 
   /* Order status badge colors */
   const statusColors: Record<OrderStatus, string> = {
@@ -198,11 +186,10 @@ export default async function TrackOrderPage({
             </p>
             <p className="text-sm text-gray-500">
               {order.items.length} item{order.items.length > 1 && "s"} •{" "}
-              {symbol}
-              {order.totalAmount.toLocaleString()}
+              {formatUSD(order.totalAmount)}
             </p>
             <p className="text-xs text-gray-500">
-              Placed on{" "}
+              Placed on
               {order.createdAt.toLocaleDateString("en-NG", {
                 month: "short",
                 day: "numeric",
@@ -237,8 +224,7 @@ export default async function TrackOrderPage({
             <p>
               Shipping Fee:{" "}
               <span className="font-semibold text-[#3c9ee0]">
-                {symbol}
-                {order.shippingFee.toLocaleString()}
+                {formatUSD(order.shippingFee)}
               </span>
             </p>
           </div>

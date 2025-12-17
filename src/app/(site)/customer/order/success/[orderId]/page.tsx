@@ -5,16 +5,7 @@ import { CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CurrentUserId } from "@/lib/currentUser";
 import { ClearCartOnSuccess } from "./ClearCartOnSuccess";
-
-const currencySymbol = (currency: string | null | undefined) => {
-  const map: Record<string, string> = {
-    NGN: "₦",
-    USD: "$",
-    EUR: "€",
-    GBP: "£",
-  };
-  return currency && map[currency] ? map[currency] : "";
-};
+import { formatUSD } from "@/lib/formatPriceServer";
 
 export default async function OrderSuccessPage({
   params,
@@ -50,10 +41,6 @@ export default async function OrderSuccessPage({
         Unauthorized access.
       </p>
     );
-
-  /* Currency from product */
-  const currency = order.items[0]?.product.currency ?? "USD";
-  const symbol = currencySymbol(currency);
 
   /* ETA between 4 – 7 days */
   const min = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000);
@@ -132,8 +119,7 @@ export default async function OrderSuccessPage({
                 )}
 
                 <p className="font-semibold mt-1 text-lg text-[#3c9ee0]">
-                  {symbol}
-                  {item.price.toLocaleString()}{" "}
+                  {formatUSD(item.price)}
                   <span className="text-gray-600 font-normal">
                     × {item.quantity}
                   </span>
@@ -145,8 +131,7 @@ export default async function OrderSuccessPage({
 
         {/* TOTAL */}
         <div className="text-right text-xl font-bold text-[#3c9ee0]">
-          Total Paid: {symbol}
-          {order.totalAmount.toLocaleString()}
+          Total Paid:{formatUSD(order.totalAmount)}
         </div>
 
         {/* ACTION BUTTONS */}

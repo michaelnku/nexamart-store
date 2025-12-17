@@ -18,6 +18,7 @@ import { Loader2 } from "lucide-react";
 import ky from "ky";
 import { useCartStore } from "@/stores/useCartstore";
 import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
+import { usePrice } from "@/lib/formatPrice";
 
 const deliveryMethod = [
   {
@@ -46,15 +47,14 @@ type CheckoutCartItem = {
   id: string;
   quantity: number;
   variant?: {
-    price: number;
+    priceUSD: number;
     color?: string | null;
     size?: string | null;
   } | null;
   product: {
     id: string;
     name: string;
-    basePrice: number;
-    currency: string | null;
+    basePriceUSD: number;
     images: { imageUrl: string }[];
   };
 };
@@ -91,43 +91,31 @@ export default function CheckoutSummary({ cart, address }: Props) {
 
   const items = useCartStore((state) => state.items);
 
-  const currencySymbol = (currency: string) => {
-    const map: Record<string, string> = {
-      NGN: "₦",
-      USD: "$",
-      EUR: "€",
-      GBP: "£",
-    };
-    return map[currency] || currency;
-  };
-
-  const symbol = currencySymbol(cart.items[0]?.product.currency ?? "NGN");
-
-  const subtotal = useMemo(
+  const subtotalUSD = useMemo(
     () =>
       cart.items.reduce((sum, item) => {
-        const price = item.variant?.price ?? item.product.basePrice;
-        return sum + item.quantity * price;
+        const priceUSD = item.variant?.priceUSD ?? item.product.basePriceUSD;
+
+        return sum + item.quantity * priceUSD;
       }, 0),
     [cart.items]
   );
 
-  const shipping = useMemo(() => {
+  const shippingUSD = useMemo(() => {
     if (!address) return null;
 
     switch (deliveryType) {
       case "STORE_PICKUP":
-        return 0;
       case "STATION_PICKUP":
         return 0;
       case "EXPRESS":
-        return Math.round((address?.distanceInMiles ?? 0) * 1200);
+        return Math.round((address.distanceInMiles ?? 0) * 1200);
       default:
-        return Math.round((address?.distanceInMiles ?? 0) * 700);
+        return Math.round((address.distanceInMiles ?? 0) * 700);
     }
   }, [deliveryType, address]);
 
-  const total = subtotal + (shipping ?? 0);
+  const totalUSD = subtotalUSD + (shippingUSD ?? 0);
 
   const handlePlaceOrder = (
     paymentMethod: "PAY_ON_DELIVERY" | "PAY_WITH_WALLET"
@@ -205,7 +193,9 @@ export default function CheckoutSummary({ cart, address }: Props) {
           <h2 className="text-2xl font-bold text-black">Your items</h2>
 
           {cart.items.map((item) => {
-            const price = item.variant?.price ?? item.product.basePrice;
+            const priceUSD =
+              item.variant?.priceUSD ?? item.product.basePriceUSD;
+
             return (
               <div
                 key={item.id}
@@ -230,11 +220,9 @@ export default function CheckoutSummary({ cart, address }: Props) {
                     </p>
                   )}
                   <p className="font-semibold text-lg text-black mt-1">
-                    {symbol}
-                    {(price * item.quantity).toLocaleString()}
+                    {usePrice(priceUSD * item.quantity)}
                     <span className="text-sm text-gray-500 ml-1">
-                      ({symbol}
-                      {price.toLocaleString()} × {item.quantity})
+                      ({usePrice(priceUSD)} × {item.quantity})
                     </span>
                   </p>
                 </div>
@@ -304,26 +292,21 @@ export default function CheckoutSummary({ cart, address }: Props) {
             <div className="text-sm space-y-1">
               <div className="flex justify-between">
                 <span>Items subtotal</span>
-                <span>
-                  {symbol}
-                  {subtotal.toLocaleString()}
-                </span>
+                <span>{usePrice(subtotalUSD)}</span>
               </div>
+
               <div className="flex justify-between">
                 <span>Shipping</span>
                 <span>
-                  {shipping !== null
-                    ? `${symbol}${shipping.toLocaleString()}`
+                  {shippingUSD !== null
+                    ? usePrice(shippingUSD)
                     : "Add address to calculate"}
                 </span>
               </div>
-              <hr className="my-2" />
+
               <div className="flex justify-between text-lg font-bold text-black">
                 <span>Total</span>
-                <span>
-                  {symbol}
-                  {total.toLocaleString()}
-                </span>
+                <span>{usePrice(totalUSD)}</span>
               </div>
             </div>
 

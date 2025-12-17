@@ -10,6 +10,7 @@ import {
 import { toast } from "sonner";
 import { CheckCircle2, XCircle, Truck, LucideIcon } from "lucide-react";
 import { CurrentUser } from "@/lib/currentUser";
+import { usePrice } from "@/lib/formatPrice";
 
 type ActionResult =
   | { success: string; error?: never }
@@ -66,20 +67,6 @@ export default async function SellerOrderDetails({
 
   const group = order.sellerGroups[0];
   if (!group) return "Seller group not found";
-
-  const currencySymbol = (currency: string = "USD") => {
-    const map: Record<string, string> = {
-      NGN: "₦",
-      USD: "$",
-      EUR: "€",
-      GBP: "£",
-    };
-    return map[currency] ?? currency;
-  };
-
-  const currency = group.items[0]?.product.currency ?? "USD";
-
-  const symbol = currencySymbol(currency);
 
   const actionButtons = [
     group.status === "PENDING_PICKUP" && {
@@ -160,8 +147,7 @@ export default async function SellerOrderDetails({
               )}
 
               <p className="font-semibold text-gray-900 mt-1">
-                {symbol}
-                {item.price.toLocaleString()} × {item.quantity}
+                {usePrice(item.price)} × {item.quantity}
               </p>
             </div>
           </div>
@@ -169,10 +155,7 @@ export default async function SellerOrderDetails({
 
         <div className="pt-4 flex justify-between font-bold text-lg">
           <span>Subtotal</span>
-          <span>
-            {symbol}
-            {group.subtotal.toLocaleString()}
-          </span>
+          <span>{usePrice(group.subtotal)}</span>
         </div>
       </div>
 

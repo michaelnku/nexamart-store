@@ -6,12 +6,23 @@ import { useCurrentUser } from "@/hooks/getCurrentUser";
 import { useBuyerWallet } from "@/hooks/useWallet";
 import { cn } from "@/lib/utils";
 import { ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { usePrice } from "@/lib/formatPrice";
+import { WalletTransactionType } from "@/lib/types";
+
+const CREDIT_TYPES: WalletTransactionType[] = ["DEPOSIT", "REFUND", "EARNING"];
+
+const DEBIT_TYPES: WalletTransactionType[] = [
+  "ORDER_PAYMENT",
+  "WITHDRAWAL",
+  "SELLER_PAYOUT",
+];
 
 export default function CustomerWalletPage() {
   const { data: wallet, isPending, error } = useBuyerWallet();
   const user = useCurrentUser();
 
   if (isPending) return <CustomerWalletSkeleton />;
+
   if (error || !wallet) {
     return (
       <div className="px-4 md:px-8 py-8">
@@ -22,10 +33,13 @@ export default function CustomerWalletPage() {
     );
   }
 
-  const formattedBalance = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: wallet.currency || "USD",
-  }).format(wallet.balance || 0);
+  const creditCount = wallet.transactions.filter((t) =>
+    CREDIT_TYPES.includes(t.type)
+  ).length;
+
+  const debitCount = wallet.transactions.filter((t) =>
+    DEBIT_TYPES.includes(t.type)
+  ).length;
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-4 space-y-8">
@@ -53,34 +67,24 @@ export default function CustomerWalletPage() {
         <p className="text-sm font-medium text-gray-600 uppercase">
           Available Balance
         </p>
+
         <p className="text-4xl font-bold text-[var(--brand-blue)]">
-          {formattedBalance}
+          {usePrice(wallet.balance)}
         </p>
+
         <p className="text-xs text-gray-500">
           Use your wallet for faster refunds and seamless checkout.
         </p>
-        <div className="flex gap-3 pt-3">
+
+        <div className="flex gap-6 pt-3">
           <div className="flex items-center gap-2 text-gray-600">
             <ArrowDownCircle className="w-5 h-5 text-emerald-500" />
-            <span className="text-sm font-medium">
-              {
-                wallet.transactions.filter((t: any) =>
-                  ["DEPOSIT", "REFUND", "EARNING"].includes(t.type)
-                ).length
-              }{" "}
-              credits
-            </span>
+            <span className="text-sm font-medium">{creditCount} credits</span>
           </div>
+
           <div className="flex items-center gap-2 text-gray-600">
             <ArrowUpCircle className="w-5 h-5 text-red-500" />
-            <span className="text-sm font-medium">
-              {
-                wallet.transactions.filter((t: any) =>
-                  ["ORDER_PAYMENT", "WITHDRAWAL"].includes(t.type)
-                ).length
-              }{" "}
-              debits
-            </span>
+            <span className="text-sm font-medium">{debitCount} debits</span>
           </div>
         </div>
       </section>
@@ -104,39 +108,39 @@ export default function CustomerWalletPage() {
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                 <tr>
-                  <th className="px-4 py-2 font-medium">Date</th>
-                  <th className="px-4 py-2 font-medium">Details</th>
-                  <th className="px-4 py-2 font-medium">Type</th>
-                  <th className="px-4 py-2 font-medium text-right">Amount</th>
-                  <th className="px-4 py-2 font-medium text-right">Status</th>
+                  <th className="px-4 py-2">Date</th>
+                  <th className="px-4 py-2">Details</th>
+                  <th className="px-4 py-2">Type</th>
+                  <th className="px-4 py-2 text-right">Amount</th>
+                  <th className="px-4 py-2 text-right">Status</th>
                 </tr>
               </thead>
+
               <tbody>
-                {wallet.transactions.map((tx: any) => {
-                  const isCredit = ["DEPOSIT", "REFUND", "EARNING"].includes(
-                    tx.type
-                  );
-                  const date = new Date(tx.createdAt).toLocaleString("en-NG", {
+                {wallet.transactions.map((tx) => {
+                  const isCredit = CREDIT_TYPES.includes(tx.type);
+
+                  const date = new Date(tx.createdAt).toLocaleString("en-US", {
                     day: "2-digit",
                     month: "short",
                     year: "numeric",
                     hour: "2-digit",
                     minute: "2-digit",
                   });
-                  const amount = new Intl.NumberFormat("en-NG", {
-                    style: "currency",
-                    currency: wallet.currency,
-                  }).format(tx.amount);
 
                   return (
                     <tr key={tx.id} className="border-t">
                       <td className="px-4 py-2">{date}</td>
+
                       <td className="px-4 py-2">
-                        {tx.description || tx.type.replace(/_/g, " ")}
+                        {tx.description ??
+                          tx.type.toLowerCase().replace(/_/g, " ")}
                       </td>
+
                       <td className="px-4 py-2 capitalize">
                         {tx.type.toLowerCase().replace(/_/g, " ")}
                       </td>
+
                       <td
                         className={cn(
                           "px-4 py-2 text-right font-semibold",
@@ -144,12 +148,13 @@ export default function CustomerWalletPage() {
                         )}
                       >
                         {isCredit ? "+" : "-"}
-                        {amount}
+                        {usePrice(tx.amount)}
                       </td>
+
                       <td className="px-4 py-2 text-right">
                         <span
                           className={cn(
-                            "inline-flex items-center rounded-full px-2 py-[2px] text-[11px] font-medium",
+                            "inline-flex rounded-full px-2 py-[2px] text-[11px] font-medium",
                             tx.status === "SUCCESS" &&
                               "bg-emerald-50 text-emerald-600",
                             tx.status === "PENDING" &&

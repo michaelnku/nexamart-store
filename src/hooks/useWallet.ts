@@ -5,9 +5,10 @@ import {
   getSellerWalletAction,
 } from "@/actions/wallet/wallet";
 import { useQuery } from "@tanstack/react-query";
+import { BuyerWallet } from "@/lib/types";
 
 export function useBuyerWallet() {
-  return useQuery({
+  return useQuery<BuyerWallet>({
     queryKey: ["buyer-wallet"],
     queryFn: async () => {
       const wallet = await getBuyerWalletAction();

@@ -4,11 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Truck, Store, ChevronRight } from "lucide-react";
-
-const currencySymbol = (code: string | null) => {
-  if (!code) return "";
-  return { NGN: "₦", USD: "$", EUR: "€", GBP: "£" }[code] ?? code;
-};
+import { formatUSD } from "@/lib/formatPriceServer";
 
 export default async function OrderDetailsPage({
   params,
@@ -51,8 +47,6 @@ export default async function OrderDetailsPage({
     );
   }
 
-  const symbol = currencySymbol(order.items[0]?.product?.currency ?? "NGN");
-
   const statusColor: Record<string, string> = {
     PENDING: "bg-yellow-500",
     PROCESSING: "bg-blue-500",
@@ -92,20 +86,20 @@ export default async function OrderDetailsPage({
           <div className="text-sm text-gray-700 space-y-1">
             <p>{order.deliveryAddress}</p>
             <p>
-              <span className="font-semibold">Payment Method:</span>{" "}
+              <span className="font-semibold">Payment Method:</span>
               {order.paymentMethod?.replaceAll("_", " ") ?? "-"}
             </p>
             <p>
-              <span className="font-semibold">Delivery Type:</span>{" "}
+              <span className="font-semibold">Delivery Type:</span>
               {order.deliveryType.replaceAll("_", " ")}
             </p>
             <p>
-              <span className="font-semibold">Shipping Fee:</span> {symbol}
-              {order.shippingFee.toLocaleString()}
+              <span className="font-semibold">Shipping Fee:</span>
+              {formatUSD(order.shippingFee)}
             </p>
             <p>
-              <span className="font-semibold">Order Date:</span>{" "}
-              {new Date(order.createdAt).toLocaleDateString("en-NG", {
+              <span className="font-semibold">Order Date:</span>
+              {new Date(order.createdAt).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
                 year: "numeric",
@@ -191,8 +185,7 @@ export default async function OrderDetailsPage({
                     )}
 
                     <p className="text-[#3c9ee0] font-semibold">
-                      {symbol}
-                      {item.price.toLocaleString()}{" "}
+                      {formatUSD(item.price)}
                       <span className="text-gray-500">× {item.quantity}</span>
                     </p>
                   </div>
@@ -202,8 +195,7 @@ export default async function OrderDetailsPage({
 
             {/* SUBTOTAL */}
             <p className="text-right font-bold text-lg">
-              Subtotal: {symbol}
-              {group.subtotal.toLocaleString()}
+              Subtotal:{formatUSD(group.subtotal)}
             </p>
           </div>
         ))}
@@ -211,8 +203,7 @@ export default async function OrderDetailsPage({
 
       {/* TOTAL */}
       <div className="text-right text-2xl font-bold">
-        Total: {symbol}
-        {order.totalAmount.toLocaleString()}
+        Total: {formatUSD(order.totalAmount)}
       </div>
 
       {/* ACTIONS */}
