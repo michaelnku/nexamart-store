@@ -121,12 +121,6 @@ const ProductCard = ({ productData }: ProductCardProps) => {
             )}
           </div>
 
-          <small className="text-[11px] text-gray-500">
-            {productData.shippingFeeUSD && productData.shippingFeeUSD > 0
-              ? `+ ${formatUSD(productData.shippingFeeUSD)} shipping`
-              : "FREE Shipping"}
-          </small>
-
           {inStock && totalStock < 5 && (
             <span className="text-[12px] font-medium text-red-600">
               🔥 Only {totalStock} left — selling fast
