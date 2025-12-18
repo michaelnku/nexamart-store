@@ -122,7 +122,6 @@ export const productSchema = z.object({
 
   categoryId: z.string().min(1),
 
-  shippingFeeUSD: z.number().min(0),
   oldPriceUSD: z.number().optional(),
   discount: z.number().optional(),
 

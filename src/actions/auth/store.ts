@@ -47,7 +47,8 @@ export const createStoreAction = async (values: storeFormType) => {
 
     if (existingStore) {
       return {
-        error: "You already created a store. You can't create more than one.",
+        error:
+          "You already created a store. Contact support to reopen your store.",
       };
     }
 
@@ -152,5 +153,109 @@ export const UpdateStoreAction = async (values: updateStoreFormType) => {
   } catch (error) {
     console.error("Error updating store:", error);
     return { error: "Something went wrong while updating the store" };
+  }
+};
+
+export const deleteStoreAction = async (storeId: string) => {
+  const user = await CurrentUser();
+  if (!user) return { error: "Unauthorized access" };
+
+  try {
+    const store = await prisma.store.findUnique({
+      where: { id: storeId },
+      include: {
+        products: {
+          select: {
+            id: true,
+            images: {
+              select: {
+                imageKey: true,
+              },
+            },
+          },
+        },
+        storeGroups: {
+          where: {
+            status: {
+              in: [
+                "PENDING_PICKUP",
+                "IN_TRANSIT_TO_HUB",
+                "ARRIVED_AT_HUB",
+                "VERIFIED",
+                "CANCELLED",
+              ],
+            },
+          },
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!store || store.isDeleted) {
+      return { error: "Store not found" };
+    }
+
+    if (store.userId !== user.id) {
+      return { error: "Unauthorized — not your store" };
+    }
+
+    // 🚫 Prevent deletion if active orders exist
+    if (store.storeGroups.length > 0) {
+      return {
+        error:
+          "You cannot delete your store while you have active or pending orders.",
+      };
+    }
+
+    // 🧹 Collect UploadThing files for cleanup
+    const filesToDelete: string[] = [];
+
+    if (store.logoKey) filesToDelete.push(store.logoKey);
+    if (store.bannerKey) filesToDelete.push(store.bannerKey);
+
+    store.products.forEach((product) => {
+      product.images.forEach((img) => {
+        if (img.imageKey) filesToDelete.push(img.imageKey);
+      });
+    });
+
+    // 🔥 Best-effort cleanup (do NOT fail deletion if this fails)
+    if (filesToDelete.length > 0) {
+      try {
+        await utapi.deleteFiles(filesToDelete);
+      } catch (err) {
+        console.warn("⚠ Failed to cleanup some store images", err);
+      }
+    }
+
+    // 🧊 Soft delete store + deactivate
+    await prisma.$transaction([
+      prisma.store.update({
+        where: { id: store.id },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          isActive: false,
+        },
+      }),
+
+      // Hide all products
+      prisma.product.updateMany({
+        where: { storeId: store.id },
+        data: {
+          isPublished: false,
+        },
+      }),
+    ]);
+
+    // ♻ Revalidate affected routes
+    revalidatePath("/market-place/dashboard/seller/store");
+    revalidatePath("/market-place/dashboard/seller/products");
+    revalidatePath(`/store/${store.slug}`);
+
+    return { success: "Store deleted successfully" };
+  } catch (error) {
+    console.error("Error deleting store:", error);
+    return { error: "Something went wrong while deleting the store" };
   }
 };

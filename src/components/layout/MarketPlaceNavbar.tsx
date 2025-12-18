@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   User,
   HelpCircle,
@@ -56,8 +56,6 @@ export default function MarketPlaceNavbar({
   const [hasNewAlert, setHasNewAlert] = useState(false);
 
   const [open, setOpen] = useState(false);
-
-  const router = useRouter();
 
   useDashboardEvents(user?.id, user?.role, setHasNewAlert);
   const logout = useLogout();
@@ -126,7 +124,7 @@ export default function MarketPlaceNavbar({
       case "RIDER":
         return "/market-place/dashboard/rider";
       default:
-        return "/customer";
+        return "/";
     }
   };
 

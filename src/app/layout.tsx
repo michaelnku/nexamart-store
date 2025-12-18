@@ -12,7 +12,6 @@ import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
 import { ourFileRouter } from "./api/uploadthing/core";
 import { CurrencyProvider } from "@/providers/currencyProvider";
-import CurrencyRateBootstrap from "@/components/currency/CurrencyRateBootstrap";
 
 /* ===========================
    Fonts
@@ -154,9 +153,6 @@ export default async function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
-              {/*global Currency rate*/}
-              <CurrencyRateBootstrap />
-
               {/* App Content */}
               <CurrencyProvider>{children}</CurrencyProvider>
 

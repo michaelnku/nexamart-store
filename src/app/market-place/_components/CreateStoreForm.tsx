@@ -110,152 +110,150 @@ export default function CreateStoreForm() {
                 )}
               />
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location (City / State)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Lagos, Nigeria" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <section className="space-y-4">
+                <h2 className="text-xl font-semibold border-b pb-2">
+                  Store Type
+                </h2>
                 <FormField
                   control={form.control}
-                  name="location"
+                  name="type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Location (City / State)</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., Lagos, Nigeria" {...field} />
+                        <RadioGroup
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                        >
+                          {/* GENERAL */}
+                          <label className="border rounded-xl p-4 cursor-pointer hover:border-[#146EB4] transition">
+                            <div className="flex items-start gap-3">
+                              <RadioGroupItem value="GENERAL" />
+                              <div>
+                                <p className="font-semibold">General Store</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Fashion, electronics, digital goods, services,
+                                  and more.
+                                </p>
+                              </div>
+                            </div>
+                          </label>
+
+                          {/* FOOD */}
+                          <label className="border rounded-xl p-4 cursor-pointer hover:border-[#146EB4] transition">
+                            <div className="flex items-start gap-3">
+                              <RadioGroupItem value="FOOD" />
+                              <div>
+                                <p className="font-semibold">Food Store</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Restaurants, groceries, catering. Requires
+                                  pickup address.
+                                </p>
+                              </div>
+                            </div>
+                          </label>
+                        </RadioGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </section>
 
-                <section className="space-y-4">
-                  <h2 className="text-xl font-semibold border-b pb-2">
-                    Store Type
+              <section className="space-y-4">
+                <div className="border-b pb-2">
+                  <h2 className="text-xl font-semibold ">
+                    How do you deliver?
                   </h2>
-                  <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <RadioGroup
-                            value={field.value}
-                            onValueChange={field.onChange}
-                            className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                          >
-                            {/* GENERAL */}
-                            <label className="border rounded-xl p-4 cursor-pointer hover:border-[#146EB4] transition">
-                              <div className="flex items-start gap-3">
-                                <RadioGroupItem value="GENERAL" />
-                                <div>
-                                  <p className="font-semibold">General Store</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    Fashion, electronics, digital goods,
-                                    services, and more.
-                                  </p>
-                                </div>
-                              </div>
-                            </label>
 
-                            {/* FOOD */}
-                            <label className="border rounded-xl p-4 cursor-pointer hover:border-[#146EB4] transition">
-                              <div className="flex items-start gap-3">
-                                <RadioGroupItem value="FOOD" />
-                                <div>
-                                  <p className="font-semibold">Food Store</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    Restaurants, groceries, catering. Requires
-                                    pickup address.
-                                  </p>
-                                </div>
-                              </div>
-                            </label>
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </section>
+                  <p className="text-sm text-muted-foreground">
+                    This determines whether riders, pickup, or digital delivery
+                    is used.
+                  </p>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="fulfillmentType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <RadioGroup
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                        >
+                          {/* PHYSICAL */}
+                          <label className="border rounded-xl p-4 cursor-pointer hover:border-[#146EB4]">
+                            <RadioGroupItem value="PHYSICAL" />
+                            <p className="font-semibold mt-2">Physical</p>
+                            <p className="text-sm text-muted-foreground">
+                              Requires a pickup or warehouse address.
+                            </p>
+                          </label>
 
-                <section className="space-y-4">
-                  <div className="border-b pb-2">
-                    <h2 className="text-xl font-semibold ">
-                      How do you deliver?
-                    </h2>
+                          {/* DIGITAL */}
+                          <label className="border rounded-xl p-4 cursor-pointer hover:border-[#146EB4]">
+                            <RadioGroupItem value="DIGITAL" />
+                            <p className="font-semibold mt-2">Digital</p>
+                            <p className="text-sm text-muted-foreground">
+                              No physical delivery (ebooks, services,
+                              subscriptions).
+                            </p>
+                          </label>
 
-                    <p className="text-sm text-muted-foreground">
-                      This determines whether riders, pickup, or digital
-                      delivery is used.
-                    </p>
-                  </div>
-                  <FormField
-                    control={form.control}
-                    name="fulfillmentType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <RadioGroup
-                            value={field.value}
-                            onValueChange={field.onChange}
-                            className="grid grid-cols-1 md:grid-cols-3 gap-4"
-                          >
-                            {/* PHYSICAL */}
-                            <label className="border rounded-xl p-4 cursor-pointer hover:border-[#146EB4]">
-                              <RadioGroupItem value="PHYSICAL" />
-                              <p className="font-semibold mt-2">Physical</p>
-                              <p className="text-sm text-muted-foreground">
-                                Requires a pickup or warehouse address.
-                              </p>
-                            </label>
+                          {/* HYBRID */}
+                          <label className="border rounded-xl p-4 cursor-pointer hover:border-[#146EB4]">
+                            <RadioGroupItem value="HYBRID" />
+                            <p className="font-semibold mt-2">Hybrid</p>
+                            <p className="text-sm text-muted-foreground">
+                              Both physical and digital products.
+                            </p>
+                          </label>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </section>
 
-                            {/* DIGITAL */}
-                            <label className="border rounded-xl p-4 cursor-pointer hover:border-[#146EB4]">
-                              <RadioGroupItem value="DIGITAL" />
-                              <p className="font-semibold mt-2">Digital</p>
-                              <p className="text-sm text-muted-foreground">
-                                No physical delivery (ebooks, services,
-                                subscriptions).
-                              </p>
-                            </label>
-
-                            {/* HYBRID */}
-                            <label className="border rounded-xl p-4 cursor-pointer hover:border-[#146EB4]">
-                              <RadioGroupItem value="HYBRID" />
-                              <p className="font-semibold mt-2">Hybrid</p>
-                              <p className="text-sm text-muted-foreground">
-                                Both physical and digital products.
-                              </p>
-                            </label>
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </section>
-
-                {fulfillmentType !== "DIGITAL" && (
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {storeType === "FOOD"
-                            ? "Pickup / Kitchen Address"
-                            : "Pickup / Warehouse Address"}
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            rows={3}
-                            placeholder="Required for physical fulfillment"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-              </div>
+              {fulfillmentType !== "DIGITAL" && (
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {storeType === "FOOD"
+                          ? "Pickup / Kitchen Address"
+                          : "Pickup / Warehouse Address"}
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={3}
+                          placeholder="Required for physical fulfillment"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}

@@ -12,6 +12,7 @@ import {
   FormItem,
   FormLabel,
   FormControl,
+  FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -32,13 +33,6 @@ type ProductFormProps = {
   categories: Category[];
 };
 
-type PreviewImage = {
-  id: string;
-  url: string;
-  key: string;
-  deleting?: boolean;
-};
-
 const ProductForm = ({ categories }: ProductFormProps) => {
   const router = useRouter();
 
@@ -46,7 +40,8 @@ const ProductForm = ({ categories }: ProductFormProps) => {
   const [level2, setLevel2] = useState<string | null>(null);
   const [level3, setLevel3] = useState<string | null>(null);
 
-  const [images, setImages] = useState<PreviewImage[]>([]);
+  const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
+
   const [error, setError] = useState<string>();
   const [uploading, setUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -71,8 +66,8 @@ const ProductForm = ({ categories }: ProductFormProps) => {
           priceUSD: 0,
           stock: 0,
           sku: "",
-          oldPriceUSD: undefined,
-          discount: undefined,
+          oldPriceUSD: 0,
+          discount: 0,
         },
       ],
     },
@@ -95,6 +90,15 @@ const ProductForm = ({ categories }: ProductFormProps) => {
   const { fields, append, remove } = useFieldArray({
     control,
     name: "variants",
+  });
+
+  const {
+    fields: techFields,
+    append: appendTech,
+    remove: removeTech,
+  } = useFieldArray({
+    control,
+    name: "technicalDetails",
   });
 
   useEffect(() => {
@@ -127,6 +131,10 @@ const ProductForm = ({ categories }: ProductFormProps) => {
 
   const onSubmit = (values: productSchemaType) => {
     const variants = values.variants;
+    if (!values.categoryId) {
+      toast.error("Please select a category");
+      return;
+    }
 
     if (!variants || variants.length === 0) {
       toast.error("At least one variant is required");
@@ -167,25 +175,30 @@ const ProductForm = ({ categories }: ProductFormProps) => {
     });
   };
 
-  const deleteImage = async (id: string) => {
-    setImages((prev) =>
-      prev.map((img) => (img.id === id ? { ...img, deleting: true } : img))
-    );
+  const deleteImage = async (key: string) => {
+    setDeletingKeys((prev) => new Set(prev).add(key));
 
-    const image = images.find((img) => img.id === id);
-    if (!image) return;
+    try {
+      await deleteFileAction(key);
 
-    await deleteFileAction(image.key);
+      setValue(
+        "images",
+        getValues("images").filter((img) => img.key !== key)
+      );
 
-    setImages((prev) => prev.filter((img) => img.id !== id));
-
-    setValue(
-      "images",
-      getValues("images").filter((img) => img.key !== image.key)
-    );
-
-    toast.success("Image deleted");
+      toast.success("Image deleted");
+    } catch {
+      toast.error("Failed to delete image");
+    } finally {
+      setDeletingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
   };
+
+  const watchedImages = form.watch("images");
 
   return (
     <main className="flex justify-center p-4 md:p-8 lg:p-12 bg-gray-100 dark:bg-neutral-950 min-h-screen">
@@ -202,7 +215,13 @@ const ProductForm = ({ categories }: ProductFormProps) => {
         )}
 
         <Form {...form}>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-12">
+          <form
+            onSubmit={handleSubmit(onSubmit, (errors) => {
+              console.log("FORM ERRORS", errors);
+              toast.error("Please fix the highlighted fields");
+            })}
+            className="space-y-12"
+          >
             {/* PRODUCT INFO */}
             <section className="space-y-5">
               <FormField
@@ -246,11 +265,113 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea rows={4} {...field} />
+                      <Textarea
+                        rows={4}
+                        {...field}
+                        placeholder="product detail..."
+                        className="focus-visible:ring-[var(--brand-blue)]"
+                      />
                     </FormControl>
                   </FormItem>
                 )}
               />
+
+              {/* Specifications (bullet style) */}
+              <FormField
+                control={control}
+                name="specifications"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Specifications (one per line)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        rows={4}
+                        placeholder={`5000mAh battery
+6.5-inch AMOLED display
+Snapdragon processor
+Dual SIM`}
+                        {...field}
+                        className="focus-visible:ring-[var(--brand-blue)] whitespace-pre-wrap"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Technical details (key/value) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-[var(--brand-black)]">
+                    Technical Details
+                  </h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => appendTech({ key: "", value: "" })}
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add Detail
+                  </Button>
+                </div>
+
+                {techFields.length === 0 && (
+                  <p className="text-sm text-gray-500">
+                    No technical details added yet.
+                  </p>
+                )}
+
+                <div className="space-y-3">
+                  {techFields.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="grid grid-cols-1 md:grid-cols-[2fr,3fr,auto] gap-3 items-center"
+                    >
+                      <FormField
+                        control={control}
+                        name={`technicalDetails.${index}.key`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Label</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="Processor / Material / Model number..."
+                                className="focus-visible:ring-[var(--brand-blue)]"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={control}
+                        name={`technicalDetails.${index}.value`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Value</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="Snapdragon 720 / Stainless steel..."
+                                className="focus-visible:ring-[var(--brand-blue)]"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => removeTech(index)}
+                        className="mt-5 text-red-500 hover:text-red-600"
+                      >
+                        <Trash className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {/* CATEGORY */}
               <div className="space-y-4">
@@ -387,7 +508,9 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                               type="number"
                               className="focus-visible:ring-[var(--brand-blue)]"
                               {...field}
-                              onChange={(e) => e.target.value}
+                              onChange={(e) =>
+                                field.onChange(Number(e.target.value))
+                              }
                             />
                           </FormControl>
                         </FormItem>
@@ -404,8 +527,117 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                             <Input
                               type="number"
                               {...field}
-                              onChange={(e) => e.target.value}
+                              onChange={(e) =>
+                                field.onChange(Number(e.target.value))
+                              }
                               className="focus-visible:ring-[var(--brand-blue)]"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* OLD PRICE / DISCOUNT */}
+                  <div className="grid md:grid-cols-2 gap-5">
+                    <FormField
+                      control={control}
+                      name={`variants.${index}.oldPriceUSD`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Old Price (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step={1}
+                              {...field}
+                              onChange={(e) => {
+                                const old = Math.max(
+                                  0,
+                                  Math.round(Number(e.target.value || 0))
+                                );
+                                field.onChange(old);
+
+                                const discount = Math.max(
+                                  0,
+                                  Math.round(
+                                    Number(
+                                      getValues(`variants.${index}.discount`) ||
+                                        0
+                                    )
+                                  )
+                                );
+
+                                const price = Math.max(
+                                  0,
+                                  Math.round(
+                                    Number(
+                                      getValues(`variants.${index}.priceUSD`) ||
+                                        0
+                                    )
+                                  )
+                                );
+
+                                if (old > 0 && discount > 0) {
+                                  const newPrice = old - (old * discount) / 100;
+                                  setValue(
+                                    `variants.${index}.priceUSD`,
+                                    Math.max(0, Math.round(newPrice))
+                                  );
+                                }
+
+                                if (old > 0 && price > 0) {
+                                  const newDiscount =
+                                    ((old - price) / old) * 100;
+                                  setValue(
+                                    `variants.${index}.discount`,
+                                    Math.max(0, Math.round(newDiscount))
+                                  );
+                                }
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`variants.${index}.discount`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Discount % (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step={1}
+                              {...field}
+                              onChange={(e) => {
+                                const discount = Math.max(
+                                  0,
+                                  Math.round(Number(e.target.value || 0))
+                                );
+                                field.onChange(discount);
+
+                                const old = Math.max(
+                                  0,
+                                  Math.round(
+                                    Number(
+                                      getValues(
+                                        `variants.${index}.oldPriceUSD`
+                                      ) || 0
+                                    )
+                                  )
+                                );
+
+                                if (old > 0 && discount > 0) {
+                                  const newPrice = old - (old * discount) / 100;
+                                  setValue(
+                                    `variants.${index}.priceUSD`,
+                                    Math.max(0, Math.round(newPrice))
+                                  );
+                                }
+                              }}
                             />
                           </FormControl>
                         </FormItem>
@@ -454,55 +686,64 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                 onUploadBegin={() => setUploading(true)}
                 onClientUploadComplete={(res) => {
                   setUploading(false);
+
+                  const uploaded = res.map((f) => ({
+                    url: f.url,
+                    key: f.key,
+                  }));
+
                   setValue("images", [
-                    ...getValues("images"),
-                    ...res.map((f) => ({ url: f.url, key: f.key })),
+                    ...(getValues("images") ?? []),
+                    ...uploaded,
                   ]);
+
+                  toast.success("Images uploaded");
                 }}
                 className="ut-button:bg-[var(--brand-blue)] ut-button:text-white ut-button:rounded-lg"
               />
 
               <div className="flex flex-wrap gap-4">
-                {images.map((img) => (
-                  <div key={img.id} className="relative w-32 h-32">
-                    <Image src={img.url} alt="" fill />
-                  </div>
-                ))}
+                {watchedImages?.map((img) => {
+                  const isDeleting = deletingKeys.has(img.key);
+
+                  return (
+                    <div
+                      key={img.key}
+                      className="relative w-40 h-40 rounded-lg overflow-hidden border"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => deleteImage(img.key)}
+                        disabled={isDeleting}
+                        className="absolute top-2 right-2 z-10 bg-red-600 text-white p-1 rounded-full disabled:opacity-60"
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="animate-spin w-4 h-4" />
+                        ) : (
+                          <Trash className="w-4 h-4" />
+                        )}
+                      </button>
+
+                      <Image
+                        src={img.url}
+                        alt="product image"
+                        fill
+                        className={`object-cover transition ${
+                          isDeleting ? "opacity-50" : ""
+                        }`}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </section>
-
-            {/* IMAGE PREVIEW*/}
-            {images.map((img) => (
-              <div
-                key={img.id}
-                className="relative w-40 h-40 rounded-lg overflow-hidden border"
-              >
-                <button
-                  type="button"
-                  onClick={() => deleteImage(img.id)}
-                  className="absolute top-2 right-2 z-10 bg-red-600 text-white p-1 rounded-full"
-                  disabled={img.deleting}
-                >
-                  {img.deleting ? (
-                    <Loader2 className="animate-spin w-4 h-4" />
-                  ) : (
-                    <Trash className="w-4 h-4" />
-                  )}
-                </button>
-
-                <Image
-                  src={img.url}
-                  alt="product image"
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            ))}
 
             <Button
               type="submit"
               disabled={isPending || uploading}
-              className="w-full py-3 bg-[var(--brand-blue)] text-white"
+              className="w-full text-lg py-3 rounded-xl font-semibold
+                bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white 
+                shadow-md disabled:opacity-60"
             >
               {isPending ? (
                 <Loader2 className="animate-spin" />

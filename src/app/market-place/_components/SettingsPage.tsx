@@ -22,9 +22,25 @@ import { toast } from "sonner";
 import { UploadButton } from "@/utils/uploadthing";
 import { deleteBannerAction, deleteLogoAction } from "@/actions/actions";
 import { useRouter } from "next/navigation";
-import { UpdateStoreAction } from "@/actions/auth/store";
+import { deleteStoreAction, UpdateStoreAction } from "@/actions/auth/store";
 import { StoreDTO } from "@/lib/types";
 import { StoreSettingsSkeleton } from "@/components/skeletons/StoreSettingsSkeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+type StoreState =
+  | { status: "loading" }
+  | { status: "active"; store: StoreDTO }
+  | { status: "deleted" };
 
 const BuyerSettingsPage = () => {
   return (
@@ -68,13 +84,20 @@ const BuyerSettingsPage = () => {
 const SellerSettingsPage = () => {
   const user = useCurrentUser();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
 
-  const [store, setStore] = useState<StoreDTO | null | undefined>(undefined);
+  const [isPending, startTransition] = useTransition();
+  const [storeState, setStoreState] = useState<StoreState>({
+    status: "loading",
+  });
+
   const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
   const [logoKey, setLogoKey] = useState<string | undefined>(undefined);
   const [bannerUrl, setBannerUrl] = useState<string | undefined>(undefined);
   const [bannerKey, setBannerKey] = useState<string | undefined>(undefined);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingStore, setDeletingStore] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
 
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -85,32 +108,48 @@ const SellerSettingsPage = () => {
     const fetchStore = async () => {
       try {
         const res = await fetch(`/api/user/${user.id}/store`);
+
+        if (res.status === 404) {
+          setStoreState({ status: "deleted" });
+          return;
+        }
+
         const data = await res.json();
-        setStore(data);
-        setLogoUrl(data?.logo ?? undefined);
-        setLogoKey(data?.logoKey ?? undefined);
-        setBannerUrl(data?.bannerImage ?? undefined);
-        setBannerKey(data?.bannerKey ?? undefined);
+        setStoreState({ status: "active", store: data });
+
+        setLogoUrl(data.logo ?? undefined);
+        setLogoKey(data.logoKey ?? undefined);
+        setBannerUrl(data.bannerImage ?? undefined);
+        setBannerKey(data.bannerKey ?? undefined);
       } catch {
-        setStore(null);
+        setStoreState({ status: "deleted" });
       }
     };
 
     fetchStore();
-  }, [user]);
+  }, [user?.id]);
 
   const refreshStore = async () => {
-    if (!user?.id) return;
-    const res = await fetch(`/api/user/${user.id}/store`);
-    const data = await res.json();
-    setStore(data);
+    try {
+      if (!user?.id) return;
+      const res = await fetch(`/api/user/${user.id}/store`);
 
-    setLogoUrl(data?.logo ?? undefined);
-    setLogoKey(data?.logoKey ?? undefined);
+      if (res.status === 404) {
+        setStoreState({ status: "deleted" });
+        return;
+      }
+      const data = await res.json();
+      setStoreState({ status: "active", store: data });
+
+      setLogoUrl(data?.logo ?? undefined);
+      setLogoKey(data?.logoKey ?? undefined);
+    } catch {
+      setStoreState({ status: "deleted" });
+    }
   };
 
   // LOADING UI
-  if (store === undefined) {
+  if (storeState.status === "loading") {
     return <StoreSettingsSkeleton />;
   }
 
@@ -129,6 +168,7 @@ const SellerSettingsPage = () => {
     }
     setDeleting(false);
   };
+
   const handleDeleteBanner = async () => {
     if (!bannerKey) return;
 
@@ -137,14 +177,7 @@ const SellerSettingsPage = () => {
       await deleteBannerAction(bannerKey);
       setBannerUrl(undefined);
       setBannerKey(undefined);
-      setStore((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          bannerImage: null,
-          bannerKey: null,
-        };
-      });
+      setStore({ bannerImage: null, bannerKey: null });
       toast.success("Banner removed");
     } catch {
       toast.error("Failed to delete banner");
@@ -158,6 +191,34 @@ const SellerSettingsPage = () => {
       router.push("/market-place/dashboard/seller/store/create-store");
     });
   };
+
+  if (storeState.status === "deleted") {
+    return (
+      <main className="max-w-xl mx-auto space-y-6 text-center py-12">
+        <h1 className="text-2xl font-semibold">Store Closed</h1>
+
+        <div>
+          <p className="text-muted-foreground">
+            Your store has been permanently closed and is no longer visible on
+            NexaMart.
+          </p>
+
+          <p className="text-sm text-muted-foreground">
+            If this was a mistake or you would like to reopen your store, please
+            contact support.
+          </p>
+        </div>
+
+        <Button variant="outline" asChild>
+          <a href="mailto:support@nexamart.com">Contact Support</a>
+        </Button>
+      </main>
+    );
+  }
+
+  if (storeState.status !== "active") return null;
+
+  const store = storeState.store;
 
   if (store === null) {
     return (
@@ -221,6 +282,46 @@ const SellerSettingsPage = () => {
     });
   };
 
+  //delete store
+  const handleDeleteStore = async () => {
+    if (!store) return;
+
+    setDeletingStore(true);
+
+    startTransition(async () => {
+      try {
+        const res = await deleteStoreAction(store.id);
+
+        if (res?.error) {
+          toast.error(res.error);
+          setDeletingStore(false);
+          return;
+        }
+
+        toast.success("Store deleted successfully");
+        setDeleteOpen(false);
+        router.replace("/market-place/dashboard");
+      } catch {
+        toast.error("Failed to delete store");
+        setDeletingStore(false);
+      }
+    });
+  };
+
+  const setStore = (updates: Partial<StoreDTO>) => {
+    setStoreState((prev) => {
+      if (prev.status !== "active") return prev;
+
+      return {
+        status: "active",
+        store: {
+          ...prev.store,
+          ...updates,
+        },
+      };
+    });
+  };
+
   return (
     <main className="space-y-8 max-w-3xl mx-auto">
       <h1 className="text-3xl font-semibold">Store Settings</h1>
@@ -232,7 +333,7 @@ const SellerSettingsPage = () => {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          <div>
+          <div className="space-y-2">
             <Label>Store Name</Label>
             <Input
               value={store.name}
@@ -240,12 +341,12 @@ const SellerSettingsPage = () => {
             />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>Email</Label>
             <Input value={user?.email ?? ""} disabled />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>Location (City/State)</Label>
             <Input
               value={store.location || ""}
@@ -254,7 +355,7 @@ const SellerSettingsPage = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
+            <div className="space-y-2">
               <Label>Store Type</Label>
               <Select
                 value={store.type}
@@ -272,7 +373,7 @@ const SellerSettingsPage = () => {
               </Select>
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label>Delivery Method</Label>
               <Select
                 value={store.fulfillmentType}
@@ -295,7 +396,7 @@ const SellerSettingsPage = () => {
             </div>
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>Store Address (Optional)</Label>
             <Input
               value={store.address || ""}
@@ -303,7 +404,7 @@ const SellerSettingsPage = () => {
             />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>Description</Label>
             <Textarea
               value={store.description || ""}
@@ -447,7 +548,7 @@ const SellerSettingsPage = () => {
           </div>
 
           {/* Storefront Tagline */}
-          <div>
+          <div className="space-y-2">
             <Label>Storefront Tagline / Slogan (optional)</Label>
             <Input
               placeholder="Example: Quality you can trust."
@@ -495,14 +596,87 @@ const SellerSettingsPage = () => {
         </CardContent>
       </Card>
 
-      <Button
-        size="lg"
-        className="w-full text-lg py-3"
-        onClick={handleSave}
-        disabled={isPending}
-      >
-        {isPending ? "Saving..." : "Save Changes"}
-      </Button>
+      <div className="space-y-4">
+        <Button
+          size="lg"
+          className="w-full disabled:opacity-70 disabled:cursor-not-allowed text-lg py-3 bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)]"
+          onClick={handleSave}
+          disabled={isPending}
+        >
+          {isPending ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Saving...</span>
+            </div>
+          ) : (
+            <p>Save Changes</p>
+          )}
+        </Button>
+
+        {/*delete modal */}
+        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <AlertDialogTrigger asChild>
+            <button
+              type="button"
+              className="w-full text-red-500 font-medium hover:underline"
+            >
+              DELETE MY STORE
+            </button>
+          </AlertDialogTrigger>
+
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-red-600">
+                Delete your store?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="flex flex-col">
+                <span>
+                  This action is <strong>permanent</strong> and cannot be
+                  undone.
+                </span>
+                <span>
+                  Your store, products, and storefront visibility will be
+                  removed.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-2">
+              <Label>Type "DELETE MY STORE" to confirm</Label>
+
+              <Input
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+              />
+            </div>
+
+            {/* 🔥 Action feedback */}
+            {deletingStore && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Deleting your store…
+              </div>
+            )}
+
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deletingStore}>
+                Cancel
+              </AlertDialogCancel>
+
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleDeleteStore();
+                }}
+                disabled={deletingStore || confirmText !== "DELETE MY STORE"}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deletingStore ? "Deleting…" : "Yes, delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </main>
   );
 };
@@ -881,8 +1055,6 @@ const AdminSettingsPage = () => {
     </main>
   );
 };
-
-export default AdminSettingsPage;
 
 export {
   AdminSettingsPage,

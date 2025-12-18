@@ -141,8 +141,7 @@ model Product {
 
   isPublished Boolean @default(true)
 
-  basePriceUSD   Float
-  shippingFeeUSD Float @default(0)
+  basePriceUSD Float
 
   store    Store    @relation(fields: [storeId], references: [id])
   category Category @relation(fields: [categoryId], references: [id])
@@ -582,7 +581,6 @@ enum TransactionStatus {
  * STORE (Marketplace)
  * ===========================
  */
-
 model Store {
   id     String @id @default(cuid())
   userId String @unique
@@ -628,6 +626,9 @@ model Store {
 
   fulfillmentType FulfillmentType @default(PHYSICAL)
   type            StoreType       @default(GENERAL)
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
 
   @@index([userId])
   @@index([slug])

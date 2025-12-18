@@ -6,10 +6,11 @@ import RiderPage from "./RiderPage";
 import SellerPage from "./SellerPage";
 import { UserDTO } from "@/lib/types";
 import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
-import AdminSettingsPage, {
+import {
   BuyerSettingsPage,
   SellerSettingsPage,
   RiderSettingsPage,
+  AdminSettingsPage,
 } from "./SettingsPage";
 
 type Props = {
