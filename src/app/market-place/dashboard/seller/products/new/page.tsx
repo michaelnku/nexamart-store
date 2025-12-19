@@ -6,7 +6,7 @@ const page = async () => {
     orderBy: { name: "asc" },
   });
   return (
-    <div className="w-full min-h-screen bg-zinc-50 dark:bg-zinc-900">
+    <div className="w-full min-h-screen">
       <ProductForm categories={categories} />
     </div>
   );

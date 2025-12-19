@@ -47,6 +47,12 @@ export default Middleware((req) => {
     console.log("🧩 isApiAuthRoute:", isApiAuthRoute);
     console.log("---------------------------");
   }
+
+  // ✅ Allow public currency API
+  if (pathname.startsWith("/api/currency-rates")) {
+    return;
+  }
+
   // ✅ Skip all /api/auth/* routes
   if (isApiAuthRoute) {
     console.log("⏭ Skipping API Auth route\n");

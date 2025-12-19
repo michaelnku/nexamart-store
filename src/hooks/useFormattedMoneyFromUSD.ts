@@ -1,6 +1,8 @@
+"use client";
+
 import { useCurrencyStore } from "@/stores/useCurrencyStore";
-import { CURRENCY_LOCALE } from "./currencyLocale";
-import { CURRENCY_PRECISION } from "./currencyPrecision";
+import { CURRENCY_LOCALE } from "@/lib/currencyLocale";
+import { CURRENCY_PRECISION } from "@/lib/currencyPrecision";
 
 const symbols: Record<string, string> = {
   USD: "$",
@@ -12,7 +14,7 @@ const symbols: Record<string, string> = {
   CAD: "$",
 };
 
-export function formatMoneyFromUSD(amountUSD: number) {
+export function useFormattedMoneyFromUSD(amountUSD: number) {
   const { currency, convertFromUSD } = useCurrencyStore();
 
   const converted = convertFromUSD(amountUSD);

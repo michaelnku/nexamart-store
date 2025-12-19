@@ -202,7 +202,7 @@ const ProductForm = ({ categories }: ProductFormProps) => {
   const watchedImages = form.watch("images");
 
   return (
-    <main className="flex justify-center p-4 md:p-8 lg:p-12 bg-gray-100 dark:bg-neutral-950 min-h-screen">
+    <main className="flex justify-center p-4 md:p-8 lg:p-12 dark:bg-neutral-950">
       <div className="w-full max-w-4xl border px-8 py-4 rounded-2xl shadow space-y-10">
         <h1 className="text-3xl font-bold text-center text-[var(--brand-blue)]">
           New Product

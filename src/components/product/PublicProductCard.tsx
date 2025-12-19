@@ -6,6 +6,7 @@ import WishlistButton from "./WishlistButton";
 import AddToCartControl from "./AddtoCartButton";
 import { ProductCardType } from "@/lib/types";
 import { formatMoneyFromUSD } from "@/lib/formatMoneyFromUSD";
+import { useMemo } from "react";
 
 export default function PublicProductCard({
   product,
@@ -19,14 +20,14 @@ export default function PublicProductCard({
   const priceUSD = product.basePriceUSD;
   const oldPriceUSD = product.oldPriceUSD ?? null;
 
-  const discount =
-    oldPriceUSD && oldPriceUSD > priceUSD
-      ? Math.round(((oldPriceUSD - priceUSD) / oldPriceUSD) * 100)
-      : null;
+  const discount = useMemo(() => {
+    if (!oldPriceUSD || oldPriceUSD <= priceUSD) return null;
+    return Math.round(((oldPriceUSD - priceUSD) / oldPriceUSD) * 100);
+  }, [priceUSD, oldPriceUSD]);
 
   return (
     <div className="relative border rounded-xl bg-white dark:bg-neutral-950 shadow-sm hover:shadow-lg transition duration-300 group overflow-hidden">
-      {discount && (
+      {discount !== null && discount > 0 && (
         <span
           className="
                 absolute top-4 left-2 bg-[var(--brand-blue)] text-white text-xs
@@ -49,7 +50,7 @@ export default function PublicProductCard({
         <div className="relative aspect-[4/5] bg-gray-100 rounded-t-xl overflow-hidden">
           <Image
             src={product.images?.[0]?.imageUrl ?? "/placeholder.png"}
-            alt={product.name}
+            alt={product.name || "Product Image"}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-500"
           />

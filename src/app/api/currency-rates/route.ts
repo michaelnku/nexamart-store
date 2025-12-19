@@ -31,8 +31,11 @@ export async function GET() {
     const data = await res.json();
 
     return NextResponse.json({
-      base: data.base,
-      rates: data.rates,
+      base: "USD",
+      rates: {
+        USD: 1,
+        ...data.rates,
+      },
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
