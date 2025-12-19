@@ -17,9 +17,8 @@ import {
   Eye,
 } from "lucide-react";
 import Link from "next/link";
-import { formatPrice } from "@/lib/formatPrice";
-import { useCurrency } from "@/lib/useCurrency";
 import { OrderStatus, SellerOrder } from "@/lib/types";
+import { formatMoneyFromUSD } from "@/lib/formatMoneyFromUSD";
 
 type SellerOrderAction = (
   sellerGroupId: string
@@ -31,8 +30,6 @@ export default function SellerOrdersTable({
   orders: SellerOrder[];
 }) {
   const [isPending, startTransition] = useTransition();
-
-  const { currency, rates } = useCurrency();
 
   const handleAction = (actionFn: SellerOrderAction, id: string) => {
     if (isPending) return;
@@ -98,7 +95,7 @@ export default function SellerOrdersTable({
                 <td className="p-4 font-medium">{o.customer?.name ?? "—"}</td>
 
                 <td className="p-4 font-semibold text-gray-900">
-                  {formatPrice(o.totalAmount, currency, rates)}
+                  {formatMoneyFromUSD(o.totalAmount)}
                 </td>
 
                 <td className="p-4">
@@ -215,7 +212,7 @@ export default function SellerOrdersTable({
             </p>
 
             <p className="text-lg font-bold text-gray-900">
-              {formatPrice(o.totalAmount, currency, rates)}
+              {formatMoneyFromUSD(o.totalAmount)}
             </p>
 
             <div className="flex flex-wrap gap-2 justify-between pt-2">
