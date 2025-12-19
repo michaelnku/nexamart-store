@@ -43,7 +43,10 @@ function SidebarContent({
 
   return (
     <div
-      className={cn("flex flex-col h-full w-full relative", isMobile && "px-5")}
+      className={cn(
+        "flex flex-col h-full w-full relative",
+        isMobile && "px-5 dark:bg-neutral-950"
+      )}
     >
       <h2 className="text-[13px] font-semibold text-gray-500 px-4 pt-5 pb-4 uppercase">
         Menu
@@ -55,7 +58,7 @@ function SidebarContent({
           <div key={section.title}>
             <button
               onClick={() => toggle(section.title)}
-              className="flex justify-between items-center w-full px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-black"
+              className="flex justify-between items-center w-full px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-black dark:hover:text-gray-600"
             >
               {section.title}
               {openSections[section.title] ? (
@@ -156,7 +159,7 @@ export const DashboardSidebar = ({
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex fixed top-23 left-0 min-h-screen w-64 light:bg-white border-r shadow-sm z-20">
+    <aside className="hidden md:flex fixed top-23 left-0 min-h-screen w-64 dark:bg-neutral-950 bg-white border-r shadow-sm z-20">
       <SidebarContent user={user} pathname={pathname} />
     </aside>
   );

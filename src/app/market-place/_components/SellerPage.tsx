@@ -20,7 +20,7 @@ export default function SellerPage() {
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <main className="space-y-8">
+    <main className="space-y-8 dark:bg-neutral-950">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Seller Dashboard</h1>
         <p className="text-sm text-gray-500">
@@ -57,7 +57,7 @@ export default function SellerPage() {
         })}
       </section>
 
-      <section className="bg-white border rounded-xl p-6 shadow-sm space-y-2">
+      <section className="bg-white dark:bg-neutral-950 border rounded-xl p-6 shadow-sm space-y-2">
         <h2 className="text-lg font-semibold">Recent Orders</h2>
         <p className="text-sm text-gray-500">
           Your 5 most recent orders will appear here.

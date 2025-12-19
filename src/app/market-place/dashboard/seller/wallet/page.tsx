@@ -5,6 +5,7 @@ import { useSellerWallet } from "@/hooks/useWallet";
 import Link from "next/link";
 import { WalletSkeleton } from "@/components/skeletons/WalletSkeleton";
 import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
+import { SellerWalletBalanceConverter } from "@/components/currency/WalletBalanceConverter";
 
 export default function SellerWalletPage() {
   const { data: wallet, isLoading, isError } = useSellerWallet();
@@ -22,11 +23,6 @@ export default function SellerWalletPage() {
   const balance = wallet?.balance ?? 0;
   const pending = wallet?.pending ?? 0;
   const totalEarnings = wallet?.totalEarnings ?? 0;
-
-  const formattedBalance = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: wallet?.currency || "USD",
-  }).format(balance || 0);
 
   const formattedPending = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -57,37 +53,35 @@ export default function SellerWalletPage() {
       </div>
 
       {/* BALANCE SUMMARY*/}
-      <section className="grid md:grid-cols-3 gap-6 dark:bg-neutral-950">
+      <section className="grid md:grid-cols-3 gap-6 ">
         {/* Available */}
-        <div className="border rounded-xl shadow-sm p-5 bg-white  hover:shadow-md transition-all">
-          <p className="text-sm text-gray-500">Available Balance</p>
-          <h2 className="text-3xl font-bold text-[#3c9ee0] mt-2">
-            {formattedBalance}
-          </h2>
-          <p className="text-xs text-gray-400 mt-1">Ready for withdrawal</p>
-        </div>
+        <SellerWalletBalanceConverter usdBalance={balance} />
 
         {/* Pending */}
-        <div className="border rounded-xl shadow-sm p-5 bg-white hover:shadow-md transition-all">
+        <div className="border dark:bg-neutral-950 rounded-xl shadow-sm p-5  hover:shadow-md transition-all">
           <p className="text-sm text-gray-500">Pending</p>
-          <h2 className="text-2xl font-semibold mt-2">{formattedPending}</h2>
+          <h2 className="text-2xl font-semibold mt-2 text-[var(--brand-blue)] transition-all duration-300">
+            {formattedPending}
+          </h2>
           <p className="text-xs text-gray-400 mt-1">
             Earnings not yet released
           </p>
         </div>
 
         {/* Total Earnings */}
-        <div className="border rounded-xl shadow-sm p-5 bg-white hover:shadow-md transition-all flex flex-col justify-between">
+        <div className="border dark:bg-neutral-950 rounded-xl shadow-sm p-5  hover:shadow-md transition-all flex flex-col justify-between">
           <div>
             <p className="text-sm text-gray-500">Total Earnings</p>
-            <h2 className="text-2xl font-semibold mt-2">{formattedEarnings}</h2>
+            <h2 className="text-2xl font-semibold mt-2 text-[var(--brand-blue)] transition-all duration-300">
+              {formattedEarnings}
+            </h2>
           </div>
           <p className="text-xs text-gray-400">Lifetime earnings</p>
         </div>
       </section>
 
       {/* PROGRESS BAR */}
-      <section className="bg-white border rounded-xl shadow-sm p-6">
+      <section className=" border dark:bg-neutral-950 rounded-xl shadow-sm p-6">
         <p className="font-medium mb-2 text-sm">Earnings Progress</p>
         <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
           <div
@@ -101,7 +95,7 @@ export default function SellerWalletPage() {
             }}
           />
         </div>
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs  text-gray-500">
           {pending > 0
             ? `${formattedPending} pending to be released`
             : "All earnings released 🎉"}
@@ -109,7 +103,7 @@ export default function SellerWalletPage() {
       </section>
 
       {/* TRANSACTION HISTORY */}
-      <section className="bg-white border rounded-xl shadow-sm">
+      <section className=" border dark:bg-neutral-950 rounded-xl shadow-sm">
         <h2 className="font-semibold text-lg p-4 border-b">
           Withdrawal History
         </h2>
