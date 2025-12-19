@@ -42,9 +42,9 @@ export default async function Page({ params }: PageProps) {
     redirect(`/product/${canonicalSlug}`);
   }
 
-  const wishlistCount = await prisma.wishlistItem.count({
-    where: { productId },
-  });
+  // const wishlistCount = await prisma.wishlistItem.count({
+  //   where: { productId },
+  // });
 
   const isWishlisted = userId
     ? !!(await prisma.wishlistItem.findFirst({
