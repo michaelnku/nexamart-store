@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -31,17 +31,11 @@ import { Alert, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Loader2, Plus, Trash } from "lucide-react";
 import Image from "next/image";
 import { deleteProductImageAction } from "@/actions/actions";
+import { PriceConverter } from "@/components/currency/PriceConverter";
 
 type UpdateProductProps = {
   initialData: FullProduct;
   categories: Category[];
-};
-
-type PreviewImage = {
-  id: string;
-  url: string;
-  key: string;
-  deleting?: boolean;
 };
 
 type TechnicalDetail = {
@@ -60,21 +54,33 @@ const UpdateProductForm = ({ initialData, categories }: UpdateProductProps) => {
   const childrenLevel1 = categories.filter((c) => c.parentId === level1);
   const childrenLevel2 = categories.filter((c) => c.parentId === level2);
 
+  const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
+
   const [error, setError] = useState<string | undefined>();
   const [uploading, setUploading] = useState(false);
-  const [previewImages, setPreviewImages] = useState<string[]>(() =>
-    initialData.images.map((img) => img.imageUrl)
-  );
-
-  const [images, setImages] = useState<PreviewImage[]>(() =>
-    initialData.images.map((img) => ({
-      id: crypto.randomUUID(),
-      url: img.imageUrl,
-      key: img.imageKey,
-    }))
-  );
 
   const [isPending, startTransition] = useTransition();
+
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, Category>();
+    categories.forEach((c) => map.set(c.id, c));
+    return map;
+  }, [categories]);
+
+  useEffect(() => {
+    const leaf = categoryMap.get(initialData.categoryId);
+    if (!leaf) return;
+
+    const parent = leaf.parentId ? categoryMap.get(leaf.parentId) : null;
+
+    const grandParent = parent?.parentId
+      ? categoryMap.get(parent.parentId)
+      : null;
+
+    setLevel1(grandParent?.id ?? parent?.id ?? leaf.id);
+    setLevel2(parent && grandParent ? parent.id : null);
+    setLevel3(parent && grandParent ? leaf.id : null);
+  }, [initialData.categoryId, categoryMap]);
 
   const generateSimpleSku = (name: string) => {
     const id = Math.floor(100000 + Math.random() * 900000);
@@ -132,8 +138,8 @@ const UpdateProductForm = ({ initialData, categories }: UpdateProductProps) => {
         priceUSD: v.priceUSD,
         stock: v.stock,
         sku: v.sku,
-        oldPriceUSD: v.oldPriceUSD ?? undefined,
-        discount: v.discount ?? undefined,
+        oldPriceUSD: v.oldPriceUSD ?? 0,
+        discount: v.discount ?? 0,
       })),
     },
   });
@@ -217,25 +223,32 @@ const UpdateProductForm = ({ initialData, categories }: UpdateProductProps) => {
     });
   };
 
-  const deleteImage = async (id: string) => {
-    setImages((prev) =>
-      prev.map((img) => (img.id === id ? { ...img, deleting: true } : img))
-    );
+  const deleteImage = async (key: string) => {
+    if (deletingKeys.has(key)) return;
 
-    const image = images.find((img) => img.id === id);
-    if (!image) return;
+    setDeletingKeys((prev) => new Set(prev).add(key));
 
-    await deleteProductImageAction(image.key);
+    try {
+      await deleteProductImageAction(key);
 
-    setImages((prev) => prev.filter((img) => img.id !== id));
+      setValue(
+        "images",
+        getValues("images").filter((img) => img.key !== key)
+      );
 
-    setValue(
-      "images",
-      getValues("images").filter((img) => img.key !== image.key)
-    );
-
-    toast.success("Image deleted");
+      toast.success("Image deleted");
+    } catch {
+      toast.error("Failed to delete image");
+    } finally {
+      setDeletingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
   };
+
+  const watchedImages = form.watch("images");
 
   return (
     <main className="flex justify-center p-4 md:p-8 lg:p-12 bg-gray-100 dark:bg-neutral-950 min-h-screen">
@@ -502,6 +515,12 @@ Dual SIM`}
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-5">
+                    <PriceConverter
+                      onUSDChange={(usd) =>
+                        setValue(`variants.${index}.priceUSD`, usd)
+                      }
+                    />
+
                     <FormField
                       control={control}
                       name={`variants.${index}.priceUSD`}
@@ -522,7 +541,123 @@ Dual SIM`}
                         <FormItem>
                           <FormLabel>Stock</FormLabel>
                           <FormControl>
-                            <Input type="number" {...field} />
+                            <Input
+                              type="number"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(Number(e.target.value))
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* OLD PRICE / DISCOUNT */}
+                  <div className="grid md:grid-cols-2 gap-5">
+                    <FormField
+                      control={control}
+                      name={`variants.${index}.oldPriceUSD`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Old Price (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              className="focus-visible:ring-[var(--brand-blue)]"
+                              type="number"
+                              step={1}
+                              {...field}
+                              onChange={(e) => {
+                                const old = Math.max(
+                                  0,
+                                  Math.round(Number(e.target.value || 0))
+                                );
+                                field.onChange(old);
+
+                                const discount = Math.max(
+                                  0,
+                                  Math.round(
+                                    Number(
+                                      getValues(`variants.${index}.discount`) ||
+                                        0
+                                    )
+                                  )
+                                );
+
+                                const price = Math.max(
+                                  0,
+                                  Math.round(
+                                    Number(
+                                      getValues(`variants.${index}.priceUSD`) ||
+                                        0
+                                    )
+                                  )
+                                );
+
+                                if (old > 0 && discount > 0) {
+                                  const newPrice = old - (old * discount) / 100;
+                                  setValue(
+                                    `variants.${index}.priceUSD`,
+                                    Math.max(0, Math.round(newPrice))
+                                  );
+                                }
+
+                                if (old > 0 && price > 0) {
+                                  const newDiscount =
+                                    ((old - price) / old) * 100;
+                                  setValue(
+                                    `variants.${index}.discount`,
+                                    Math.max(0, Math.round(newDiscount))
+                                  );
+                                }
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`variants.${index}.discount`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Discount % (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              className="focus-visible:ring-[var(--brand-blue)]"
+                              type="number"
+                              step={1}
+                              {...field}
+                              onChange={(e) => {
+                                const discount = Math.max(
+                                  0,
+                                  Math.round(Number(e.target.value || 0))
+                                );
+                                field.onChange(discount);
+
+                                const old = Math.max(
+                                  0,
+                                  Math.round(
+                                    Number(
+                                      getValues(
+                                        `variants.${index}.oldPriceUSD`
+                                      ) || 0
+                                    )
+                                  )
+                                );
+
+                                if (old > 0 && discount > 0) {
+                                  const newPrice = old - (old * discount) / 100;
+                                  setValue(
+                                    `variants.${index}.priceUSD`,
+                                    Math.max(0, Math.round(newPrice))
+                                  );
+                                }
+                              }}
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -569,13 +704,17 @@ Dual SIM`}
                 onUploadBegin={() => setUploading(true)}
                 onClientUploadComplete={(res) => {
                   setUploading(false);
-                  const uploaded = res.map((img) => ({
-                    url: img.url,
-                    key: img.key,
+
+                  const uploaded = res.map((f) => ({
+                    url: f.url,
+                    key: f.key,
                   }));
-                  const images = [...form.getValues("images"), ...uploaded];
-                  form.setValue("images", images);
-                  setPreviewImages(images.map((i) => i.url));
+
+                  setValue("images", [
+                    ...(getValues("images") ?? []),
+                    ...uploaded,
+                  ]);
+
                   toast.success("Images uploaded");
                 }}
                 className="ut-button:bg-[var(--brand-blue)] ut-button:text-white ut-button:rounded-lg"
@@ -583,26 +722,38 @@ Dual SIM`}
 
               {/* IMAGE PREVIEW */}
               <div className="flex flex-wrap gap-4">
-                {images.map((img) => (
-                  <div
-                    key={img.id}
-                    className="relative w-40 h-40 rounded-lg overflow-hidden border"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => deleteImage(img.id)}
-                      className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full"
+                {watchedImages?.map((img) => {
+                  const isDeleting = deletingKeys.has(img.key);
+
+                  return (
+                    <div
+                      key={img.key}
+                      className="relative w-40 h-40 rounded-lg overflow-hidden border"
                     >
-                      <Trash />
-                    </button>
-                    <Image
-                      src={img.url}
-                      alt="img"
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                ))}
+                      <button
+                        type="button"
+                        onClick={() => deleteImage(img.key)}
+                        disabled={isDeleting}
+                        className="absolute top-2 right-2 z-10 bg-red-600 text-white p-1 rounded-full disabled:opacity-60"
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="animate-spin w-4 h-4" />
+                        ) : (
+                          <Trash className="w-4 h-4" />
+                        )}
+                      </button>
+
+                      <Image
+                        src={img.url}
+                        alt="product image"
+                        fill
+                        className={`object-cover transition ${
+                          isDeleting ? "opacity-50" : ""
+                        }`}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </section>
 

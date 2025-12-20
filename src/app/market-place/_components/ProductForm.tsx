@@ -177,6 +177,8 @@ const ProductForm = ({ categories }: ProductFormProps) => {
   };
 
   const deleteImage = async (key: string) => {
+    if (deletingKeys.has(key)) return;
+
     setDeletingKeys((prev) => new Set(prev).add(key));
 
     try {
