@@ -1,6 +1,6 @@
+import Footer from "@/components/layout/Footer";
 import SiteNavbar from "@/components/layout/Navbar";
 import { CurrentUser } from "@/lib/currentUser";
-import LazyFooter from "./LazyFooter";
 import { redirect } from "next/navigation";
 
 export default async function SiteLayout({
@@ -27,8 +27,8 @@ export default async function SiteLayout({
       {/* PAGE CONTENT */}
       <main className="flex-1 pt-16">{children}</main>
 
-      {/* LAZY FOOTER */}
-      <LazyFooter />
+      {/* FOOTER */}
+      <Footer />
     </div>
   );
 }
