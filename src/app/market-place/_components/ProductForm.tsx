@@ -501,13 +501,13 @@ Dual SIM`}
                     />
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-5">
-                    <PriceConverter
-                      onUSDChange={(usd) =>
-                        setValue(`variants.${index}.priceUSD`, usd)
-                      }
-                    />
+                  <PriceConverter
+                    onUSDChange={(usd) =>
+                      setValue(`variants.${index}.priceUSD`, usd)
+                    }
+                  />
 
+                  <div className="grid md:grid-cols-2 gap-5">
                     <FormField
                       control={control}
                       name={`variants.${index}.priceUSD`}

@@ -59,7 +59,7 @@ export default async function CategorySlugPage({ params }: Props) {
           All Categories
         </Link>
         {path.map((p) => (
-          <>
+          <div key={p.slug}>
             <span> / </span>
             <Link
               key={p.slug}
@@ -68,7 +68,7 @@ export default async function CategorySlugPage({ params }: Props) {
             >
               {p.name}
             </Link>
-          </>
+          </div>
         ))}
         <span>/</span>
         <span className="font-medium text-black">{category.name}</span>
