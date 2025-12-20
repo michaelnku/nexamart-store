@@ -6,8 +6,8 @@ export default async function CategoryPage() {
   const cats = await getHierarchicalCategories();
 
   return (
-    <main className="max-w-6xl mx-auto px-6 py-10 space-y-10">
-      <h1 className="text-3xl font-bold mb-6">Browse Categories</h1>
+    <main className="max-w-6xl mx-auto px-6 py-6 space-y-10">
+      <h1 className="text-2xl font-bold mb-6">Browse Categories</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
         {cats.map((cat) => (

@@ -3,6 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { Category } from "@/lib/types";
 import Image from "next/image";
 import Link from "next/link";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -14,67 +22,92 @@ export default async function CategorySlugPage({ params }: Props) {
   const category = await prisma.category.findUnique({
     where: { slug },
     include: {
-      children: true,
       parent: {
         include: {
           parent: true,
         },
       },
+      children: true,
     },
   });
 
   if (!category) return <p>Category not found</p>;
 
-  // fetch products under THIS category and all its sub-categories
+  const categoryIds = await getCategoryAndDescendantIds(category.id);
+
   const products = await prisma.product.findMany({
     where: {
       isPublished: true,
-      OR: [
-        { categoryId: category.id },
-        {
-          category: {
-            parentId: category.id,
-          },
-        },
-      ],
+      categoryId: {
+        in: categoryIds,
+      },
     },
-    include: { images: true, variants: true, store: true },
+    include: {
+      images: true,
+      variants: true,
+      store: true,
+    },
   });
 
   const path: { name: string; slug: string }[] = [];
-  let current = category as Category;
-  while (current.parentId) {
-    const parent = await prisma.category.findUnique({
-      where: { id: current.parentId },
+
+  if (category.parent?.parent) {
+    path.push({
+      name: category.parent.parent.name,
+      slug: category.parent.parent.slug,
     });
-    if (!parent) break;
-    path.unshift({ name: parent.name, slug: parent.slug });
-    current = parent;
+  }
+
+  if (category.parent) {
+    path.push({
+      name: category.parent.name,
+      slug: category.parent.slug,
+    });
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-10 space-y-12">
-      <nav className="text-sm text-gray-500 flex gap-1">
-        <Link href="/category" className="hover:underline">
-          All Categories
-        </Link>
-        {path.map((p) => (
-          <div key={p.slug}>
-            <span> / </span>
-            <Link
-              key={p.slug}
-              href={`/category/${p.slug}`}
-              className="hover:underline"
-            >
-              {p.name}
-            </Link>
-          </div>
-        ))}
-        <span>/</span>
-        <span className="font-medium text-black">{category.name}</span>
-      </nav>
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+      <Breadcrumb>
+        <BreadcrumbList className="flex-wrap text-sm">
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/category">All Categories</BreadcrumbLink>
+          </BreadcrumbItem>
 
-      {/* BANNER */}
+          {path.length > 1 && (
+            <BreadcrumbItem className="sm:hidden">
+              <BreadcrumbSeparator />
+              <span className="px-1">…</span>
+            </BreadcrumbItem>
+          )}
+
+          {path.map((p, index) => (
+            <BreadcrumbItem
+              key={p.slug}
+              className={path.length > 1 ? "hidden sm:flex" : ""}
+            >
+              <BreadcrumbSeparator />
+              <BreadcrumbLink
+                href={`/category/${p.slug}`}
+                className="truncate max-w-[160px]"
+                title={p.name}
+              >
+                {p.name}
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+          ))}
+
+          <BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbPage
+              className="truncate max-w-[180px]"
+              title={category.name}
+            >
+              {category.name}
+            </BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
       {category.bannerImage && (
         <div className="relative h-56 rounded-xl overflow-hidden">
           <Image
@@ -85,31 +118,41 @@ export default async function CategorySlugPage({ params }: Props) {
           />
         </div>
       )}
+      {/* Category Header */}
+      <section className="flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          {category.iconImage && (
+            <Image
+              src={category.iconImage}
+              alt={category.name}
+              width={48}
+              height={48}
+            />
+          )}
+          <h1 className="text-2xl sm:text-3xl font-bold">{category.name}</h1>
+        </div>
 
-      {/* TITLE + ICON */}
-      <header className="flex items-center gap-3">
-        {category.iconImage && (
-          <Image
-            src={category.iconImage}
-            alt={category.name}
-            width={50}
-            height={50}
-          />
-        )}
-        <h1 className="text-3xl font-bold">{category.name}</h1>
-      </header>
+        <p className="text-sm text-muted-foreground">
+          {products.length} product{products.length !== 1 && "s"} available
+        </p>
+      </section>
 
-      {/* SUBCATEGORIES */}
+      {/* Subcategories */}
       {category.children.length > 0 && (
-        <section className="space-y-5">
-          <h2 className="text-xl font-semibold">Explore Subcategories</h2>
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase text-muted-foreground">
+            Browse Subcategories
+          </h2>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="flex flex-wrap gap-2">
             {category.children.map((sub) => (
               <Link
                 key={sub.id}
                 href={`/category/${sub.slug}`}
-                className="border p-4 rounded-lg hover:shadow text-center font-medium"
+                className="
+                  px-4 py-2 rounded-full border text-sm font-medium
+                  hover:bg-muted transition
+                "
               >
                 {sub.name}
               </Link>
@@ -118,14 +161,22 @@ export default async function CategorySlugPage({ params }: Props) {
         </section>
       )}
 
-      {/* PRODUCTS */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">
-          {products.length > 0 ? "Products" : "No products found"}
-        </h2>
-
-        {products.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+      {/* Products Grid */}
+      <section className="space-y-6">
+        {products.length === 0 ? (
+          <div className="py-20 text-center text-muted-foreground">
+            No products found in this category.
+          </div>
+        ) : (
+          <div
+            className="
+            grid grid-cols-2 
+            sm:grid-cols-3 
+            md:grid-cols-4 
+            lg:grid-cols-5 
+            gap-4 sm:gap-6
+          "
+          >
             {products.map((p) => (
               <PublicProductCard key={p.id} product={p} isWishlisted={false} />
             ))}
@@ -134,4 +185,22 @@ export default async function CategorySlugPage({ params }: Props) {
       </section>
     </main>
   );
+}
+async function getCategoryAndDescendantIds(categoryId: string) {
+  const categories = await prisma.category.findMany({
+    where: {
+      OR: [
+        { id: categoryId },
+        { parentId: categoryId },
+        {
+          parent: {
+            parentId: categoryId,
+          },
+        },
+      ],
+    },
+    select: { id: true },
+  });
+
+  return categories.map((c) => c.id);
 }

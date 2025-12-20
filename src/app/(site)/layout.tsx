@@ -12,6 +12,7 @@ export default async function SiteLayout({
 
   if (
     user?.role === "SELLER" ||
+    user?.role === "RIDER" ||
     user?.role === "ADMIN" ||
     user?.role === "MODERATOR"
   ) {
