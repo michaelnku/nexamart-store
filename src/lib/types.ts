@@ -86,6 +86,7 @@ export type ProductCardType = Product & {
     size: string | null;
     priceUSD: number;
     oldPriceUSD?: number | null;
+    discount?: number | null;
     stock: number;
   }[];
 };

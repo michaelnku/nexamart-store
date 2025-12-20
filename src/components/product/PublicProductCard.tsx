@@ -17,17 +17,32 @@ export default function PublicProductCard({
   userId?: string | null;
   isWishlisted?: boolean;
 }) {
-  const priceUSD = product.basePriceUSD;
-  const oldPriceUSD = product.oldPriceUSD ?? null;
+  const cheapestVariant = useMemo(() => {
+    if (!product.variants?.length) return null;
+    return [...product.variants].sort((a, b) => a.priceUSD - b.priceUSD)[0];
+  }, [product.variants]);
+
+  const displayPriceUSD = useMemo(() => {
+    return cheapestVariant ? cheapestVariant.priceUSD : product.basePriceUSD;
+  }, [cheapestVariant, product.basePriceUSD]);
+
+  const displayOldPriceUSD = useMemo(() => {
+    if (!cheapestVariant) return null;
+    if (!cheapestVariant.discount || !(cheapestVariant.oldPriceUSD ?? 0))
+      return null;
+    return cheapestVariant.oldPriceUSD;
+  }, [cheapestVariant]);
 
   const discount = useMemo(() => {
-    if (!oldPriceUSD || oldPriceUSD <= priceUSD) return null;
-    return Math.round(((oldPriceUSD - priceUSD) / oldPriceUSD) * 100);
-  }, [priceUSD, oldPriceUSD]);
+    if (!cheapestVariant) return null;
+    return cheapestVariant.discount && cheapestVariant.discount > 0
+      ? cheapestVariant.discount
+      : null;
+  }, [cheapestVariant]);
 
   return (
     <div className="relative border rounded-xl bg-white dark:bg-neutral-950 shadow-sm hover:shadow-lg transition duration-300 group overflow-hidden">
-      {discount !== null && discount > 0 && (
+      {discount && (
         <span
           className="
                 absolute top-4 left-2 bg-[var(--brand-blue)] text-white text-xs
@@ -66,12 +81,12 @@ export default function PublicProductCard({
 
         <div className="flex items-baseline gap-2">
           <p className="font-semibold text-gray-900 dark:text-gray-500 text-sm">
-            {formatMoneyFromUSD(priceUSD)}
+            {formatMoneyFromUSD(displayPriceUSD)}
           </p>
 
-          {discount && oldPriceUSD && (
+          {discount && displayOldPriceUSD && (
             <p className="line-through text-gray-400 dark:text-gray-500 text-xs">
-              {formatMoneyFromUSD(oldPriceUSD)}
+              {formatMoneyFromUSD(displayOldPriceUSD)}
             </p>
           )}
         </div>
