@@ -12,6 +12,7 @@ import { DashboardMenu } from "@/constants/dashboard-menu";
 import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
 import { UserDTO } from "@/lib/types";
 import { useLogout } from "@/hooks/useLogout";
+import { VerifiedBadge } from "@/components/market-place/BadgeCounts";
 
 /* --------------------- SHARED SIDEBAR COMPONENT --------------------- */
 
@@ -27,7 +28,7 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
-  const role = user?.role as "SELLER" | "RIDER" | "ADMIN";
+  const role = user?.role as "SELLER" | "RIDER" | "ADMIN" | "MODERATOR";
   const menu = DashboardMenu[role] || [];
 
   const toggle = (title: string) =>
@@ -119,16 +120,22 @@ function SidebarContent({
               </div>
             )}
 
-            <div className="text-sm">
-              <p className="font-semibold">
-                {user?.name || user?.username || "My Account"}
-              </p>
-              <p className="text-xs text-gray-500 truncate max-w-[140px]">
-                {user?.email}
-              </p>
-              <span className="text-[10px] px-2 py-0.5 mt-1 bg-[var(--brand-blue-light)] text-[var(--brand-blue)] rounded uppercase inline-block font-semibold">
-                {user?.role}
-              </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold text-[15px] truncate">
+                  {user?.name || user?.username || "My Account"}
+                </p>
+
+                <VerifiedBadge />
+              </div>
+
+              <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+
+              {user?.role && (
+                <span className="inline-block mt-1 text-[10px] bg-[var(--brand-blue-light)] text-[var(--brand-blue)] px-2 py-[2px] rounded uppercase font-semibold">
+                  {user.role}
+                </span>
+              )}
             </div>
           </div>
 

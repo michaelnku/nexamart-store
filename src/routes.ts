@@ -1,5 +1,4 @@
 export const publicRoutes = [
-  "/",
   "/403",
   "/auth/forgot-password",
   "/auth/reset-password",
@@ -31,6 +30,8 @@ export const SELLER_LOGIN_REDIRECT = "/marketplace/dashboard/seller";
 export const RIDER_LOGIN_REDIRECT = "/marketplace/dashboard/rider";
 
 export const ADMIN_LOGIN_REDIRECT = "/marketplace/dashboard/admin";
+
+export const MODERATOR_LOGIN_REDIRECT = "/marketplace/dashboard/moderator";
 
 export const MARKET_PLACE_LOGIN_REDIRECT = "/marketplace/dashboard";
 

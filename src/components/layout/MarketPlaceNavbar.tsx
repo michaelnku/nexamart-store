@@ -83,7 +83,7 @@ export default function MarketPlaceNavbar({
     {
       icon: ShoppingBag,
       label: "Orders",
-      href: "/market-place/dashboard/seller/orders",
+      href: "/marketplace/dashboard/seller/orders",
     },
   ];
 
@@ -101,7 +101,7 @@ export default function MarketPlaceNavbar({
     {
       icon: FileChartColumn,
       label: "Moderation",
-      href: "/market-place/dashboard/moderator/reports",
+      href: "/marketplace/dashboard/moderator/reports",
     },
   ];
 
@@ -116,13 +116,13 @@ export default function MarketPlaceNavbar({
   const getHomePath = (role?: string) => {
     switch (role) {
       case "MODERATOR":
-        return "/market-place/dashboard/moderator";
+        return "/marketplace/dashboard/moderator";
       case "ADMIN":
-        return "/market-place/dashboard/admin";
+        return "/marketplace/dashboard/admin";
       case "SELLER":
-        return "/market-place/dashboard/seller";
+        return "/marketplace/dashboard/seller";
       case "RIDER":
-        return "/market-place/dashboard/rider";
+        return "/marketplace/dashboard/rider";
       default:
         return "/";
     }
@@ -182,9 +182,9 @@ export default function MarketPlaceNavbar({
           ))}
 
           <Link
-            href={"/market-place/dashboard/seller/notifications"}
+            href={"/marketplace/dashboard/seller/notifications"}
             className={`relative text-sm font-medium transition flex flex-col items-center ${
-              isActive("/market-place/dashboard/seller/notifications")
+              isActive("/marketplace/dashboard/seller/notifications")
                 ? "text-[var(--brand-blue)]"
                 : "text-gray-600 hover:text-[var(--brand-blue)]"
             }`}

@@ -12,28 +12,64 @@ import {
   SELLER_LOGIN_REDIRECT,
   moderatorRoutePrefix,
   sharedRoutes,
+  MODERATOR_LOGIN_REDIRECT,
 } from "@/routes";
 import authConfig from "./auth.config";
 
 const { auth: Middleware } = NextAuth(authConfig);
 
+const ROLE_DASHBOARD: Record<string, string> = {
+  ADMIN: ADMIN_LOGIN_REDIRECT,
+  SELLER: SELLER_LOGIN_REDIRECT,
+  RIDER: RIDER_LOGIN_REDIRECT,
+  MODERATOR: MODERATOR_LOGIN_REDIRECT,
+  USER: DEFAULT_LOGIN_REDIRECT,
+};
+
+const ROLE_PREFIX: Record<string, string> = {
+  ADMIN: adminRoutePrefix,
+  SELLER: sellerRoutePrefix,
+  RIDER: riderRoutePrefix,
+  MODERATOR: moderatorRoutePrefix,
+};
+
+const STAFF_ROLES = new Set(["ADMIN", "SELLER", "RIDER", "MODERATOR"]);
+
 export default Middleware((req) => {
   const { nextUrl } = req;
   const pathname = nextUrl.pathname;
+
   const isLoggedIn = !!req.auth;
   const role = req.auth?.user.role;
 
-  // const isPublicRoute = publicRoutes.includes(pathname);
+  const isApiAuthRoute = pathname.startsWith(apiAuthPrefix);
+  const isAuthRoute = authRoutes.includes(pathname);
   const isPublicRoute = publicRoutes.some(
     (route) => pathname === route || pathname.startsWith(route + "/")
   );
-  const isAuthRoute = authRoutes.includes(pathname);
-  const isApiAuthRoute = pathname.startsWith(apiAuthPrefix);
 
-  const isModeratorRoute = pathname.startsWith(moderatorRoutePrefix);
-  const isAdminRoute = pathname.startsWith(adminRoutePrefix);
-  const isSellerRoute = pathname.startsWith(sellerRoutePrefix);
-  const isRiderRoute = pathname.startsWith(riderRoutePrefix);
+  // STAFF MUST NEVER ACCESS "/"
+  if (
+    pathname === "/" &&
+    req.auth?.user?.role &&
+    req.auth.user.role !== "USER"
+  ) {
+    return Response.redirect(
+      new URL(ROLE_DASHBOARD[req.auth.user.role], nextUrl)
+    );
+  }
+
+  if (pathname.startsWith("/api/currency-rates")) {
+    return;
+  }
+  if (isApiAuthRoute) {
+    console.log("⏭ Skipping API Auth route\n");
+    return;
+  }
+  if (isPublicRoute) {
+    console.log("🌍 Public route → access allowed\n");
+    return;
+  }
 
   console.log("Middleware isLoggedIn:", !!req.auth);
 
@@ -48,98 +84,51 @@ export default Middleware((req) => {
     console.log("---------------------------");
   }
 
-  // ✅ Allow public currency API
-  if (pathname.startsWith("/api/currency-rates")) {
-    return;
-  }
-
-  // ✅ Skip all /api/auth/* routes
-  if (isApiAuthRoute) {
-    console.log("⏭ Skipping API Auth route\n");
-    return;
-  }
-
-  // ✅ ALWAYS allow public routes
-  if (isPublicRoute) {
-    console.log("🌍 Public route → access allowed\n");
-    return;
-  }
-
   //shared routes
   if (isLoggedIn && sharedRoutes.some((route) => pathname.startsWith(route))) {
     return;
   }
 
-  // ✅ If user is logged in and visits /login or /register → redirect to dashboard
-  if (isAuthRoute && isLoggedIn) {
-    if (req.auth?.user.role == "ADMIN")
-      return Response.redirect(new URL(ADMIN_LOGIN_REDIRECT, nextUrl));
-
-    if (req.auth?.user.role == "RIDER")
-      return Response.redirect(new URL(RIDER_LOGIN_REDIRECT, nextUrl));
-
-    if (req.auth?.user.role == "SELLER")
-      return Response.redirect(new URL(SELLER_LOGIN_REDIRECT, nextUrl));
-
-    console.log("🔁 Redirecting logged-in user away from auth route\n");
-    return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
+  //  If user is logged in and visits /login or /register → redirect to dashboard
+  if (isAuthRoute && isLoggedIn && role) {
+    return Response.redirect(new URL(ROLE_DASHBOARD[role], nextUrl));
   }
 
-  // ✅ If user is not logged in and visits a protected page → redirect to /login
+  //  If user is not logged in and visits a protected page → redirect to /login
   if (!isLoggedIn && !isPublicRoute && !isAuthRoute) {
     console.log("🚫 Not logged in → redirecting to /login\n");
     return Response.redirect(new URL("/auth/login", nextUrl));
   }
 
-  // 🚫 ROLE-BASED AUTHORIZATION (STRICT)
-  if (isLoggedIn) {
-    if (role === "USER") {
-      if (pathname.startsWith("/marketplace")) {
+  //  ROLE-BASED AUTHORIZATION (STRICT)
+  if (isLoggedIn && role) {
+    // USER cannot access marketplace dashboards
+    if (role === "USER" && pathname.startsWith("/marketplace")) {
+      return Response.redirect(new URL("/403", nextUrl));
+    }
+
+    // Staff cannot access "/"
+    if (pathname === "/" && STAFF_ROLES.has(role)) {
+      return Response.redirect(new URL("/403", nextUrl));
+    }
+
+    // Staff accessing wrong dashboard
+    if (ROLE_PREFIX[role]) {
+      const allowedPrefix = ROLE_PREFIX[role];
+
+      if (
+        !pathname.startsWith(allowedPrefix) &&
+        !pathname.startsWith("/marketplace")
+      ) {
         return Response.redirect(new URL("/403", nextUrl));
-      }
-    }
-
-    if (role === "ADMIN") {
-      if (!isAdminRoute) {
-        if (!pathname.startsWith("/marketplace")) {
-          return Response.redirect(new URL("/403", nextUrl));
-        }
-      }
-    }
-
-    if (role === "SELLER") {
-      if (!isSellerRoute) {
-        if (!pathname.startsWith("/marketplace")) {
-          return Response.redirect(new URL("/403", nextUrl));
-        }
-      }
-    }
-
-    if (role === "RIDER") {
-      if (!isRiderRoute) {
-        if (!pathname.startsWith("/marketplace")) {
-          return Response.redirect(new URL("/403", nextUrl));
-        }
-      }
-    }
-
-    if (role === "MODERATOR") {
-      if (!isModeratorRoute) {
-        if (!pathname.startsWith("/marketplace")) {
-          return Response.redirect(new URL("/403", nextUrl));
-        }
       }
     }
   }
 
-  // 🔁 Redirect logged-in users away from "/" based on role
+  //  ROLE-BASED HOME REDIRECT
   if (pathname === "/" && isLoggedIn) {
-    if (role === "ADMIN")
-      return Response.redirect(new URL(ADMIN_LOGIN_REDIRECT, nextUrl));
-    if (role === "SELLER")
-      return Response.redirect(new URL(SELLER_LOGIN_REDIRECT, nextUrl));
-    if (role === "RIDER")
-      return Response.redirect(new URL(RIDER_LOGIN_REDIRECT, nextUrl));
+    if (!role || role === "USER") return;
+    return Response.redirect(new URL(ROLE_DASHBOARD[role], nextUrl));
   }
 
   console.log("✅ Access allowed\n");

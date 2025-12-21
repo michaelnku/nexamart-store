@@ -1,11 +1,12 @@
-import { CurrentUser } from "@/lib/currentUser";
-import { RoleBasedPageContent } from "../../_components/RoleBasedPageContent";
+import { getSellerStats } from "@/actions/getSellerState";
+import SellerPage from "../../_components/SellerPage";
 
 const page = async () => {
-  const user = await CurrentUser();
+  const stats = await getSellerStats();
+
   return (
     <div>
-      <RoleBasedPageContent initialUser={user ?? null} />
+      <SellerPage stats={stats} />
     </div>
   );
 };

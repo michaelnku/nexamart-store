@@ -11,11 +11,11 @@ const symbols: Record<string, string> = {
   CAD: "$",
 };
 
-export function formatMoneyFromUSD(amountUSD: number, currency: string) {
+export function formatMoney(amount: number, currency: string) {
   const locale = CURRENCY_LOCALE[currency] ?? "en-US";
-  const decimals = CURRENCY_PRECISION[currency] ?? 2;
+  const decimals = CURRENCY_PRECISION[currency] ?? 0;
 
-  return `${symbols[currency] ?? ""}${amountUSD.toLocaleString(locale, {
+  return `${symbols[currency] ?? ""}${amount.toLocaleString(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })}`;
