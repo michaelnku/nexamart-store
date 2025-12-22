@@ -46,7 +46,9 @@ export default function SellerPage({ stats }: { stats: SellerStats }) {
     <main className="space-y-8">
       {/* HEADER */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Seller Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Dashboard Overview
+        </h1>
         <p className="text-sm text-gray-500">
           Welcome back — monitor sales and manage your store
         </p>

@@ -1,7 +1,5 @@
 "use client";
 
-import BuyerPage from "./BuyerPage";
-import AdminPage from "./AdminPage";
 import RiderPage from "./RiderPage";
 import { UserDTO } from "@/lib/types";
 import { useCurrentUserQuery } from "@/stores/useGetCurrentUserQuery";
@@ -25,7 +23,6 @@ const RoleBasedPageContent = ({ initialUser }: Props) => {
 
   return (
     <div>
-      {user?.role === "USER" && <BuyerPage />}
       {user?.role === "RIDER" && <RiderPage />}
       {/* {user?.role === "MODERATOR" && <AdminPage />} */}
     </div>

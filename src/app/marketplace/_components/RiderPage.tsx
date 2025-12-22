@@ -39,7 +39,7 @@ const RiderPage = () => {
         {/* Header */}
         <header className="mb-8">
           <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
-            Overview
+            Dashboard Overview
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Welcome back! Track your active deliveries, daily performance, and
