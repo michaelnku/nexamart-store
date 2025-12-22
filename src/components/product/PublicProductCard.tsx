@@ -43,7 +43,7 @@ export default function PublicProductCard({
   }, [cheapestVariant]);
 
   return (
-    <div className="relative border rounded-xl bg-white dark:bg-neutral-950 shadow-sm hover:shadow-lg transition duration-300 group overflow-hidden">
+    <div className="relative border rounded-xl bg-white dark:bg-neutral-900 shadow-sm hover:shadow-lg transition duration-300 group overflow-hidden">
       {discount && (
         <span
           className="

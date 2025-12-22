@@ -1,3 +1,4 @@
+//category showcase
 "use client";
 
 import { Category } from "@/lib/types";
@@ -8,7 +9,7 @@ import {
   HoverCardTrigger,
   HoverCardContent,
 } from "@/components/ui/hover-card";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 
 type Props = { categories: Category[] };
 
@@ -30,7 +31,7 @@ export default function CategoryShowcase({ categories }: Props) {
           href="/category"
           className="text-[var(--brand-blue)] hover:bg-gray-100 rounded-full px-2 py-2"
         >
-          <ArrowRight />
+          <ChevronRight />
         </Link>
       </div>
 

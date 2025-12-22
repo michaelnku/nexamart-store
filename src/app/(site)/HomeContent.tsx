@@ -1,19 +1,17 @@
+//my homecontent
 import ProductRow from "@/components/home/ProductRow";
-import HeroBanner from "@/components/home/HeroBanner";
-import CategoryShowcase from "@/components/home/CategoryShowcase";
 import { CurrentUser } from "@/lib/currentUser";
 import { Suspense } from "react";
 import ProductRowSkeleton from "@/components/skeletons/ProductRowSkeleton";
-import { getStructuredCategories } from "@/components/helper/getCategories";
-
+import Hero from "@/components/hero/Hero";
 export default async function HomeContent() {
   const user = await CurrentUser();
-  const categories = await getStructuredCategories();
 
   return (
     <>
-      <HeroBanner />
-      <CategoryShowcase categories={categories} />
+      <Hero />
+
+      <div className="h-px bg-border my-6" />
 
       <Suspense fallback={<ProductRowSkeleton title="Latest Arrivals" />}>
         <ProductRow title="Latest Arrivals" type="latest" autoplay />

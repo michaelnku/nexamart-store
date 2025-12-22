@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const banners = [
@@ -14,24 +14,45 @@ export default function HeroBanner() {
   const next = () => setIndex((i) => (i + 1) % banners.length);
   const prev = () => setIndex((i) => (i - 1 + banners.length) % banners.length);
 
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % banners.length);
+    }, 6000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
-    <div className="relative h-[350px] w-full rounded-xl overflow-hidden shadow">
+    <div
+      className="
+        relative w-full h-full
+        rounded-xl overflow-hidden shadow-sm
+        dark:bg-neutral-900
+      "
+    >
       <Image
         src={banners[index]}
-        alt="banner"
+        alt="Promotional banner"
         fill
+        priority
+        sizes="(min-width: 1024px) 75vw, 100vw"
         className="object-cover transition duration-500"
-        loading="lazy"
       />
+
       <button
+        aria-label="Previous banner"
         onClick={prev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white"
+        className="absolute left-3 top-1/2 -translate-y-1/2
+                   p-2 rounded-full bg-black/40 hover:bg-black/60 text-white"
       >
         <ChevronLeft />
       </button>
+
       <button
+        aria-label="Next banner"
         onClick={next}
-        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white"
+        className="absolute right-3 top-1/2 -translate-y-1/2
+                   p-2 rounded-full bg-black/40 hover:bg-black/60 text-white"
       >
         <ChevronRight />
       </button>
