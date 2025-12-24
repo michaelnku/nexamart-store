@@ -7,7 +7,7 @@ export const publicRoutes = [
   "/category",
   "/product/:slug",
   "/search",
-  "/product",
+  "/products",
 ];
 
 export const authRoutes = [
