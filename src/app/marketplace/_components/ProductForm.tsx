@@ -712,7 +712,7 @@ Dual SIM`}
 
                   toast.success("Images uploaded");
                 }}
-                className="ut-button:bg-[var(--brand-blue)] ut-button:text-white ut-button:rounded-lg"
+                className="ut-button:bg-[var(--brand-blue)] ut-button:px-8 ut-button:text-white ut-button:rounded-lg"
               />
 
               <div className="flex flex-wrap gap-4">
