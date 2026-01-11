@@ -169,7 +169,7 @@ const ProductForm = ({ categories }: ProductFormProps) => {
         }
 
         toast.success("Product created successfully");
-        router.push("/market-place/dashboard/seller/products");
+        router.push("/marketplace/dashboard/seller/products");
       } catch {
         toast.error("Something went wrong");
       }
@@ -712,7 +712,17 @@ Dual SIM`}
 
                   toast.success("Images uploaded");
                 }}
-                className="ut-button:bg-[var(--brand-blue)] ut-button:px-8 ut-button:text-white ut-button:rounded-lg"
+                className="
+ ut-button:bg-[var(--brand-blue)]
+    ut-button:text-white
+    ut-button:border
+    ut-button:border-blue-500/30
+    ut-button:rounded-full
+    ut-button:px-6
+    ut-button:py-2
+    ut-button:text-sm
+    hover:ut-button:bg-blue-500/20
+  "
               />
 
               <div className="flex flex-wrap gap-4">
