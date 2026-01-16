@@ -6,12 +6,19 @@ import {
   loggedInUserSchemaType,
   registerSchemaType,
   registerSchema,
+  changePasswordSchema,
+  ChangePasswordSchemaType,
+  updateUserSchema,
+  updateUserSchemaType,
 } from "@/lib/zodValidation";
 import bcrypt from "bcryptjs";
 import { getUserByEmail } from "@/components/helper/data";
 import { signIn } from "@/auth/auth";
 import { AuthError } from "next-auth";
 import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
+import { Prisma } from "@/generated/prisma";
+import { CurrentUser } from "@/lib/currentUser";
+import { revalidatePath } from "next/cache";
 
 export const createUser = async (values: registerSchemaType) => {
   try {
@@ -86,3 +93,88 @@ export const loggedInUser = async (values: loggedInUserSchemaType) => {
 
   //if all checks proceed with user login
 };
+
+//update user profile action
+export async function updateUserProfile(values: updateUserSchemaType) {
+  const parsed = updateUserSchema.safeParse(values);
+  if (!parsed.success) {
+    return { error: "Invalid profile data" };
+  }
+
+  const { name, username, profileAvatar } = parsed.data;
+
+  const user = await CurrentUser();
+  if (!user) return { error: "Unauthorized" };
+
+  if (username) {
+    const existing = await prisma.user.findFirst({
+      where: {
+        username,
+        NOT: { id: user.id },
+      },
+    });
+
+    if (existing) {
+      return { error: "Username already taken" };
+    }
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      name,
+      username,
+      profileAvatar:
+        profileAvatar === undefined
+          ? undefined
+          : profileAvatar === null
+          ? Prisma.JsonNull
+          : profileAvatar,
+    },
+  });
+
+  revalidatePath("/dashboard/profile");
+
+  return { success: true };
+}
+
+//password change action
+export async function changePassword(values: ChangePasswordSchemaType) {
+  const parsed = changePasswordSchema.safeParse(values);
+  if (!parsed.success) {
+    return { error: "Invalid password data" };
+  }
+
+  const { currentPassword, newPassword } = parsed.data;
+
+  const user = await CurrentUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { password: true },
+  });
+
+  if (!dbUser?.password) {
+    return {
+      error: "Password change not available for this account",
+    };
+  }
+
+  const isValid = await bcrypt.compare(currentPassword, dbUser.password);
+
+  if (!isValid) {
+    return { error: "Current password is incorrect" };
+  }
+
+  const hashed = await bcrypt.hash(newPassword, 12);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: hashed,
+    },
+  });
+
+  return { success: true };
+}

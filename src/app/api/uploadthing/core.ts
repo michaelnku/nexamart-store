@@ -12,7 +12,7 @@ const handleAuth = async () => {
 };
 
 export const ourFileRouter = {
-  profileImage: f({
+  profileAvatar: f({
     image: {
       maxFileSize: "4MB",
       maxFileCount: 1,
