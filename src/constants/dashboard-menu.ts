@@ -19,6 +19,12 @@ import {
   ShieldCheck,
   AlertTriangle,
   Eye,
+  Heart,
+  HistoryIcon,
+  Mail,
+  ShoppingCartIcon,
+  StoreIcon,
+  Ticket,
 } from "lucide-react";
 
 export const DashboardMenu = {
@@ -253,5 +259,44 @@ export const DashboardMenu = {
         },
       ],
     },
+  ],
+} as const;
+
+export const DashboardMenuItems = {
+  USER: [
+    { href: "/help", icon: HelpCircle, label: "Help Center" },
+    {
+      href: "/customer/order/history",
+      icon: ShoppingBag,
+      label: "Orders",
+    },
+    {
+      href: "/customer/order/track",
+      icon: Package,
+      label: "Track Order",
+    },
+    {
+      href: "/customer/wishlist",
+      icon: Heart,
+      label: "Wishlist",
+    },
+    {
+      href: "/customer/cart",
+      icon: ShoppingCartIcon,
+      label: "Cart",
+    },
+    {
+      href: "/customer/voucher",
+      icon: Ticket,
+      label: "Voucher",
+    },
+    { href: "/customer/inbox", icon: Mail, label: "Inbox" },
+    {
+      href: "/customer/followed-seller",
+      icon: StoreIcon,
+      label: "Followed Sellers",
+    },
+    { href: "/customer/history", icon: HistoryIcon, label: "Recently Viewed" },
+    { href: "/settings", icon: Settings, label: "Settings" },
   ],
 } as const;

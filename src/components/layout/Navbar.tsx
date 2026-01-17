@@ -6,19 +6,13 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   User,
-  HelpCircle,
   LogOut,
-  ShoppingBag,
   Heart,
   Ticket,
   Package,
   Mail,
   ChevronDown,
   Menu,
-  StoreIcon,
-  HistoryIcon,
-  Settings,
-  ShoppingCartIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,43 +35,7 @@ import { UserDTO } from "@/lib/types";
 import { ModeToggle } from "./ModeToggle";
 import { SiteSearch } from "../search/SiteSearch";
 import { MobileSearchSheet } from "../search/MobileSearchSheet";
-
-const menuItems = [
-  { href: "/help", icon: HelpCircle, label: "Help Center" },
-  {
-    href: "/customer/order/history",
-    icon: ShoppingBag,
-    label: "Orders",
-  },
-  {
-    href: "/customer/order/track",
-    icon: Package,
-    label: "Track Order",
-  },
-  {
-    href: "/customer/wishlist",
-    icon: Heart,
-    label: "Wishlist",
-  },
-  {
-    href: "/customer/cart",
-    icon: ShoppingCartIcon,
-    label: "Cart",
-  },
-  {
-    href: "/customer/voucher",
-    icon: Ticket,
-    label: "Voucher",
-  },
-  { href: "/customer/inbox", icon: Mail, label: "Inbox" },
-  {
-    href: "/customer/followed-seller",
-    icon: StoreIcon,
-    label: "Followed Sellers",
-  },
-  { href: "/customer/history", icon: HistoryIcon, label: "Recently Viewed" },
-  { href: "/customer/settings", icon: Settings, label: "Settings" },
-];
+import { DashboardMenuItems } from "@/constants/dashboard-menu";
 
 export default function SiteNavbar({
   initialUser,
@@ -92,6 +50,9 @@ export default function SiteNavbar({
   const { data: user } = useCurrentUserQuery(initialUser);
 
   const logout = useLogout();
+
+  const role = user?.role as "USER";
+  const menuItems = DashboardMenuItems[role] || [];
 
   return (
     <nav>
@@ -166,7 +127,7 @@ export default function SiteNavbar({
                 {user && (
                   <DropdownMenuItem asChild>
                     <Link
-                      href="/customer/account"
+                      href="/profile"
                       className={`border-b flex gap-2 w-full px-2 py-1.5 rounded-md transition
         ${
           pathname === "/customer/account"
@@ -365,11 +326,11 @@ export default function SiteNavbar({
 
                   {user && (
                     <Link
-                      href="/customer/account"
+                      href="/profile"
                       className={`
                 flex items-center gap-3 py-3 px-4 rounded-md text-sm font-medium transition
                 ${
-                  pathname === "/customer/account"
+                  pathname === "/profile"
                     ? "bg-[#3c9ee0]/15 text-[#3c9ee0] border-l-4 border-[#3c9ee0] font-semibold"
                     : "hover:bg-muted text-muted-foreground hover:text-foreground"
                 }
