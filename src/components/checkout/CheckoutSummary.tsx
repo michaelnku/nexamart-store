@@ -15,7 +15,7 @@ import {
 import AddressForm from "./AddressForm";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Loader2 } from "lucide-react";
-import ky from "ky";
+import axios from "axios";
 import { useCartStore } from "@/stores/useCartstore";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
@@ -159,32 +159,29 @@ export default function CheckoutSummary({ cart, address }: Props) {
     );
 
   const onCheckout = async () => {
+    if (!user?.id) {
+      toast.error("You must be logged in to checkout.");
+      return;
+    }
+
     setIsLoading(true);
+
     try {
-      const response = await ky
-        .post("/api/checkout", {
-          json: {
-            cartItems: items.map((item) => ({
-              productId: item.productId,
-              variantId: item.variantId ?? null,
-              quantity: item.quantity,
-            })),
-            userId: user?.id,
-            deliveryType,
-            distanceInMiles: address?.distanceInMiles ?? 0,
-            deliveryAddress: address
-              ? `${address.street}, ${address.city}, ${address.state}, ${address.country}`
-              : null,
-          },
-        })
-        .json<{ url: string }>();
+      const { data } = await axios.post<{ url: string }>("/api/checkout", {
+        cartItems: items.map((item) => ({
+          productId: item.productId,
+          variantId: item.variantId ?? null,
+          quantity: item.quantity,
+        })),
+        userId: user.id,
+        deliveryType,
+        distanceInMiles: address?.distanceInMiles ?? 0,
+        deliveryAddress: address
+          ? `${address.street}, ${address.city}, ${address.state}, ${address.country}`
+          : null,
+      });
 
-      if (!user?.id) {
-        toast.error("You must be logged in to checkout.");
-        return;
-      }
-
-      window.location.href = response.url;
+      window.location.href = data.url;
     } catch (error) {
       console.error(error);
       toast.error("Checkout failed. Try again.");
