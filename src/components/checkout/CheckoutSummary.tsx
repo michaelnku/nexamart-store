@@ -106,6 +106,8 @@ export default function CheckoutSummary({ cart, address }: Props) {
     [cart.items],
   );
 
+  const approxUSD = currency !== "USD" ? subtotalUSD : null;
+
   const shippingUSD = useMemo(() => {
     if (!address) return null;
 
@@ -299,7 +301,6 @@ export default function CheckoutSummary({ cart, address }: Props) {
                 <span>Items subtotal</span>
                 <span>{formatMoneyFromUSD(subtotalUSD)}</span>
               </div>
-
               <div className="flex justify-between">
                 <span>Shipping</span>
                 <span>
@@ -311,7 +312,17 @@ export default function CheckoutSummary({ cart, address }: Props) {
 
               <div className="flex justify-between text-lg font-bold text-black">
                 <span>Total</span>
-                <span>{formatMoneyFromUSD(totalUSD)}</span>
+                <div className="space-y-1">
+                  <span className="font-semibold">
+                    {formatMoneyFromUSD(subtotalUSD)}
+                  </span>
+
+                  {approxUSD && (
+                    <p className="text-xs text-muted-foreground italics">
+                      ≈ ${approxUSD.toFixed(2)} USD
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
