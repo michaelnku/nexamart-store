@@ -5,7 +5,7 @@ import { clearUserCartAction } from "@/actions/checkout/clearCart";
 import { useCartStore } from "@/stores/useCartstore";
 
 export function ClearCartOnSuccess() {
-  const clearLocalCart = useCartStore((s) => s.clear);
+  const clearLocalCart = useCartStore((s) => s.clearCart);
 
   useEffect(() => {
     async function clearCart() {

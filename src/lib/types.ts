@@ -40,6 +40,103 @@ export type Category = {
   color?: string | null;
 };
 
+export type OrderItemDTO = {
+  id: string;
+  quantity: number;
+  price: number;
+
+  product: {
+    id: string;
+    name: string;
+    images: {
+      imageUrl: string;
+    }[];
+  };
+
+  variant?: {
+    id: string;
+    color?: string | null;
+    size?: string | null;
+  } | null;
+};
+
+export type OrderSummaryDTO = {
+  id: string;
+  deliveryType: string;
+  totalAmount: number;
+  shippingFee: number;
+
+  items: OrderItemDTO[];
+};
+
+export type OrderHistoryItemDTO = {
+  id: string;
+  createdAt: string;
+  status: string;
+  totalAmount: number;
+
+  items: {
+    id: string;
+    quantity: number;
+
+    product: {
+      name: string;
+      images: {
+        imageUrl: string;
+      }[];
+    };
+  }[];
+};
+
+export type OrderHistoryDTO = OrderHistoryItemDTO[];
+
+export type OrderDetailItemDTO = {
+  id: string;
+  quantity: number;
+  price: number;
+
+  product: {
+    name: string;
+    images: { imageUrl: string }[];
+  };
+
+  variant?: {
+    color?: string | null;
+    size?: string | null;
+  } | null;
+};
+
+export type OrderSellerGroupDTO = {
+  id: string;
+  status: string;
+  subtotal: number;
+
+  store: {
+    name: string;
+    slug?: string | null;
+  };
+
+  items: OrderDetailItemDTO[];
+};
+
+export type OrderDetailDTO = {
+  id: string;
+  status: string;
+  deliveryType: string;
+  deliveryAddress?: string | null;
+  paymentMethod?: string | null;
+  shippingFee: number;
+  totalAmount: number;
+  createdAt: string;
+
+  customer: {
+    name: string | null;
+    email: string;
+  };
+
+  sellerGroups: OrderSellerGroupDTO[];
+};
+
 export type CheckoutCartItem = {
   productId: string;
   variantId: string | null;
