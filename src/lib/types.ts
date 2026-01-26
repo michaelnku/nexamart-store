@@ -1,5 +1,4 @@
 import {
-  CartItem,
   Product,
   ProductImage,
   ProductVariant,
@@ -41,8 +40,43 @@ export type Category = {
   color?: string | null;
 };
 
+export type CheckoutCartItem = {
+  productId: string;
+  variantId: string | null;
+  quantity: number;
+};
+
+export type CheckoutPayload = {
+  cartItems: CheckoutCartItem[];
+  userId: string;
+  deliveryType: "HOME_DELIVERY" | "STATION_PICKUP" | "EXPRESS" | "STORE_PICKUP";
+  distanceInMiles?: number;
+  deliveryAddress?: string | null;
+};
+
+export interface CartItemDTO {
+  id: string;
+  productId: string;
+  variantId: string | null;
+  quantity: number;
+
+  product: {
+    id: string;
+    name: string;
+    basePriceUSD: number;
+    images: { imageUrl: string }[];
+  };
+
+  variant?: {
+    id: string;
+    priceUSD: number;
+    color?: string | null;
+    size?: string | null;
+  } | null;
+}
+
 export type FullCart = {
-  items: (CartItem & {
+  items: (CartItemDTO & {
     product: {
       id: string;
       name: string;
