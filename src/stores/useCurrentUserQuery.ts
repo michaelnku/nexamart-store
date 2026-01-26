@@ -10,12 +10,11 @@ export function useCurrentUserQuery(initialUser?: UserDTO | null) {
       const res = await fetch("/api/current-user", { credentials: "include" });
 
       if (!res.ok) return null;
-      const data = await res.json();
-      return (data as UserDTO) ?? null;
+      return (await res.json()) as UserDTO;
     },
-    initialData: initialUser ?? null,
+    initialData: initialUser,
     staleTime: 1000 * 60 * 5,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
   });

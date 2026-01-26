@@ -6,6 +6,11 @@ import { prisma } from "@/lib/prisma";
 import authConfig from "./auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
+
+  adapter: PrismaAdapter(prisma),
+  session: { strategy: "jwt" },
+
   callbacks: {
     async session({ token, session }) {
       if (token.sub && session.user) {
@@ -29,7 +34,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
   },
-  adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+
   ...authConfig,
 });
