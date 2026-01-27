@@ -167,14 +167,21 @@ const OrderTrackCard = ({ order }: Props) => {
           </p>
 
           <div className="text-xs text-gray-700 space-y-1 pt-2">
+            {order.paymentMethod && (
+              <p>
+                <span className="font-semibold text-[#3c9ee0]">
+                  Payment Method:
+                </span>{" "}
+                {order.paymentMethod === "CARD"
+                  ? "Card Payment"
+                  : order.paymentMethod === "WALLET"
+                    ? "Wallet"
+                    : order.paymentMethod}
+              </p>
+            )}
+
             <p>
-              Payment:{" "}
-              <span className="font-semibold text-[#3c9ee0]">
-                {order.paymentMethod?.replaceAll("_", " ") ?? "-"}
-              </span>
-            </p>
-            <p>
-              Type:{" "}
+              Delivery Type:{" "}
               <span className="font-semibold text-[#3c9ee0]">
                 {order.deliveryType.replace("_", " ")}
               </span>

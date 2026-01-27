@@ -347,9 +347,9 @@ model Order {
   userId  String
   riderId String?
 
-  status          OrderStatus  @default(PENDING)
-  paymentMethod   String?
-  deliveryType    DeliveryType @default(HOME_DELIVERY)
+  status          OrderStatus    @default(PENDING)
+  paymentMethod   PaymentMethod?
+  deliveryType    DeliveryType   @default(HOME_DELIVERY)
   deliveryAddress String?
   phone           String?
   // trackingNumber String  @unique
@@ -383,6 +383,11 @@ model Order {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+enum PaymentMethod {
+  CARD
+  WALLET
 }
 
 /**
