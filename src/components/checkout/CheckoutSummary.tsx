@@ -354,17 +354,18 @@ export default function CheckoutSummary({ cart, address }: Props) {
               </Button>
               <Button
                 onClick={() => handlePlaceOrder("WALLET")}
+                variant={"outline"}
                 disabled={!canPayWithWallet || pending}
                 className={`py-6 font-semibold rounded-lg ${
                   canPayWithWallet
-                    ? "bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white"
+                    ? ""
                     : "bg-gray-200 text-gray-500 cursor-not-allowed"
                 }`}
               >
                 {pending ? (
                   <Loader2 className="animate-spin" />
                 ) : wallet?.balance === 0 ? (
-                  "Wallet Balance is 0"
+                  "Wallet Balance is $0.00"
                 ) : wallet && wallet.balance < totalUSD ? (
                   "Insufficient Wallet Balance"
                 ) : (
