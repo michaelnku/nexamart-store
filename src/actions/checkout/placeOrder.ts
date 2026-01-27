@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
-import { DeliveryType } from "@/generated/prisma/client";
+import { DeliveryType, PaymentMethod } from "@/generated/prisma/client";
 
 export const placeOrderAction = async ({
   deliveryAddress,
@@ -11,7 +11,7 @@ export const placeOrderAction = async ({
   distanceInMiles,
 }: {
   deliveryAddress: string;
-  paymentMethod: "PAY_ON_DELIVERY" | "PAY_WITH_WALLET";
+  paymentMethod: PaymentMethod;
   deliveryType: DeliveryType;
   distanceInMiles?: number;
 }) => {
@@ -40,7 +40,7 @@ export const placeOrderAction = async ({
     (sum, item) =>
       sum +
       item.quantity * (item.variant?.priceUSD ?? item.product.basePriceUSD),
-    0
+    0,
   );
 
   const miles = distanceInMiles ?? 0;
@@ -52,7 +52,7 @@ export const placeOrderAction = async ({
   const totalAmount = subtotal + shippingFee;
 
   const result = await prisma.$transaction(async (tx) => {
-    if (paymentMethod === "PAY_WITH_WALLET") {
+    if (paymentMethod === "WALLET") {
       const wallet = await tx.wallet.findUnique({ where: { userId } });
       if (!wallet) return { error: "Wallet not found" };
       if (wallet.balance < totalAmount)

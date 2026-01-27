@@ -20,6 +20,7 @@ import { useCartStore } from "@/stores/useCartstore";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { useCurrencyStore } from "@/stores/useCurrencyStore";
+import { useQuery } from "@tanstack/react-query";
 
 const deliveryMethod = [
   {
@@ -74,6 +75,8 @@ type CheckoutAddress = {
   distanceInMiles?: number;
 };
 
+type PaymentMethod = "CARD" | "WALLET";
+
 type Props = {
   cart: CheckoutCart;
   address: CheckoutAddress | null;
@@ -95,6 +98,15 @@ export default function CheckoutSummary({ cart, address }: Props) {
   >("HOME_DELIVERY");
 
   const items = useCartStore((state) => state.items);
+
+  const { data: wallet } = useQuery({
+    queryKey: ["wallet"],
+    queryFn: async () => {
+      const res = await fetch("/api/wallet");
+      if (!res.ok) return null;
+      return res.json() as Promise<{ balance: number }>;
+    },
+  });
 
   const subtotalUSD = useMemo(
     () =>
@@ -124,30 +136,31 @@ export default function CheckoutSummary({ cart, address }: Props) {
 
   const totalUSD = subtotalUSD + (shippingUSD ?? 0);
 
-  const handlePlaceOrder = (
-    paymentMethod: "PAY_ON_DELIVERY" | "PAY_WITH_WALLET",
-  ) => {
+  const canPayWithWallet =
+    wallet && wallet.balance > 0 && wallet.balance >= totalUSD;
+
+  const handlePlaceOrder = (paymentMethod: PaymentMethod) => {
     if (!address && deliveryType !== "STORE_PICKUP") {
       toast.error("Add a delivery address first");
       return;
     }
 
-    startTransition(() => {
-      (async () => {
-        const res = await placeOrderAction({
-          deliveryAddress: ` ${address?.street}, ${address?.city}, ${address?.state}`,
-          paymentMethod,
-          deliveryType,
-          distanceInMiles: address?.distanceInMiles ?? 0,
-        });
-        if ("error" in res) {
-          toast.error(res.error);
-          return;
-        }
-        useCartStore.getState().clearCart();
-        toast.success("Order placed successfully!");
-        router.push(`/customer/order/success/${res.orderId}`);
-      })();
+    startTransition(async () => {
+      const res = await placeOrderAction({
+        deliveryAddress: `${address?.street}, ${address?.city}, ${address?.state}`,
+        paymentMethod,
+        deliveryType,
+        distanceInMiles: address?.distanceInMiles ?? 0,
+      });
+
+      if ("error" in res) {
+        toast.error(res.error);
+        return;
+      }
+
+      useCartStore.getState().clearCart();
+      toast.success("Order placed successfully!");
+      router.push(`/customer/order/success/${res.orderId}`);
     });
   };
 
@@ -175,6 +188,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
             deliveryAddress: address
               ? `${address.street}, ${address.city}, ${address.state}, ${address.country}`
               : null,
+            paymentMethod: "CARD",
           },
         })
         .json<{ url: string }>();
@@ -328,17 +342,6 @@ export default function CheckoutSummary({ cart, address }: Props) {
 
             <div className="grid grid-cols-2 gap-2">
               <Button
-                onClick={() => handlePlaceOrder("PAY_WITH_WALLET")}
-                disabled={pending}
-                className="py-6 hidden bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white font-semibold rounded-lg"
-              >
-                {pending ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  "Pay with Wallet"
-                )}
-              </Button>
-              <Button
                 onClick={onCheckout}
                 disabled={isLoading}
                 className="py-6 bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white font-semibold rounded-lg"
@@ -349,13 +352,24 @@ export default function CheckoutSummary({ cart, address }: Props) {
                   "Pay with Card"
                 )}
               </Button>
-
               <Button
-                onClick={() => handlePlaceOrder("PAY_ON_DELIVERY")}
-                disabled
-                className="py-6 bg-gray-200 text-gray-500 font-semibold rounded-lg cursor-not-allowed"
+                onClick={() => handlePlaceOrder("WALLET")}
+                disabled={!canPayWithWallet || pending}
+                className={`py-6 font-semibold rounded-lg ${
+                  canPayWithWallet
+                    ? "bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white"
+                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                }`}
               >
-                Pay on Delivery
+                {pending ? (
+                  <Loader2 className="animate-spin" />
+                ) : wallet?.balance === 0 ? (
+                  "Wallet Balance is 0"
+                ) : wallet && wallet.balance < totalUSD ? (
+                  "Insufficient Wallet Balance"
+                ) : (
+                  "Pay with Wallet"
+                )}
               </Button>
             </div>
 
