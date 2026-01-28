@@ -35,7 +35,7 @@ const accountLinks = [
     icon: StoreIcon,
   },
   { name: "Recently Viewed", href: "/customer/history", icon: HistoryIcon },
-  { name: "Settings", href: "/customer/settings", icon: Settings },
+  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;

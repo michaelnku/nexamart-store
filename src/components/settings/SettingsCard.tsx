@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import { Card } from "../ui/card";
 
 type Props = {
   title: string;
@@ -9,9 +9,11 @@ type Props = {
 
 export default function SettingsCard({ title, children }: Props) {
   return (
-    <div className="bg-white border rounded-xl p-6 shadow-sm space-y-4">
-      <h2 className="text-lg font-semibold text-[#3c9ee0]">{title}</h2>
-      {children}
-    </div>
+    <Card className="rounded-xl shadow-sm">
+      <div className="px-6 pt-5 pb-2">
+        <h2 className="text-lg font-semibold text-[#3c9ee0]">{title}</h2>
+      </div>
+      <div className="px-6 pb-6">{children}</div>
+    </Card>
   );
 }

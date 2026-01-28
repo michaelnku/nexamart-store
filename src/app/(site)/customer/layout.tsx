@@ -10,7 +10,7 @@ export default async function CustomerLayout({
   const user = await CurrentUser();
 
   if (!user) redirect("/auth/login");
-  if (user.role !== "USER") redirect("/market-place/dashboard");
+  if (user.role !== "USER") redirect("/marketplace/dashboard");
 
   return (
     <div className="h-screen overflow-hidden flex bg-background">

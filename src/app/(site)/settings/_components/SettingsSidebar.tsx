@@ -1,20 +1,13 @@
 "use client";
 
-const settingsNav = [
-  { key: "account", label: "Account Information" },
-  { key: "addresses", label: "Addresses" },
-  { key: "wallet", label: "Payments & Wallet" },
-  { key: "preferences", label: "Preferences" },
-  { key: "security", label: "Security" },
-];
+import { settingsNav } from "@/constants/settingsNav";
 
-export default function SettingsSidebar({
-  active,
-  onChange,
-}: {
+type Props = {
   active: string;
   onChange: (key: string) => void;
-}) {
+};
+
+export default function SettingsSidebar({ active, onChange }: Props) {
   return (
     <aside className="hidden md:block w-64 shrink-0 border-r bg-white hidden md:block">
       <ul className="p-4 space-y-1">
