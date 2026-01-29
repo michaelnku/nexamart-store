@@ -27,6 +27,13 @@ import {
   deleteProfileAvatarAction,
   updateUserProfile,
 } from "@/actions/auth/user";
+import { Eye } from "lucide-react";
+import Link from "next/link";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type Props = {
   userData: UserDTO;
@@ -100,8 +107,22 @@ export default function ProfileForm({ userData }: Props) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex items-center justify-between">
         <CardTitle>Profile Information</CardTitle>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href={"/profile"}
+              className="text-[var(--brand-blue)] hover:text-[var(--brand-blue-hover)]"
+            >
+              <Eye />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Profile</p>
+          </TooltipContent>
+        </Tooltip>
       </CardHeader>
 
       <CardContent>
