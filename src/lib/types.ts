@@ -426,3 +426,12 @@ export type Address = {
   isDefault: boolean;
   label: string;
 };
+
+export type PreferencesInput = {
+  currency?: string;
+  theme?: "light" | "dark" | "system";
+  emailOrderUpdates?: boolean;
+  emailWalletAlerts?: boolean;
+  emailPromotions?: boolean;
+  emailRecommendations?: boolean;
+};

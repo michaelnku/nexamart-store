@@ -69,7 +69,7 @@ export default function AddressSection({ addresses }: Props) {
                 <Card
                   key={address.id}
                   className={cn(
-                    "relative min-w-0 border bg-white transition",
+                    "relative min-w-0 border  transition",
                     address.isDefault && "border-[#3c9ee0] bg-[#3c9ee0]/5",
                   )}
                 >

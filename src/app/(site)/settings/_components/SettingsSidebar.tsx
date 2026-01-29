@@ -9,7 +9,7 @@ type Props = {
 
 export default function SettingsSidebar({ active, onChange }: Props) {
   return (
-    <aside className="hidden md:block w-64 shrink-0 border-r bg-white hidden md:block">
+    <aside className="hidden md:block w-64 shrink-0 border-r bg-background hidden md:block">
       <ul className="p-4 space-y-1">
         {settingsNav.map((item) => {
           const Icon = item.icon;

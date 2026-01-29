@@ -57,6 +57,7 @@ model User {
   StoreFollower   StoreFollower[]
   StoreReview     StoreReview[]
   searchHistories SearchHistory[]
+  userPreference  UserPreference?
 }
 
 enum UserRole {
@@ -758,6 +759,23 @@ model Address {
   isDefault Boolean @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UserPreference {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  currency String @default("USD")
+  theme    String @default("system")
+
+  emailOrderUpdates    Boolean @default(true)
+  emailWalletAlerts    Boolean @default(true)
+  emailPromotions      Boolean @default(false)
+  emailRecommendations Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
