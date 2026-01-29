@@ -733,12 +733,19 @@ model Notification {
  * ===========================
  */
 
-model Address {
-  id       String @id @default(cuid())
-  userId   String @unique
-  fullName String
-  phone    String
+enum AddressLabel {
+  HOME
+  OFFICE
+  OTHER
+}
 
+model Address {
+  id     String       @id @default(cuid())
+  userId String
+  label  AddressLabel @default(HOME)
+
+  fullName   String
+  phone      String
   street     String
   city       String
   state      String?
@@ -747,6 +754,8 @@ model Address {
 
   latitude  Float?
   longitude Float?
+
+  isDefault Boolean @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

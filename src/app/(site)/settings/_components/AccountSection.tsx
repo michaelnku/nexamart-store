@@ -1,10 +1,13 @@
 import SettingsCard from "@/components/settings/SettingsCard";
+import AccountSectionSkeleton from "@/components/skeletons/AccountSectionSkeleton";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import Link from "next/link";
 
 const AccountSection = () => {
-  const { data: user } = useCurrentUserQuery();
+  const { data: user, isPending } = useCurrentUserQuery();
+
+  if (isPending) return <AccountSectionSkeleton />;
 
   return (
     <SettingsCard title="Account Information">

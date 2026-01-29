@@ -8,6 +8,7 @@ import { useBuyerWallet } from "@/hooks/useWallet";
 import { WalletBalanceConverter } from "@/components/currency/WalletBalanceConverter";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { WalletTransactionType } from "@/lib/types";
+import WalletSectionSkeleton from "@/components/skeletons/WalletSectionSkeleton";
 
 const CREDIT_TYPES: WalletTransactionType[] = ["DEPOSIT", "REFUND", "EARNING"];
 const DEBIT_TYPES: WalletTransactionType[] = [
@@ -20,13 +21,7 @@ export default function WalletSection() {
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const { data: wallet, isPending } = useBuyerWallet();
 
-  if (isPending) {
-    return (
-      <SettingsCard title="Wallet">
-        <p className="text-sm text-gray-500">Loading wallet…</p>
-      </SettingsCard>
-    );
-  }
+  if (isPending) return <WalletSectionSkeleton />;
 
   if (!wallet) {
     return (
