@@ -1,19 +1,9 @@
+// track/[orderId]/page.tsx
+
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
-import { DeliveryStatus, OrderStatus } from "@/generated/prisma/client";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import Image from "next/image";
-import {
-  Truck,
-  MapPin,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Package,
-} from "lucide-react";
-import { formatBaseUSD } from "@/lib/formatBaseUSD";
+
 import OrderTrackCard from "@/components/order/OrderTrackCard";
 import { OrderTrackDTO } from "@/lib/types";
 
@@ -53,6 +43,9 @@ export default async function TrackOrderPage({
           rider: { select: { id: true, name: true, email: true } },
         },
       },
+      orderTimelines: {
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
@@ -66,6 +59,7 @@ export default async function TrackOrderPage({
 
   const orderDTO: OrderTrackDTO = {
     id: order.id,
+    trackingNumber: order.trackingNumber,
     status: order.status,
     deliveryType: order.deliveryType,
     deliveryAddress: order.deliveryAddress,
@@ -96,6 +90,13 @@ export default async function TrackOrderPage({
             : null,
         }
       : null,
+
+    orderTimelines: order.orderTimelines.map((t) => ({
+      id: t.id,
+      status: t.status,
+      message: t.message,
+      createdAt: t.createdAt.toISOString(),
+    })),
   };
 
   return <OrderTrackCard order={orderDTO} />;

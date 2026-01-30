@@ -9,25 +9,46 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { updatePreferencesAction } from "@/actions/preferenceActions";
 import { PreferencesInput } from "@/lib/types";
+import { toast } from "sonner";
 
-export default function PreferencesSection() {
+type Props = {
+  preferences: PreferencesInput | null;
+};
+
+export default function PreferencesSection({ preferences }: Props) {
   const { currency, setCurrency } = useCurrencyStore();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   const [emailPrefs, setEmailPrefs] = useState({
-    emailOrderUpdates: true,
-    emailWalletAlerts: true,
-    emailPromotions: false,
-    emailRecommendations: false,
+    emailOrderUpdates: preferences?.emailOrderUpdates ?? true,
+    emailWalletAlerts: preferences?.emailWalletAlerts ?? true,
+    emailPromotions: preferences?.emailPromotions ?? false,
+    emailRecommendations: preferences?.emailRecommendations ?? false,
   });
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+
+    if (preferences?.currency) {
+      setCurrency(preferences.currency);
+    }
+
+    if (preferences?.theme) {
+      setTheme(preferences.theme);
+    }
+  }, [preferences, setCurrency, setTheme]);
+
   if (!mounted) return null;
 
-  const onToggle = (key: keyof PreferencesInput, value: boolean) => {
-    setEmailPrefs((p) => ({ ...p, [key]: value }));
-    updatePreferencesAction({ [key]: value });
+  const onToggle = async (key: keyof PreferencesInput, value: boolean) => {
+    try {
+      setEmailPrefs((p) => ({ ...p, [key]: value }));
+      await updatePreferencesAction({ [key]: value });
+    } catch (error) {
+      setEmailPrefs((p) => ({ ...p, [key]: value }));
+      toast.error("Failed to save preference");
+    }
   };
 
   return (

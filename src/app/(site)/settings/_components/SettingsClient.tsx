@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-import { Address } from "@/lib/types";
+import { Address, PreferencesInput } from "@/lib/types";
 import AccountSection from "./AccountSection";
 import AddressSection from "./AddressSection";
 import PreferencesSection from "./PreferencesSection";
@@ -12,17 +12,18 @@ import SettingsMobileNav from "./SettingsMobileNav";
 import SettingsSidebar from "./SettingsSidebar";
 import WalletSection from "./WalletSection";
 
+type Props = {
+  preferences: PreferencesInput | null;
+  addresses: Address[];
+};
+
 const contentVariants = {
   initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -8 },
 };
 
-export default function SettingsClient({
-  addresses,
-}: {
-  addresses: Address[];
-}) {
+export default function SettingsClient({ addresses, preferences }: Props) {
   const [active, setActive] = useState("account");
 
   return (
@@ -48,7 +49,9 @@ export default function SettingsClient({
                 <AddressSection addresses={addresses} />
               )}
               {active === "wallet" && <WalletSection />}
-              {active === "preferences" && <PreferencesSection />}
+              {active === "preferences" && (
+                <PreferencesSection preferences={preferences} />
+              )}
               {active === "security" && <SecuritySection />}
             </motion.div>
           </AnimatePresence>

@@ -3,6 +3,9 @@
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
 import { DeliveryType, PaymentMethod } from "@/generated/prisma/client";
+import { generateTrackingNumber } from "@/components/helper/generateTrackingNumber";
+
+const MAX_RETRIES = 3;
 
 export const placeOrderAction = async ({
   deliveryAddress,
@@ -34,7 +37,9 @@ export const placeOrderAction = async ({
     },
   });
 
-  if (!cart || cart.items.length === 0) return { error: "Cart is empty" };
+  if (!cart || cart.items.length === 0) {
+    return { error: "Cart is empty" };
+  }
 
   const subtotal = cart.items.reduce(
     (sum, item) =>
@@ -51,59 +56,80 @@ export const placeOrderAction = async ({
 
   const totalAmount = subtotal + shippingFee;
 
-  const result = await prisma.$transaction(async (tx) => {
-    if (paymentMethod === "WALLET") {
-      const wallet = await tx.wallet.findUnique({ where: { userId } });
-      if (!wallet) return { error: "Wallet not found" };
-      if (wallet.balance < totalAmount)
-        return { error: "Insufficient wallet balance" };
+  let order;
 
-      await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { decrement: totalAmount } },
-      });
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const trackingNumber = generateTrackingNumber();
 
-      await tx.transaction.create({
-        data: {
-          walletId: wallet.id,
-          userId,
-          amount: totalAmount,
-          type: "ORDER_PAYMENT",
-          status: "SUCCESS",
-          description: `Payment for order`,
-        },
-      });
-    }
+      const result = await prisma.$transaction(async (tx) => {
+        if (paymentMethod === "WALLET") {
+          const wallet = await tx.wallet.findUnique({ where: { userId } });
+          if (!wallet) throw new Error("Wallet not found");
+          if (wallet.balance < totalAmount)
+            throw new Error("Insufficient wallet balance");
 
-    //    const trackingNumber = `NEX-${Date.now()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+          await tx.wallet.update({
+            where: { id: wallet.id },
+            data: { balance: { decrement: totalAmount } },
+          });
 
-    const order = await tx.order.create({
-      data: {
-        userId,
-        deliveryAddress,
-        paymentMethod,
-        deliveryType,
-        distanceInMiles: miles,
-        shippingFee,
-        totalAmount,
-        //trackingNumber,
-        items: {
-          createMany: {
-            data: cart.items.map((item) => ({
-              productId: item.productId,
-              variantId: item.variantId,
-              quantity: item.quantity,
-              price: item.variant?.priceUSD ?? item.product.basePriceUSD,
-            })),
+          await tx.transaction.create({
+            data: {
+              walletId: wallet.id,
+              userId,
+              amount: totalAmount,
+              type: "ORDER_PAYMENT",
+              status: "SUCCESS",
+              description: "Payment for order",
+            },
+          });
+        }
+
+        const createdOrder = await tx.order.create({
+          data: {
+            userId,
+            deliveryAddress,
+            paymentMethod,
+            deliveryType,
+            distanceInMiles: miles,
+            shippingFee,
+            totalAmount,
+            trackingNumber,
+            items: {
+              createMany: {
+                data: cart.items.map((item) => ({
+                  productId: item.productId,
+                  variantId: item.variantId,
+                  quantity: item.quantity,
+                  price: item.variant?.priceUSD ?? item.product.basePriceUSD,
+                })),
+              },
+            },
           },
-        },
-      },
-    });
+        });
 
-    return { success: true, orderId: order.id };
-  });
+        await tx.orderTimeline.create({
+          data: {
+            orderId: createdOrder.id,
+            status: "PENDING",
+            message: "Order placed successfully",
+          },
+        });
 
-  if ("error" in result) return result;
+        return createdOrder;
+      });
+
+      order = result;
+      break;
+    } catch (err: any) {
+      if (err.code !== "P2002") throw err;
+    }
+  }
+
+  if (!order) {
+    return { error: "Failed to generate tracking number" };
+  }
 
   //   await prisma.notification.create({
   //   data: {
@@ -121,8 +147,12 @@ export const placeOrderAction = async ({
   //   },
   // });
 
-  // STEP 3: cleanup outside transaction
+  // cleanup
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
 
-  return result;
+  return {
+    success: true,
+    orderId: order.id,
+    trackingNumber: order.trackingNumber,
+  };
 };

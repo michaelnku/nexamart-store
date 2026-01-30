@@ -1,4 +1,5 @@
 import {
+  PaymentMethod,
   Product,
   ProductImage,
   ProductVariant,
@@ -60,18 +61,42 @@ export type OrderTrackDeliveryDTO = {
   } | null;
 };
 
+export type OrderTrackTimelineDTO = {
+  id: string;
+  status: OrderStatus;
+  message?: string | null;
+  createdAt: string;
+};
+
 export type OrderTrackDTO = {
   id: string;
-  status: string;
-  deliveryType: string;
+  trackingNumber: string | null;
+  status: OrderStatus;
+  deliveryType: DeliveryType;
   deliveryAddress?: string | null;
-  paymentMethod?: string | null;
+  paymentMethod?: PaymentMethod | null;
   shippingFee: number;
   totalAmount: number;
   createdAt: string;
 
-  items: OrderTrackItemDTO[];
-  delivery?: OrderTrackDeliveryDTO | null;
+  items: {
+    id: string;
+    quantity: number;
+    product: {
+      name: string;
+      images: { imageUrl: string }[];
+    };
+  }[];
+
+  delivery?: {
+    status: string;
+    rider?: {
+      name: string | null;
+      email: string;
+    } | null;
+  } | null;
+
+  orderTimelines: OrderTrackTimelineDTO[];
 };
 
 export type OrderItemDTO = {
@@ -97,6 +122,7 @@ export type OrderItemDTO = {
 export type OrderSummaryDTO = {
   id: string;
   deliveryType: string;
+  trackingNumber: string | null;
   totalAmount: number;
   shippingFee: number;
 
@@ -429,7 +455,7 @@ export type Address = {
 
 export type PreferencesInput = {
   currency?: string;
-  theme?: "light" | "dark" | "system";
+  theme?: string;
   emailOrderUpdates?: boolean;
   emailWalletAlerts?: boolean;
   emailPromotions?: boolean;

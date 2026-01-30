@@ -45,6 +45,16 @@ const OrderSummaryCard = ({ order }: Props) => {
           <span className="font-semibold text-[#3c9ee0]">Order ID:</span>{" "}
           {order.id}
         </p>
+
+        <div className="mt-3 flex flex-col items-center gap-1">
+          <p className="text-xs text-gray-500 uppercase tracking-wide">
+            Tracking Number
+          </p>
+
+          <p className="font-mono text-sm font-semibold text-[var(--brand-blue)]">
+            {order.trackingNumber}
+          </p>
+        </div>
       </div>
 
       {/* ---------------- ORDER SUMMARY CARD ---------------- */}

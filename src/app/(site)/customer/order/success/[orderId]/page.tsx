@@ -21,6 +21,11 @@ export default async function OrderSuccessPage({
         },
       },
       delivery: true,
+      customer: true,
+      sellerGroups: true,
+      orderTimelines: {
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
@@ -41,6 +46,7 @@ export default async function OrderSuccessPage({
   const orderDTO: OrderSummaryDTO = {
     id: order.id,
     deliveryType: order.deliveryType,
+    trackingNumber: order.trackingNumber,
     totalAmount: order.totalAmount,
     shippingFee: order.shippingFee,
 

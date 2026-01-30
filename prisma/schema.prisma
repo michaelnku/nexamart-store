@@ -353,7 +353,7 @@ model Order {
   deliveryType    DeliveryType   @default(HOME_DELIVERY)
   deliveryAddress String?
   phone           String?
-  // trackingNumber String  @unique
+  trackingNumber  String?        @unique
 
   shippingFee     Float @default(0)
   totalAmount     Float
@@ -378,12 +378,25 @@ model Order {
   sellerGroups OrderSellerGroup[]
   transactions Transaction[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  orderTimelines OrderTimeline[]
 
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+model OrderTimeline {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  message   String?
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
 }
 
 enum PaymentMethod {

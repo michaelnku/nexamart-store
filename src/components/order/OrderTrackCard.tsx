@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { formatBaseUSD } from "@/lib/formatBaseUSD";
 import { OrderTrackDTO } from "@/lib/types";
+import OrderTimeline from "@/components/order/OrderTimeline";
 
 type Props = {
   order: OrderTrackDTO;
