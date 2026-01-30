@@ -52,6 +52,7 @@ export default async function OrderDetailsPage({
   const orderDTO: OrderDetailDTO = {
     id: order.id,
     status: order.status,
+    trackingNumber: order.trackingNumber,
     deliveryType: order.deliveryType,
     deliveryAddress: order.deliveryAddress,
     paymentMethod: order.paymentMethod,

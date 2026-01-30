@@ -1,5 +1,5 @@
 import { CurrentUser } from "@/lib/currentUser";
-import Dashboard from "./_component/Dashboard";
+import Dashboard from "../../../components/layout/Dashboard";
 import { redirect } from "next/navigation";
 
 export default async function CustomerLayout({

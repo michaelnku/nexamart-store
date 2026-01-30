@@ -34,13 +34,13 @@ const OrderHistoryCard = ({ orders }: Props) => {
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">
                     ORDER PLACED:
-                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                    <span className="font-medium text-gray-900 dark:text-gray-400">
                       {""} {new Date(order.createdAt).toLocaleDateString()}
                     </span>
                   </p>
                   <p className="text-sm text-gray-500">
                     TOTAL:
-                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                    <span className="font-medium text-gray-900 dark:text-gray-400">
                       {""} {formatBaseUSD(order.totalAmount)}
                     </span>
                   </p>
@@ -67,9 +67,9 @@ const OrderHistoryCard = ({ orders }: Props) => {
                 </Badge>
               </div>
 
-              {/* Middle — Product Preview */}
+              {/* Product Preview */}
               <div className="flex gap-5 items-start mt-5">
-                <div className="relative w-24 h-24 border rounded-md bg-gray-50 overflow-hidden">
+                <div className="relative w-24 h-24 border rounded-md bg-gray-50 dark:bg-neutral-900 overflow-hidden">
                   <Image
                     src={image}
                     alt={firstItem.product.name}
@@ -77,10 +77,20 @@ const OrderHistoryCard = ({ orders }: Props) => {
                     className="object-cover"
                   />
                 </div>
-                <div>
-                  <p className="font-medium text-[15px] mb-1">
+
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="
+        font-medium text-[15px] mb-1
+        line-clamp-2
+        leading-snug
+        dark:text-gray-400
+      "
+                    title={firstItem.product.name}
+                  >
                     {firstItem.product.name}
                   </p>
+
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {order.items.length > 1
                       ? `+ ${order.items.length - 1} more item(s)`
@@ -89,17 +99,18 @@ const OrderHistoryCard = ({ orders }: Props) => {
                 </div>
               </div>
 
-              {/* Bottom Actions */}
               <div className="flex flex-wrap gap-3 mt-6">
                 <Link href={`/customer/order/${order.id}`}>
-                  <Button variant="secondary" className="rounded-md">
+                  <Button variant="secondary" className="rounded-md ">
                     View Order Details
                   </Button>
                 </Link>
 
                 {order.status !== "DELIVERED" &&
                   order.status !== "CANCELLED" && (
-                    <Link href={`/customer/order/track/${order.id}`}>
+                    <Link
+                      href={`/customer/order/track/tn/${order.trackingNumber}`}
+                    >
                       <Button className="rounded-md bg-blue-600 hover:bg-blue-700">
                         Track Package
                       </Button>

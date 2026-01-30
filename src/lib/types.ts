@@ -134,6 +134,7 @@ export type OrderHistoryItemDTO = {
   createdAt: string;
   status: string;
   totalAmount: number;
+  trackingNumber: string | null;
 
   items: {
     id: string;
@@ -182,6 +183,7 @@ export type OrderSellerGroupDTO = {
 export type OrderDetailDTO = {
   id: string;
   status: string;
+  trackingNumber: string | null;
   deliveryType: string;
   deliveryAddress?: string | null;
   paymentMethod?: string | null;

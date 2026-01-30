@@ -47,6 +47,7 @@ export default async function OrdersPage() {
     createdAt: order.createdAt.toISOString(),
     status: order.status,
     totalAmount: order.totalAmount,
+    trackingNumber: order.trackingNumber,
 
     items: order.items.map((item) => ({
       id: item.id,

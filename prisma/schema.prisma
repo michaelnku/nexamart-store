@@ -141,7 +141,7 @@ model PasswordResetAttempt {
 
 model Product {
   id          String  @id @default(cuid())
-  name        String
+  name        String  @db.VarChar(120)
   description String
   brand       String?
   storeId     String

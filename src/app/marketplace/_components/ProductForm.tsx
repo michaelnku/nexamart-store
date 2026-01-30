@@ -119,7 +119,7 @@ const ProductForm = ({ categories }: ProductFormProps) => {
           `variants.${index}.sku`,
           hasOptions
             ? generateVariantSku(v.color, v.size)
-            : generateSimpleSku(productName)
+            : generateSimpleSku(productName),
         );
       }
     });
@@ -144,7 +144,7 @@ const ProductForm = ({ categories }: ProductFormProps) => {
 
     if (hasDuplicateSkus(variants)) {
       toast.error(
-        "Duplicate SKUs detected. Each variant must have a unique SKU."
+        "Duplicate SKUs detected. Each variant must have a unique SKU.",
       );
       return;
     }
@@ -186,7 +186,7 @@ const ProductForm = ({ categories }: ProductFormProps) => {
 
       setValue(
         "images",
-        getValues("images").filter((img) => img.key !== key)
+        getValues("images").filter((img) => img.key !== key),
       );
 
       toast.success("Image deleted");
@@ -237,8 +237,12 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                       <Input
                         placeholder="e.g., Samsung TV 55 inch"
                         {...field}
+                        maxLength={120}
                         className="focus-visible:ring-[var(--brand-blue)]"
                       />
+                      <p className="text-xs text-gray-400 mt-1">
+                        {field.value.length}/120 characters
+                      </p>
                     </FormControl>
                   </FormItem>
                 )}
@@ -463,8 +467,8 @@ Dual SIM`}
                                   `variants.${index}.sku`,
                                   generateVariantSku(
                                     e.target.value,
-                                    getValues(`variants.${index}.size`)
-                                  )
+                                    getValues(`variants.${index}.size`),
+                                  ),
                                 );
                               }}
                             />
@@ -490,8 +494,8 @@ Dual SIM`}
                                   `variants.${index}.sku`,
                                   generateVariantSku(
                                     e.target.value,
-                                    getValues(`variants.${index}.size`)
-                                  )
+                                    getValues(`variants.${index}.size`),
+                                  ),
                                 );
                               }}
                             />
@@ -566,7 +570,7 @@ Dual SIM`}
                               onChange={(e) => {
                                 const old = Math.max(
                                   0,
-                                  Math.round(Number(e.target.value || 0))
+                                  Math.round(Number(e.target.value || 0)),
                                 );
                                 field.onChange(old);
 
@@ -575,9 +579,9 @@ Dual SIM`}
                                   Math.round(
                                     Number(
                                       getValues(`variants.${index}.discount`) ||
-                                        0
-                                    )
-                                  )
+                                        0,
+                                    ),
+                                  ),
                                 );
 
                                 const price = Math.max(
@@ -585,16 +589,16 @@ Dual SIM`}
                                   Math.round(
                                     Number(
                                       getValues(`variants.${index}.priceUSD`) ||
-                                        0
-                                    )
-                                  )
+                                        0,
+                                    ),
+                                  ),
                                 );
 
                                 if (old > 0 && discount > 0) {
                                   const newPrice = old - (old * discount) / 100;
                                   setValue(
                                     `variants.${index}.priceUSD`,
-                                    Math.max(0, Math.round(newPrice))
+                                    Math.max(0, Math.round(newPrice)),
                                   );
                                 }
 
@@ -603,7 +607,7 @@ Dual SIM`}
                                     ((old - price) / old) * 100;
                                   setValue(
                                     `variants.${index}.discount`,
-                                    Math.max(0, Math.round(newDiscount))
+                                    Math.max(0, Math.round(newDiscount)),
                                   );
                                 }
                               }}
@@ -628,7 +632,7 @@ Dual SIM`}
                               onChange={(e) => {
                                 const discount = Math.max(
                                   0,
-                                  Math.round(Number(e.target.value || 0))
+                                  Math.round(Number(e.target.value || 0)),
                                 );
                                 field.onChange(discount);
 
@@ -637,17 +641,17 @@ Dual SIM`}
                                   Math.round(
                                     Number(
                                       getValues(
-                                        `variants.${index}.oldPriceUSD`
-                                      ) || 0
-                                    )
-                                  )
+                                        `variants.${index}.oldPriceUSD`,
+                                      ) || 0,
+                                    ),
+                                  ),
                                 );
 
                                 if (old > 0 && discount > 0) {
                                   const newPrice = old - (old * discount) / 100;
                                   setValue(
                                     `variants.${index}.priceUSD`,
-                                    Math.max(0, Math.round(newPrice))
+                                    Math.max(0, Math.round(newPrice)),
                                   );
                                 }
                               }}

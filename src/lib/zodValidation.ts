@@ -110,7 +110,10 @@ export const productImageSchema = z.object({
 
 // Product Schema
 export const productSchema = z.object({
-  name: z.string().min(1),
+  name: z
+    .string()
+    .min(3, "Product name is too short")
+    .max(120, "Product name must be under 120 characters"),
   brand: z.string().optional(),
   description: z.string().min(1),
 

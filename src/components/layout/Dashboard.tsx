@@ -70,7 +70,7 @@ export default function Dashboard() {
     <div className="flex flex-col h-full light:bg-white">
       {/* Greeting */}
       <div className="px-4 pb-3">
-        <p className="font-semibold text-[17px] text-gray-900">
+        <p className="font-semibold text-[17px] text-gray-900 dark:text-gray-400">
           Hello, {user?.name?.split(" ")[0] || user?.username}
         </p>
         <p className="text-sm text-gray-500">{user?.email}</p>
@@ -79,7 +79,7 @@ export default function Dashboard() {
       <Separator />
 
       {/* Section Title */}
-      <p className="font-semibold text-gray-800 uppercase text-[13px] tracking-wide px-4 pt-4 pb-2">
+      <p className="font-semibold text-gray-900 dark:text-gray-400 uppercase text-[13px] tracking-wide px-4 pt-4 pb-2">
         My NexaMart Account
       </p>
 

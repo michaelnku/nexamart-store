@@ -87,8 +87,8 @@ export default function OrderTrackCard({ order }: Props) {
       </header>
 
       {/* QR CODE */}
-      <div className="flex items-center justify-center">
-        <div className="rounded-xl border bg-white p-4">
+      <div className="flex items-start justify-center">
+        <div className="rounded-xl border p-4">
           <QRCodeCanvas
             value={trackingUrl}
             size={150}
@@ -104,7 +104,7 @@ export default function OrderTrackCard({ order }: Props) {
       {/* ================= SUMMARY ================= */}
       <section className="grid gap-5 lg:grid-cols-[2.2fr,1.3fr]">
         {/* PRODUCT */}
-        <div className="border rounded-xl p-4 bg-white shadow-sm flex gap-4">
+        <div className="border rounded-xl p-4 bg-white dark:bg-background shadow-sm flex gap-4">
           <div className="relative w-20 h-20 rounded-md overflow-hidden bg-gray-100">
             <Image
               src={
@@ -139,17 +139,16 @@ export default function OrderTrackCard({ order }: Props) {
         </div>
 
         {/* DELIVERY INFO */}
-        <div className="border rounded-xl p-4 bg-white shadow-sm space-y-3">
-          <div className="flex items-center gap-2 font-semibold text-sm">
-            <MapPin className="w-4 h-4 text-[var(--brand-blue)]" />
-            Delivery Address
+        <div className="border rounded-xl p-4 text-sm bg-white dark:text-gray-400 dark:bg-background shadow-sm space-y-2">
+          <div className="flex items-center gap-2 font-semibold ">
+            <MapPin className="w-4 h-4 text-[var(--brand-blue)] " />
+            <strong>Delivery Address: </strong>{" "}
+            <p>{order.deliveryAddress ?? "—"}</p>
           </div>
 
-          <p className="text-sm">{order.deliveryAddress ?? "—"}</p>
-
-          <div className="text-xs space-y-1 pt-2">
+          <div className="space-y-2 px-6 ">
             <p>
-              <strong>Payment:</strong> {order.paymentMethod ?? "—"}
+              <strong>Paid With:</strong> {order.paymentMethod ?? "—"}
             </p>
 
             <p>
@@ -160,15 +159,15 @@ export default function OrderTrackCard({ order }: Props) {
             <p>
               <strong>Shipping Fee:</strong> {formatBaseUSD(order.shippingFee)}
             </p>
-          </div>
 
-          {delivery?.rider && (
-            <div className="pt-3 border-t text-xs">
-              <p className="font-semibold">Assigned Rider</p>
-              <p>{delivery.rider.name}</p>
-              <p className="text-gray-500">{delivery.rider.email}</p>
-            </div>
-          )}
+            {delivery?.rider && (
+              <div className="pt-3 border-t text-xs">
+                <p className="font-semibold">Assigned Rider</p>
+                <p>{delivery.rider.name}</p>
+                <p className="text-gray-500">{delivery.rider.email}</p>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

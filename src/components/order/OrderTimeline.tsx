@@ -80,7 +80,7 @@ export default function OrderTimeline({ order, timeline }: Props) {
   return (
     <>
       {/* ================= STEPPER ================= */}
-      <section className="border rounded-xl p-5 bg-white shadow-sm">
+      <section className="border rounded-xl p-5 bg-white dark:bg-background shadow-sm">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Clock className="w-5 h-5 text-[var(--brand-blue)]" />
           Order Progress
@@ -109,11 +109,12 @@ export default function OrderTimeline({ order, timeline }: Props) {
                   className={cn(
                     "absolute -left-[11px] flex h-6 w-6 items-center justify-center rounded-full border-2 text-xs font-semibold transition",
                     completed &&
-                      "bg-[var(--brand-blue)] border-[var(--brand-blue)] text-white",
-                    active && "bg-[#318bc4] border-[#318bc4] text-white",
+                      "bg-[var(--brand-blue)] dark:bg-background border-[var(--brand-blue)] text-white",
+                    active &&
+                      "bg-[#318bc4] dark:bg-background border-[#318bc4] text-white",
                     !completed &&
                       !active &&
-                      "bg-white border-gray-300 text-gray-400",
+                      "bg-white dark:bg-background border-gray-300 text-gray-400",
                   )}
                 >
                   {completed ? "✓" : index + 1}
@@ -132,7 +133,9 @@ export default function OrderTimeline({ order, timeline }: Props) {
                   <span
                     className={cn(
                       "text-sm font-medium",
-                      completed || active ? "text-gray-900" : "text-gray-500",
+                      completed || active
+                        ? "text-gray-900 dark:text-gray-400"
+                        : "text-gray-500 dark:text-gray-400",
                     )}
                   >
                     {step.label}
@@ -148,8 +151,8 @@ export default function OrderTimeline({ order, timeline }: Props) {
       </section>
 
       {/* ================= TIMELINE ================= */}
-      <section className="border rounded-xl bg-white p-6 space-y-5">
-        <h3 className="font-semibold text-lg">Order Timeline</h3>
+      <section className="border rounded-xl bg-white dark:bg-background p-6 space-y-5">
+        <h3 className="font-semibold text-lg">Order Status</h3>
 
         <ol className="space-y-6">
           {timeline.map((item, index) => {
@@ -163,8 +166,8 @@ export default function OrderTimeline({ order, timeline }: Props) {
                     className={cn(
                       "h-8 w-8 rounded-full flex items-center justify-center",
                       isLatest
-                        ? "bg-[var(--brand-blue)] text-white"
-                        : "bg-gray-200 text-gray-600",
+                        ? "bg-[var(--brand-blue)] dark:bg-background text-white"
+                        : "bg-gray-200 dark:bg-background text-gray-600",
                     )}
                   >
                     {isLatest ? (
@@ -181,7 +184,7 @@ export default function OrderTimeline({ order, timeline }: Props) {
 
                 {/* CONTENT */}
                 <div className="flex-1">
-                  <p className="font-medium">
+                  <p className="font-medium ">
                     {item.status.replaceAll("_", " ")}
                   </p>
 

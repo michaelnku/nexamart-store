@@ -4,9 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Truck, Store, ChevronRight } from "lucide-react";
+import { Truck, Store, ChevronRight, Copy } from "lucide-react";
 import { formatBaseUSD } from "@/lib/formatBaseUSD";
 import { OrderDetailDTO } from "@/lib/types";
+import { toast } from "sonner";
 
 type Props = {
   order: OrderDetailDTO;
@@ -22,6 +23,21 @@ const OrderCard = ({ order }: Props) => {
     CANCELLED: "bg-red-600",
     RETURNED: "bg-red-500",
   };
+
+  const trackingUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/track/tn/${order.trackingNumber}`
+      : `/track/tn/${order.trackingNumber}`;
+
+  const copyTrackingLink = async () => {
+    try {
+      await navigator.clipboard.writeText(trackingUrl);
+      toast.success("Tracking number copied");
+    } catch {
+      toast.error("Failed to copy tracking number");
+    }
+  };
+
   return (
     <main className="max-w-6xl mx-auto px-4 py-6 space-y-10">
       {/* HEADER */}
@@ -31,6 +47,20 @@ const OrderCard = ({ order }: Props) => {
         </h1>
 
         <p className="text-gray-600 text-sm font-mono">Order ID: {order.id}</p>
+
+        <p className="text-sm text-gray-600 mt-1 ">
+          Tracking No:{" "}
+          <span className="font-mono text-[var(--brand-blue)]">
+            {order.trackingNumber}
+          </span>
+          <Button
+            variant="ghost"
+            onClick={copyTrackingLink}
+            className="text-[var(--brand-blue)] hover:bg-[var(--brand-blue)]/10 "
+          >
+            <Copy className="w-4 h-4" />
+          </Button>
+        </p>
 
         <Badge
           className={`${
@@ -43,7 +73,7 @@ const OrderCard = ({ order }: Props) => {
 
       {/* DELIVERY INFO + CUSTOMER */}
       <section className="grid gap-6 md:grid-cols-[2fr,1.3fr]">
-        <div className="border rounded-xl p-6 bg-white shadow-sm space-y-3">
+        <div className="border rounded-xl p-6 bg-white dark:bg-background shadow-sm space-y-3">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Truck className="w-5 h-5 text-[#3c9ee0]" /> Delivery Information
           </h2>
@@ -92,12 +122,14 @@ const OrderCard = ({ order }: Props) => {
         </div>
 
         {/* CUSTOMER INFO */}
-        <div className="border rounded-xl p-6 bg-white shadow-sm">
+        <div className="border rounded-xl p-6 bg-white dark:bg-background shadow-sm">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Store className="w-5 h-5 text-green-600" /> Customer
+            <Store className="w-5 h-5 text-green-600" /> Customer Info
           </h2>
 
-          <p className="font-medium text-base mt-1">{order.customer.name}</p>
+          <p className="font-medium text-base mt-1 dark:text-gray-400">
+            {order.customer.name}
+          </p>
           <p className="text-gray-600 text-sm">{order.customer.email}</p>
         </div>
       </section>
@@ -169,7 +201,7 @@ const OrderCard = ({ order }: Props) => {
             </div>
 
             {/* SUBTOTAL */}
-            <p className="text-right font-bold text-lg">
+            <p className="text-right font-bold text-lg dark:text-gray-400">
               Subtotal:{formatBaseUSD(group.subtotal)}
             </p>
           </div>
@@ -177,7 +209,7 @@ const OrderCard = ({ order }: Props) => {
       </section>
 
       {/* TOTAL */}
-      <div className="text-right text-2xl font-bold">
+      <div className="text-right text-2xl font-bold dark:text-gray-400">
         Total: {formatBaseUSD(order.totalAmount)}
       </div>
 
