@@ -11,46 +11,13 @@ import {
   CheckCircle2,
   XCircle,
   Package,
+  Copy,
 } from "lucide-react";
 import { formatBaseUSD } from "@/lib/formatBaseUSD";
 import { OrderTrackDTO } from "@/lib/types";
-
-const ORDER_STEPS = [
-  "PENDING",
-  "PROCESSING",
-  "IN_TRANSIT",
-  "DELIVERED",
-] as const;
-
-const STEP_CONFIG: Record<
-  (typeof ORDER_STEPS)[number],
-  {
-    label: string;
-    description: string;
-    icon: React.ElementType;
-  }
-> = {
-  PENDING: {
-    label: "Order Placed",
-    description: "We've received your order",
-    icon: Package,
-  },
-  PROCESSING: {
-    label: "Processing",
-    description: "Seller is preparing your order",
-    icon: Clock,
-  },
-  IN_TRANSIT: {
-    label: "On the Way",
-    description: "Your order is on the way",
-    icon: Truck,
-  },
-  DELIVERED: {
-    label: "Delivered",
-    description: "Order completed successfully",
-    icon: CheckCircle2,
-  },
-};
+import OrderTimeline from "./OrderTimeline";
+import { toast } from "sonner";
+import { QRCodeCanvas } from "qrcode.react";
 
 type Props = {
   order: OrderTrackDTO;
@@ -68,13 +35,19 @@ export default function OrderTrackCard({ order }: Props) {
     RETURNED: "bg-red-500",
   };
 
-  const timelineStatuses = order.orderTimelines.map((t) => t.status);
+  const trackingUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/track/tn/${order.trackingNumber}`
+      : `/track/tn/${order.trackingNumber}`;
 
-  const currentStepIndex = ORDER_STEPS.reduce((acc, step, index) => {
-    return timelineStatuses.includes(step) ? index : acc;
-  }, 0);
-
-  const isCancelled = order.status === "CANCELLED";
+  const copyTrackingLink = async () => {
+    try {
+      await navigator.clipboard.writeText(trackingUrl);
+      toast.success("Tracking number copied");
+    } catch {
+      toast.error("Failed to copy tracking number");
+    }
+  };
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-10">
@@ -91,11 +64,18 @@ export default function OrderTrackCard({ order }: Props) {
             <span className="font-mono text-gray-800">{order.id}</span>
           </p>
 
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-gray-600 mt-1 ">
             Tracking No:{" "}
             <span className="font-mono text-[var(--brand-blue)]">
               {order.trackingNumber}
             </span>
+            <Button
+              variant="ghost"
+              onClick={copyTrackingLink}
+              className="text-[var(--brand-blue)] hover:bg-[var(--brand-blue)]/10 "
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
           </p>
         </div>
 
@@ -105,6 +85,21 @@ export default function OrderTrackCard({ order }: Props) {
           {order.status.replaceAll("_", " ")}
         </Badge>
       </header>
+
+      {/* QR CODE */}
+      <div className="flex items-center justify-center">
+        <div className="rounded-xl border bg-white p-4">
+          <QRCodeCanvas
+            value={trackingUrl}
+            size={150}
+            level="H"
+            includeMargin
+          />
+          <p className="text-xs text-gray-500 text-center mt-2">
+            Scan to track
+          </p>
+        </div>
+      </div>
 
       {/* ================= SUMMARY ================= */}
       <section className="grid gap-5 lg:grid-cols-[2.2fr,1.3fr]">
@@ -177,58 +172,7 @@ export default function OrderTrackCard({ order }: Props) {
         </div>
       </section>
 
-      {/* ================= STEPPER ================= */}
-      <section className="border rounded-xl p-5 bg-white shadow-sm">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Clock className="w-5 h-5 text-[var(--brand-blue)]" />
-          Order Progress
-        </h2>
-
-        {isCancelled && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            <XCircle className="w-4 h-4" />
-            This order was cancelled.
-          </div>
-        )}
-
-        <ol className="relative ml-4 border-l border-gray-200 space-y-6">
-          {ORDER_STEPS.map((stepKey, index) => {
-            const step = STEP_CONFIG[stepKey];
-            const Icon = step.icon;
-
-            const completed = index < currentStepIndex;
-            const active = index === currentStepIndex;
-
-            return (
-              <li key={stepKey} className="ml-5 space-y-1">
-                <span
-                  className={`
-                    absolute -left-[11px]
-                    flex h-6 w-6 items-center justify-center rounded-full border-2
-                    text-xs font-semibold
-                    ${
-                      completed
-                        ? "bg-[var(--brand-blue)] border-[var(--brand-blue)] text-white"
-                        : active
-                          ? "bg-[#318bc4] border-[#318bc4] text-white"
-                          : "bg-white border-gray-300 text-gray-400"
-                    }
-                  `}
-                >
-                  {completed ? "✓" : index + 1}
-                </span>
-
-                <div className="flex items-center gap-2">
-                  <Icon className="w-4 h-4 text-[var(--brand-blue)]" />
-                  <span className="text-sm font-medium">{step.label}</span>
-                </div>
-
-                <p className="text-xs text-gray-500">{step.description}</p>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
+      <OrderTimeline timeline={order.orderTimelines} order={order} />
 
       {/* ================= ACTIONS ================= */}
       <section className="flex flex-col sm:flex-row gap-3">

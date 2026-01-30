@@ -62,7 +62,8 @@ export const placeOrderAction = async ({
     try {
       const trackingNumber = generateTrackingNumber();
 
-      const result = await prisma.$transaction(async (tx) => {
+      order = await prisma.$transaction(async (tx) => {
+        // WALLET PAYMENT
         if (paymentMethod === "WALLET") {
           const wallet = await tx.wallet.findUnique({ where: { userId } });
           if (!wallet) throw new Error("Wallet not found");
@@ -86,6 +87,7 @@ export const placeOrderAction = async ({
           });
         }
 
+        // CREATE ORDER (PENDING)
         const createdOrder = await tx.order.create({
           data: {
             userId,
@@ -96,6 +98,7 @@ export const placeOrderAction = async ({
             shippingFee,
             totalAmount,
             trackingNumber,
+            status: "PENDING",
             items: {
               createMany: {
                 data: cart.items.map((item) => ({
@@ -109,6 +112,7 @@ export const placeOrderAction = async ({
           },
         });
 
+        // INITIAL TIMELINE ENTRY
         await tx.orderTimeline.create({
           data: {
             orderId: createdOrder.id,
@@ -120,7 +124,6 @@ export const placeOrderAction = async ({
         return createdOrder;
       });
 
-      order = result;
       break;
     } catch (err: any) {
       if (err.code !== "P2002") throw err;
@@ -147,7 +150,7 @@ export const placeOrderAction = async ({
   //   },
   // });
 
-  // cleanup
+  // CLEANUP
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
 
   return {

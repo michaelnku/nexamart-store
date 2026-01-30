@@ -1,5 +1,3 @@
-// app/track/tn/[trackingNumber]/page.tsx
-
 import { prisma } from "@/lib/prisma";
 import OrderTrackCard from "@/components/order/OrderTrackCard";
 import { OrderTrackDTO } from "@/lib/types";
@@ -7,10 +5,12 @@ import { OrderTrackDTO } from "@/lib/types";
 export default async function PublicTrackPage({
   params,
 }: {
-  params: { trackingNumber: string };
+  params: Promise<{ trackingNumber: string }>;
 }) {
+  const { trackingNumber } = await params;
+
   const order = await prisma.order.findUnique({
-    where: { trackingNumber: params.trackingNumber },
+    where: { trackingNumber: trackingNumber },
     include: {
       items: {
         include: {

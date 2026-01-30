@@ -1,5 +1,3 @@
-// track/[orderId]/page.tsx
-
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
 import Link from "next/link";

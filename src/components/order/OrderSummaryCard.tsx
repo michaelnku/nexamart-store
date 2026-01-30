@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatBaseUSD } from "@/lib/formatBaseUSD";
 import { ClearCartOnSuccess } from "@/app/(site)/customer/order/success/[orderId]/ClearCartOnSuccess";
 import { OrderSummaryDTO } from "@/lib/types";
+import { toast } from "sonner";
 
 type Props = {
   order: OrderSummaryDTO;
@@ -23,6 +24,20 @@ const OrderSummaryCard = ({ order }: Props) => {
     month: "short",
     day: "numeric",
   })}`;
+
+  const trackingUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/track/tn/${order.trackingNumber}`
+      : `/track/tn/${order.trackingNumber}`;
+
+  const copyTrackingLink = async () => {
+    try {
+      await navigator.clipboard.writeText(trackingUrl);
+      toast.success("Tracking number copied");
+    } catch {
+      toast.error("Failed to copy tracking number");
+    }
+  };
 
   return (
     <main className="max-w-4xl mx-auto py-16 space-y-10">
@@ -51,9 +66,18 @@ const OrderSummaryCard = ({ order }: Props) => {
             Tracking Number
           </p>
 
-          <p className="font-mono text-sm font-semibold text-[var(--brand-blue)]">
-            {order.trackingNumber}
-          </p>
+          <span className="inline-flex gap-2 items-center">
+            <p className="font-mono text-sm font-semibold text-[var(--brand-blue)]">
+              {order.trackingNumber}
+            </p>
+            <Button
+              variant="ghost"
+              onClick={copyTrackingLink}
+              className="text-[var(--brand-blue)] hover:bg-[var(--brand-blue)]/10 "
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
+          </span>
         </div>
       </div>
 
@@ -117,12 +141,15 @@ const OrderSummaryCard = ({ order }: Props) => {
 
         {/* ACTION BUTTONS */}
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
-          <Link href={`/customer/order/track/${order.id}`} className="w-full">
+          <Link
+            href={`/customer/order/track/tn/${order.trackingNumber}`}
+            className="w-full"
+          >
             <Button
               size="lg"
               className="w-full bg-[#3c9ee0] hover:bg-[#318bc4] text-white font-semibold rounded-lg shadow"
             >
-              Track your package
+              Track order
             </Button>
           </Link>
 
