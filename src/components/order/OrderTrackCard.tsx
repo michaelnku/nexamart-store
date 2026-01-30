@@ -14,121 +14,103 @@ import {
 } from "lucide-react";
 import { formatBaseUSD } from "@/lib/formatBaseUSD";
 import { OrderTrackDTO } from "@/lib/types";
-import OrderTimeline from "@/components/order/OrderTimeline";
+
+const ORDER_STEPS = [
+  "PENDING",
+  "PROCESSING",
+  "IN_TRANSIT",
+  "DELIVERED",
+] as const;
+
+const STEP_CONFIG: Record<
+  (typeof ORDER_STEPS)[number],
+  {
+    label: string;
+    description: string;
+    icon: React.ElementType;
+  }
+> = {
+  PENDING: {
+    label: "Order Placed",
+    description: "We've received your order",
+    icon: Package,
+  },
+  PROCESSING: {
+    label: "Processing",
+    description: "Seller is preparing your order",
+    icon: Clock,
+  },
+  IN_TRANSIT: {
+    label: "On the Way",
+    description: "Your order is on the way",
+    icon: Truck,
+  },
+  DELIVERED: {
+    label: "Delivered",
+    description: "Order completed successfully",
+    icon: CheckCircle2,
+  },
+};
 
 type Props = {
   order: OrderTrackDTO;
 };
 
-const OrderTrackCard = ({ order }: Props) => {
+export default function OrderTrackCard({ order }: Props) {
   const delivery = order.delivery;
 
-  /* Order status badge colors */
   const statusColors: Record<string, string> = {
     PENDING: "bg-yellow-500",
     PROCESSING: "bg-blue-500",
-    SHIPPED: "bg-purple-500",
     IN_TRANSIT: "bg-orange-500",
     DELIVERED: "bg-green-600",
     CANCELLED: "bg-red-600",
     RETURNED: "bg-red-500",
   };
 
-  /* Timeline mapping */
-  const stepIndexFromStatus = (s?: string) => {
-    switch (s) {
-      case "PENDING":
-        return 0;
-      case "ASSIGNED":
-        return 1;
-      case "IN_TRANSIT":
-        return 2;
-      case "DELIVERED":
-      case "CANCELLED":
-        return 3;
-      default:
-        return 0;
-    }
-  };
+  const timelineStatuses = order.orderTimelines.map((t) => t.status);
 
-  const currentStep = stepIndexFromStatus(delivery?.status);
+  const currentStepIndex = ORDER_STEPS.reduce((acc, step, index) => {
+    return timelineStatuses.includes(step) ? index : acc;
+  }, 0);
 
-  const isPickup = order.deliveryType === "STORE_PICKUP";
-
-  const steps = [
-    {
-      label: isPickup ? "Order Ready for Pickup" : "Order Placed",
-      desc: isPickup
-        ? "Your order will be available for pickup soon"
-        : "We've received your order",
-      icon: <Package className="w-4 h-4" />,
-    },
-    {
-      label: isPickup ? "Available for Pickup" : "Rider Assigned",
-      desc: isPickup
-        ? "You can pick up your order soon"
-        : "A rider has accepted the delivery",
-      icon: <Truck className="w-4 h-4" />,
-    },
-    {
-      label: isPickup ? "Picked Up by Customer" : "On the Way",
-      desc: isPickup
-        ? "Order collected from pickup point"
-        : "Your package is currently in transit",
-      icon: <Clock className="w-4 h-4" />,
-    },
-    {
-      label: isPickup
-        ? "Completed"
-        : delivery?.status === "CANCELLED"
-          ? "Delivery Cancelled"
-          : "Delivered",
-      desc: isPickup
-        ? "Pickup completed"
-        : delivery?.status === "CANCELLED"
-          ? "This delivery was cancelled"
-          : "Your package has arrived",
-      icon: isPickup ? (
-        <CheckCircle2 className="w-4 h-4" />
-      ) : delivery?.status === "CANCELLED" ? (
-        <XCircle className="w-4 h-4" />
-      ) : (
-        <CheckCircle2 className="w-4 h-4" />
-      ),
-    },
-  ];
+  const isCancelled = order.status === "CANCELLED";
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-10">
-      {/* HEADER */}
+      {/* ================= HEADER ================= */}
       <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-            <Truck className="w-6 h-6 text-[#3c9ee0]" />
-            Track Delivery
+            <Truck className="w-6 h-6 text-[var(--brand-blue)]" />
+            Track Order
           </h1>
+
           <p className="text-gray-600 text-sm mt-1">
             Order ID:{" "}
-            <span className="font-mono tracking-wide text-gray-800">
-              {order.id}
+            <span className="font-mono text-gray-800">{order.id}</span>
+          </p>
+
+          <p className="text-sm text-gray-600 mt-1">
+            Tracking No:{" "}
+            <span className="font-mono text-[var(--brand-blue)]">
+              {order.trackingNumber}
             </span>
           </p>
         </div>
 
         <Badge
-          className={`${
-            statusColors[order.status]
-          } px-3 py-1 rounded-full text-xs font-semibold capitalize`}
+          className={`${statusColors[order.status]} px-3 py-1 text-xs font-semibold capitalize`}
         >
           {order.status.replaceAll("_", " ")}
         </Badge>
       </header>
 
-      {/* SUMMARY SECTION */}
+      {/* ================= SUMMARY ================= */}
       <section className="grid gap-5 lg:grid-cols-[2.2fr,1.3fr]">
-        {/* LEFT — PRODUCT SUMMARY */}
-        <div className="border rounded-xl p-4 sm:p-5 bg-white shadow-sm flex gap-4 items-start">
-          <div className="relative w-20 h-20 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
+        {/* PRODUCT */}
+        <div className="border rounded-xl p-4 bg-white shadow-sm flex gap-4">
+          <div className="relative w-20 h-20 rounded-md overflow-hidden bg-gray-100">
             <Image
               src={
                 order.items[0].product.images[0]?.imageUrl ?? "/placeholder.png"
@@ -139,16 +121,19 @@ const OrderTrackCard = ({ order }: Props) => {
             />
           </div>
 
-          <div className="flex-1 space-y-1 min-w-0">
-            <p className="font-medium text-[15px] line-clamp-2">
+          <div className="flex-1 min-w-0">
+            <p className="font-medium line-clamp-2">
               {order.items[0].product.name}
             </p>
+
             <p className="text-sm text-gray-500">
-              {order.items.length} item{order.items.length > 1 && "s"} •{" "}
+              {order.items.length} item
+              {order.items.length > 1 && "s"} •{" "}
               {formatBaseUSD(order.totalAmount)}
             </p>
+
             <p className="text-xs text-gray-500">
-              Placed on
+              Placed on{" "}
               {new Date(order.createdAt).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
@@ -158,50 +143,33 @@ const OrderTrackCard = ({ order }: Props) => {
           </div>
         </div>
 
-        {/* RIGHT — DELIVERY DETAIL */}
-        <div className="border rounded-xl p-4 sm:p-5 bg-white shadow-sm space-y-3">
+        {/* DELIVERY INFO */}
+        <div className="border rounded-xl p-4 bg-white shadow-sm space-y-3">
           <div className="flex items-center gap-2 font-semibold text-sm">
-            <MapPin className="w-4 h-4 text-[#3c9ee0]" /> Delivery Address
+            <MapPin className="w-4 h-4 text-[var(--brand-blue)]" />
+            Delivery Address
           </div>
 
-          <p>
-            Delivery Address: {""}
-            <span className="font-semibold text-[#3c9ee0]">
-              {order.deliveryAddress ?? "—"}
-            </span>
-          </p>
+          <p className="text-sm">{order.deliveryAddress ?? "—"}</p>
 
-          <div className="text-xs text-gray-700 space-y-1 pt-2">
-            {order.paymentMethod && (
-              <p>
-                <span className="font-semibold text-[#3c9ee0]">
-                  Payment Method:
-                </span>{" "}
-                {order.paymentMethod === "CARD"
-                  ? "Card Payment"
-                  : order.paymentMethod === "WALLET"
-                    ? "Wallet"
-                    : order.paymentMethod}
-              </p>
-            )}
-
+          <div className="text-xs space-y-1 pt-2">
             <p>
-              Delivery Type:{" "}
-              <span className="font-semibold text-[#3c9ee0]">
-                {order.deliveryType.replace("_", " ")}
-              </span>
+              <strong>Payment:</strong> {order.paymentMethod ?? "—"}
             </p>
+
             <p>
-              Shipping Fee:{" "}
-              <span className="font-semibold text-[#3c9ee0]">
-                {formatBaseUSD(order.shippingFee)}
-              </span>
+              <strong>Delivery Type:</strong>{" "}
+              {order.deliveryType.replace("_", " ")}
+            </p>
+
+            <p>
+              <strong>Shipping Fee:</strong> {formatBaseUSD(order.shippingFee)}
             </p>
           </div>
 
           {delivery?.rider && (
-            <div className="pt-3 border-t text-xs space-y-1">
-              <p className="font-semibold text-sm">Assigned Rider</p>
+            <div className="pt-3 border-t text-xs">
+              <p className="font-semibold">Assigned Rider</p>
               <p>{delivery.rider.name}</p>
               <p className="text-gray-500">{delivery.rider.email}</p>
             </div>
@@ -209,64 +177,73 @@ const OrderTrackCard = ({ order }: Props) => {
         </div>
       </section>
 
-      {/* DELIVERY TIMELINE */}
+      {/* ================= STEPPER ================= */}
       <section className="border rounded-xl p-5 bg-white shadow-sm">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Clock className="w-5 h-5 text-[#3c9ee0]" /> Delivery Progress
+          <Clock className="w-5 h-5 text-[var(--brand-blue)]" />
+          Order Progress
         </h2>
 
+        {isCancelled && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <XCircle className="w-4 h-4" />
+            This order was cancelled.
+          </div>
+        )}
+
         <ol className="relative ml-4 border-l border-gray-200 space-y-6">
-          {steps.map((step, index) => {
-            const completed = index < currentStep;
-            const active = index === currentStep;
+          {ORDER_STEPS.map((stepKey, index) => {
+            const step = STEP_CONFIG[stepKey];
+            const Icon = step.icon;
+
+            const completed = index < currentStepIndex;
+            const active = index === currentStepIndex;
+
             return (
-              <li key={index} className="ml-5 space-y-1">
+              <li key={stepKey} className="ml-5 space-y-1">
                 <span
-                  className={`absolute -left-[11px] flex h-6 w-6 items-center justify-center rounded-full border-2 text-xs transition ${
-                    completed
-                      ? "bg-[#3c9ee0] border-[#3c9ee0] text-white"
-                      : active
-                        ? "bg-[#318bc4] border-[#318bc4] text-white"
-                        : "bg-white border-gray-300 text-gray-400"
-                  }`}
+                  className={`
+                    absolute -left-[11px]
+                    flex h-6 w-6 items-center justify-center rounded-full border-2
+                    text-xs font-semibold
+                    ${
+                      completed
+                        ? "bg-[var(--brand-blue)] border-[var(--brand-blue)] text-white"
+                        : active
+                          ? "bg-[#318bc4] border-[#318bc4] text-white"
+                          : "bg-white border-gray-300 text-gray-400"
+                    }
+                  `}
                 >
-                  {index + 1}
+                  {completed ? "✓" : index + 1}
                 </span>
+
                 <div className="flex items-center gap-2">
-                  {step.icon}
-                  <span
-                    className={`text-sm font-medium ${
-                      completed || active ? "text-gray-900" : "text-gray-500"
-                    }`}
-                  >
-                    {step.label}
-                  </span>
+                  <Icon className="w-4 h-4 text-[var(--brand-blue)]" />
+                  <span className="text-sm font-medium">{step.label}</span>
                 </div>
-                <p className="text-xs text-gray-500">{step.desc}</p>
+
+                <p className="text-xs text-gray-500">{step.description}</p>
               </li>
             );
           })}
         </ol>
       </section>
 
-      {/* ACTION BUTTONS */}
+      {/* ================= ACTIONS ================= */}
       <section className="flex flex-col sm:flex-row gap-3">
         <Link href={`/customer/order/${order.id}`} className="w-full">
-          <Button
-            variant="outline"
-            className="w-full border-[#3c9ee0] text-[#3c9ee0] hover:bg-[#3c9ee0]/10 font-semibold"
-          >
+          <Button variant="outline" className="w-full">
             View full order details
           </Button>
         </Link>
+
         <Link href="/" className="w-full">
-          <Button className="w-full bg-[#3c9ee0] hover:bg-[#318bc4] text-white font-semibold">
+          <Button className="w-full bg-[var(--brand-blue)] text-white">
             Continue shopping
           </Button>
         </Link>
       </section>
     </main>
   );
-};
-
-export default OrderTrackCard;
+}
