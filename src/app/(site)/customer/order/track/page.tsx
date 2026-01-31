@@ -1,29 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { CurrentUserId } from "@/lib/currentUser";
-import OrderTrackGrid from "@/components/order/OrderTrackGrid";
-import { Input } from "@/components/ui/input";
-import Link from "next/link";
+import TrackAllOrdersClient from "../../_component/TrackAllOrdersClient";
 
 export default async function TrackAllActiveOrdersPage() {
-  const userId = await CurrentUserId();
-
-  if (!userId) {
-    return (
-      <main className="min-h-screen flex items-center justify-center px-4">
-        <p className="text-gray-600">
-          Please{" "}
-          <Link href="/login" className="text-[var(--brand-blue)] underline">
-            login
-          </Link>{" "}
-          to track your orders.
-        </p>
-      </main>
-    );
-  }
-
   const orders = await prisma.order.findMany({
     where: {
-      userId,
       status: {
         in: ["PENDING", "PROCESSING", "IN_TRANSIT"],
       },
@@ -40,21 +20,6 @@ export default async function TrackAllActiveOrdersPage() {
       },
     },
   });
-
-  if (orders.length === 0) {
-    return (
-      <main className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-gray-600">No active orders.</p>
-
-        <div className="w-full max-w-sm">
-          <Input placeholder="Enter tracking number" />
-          <p className="text-xs text-gray-500 mt-2">
-            Got a tracking number? Track your order above.
-          </p>
-        </div>
-      </main>
-    );
-  }
 
   const orderDTOs = orders.map((order) => ({
     id: order.id,
@@ -86,5 +51,5 @@ export default async function TrackAllActiveOrdersPage() {
     })),
   }));
 
-  return <OrderTrackGrid orders={orderDTOs} />;
+  return <TrackAllOrdersClient orders={orderDTOs} />;
 }

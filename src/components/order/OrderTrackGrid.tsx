@@ -56,7 +56,7 @@ export default function OrderTrackGrid({ orders }: Props) {
                     {firstItem.product.name}
                   </p>
 
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     {order.items.length > 1
                       ? `+ ${order.items.length - 1} more item(s)`
                       : `${firstItem.quantity} item`}
@@ -65,7 +65,7 @@ export default function OrderTrackGrid({ orders }: Props) {
               </div>
 
               {/* META */}
-              <div className="text-xs text-gray-600">
+              <div className="text-xs text-gray-600 dark:text-gray-400">
                 <p>
                   <strong>Total:</strong> {formatBaseUSD(order.totalAmount)}
                 </p>
@@ -79,7 +79,7 @@ export default function OrderTrackGrid({ orders }: Props) {
 
               {/* ACTION */}
               <Link
-                href={`/track/tn/${order.trackingNumber}`}
+                href={`/customer/order/track/tn/${order.trackingNumber}`}
                 className="mt-auto"
               >
                 <Button className="w-full bg-[var(--brand-blue)] text-white">
