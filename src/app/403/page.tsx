@@ -1,6 +1,6 @@
 "use client";
 
-import { useCurrentUser } from "@/hooks/getCurrentUser";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useRouter } from "next/navigation";
 
 export default function ForbiddenPage() {

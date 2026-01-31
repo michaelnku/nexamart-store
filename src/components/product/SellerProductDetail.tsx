@@ -15,7 +15,7 @@ import { FullProduct } from "@/lib/types";
 import { deleteProductAction } from "@/actions/auth/product";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { useCurrentUser } from "@/hooks/getCurrentUser";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { toast } from "sonner";
 import { Separator } from "../ui/separator";
 import {
@@ -45,7 +45,7 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
 
   const totalStock = useMemo(
     () => data.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
-    [data.variants]
+    [data.variants],
   );
 
   const inStock = totalStock > 0;
@@ -191,7 +191,7 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
                 <Button
                   onClick={() => {
                     router.push(
-                      `/market-place/dashboard/seller/products/${data.id}/update`
+                      `/market-place/dashboard/seller/products/${data.id}/update`,
                     );
                   }}
                   className="w-full bg-[#3c9ee0] hover:bg-[#318bc4] py-4 text-lg rounded-xl shadow flex items-center gap-2 justify-center"

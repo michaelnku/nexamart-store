@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useCurrentUser } from "@/hooks/getCurrentUser";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useRouter } from "next/navigation";
 
 const NotFoundError: React.FC = () => {

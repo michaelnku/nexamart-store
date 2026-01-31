@@ -4,6 +4,7 @@ import {
   ProductImage,
   ProductVariant,
   Review,
+  SenderType,
   Store,
   UserRole,
 } from "@/generated/prisma/client";
@@ -462,4 +463,29 @@ export type PreferencesInput = {
   emailWalletAlerts?: boolean;
   emailPromotions?: boolean;
   emailRecommendations?: boolean;
+};
+
+export type ChatMessage = {
+  id: string;
+  conversationId: string;
+  senderType: SenderType;
+  content: string;
+  createdAt: string;
+};
+
+export type InboxPreview = {
+  id: string;
+  subject: string | null;
+  lastMessage?: {
+    content: string;
+    createdAt: string;
+    senderType: SenderType;
+  };
+  unreadCount: number;
+};
+
+export type InboxConversation = {
+  id: string;
+  subject: string | null;
+  messages: ChatMessage[];
 };

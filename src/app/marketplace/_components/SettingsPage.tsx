@@ -16,7 +16,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Camera, Loader2, Save } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { useCurrentUser } from "@/hooks/getCurrentUser";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import Image from "next/image";
 import { toast } from "sonner";
 import { UploadButton } from "@/utils/uploadthing";
@@ -464,8 +464,8 @@ const SellerSettingsPage = () => {
                       return uploading
                         ? "Uploading..."
                         : logoUrl
-                        ? "Edit"
-                        : "Add Photo";
+                          ? "Edit"
+                          : "Add Photo";
                     },
                   }}
                 />
@@ -755,7 +755,7 @@ const AdminSettingsPage = () => {
 
   // Support settings
   const [supportMessage, setSupportMessage] = useState(
-    "Hello! How can we help you today?"
+    "Hello! How can we help you today?",
   );
   const [supportEmail, setSupportEmail] = useState("help@nexamart.com");
 

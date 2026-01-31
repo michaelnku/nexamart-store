@@ -15,7 +15,7 @@ export function TrackingQRScanner({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
-  const scannedRef = useRef(false); // 🔒 scan lock
+  const hasScannedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,13 +23,12 @@ export function TrackingQRScanner({
 
     reader
       .decodeFromVideoDevice(undefined, videoRef.current!, (result) => {
-        if (!result || scannedRef.current) return;
+        if (!result || hasScannedRef.current) return;
 
-        scannedRef.current = true;
+        hasScannedRef.current = true;
 
-        // 📳 VIBRATION FEEDBACK (safe)
         if ("vibrate" in navigator) {
-          navigator.vibrate([100, 50, 100]); // short-double pulse
+          navigator.vibrate([100, 50, 100]);
         }
 
         onResult(result.getText());
@@ -46,7 +45,6 @@ export function TrackingQRScanner({
       });
 
     return () => {
-      scannedRef.current = true;
       controlsRef.current?.stop();
     };
   }, [onResult, onClose]);
@@ -60,7 +58,6 @@ export function TrackingQRScanner({
             variant="ghost"
             size="icon"
             onClick={() => {
-              scannedRef.current = true;
               controlsRef.current?.stop();
               onClose();
             }}
