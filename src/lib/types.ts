@@ -472,6 +472,8 @@ export type ChatMessage = {
   content: string;
   createdAt: string;
   readAt?: string | null;
+  deliveredAt?: string | null;
+  senderId?: string | null;
 };
 
 export type InboxPreview = {

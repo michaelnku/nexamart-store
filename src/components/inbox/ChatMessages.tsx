@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import ChatBox from "./ChatBox";
 import { ChatMessage } from "@/lib/types";
 import { Spinner } from "@/components/ui/spinner";
@@ -17,12 +17,6 @@ export default function ChatMessages({
   };
 }) {
   const [messages, setMessages] = useState<ChatMessage[] | null>(null);
-
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   useEffect(() => {
     let ignore = false;
@@ -44,8 +38,13 @@ export default function ChatMessages({
 
   if (!messages) {
     return (
-      <div className="flex w-full max-w-xs gap-4 [--radius:1rem] text-gray-500 items-center human:animate-pulse justify-center">
-        <Spinner />
+      <div className="flex h-full min-h-[60vh] w-full items-center justify-center">
+        <div className="flex items-center gap-3 rounded-xl border bg-background px-5 py-4 shadow-sm">
+          <Spinner className="h-5 w-5 text-[var(--brand-blue)] animate-spin" />
+          <span className="text-sm font-medium text-muted-foreground">
+            Loading conversation…
+          </span>
+        </div>
       </div>
     );
   }
@@ -57,7 +56,6 @@ export default function ChatMessages({
         header={header}
         initialMessages={messages}
       />
-      {/* <div ref={bottomRef} /> */}
     </>
   );
 }
