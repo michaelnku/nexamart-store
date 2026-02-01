@@ -471,6 +471,7 @@ export type ChatMessage = {
   senderType: SenderType;
   content: string;
   createdAt: string;
+  readAt?: string | null;
 };
 
 export type InboxPreview = {
@@ -484,7 +485,7 @@ export type InboxPreview = {
   unreadCount: number;
 };
 
-export type InboxConversation = {
+export type NewConversation = {
   id: string;
   subject: string | null;
   messages: ChatMessage[];

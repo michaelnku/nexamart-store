@@ -20,7 +20,7 @@ import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 
 const accountLinks = [
   { name: "Orders", href: "/customer/order/history", icon: ShoppingBag },
-  { name: "Inbox", href: "/customer/inbox", icon: Mail },
+  { name: "Inbox", href: "/inbox", icon: Mail },
   { name: "Wishlist", href: "/customer/wishlist", icon: Heart },
   {
     name: "Pending Reviews",

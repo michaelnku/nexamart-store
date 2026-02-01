@@ -2,7 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
-import { ConversationType, SenderType } from "@/generated/prisma/client";
+import { SenderType } from "@/generated/prisma/client";
+import { read } from "fs";
 
 export async function createConversationAction({
   subject,
@@ -43,7 +44,7 @@ export async function createConversationAction({
   });
 
   return {
-    success: true,
+    ok: true,
     conversation: {
       id: conversation.id,
       subject: conversation.subject,
@@ -53,6 +54,7 @@ export async function createConversationAction({
         senderType: m.senderType,
         content: m.content,
         createdAt: m.createdAt.toISOString(),
+        readAt: null,
       })),
     },
   };

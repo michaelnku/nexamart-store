@@ -1,94 +1,77 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { sendMessageAction } from "@/actions/inbox/sendMessageAction";
-import { useConversationMessages } from "@/hooks/useConversationMessages";
 import { ChatMessage } from "@/lib/types";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { markConversationReadAction } from "@/actions/inbox/markConversationReadAction";
-import { sendTypingAction } from "@/actions/inbox/sendTypingAction";
+import { sendMessageAction } from "@/actions/inbox/sendMessageAction";
+import { useConversationMessages } from "@/hooks/useConversationMessages";
 import TypingIndicator from "./TypingIndicator";
+
+type Props = {
+  conversationId: string;
+  header: {
+    title: string;
+    subtitle?: string;
+    status?: "online" | "offline";
+  };
+  initialMessages: ChatMessage[];
+};
 
 export default function ChatBox({
   conversationId,
-}: {
-  conversationId: string;
-}) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  header,
+  initialMessages,
+}: Props) {
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [text, setText] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const typingTimeout = useRef<NodeJS.Timeout | null>(null);
-  const [isTyping, setIsTyping] = useState(false);
-
-  useEffect(() => {
-    markConversationReadAction(conversationId);
-  }, [conversationId]);
 
   useConversationMessages({
     conversationId,
-    onMessage: (msg) =>
+    onMessage: (msg) => {
       setMessages((prev) =>
         prev.some((m) => m.id === msg.id) ? prev : [...prev, msg],
-      ),
-    onTyping: () => {
-      setIsTyping(true);
-      setTimeout(() => setIsTyping(false), 1500);
+      );
     },
   });
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
-
-  const handleTyping = () => {
-    if (typingTimeout.current) return;
-    sendTypingAction({ conversationId });
-    typingTimeout.current = setTimeout(() => {
-      typingTimeout.current = null;
-    }, 1200);
-  };
 
   const send = async () => {
     if (!text.trim()) return;
     const value = text;
     setText("");
-    const res = await sendMessageAction({ conversationId, content: value });
-    if (res?.error) setText(value);
+    await sendMessageAction({ conversationId, content: value });
   };
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 space-y-3 overflow-y-auto px-2">
+      <div className="border-b px-4 py-3">
+        <p className="font-medium">{header.title}</p>
+        {header.subtitle && (
+          <p className="text-xs text-gray-500">{header.subtitle}</p>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
         {messages.map((m) => (
           <div
             key={m.id}
             className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
               m.senderType === "USER"
                 ? "ml-auto bg-[var(--brand-blue)] text-white"
-                : "bg-gray-100 text-gray-800"
+                : "bg-gray-100"
             }`}
           >
             {m.content}
           </div>
         ))}
-        {isTyping && <TypingIndicator />}
-        <div ref={bottomRef} />
+        <TypingIndicator />
       </div>
 
-      <div className="flex gap-2 border-t p-2">
+      <div className="border-t p-3 flex gap-2">
         <Input
           value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            handleTyping();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              send();
-            }
-          }}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && send()}
           placeholder="Type a message…"
         />
         <Button onClick={send}>Send</Button>

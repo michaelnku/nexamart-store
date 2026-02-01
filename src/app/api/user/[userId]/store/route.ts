@@ -3,14 +3,14 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: Request,
-  context: { params: Promise<{ userId: string }> }
+  context: { params: Promise<{ userId: string }> },
 ) {
   const { userId } = await context.params;
 
   console.log("🔵 API ROUTE HIT — userId:", userId);
 
   if (!userId) {
-    console.error("❌ userId missing in params");
+    console.error("❌ user Id is missing in params");
     return NextResponse.json({ error: "Missing userId" }, { status: 400 });
   }
 
@@ -33,7 +33,7 @@ export async function GET(
     console.error("🔥 Prisma error:", error);
     return NextResponse.json(
       { error: "Failed to fetch store" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
