@@ -12,22 +12,23 @@ import MessageList from "./MessageList";
 
 type Props = {
   conversationId: string;
-  header: {
-    title: string;
-    subtitle?: string;
-  };
+  agentId?: string | null;
+
   initialMessages: ChatMessage[];
 };
 
 export default function ChatBox({
   conversationId,
-  header,
+
   initialMessages,
+  agentId,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [text, setText] = useState("");
 
   const { online, typing } = useConversationPresence(conversationId);
+
+  const isBot = !agentId;
 
   useConversationMessages({
     conversationId,
@@ -48,9 +49,9 @@ export default function ChatBox({
     <div className="grid h-[100dvh] grid-rows-[auto_1fr_auto] bg-background">
       <div className="shrink-0">
         <ChatHeader
-          title={header.title}
-          subtitle={header.subtitle}
-          online={online}
+          title={isBot ? "NexaMart Assistant" : "Support Agent"}
+          subtitle={isBot ? "AI Moderator" : "Human Support"}
+          online={isBot ? true : online}
         />
       </div>
 

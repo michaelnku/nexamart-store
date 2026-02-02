@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
 import { pusherServer } from "@/lib/pusher";
 import { SenderType } from "@/generated/prisma/client";
+import { autoModeratorReply } from "./autoModeratorReply";
 
 export type RealtimeMessagePayload = {
   id: string;
@@ -24,9 +25,16 @@ export async function sendMessageAction({
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
 
-  if (!content.trim()) {
+  const text = content.trim();
+  if (!text) {
     return { error: "Message cannot be empty" };
   }
+
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+  });
+
+  if (!conversation) return { error: "Conversation not found" };
 
   const isMember = await prisma.conversationMember.findFirst({
     where: {
@@ -39,29 +47,42 @@ export async function sendMessageAction({
     return { error: "Not allowed in this conversation" };
   }
 
-  const message = await prisma.message.create({
+  const userMessage = await prisma.message.create({
     data: {
       conversationId,
       senderId: userId,
       senderType: SenderType.USER,
-      content: content.trim(),
+      content: text,
     },
   });
 
-  const payload: RealtimeMessagePayload = {
-    id: message.id,
+  const userPayload: RealtimeMessagePayload = {
+    id: userMessage.id,
     conversationId,
-    senderId: message.senderId,
-    senderType: message.senderType,
-    content: message.content,
-    createdAt: message.createdAt.toISOString(),
+    senderId: userMessage.senderId,
+    senderType: userMessage.senderType,
+    content: userMessage.content,
+    createdAt: userMessage.createdAt.toISOString(),
   };
 
   await pusherServer.trigger(
     `conversation-${conversationId}`,
     "new-message",
-    payload,
+    userPayload,
   );
 
-  return { success: true, message: payload };
+  const aiMessage = await autoModeratorReply({
+    conversationId,
+    userMessage: text,
+  });
+
+  if (aiMessage) {
+    await pusherServer.trigger(
+      `conversation-${conversationId}`,
+      "new-message",
+      aiMessage,
+    );
+  }
+
+  return { success: true };
 }

@@ -20,7 +20,10 @@ export default function ChatHeader({ title, subtitle, online }: Props) {
         </Avatar>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{title}</p>
+          <p className="truncate font-medium leading-none">{title}</p>
+          <p>
+            <span className="text-muted-foreground text-xs">{subtitle}</span>
+          </p>
           <p
             className={cn(
               "text-xs",

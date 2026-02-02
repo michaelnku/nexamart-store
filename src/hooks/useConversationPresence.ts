@@ -7,10 +7,16 @@ export function useConversationPresence(conversationId: string) {
   const [online, setOnline] = useState(false);
   const [typing, setTyping] = useState(false);
 
+  const [agentAssigned, setAgentAssigned] = useState(false);
+
   useEffect(() => {
     const channel = pusherClient.subscribe(
       `presence-conversation-${conversationId}`,
     );
+    channel.bind("agent-assigned", () => {
+      setAgentAssigned(true);
+      setOnline(true);
+    });
 
     channel.bind("pusher:subscription_succeeded", () => {
       setOnline(true);
@@ -35,5 +41,5 @@ export function useConversationPresence(conversationId: string) {
     };
   }, [conversationId]);
 
-  return { online, typing };
+  return { online, typing, agentAssigned };
 }

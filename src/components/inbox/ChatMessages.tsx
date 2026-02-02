@@ -7,14 +7,14 @@ import { Spinner } from "@/components/ui/spinner";
 
 export default function ChatMessages({
   conversationId,
-  header,
+  title,
+  subtitle,
+  status,
 }: {
   conversationId: string;
-  header: {
-    title: string;
-    subtitle?: string;
-    status?: "online" | "offline";
-  };
+  title: string;
+  subtitle?: string;
+  status?: "online" | "offline";
 }) {
   const [messages, setMessages] = useState<ChatMessage[] | null>(null);
 
@@ -51,11 +51,7 @@ export default function ChatMessages({
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <ChatBox
-        conversationId={conversationId}
-        header={header}
-        initialMessages={messages}
-      />
+      <ChatBox conversationId={conversationId} initialMessages={messages} />
     </div>
   );
 }
