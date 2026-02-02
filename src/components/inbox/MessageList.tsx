@@ -17,15 +17,17 @@ export default function MessageList({ messages, typing }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
   return (
-    <div className="min-h-0 overflow-y-auto px-4 py-3">
-      <div className="flex flex-col-reverse space-y-reverse space-y-3">
-        {messages.map((m) => (
-          <MessageBubble key={m.id} message={m} />
-        ))}
+    <main className=" min-h-0 overflow-y-auto">
+      <div className=" px-4 py-3">
+        <div className="flex flex-col space-y-3">
+          {messages.map((m) => (
+            <MessageBubble key={m.id} message={m} />
+          ))}
 
-        {typing && <TypingIndicator />}
-        <div ref={bottomRef} />
+          {typing && <TypingIndicator />}
+          {/* <div ref={bottomRef} /> */}
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

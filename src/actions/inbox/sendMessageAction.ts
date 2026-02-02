@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
 import { pusherServer } from "@/lib/pusher";
 import { SenderType } from "@/generated/prisma/client";
-import { autoModeratorReply } from "./autoModeratorReply";
 
 export type RealtimeMessagePayload = {
   id: string;
@@ -29,12 +28,6 @@ export async function sendMessageAction({
   if (!text) {
     return { error: "Message cannot be empty" };
   }
-
-  const conversation = await prisma.conversation.findUnique({
-    where: { id: conversationId },
-  });
-
-  if (!conversation) return { error: "Conversation not found" };
 
   const isMember = await prisma.conversationMember.findFirst({
     where: {
@@ -70,19 +63,6 @@ export async function sendMessageAction({
     "new-message",
     userPayload,
   );
-
-  const aiMessage = await autoModeratorReply({
-    conversationId,
-    userMessage: text,
-  });
-
-  if (aiMessage) {
-    await pusherServer.trigger(
-      `conversation-${conversationId}`,
-      "new-message",
-      aiMessage,
-    );
-  }
 
   return { success: true };
 }

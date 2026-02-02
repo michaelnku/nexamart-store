@@ -7,14 +7,8 @@ import { Spinner } from "@/components/ui/spinner";
 
 export default function ChatMessages({
   conversationId,
-  title,
-  subtitle,
-  status,
 }: {
   conversationId: string;
-  title: string;
-  subtitle?: string;
-  status?: "online" | "offline";
 }) {
   const [messages, setMessages] = useState<ChatMessage[] | null>(null);
 

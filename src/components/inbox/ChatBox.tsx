@@ -32,10 +32,12 @@ export default function ChatBox({
 
   useConversationMessages({
     conversationId,
-    onMessage: (msg) =>
-      setMessages((prev) =>
-        prev.some((m) => m.id === msg.id) ? prev : [...prev, msg],
-      ),
+    onMessage: (msg) => {
+      setMessages((prev) => {
+        if (prev.find((m) => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+    },
   });
 
   const send = async () => {
@@ -46,7 +48,7 @@ export default function ChatBox({
   };
 
   return (
-    <div className="grid h-[100dvh] grid-rows-[auto_1fr_auto] bg-background">
+    <div className=" bg-background">
       <div className="shrink-0">
         <ChatHeader
           title={isBot ? "NexaMart Assistant" : "Support Agent"}
@@ -57,7 +59,7 @@ export default function ChatBox({
 
       <MessageList messages={messages} typing={typing} />
 
-      <div className="shrink-0 border-t bg-background px-3 py-2">
+      <div className="shrink-0 border-t bg-background px-3 py-2 sticky bottom-0">
         <div className="flex gap-3">
           <Input
             value={text}

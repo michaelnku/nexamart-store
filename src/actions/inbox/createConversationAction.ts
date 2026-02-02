@@ -30,9 +30,19 @@ export async function createConversationAction({
         },
       },
       messages: {
-        create: {
-          senderType: SenderType.USER,
-          content: message,
+        createMany: {
+          data: [
+            {
+              senderType: SenderType.SYSTEM,
+              content:
+                "Hello 👋 I’m NexaMart AI Assistant. A support agent will assist you shortly.",
+            },
+            {
+              senderId: userId,
+              senderType: SenderType.USER,
+              content: message.trim(),
+            },
+          ],
         },
       },
     },

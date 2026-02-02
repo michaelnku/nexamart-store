@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { MdDelete } from "react-icons/md";
 
 type Props = {
   conversations: InboxPreview[];
@@ -51,6 +52,12 @@ export default function InboxList({
             )}
           </button>
         ))}
+      </div>
+
+      <div>
+        <Button variant={"ghost"} className="w-12 h-12">
+          <MdDelete className="text-red-500" />
+        </Button>
       </div>
     </div>
   );

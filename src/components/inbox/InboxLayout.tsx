@@ -49,57 +49,52 @@ export default function InboxLayout({ conversations }: Props) {
   }
 
   return (
-    <div className="grid h-full grid-cols-[320px_1fr] overflow-hidden">
-      <aside
-        className={cn(
-          "border-r overflow-hidden h-full",
-          activeId && "hidden md:block",
-        )}
-      >
-        <InboxList
-          conversations={list}
-          activeId={activeId}
-          onSelect={setActiveId}
-          onNew={() => setOpen(true)}
-        />
-      </aside>
-
-      <main className="h-full flex flex-col overflow-hidden">
-        {!active ? (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            Select a conversation
-          </div>
-        ) : (
-          <ChatMessages
-            conversationId={active.id}
-            header={{
-              title: active.subject ?? "Support",
-              subtitle: "Support Agent",
-              status: "online",
-            }}
+    <main className="h-[100dvh] mx-auto max-w-6xl border bg-background">
+      <div className="grid grid-cols-[320px_1fr] overflow-hidden">
+        <aside
+          className={cn(
+            "border-r overflow-hidden h-full",
+            activeId && "hidden md:block",
+          )}
+        >
+          <InboxList
+            conversations={list}
+            activeId={activeId}
+            onSelect={setActiveId}
+            onNew={() => setOpen(true)}
           />
-        )}
-      </main>
+        </aside>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New Support Ticket</DialogTitle>
-          </DialogHeader>
+        <main className="h-full flex flex-col overflow-hidden">
+          {!active ? (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              Select a conversation
+            </div>
+          ) : (
+            <ChatMessages conversationId={active.id} />
+          )}
+        </main>
 
-          <NewConversationModal
-            onClose={() => setOpen(false)}
-            onCreated={(conv) => {
-              setList((prev) => [
-                { id: conv.id, subject: conv.subject, unreadCount: 0 },
-                ...prev,
-              ]);
-              setActiveId(conv.id);
-              setOpen(false);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-    </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>New Support Ticket</DialogTitle>
+            </DialogHeader>
+
+            <NewConversationModal
+              onClose={() => setOpen(false)}
+              onCreated={(conv) => {
+                setList((prev) => [
+                  { id: conv.id, subject: conv.subject, unreadCount: 0 },
+                  ...prev,
+                ]);
+                setActiveId(conv.id);
+                setOpen(false);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+    </main>
   );
 }
