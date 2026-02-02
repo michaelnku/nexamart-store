@@ -164,7 +164,7 @@ export default function SiteNavbar({
 
                 <DropdownMenuItem asChild>
                   <Link
-                    href="/customer/inbox"
+                    href="/inbox"
                     className={`flex gap-2 w-full px-2 py-1.5 rounded-md transition
       ${
         pathname === "/customer/inbox"

@@ -50,12 +50,12 @@ export default function ChatMessages({
   }
 
   return (
-    <>
+    <div className="h-full flex flex-col overflow-hidden">
       <ChatBox
         conversationId={conversationId}
         header={header}
         initialMessages={messages}
       />
-    </>
+    </div>
   );
 }

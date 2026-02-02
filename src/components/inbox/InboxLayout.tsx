@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import InboxList from "./InboxList";
+import ChatMessages from "./ChatMessages";
 import EmptyInboxState from "./EmptyInboxState";
 import NewConversationModal from "./NewConversationModal";
 import { InboxPreview } from "@/lib/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import ChatMessages from "./ChatMessages";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -21,51 +21,68 @@ export default function InboxLayout({ conversations }: Props) {
   const hasConversations = list.length > 0;
   const active = list.find((c) => c.id === activeId);
 
-  return (
-    <div
-      className={cn(
-        "grid h-screen border rounded-xl overflow-hidden bg-background",
-        "grid-cols-1 md:grid-cols-[320px_1fr]",
-      )}
-    >
-      {list.length > 0 && (
-        <div className={cn("border-r", activeId && "hidden md:block")}>
-          <InboxList
-            conversations={list}
-            activeId={activeId}
-            onSelect={setActiveId}
-            onNew={() => setOpen(true)}
-          />
-        </div>
-      )}
+  if (!hasConversations) {
+    return (
+      <div className="flex h-[100dvh] w-full items-center justify-center bg-background">
+        <EmptyInboxState onNewConversation={() => setOpen(true)} />
 
-      <div
-        className={cn("flex flex-col h-full", !activeId && "hidden md:flex")}
-      >
-        {!hasConversations ? (
-          <div className="flex flex-1 items-center justify-center">
-            <EmptyInboxState onNewConversation={() => setOpen(true)} />
-          </div>
-        ) : !active ? (
-          <div className="flex flex-1 items-center justify-center text-center text-muted-foreground">
-            Select a conversation to start chatting
-          </div>
-        ) : (
-          <div>
-            <ChatMessages
-              conversationId={active.id}
-              header={{
-                title: active.subject ?? "Support",
-                subtitle: "Support Agent",
-                status: "online",
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>New Support Ticket</DialogTitle>
+            </DialogHeader>
+
+            <NewConversationModal
+              onClose={() => setOpen(false)}
+              onCreated={(conv) => {
+                setList([
+                  { id: conv.id, subject: conv.subject, unreadCount: 0 },
+                ]);
+                setActiveId(conv.id);
+                setOpen(false);
               }}
             />
-          </div>
-        )}
+          </DialogContent>
+        </Dialog>
       </div>
+    );
+  }
+
+  return (
+    <div className="grid h-full grid-cols-[320px_1fr] overflow-hidden">
+      <aside
+        className={cn(
+          "border-r overflow-hidden h-full",
+          activeId && "hidden md:block",
+        )}
+      >
+        <InboxList
+          conversations={list}
+          activeId={activeId}
+          onSelect={setActiveId}
+          onNew={() => setOpen(true)}
+        />
+      </aside>
+
+      <main className="h-full flex flex-col overflow-hidden">
+        {!active ? (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            Select a conversation
+          </div>
+        ) : (
+          <ChatMessages
+            conversationId={active.id}
+            header={{
+              title: active.subject ?? "Support",
+              subtitle: "Support Agent",
+              status: "online",
+            }}
+          />
+        )}
+      </main>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md w-[95vw] sm:w-full">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>New Support Ticket</DialogTitle>
           </DialogHeader>
@@ -74,11 +91,7 @@ export default function InboxLayout({ conversations }: Props) {
             onClose={() => setOpen(false)}
             onCreated={(conv) => {
               setList((prev) => [
-                {
-                  id: conv.id,
-                  subject: conv.subject,
-                  unreadCount: 0,
-                },
+                { id: conv.id, subject: conv.subject, unreadCount: 0 },
                 ...prev,
               ]);
               setActiveId(conv.id);

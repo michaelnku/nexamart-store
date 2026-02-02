@@ -290,7 +290,7 @@ export const DashboardMenuItems = {
       icon: Ticket,
       label: "Voucher",
     },
-    { href: "/customer/inbox", icon: Mail, label: "Inbox" },
+    { href: "/inbox", icon: Mail, label: "Inbox" },
     {
       href: "/customer/followed-seller",
       icon: StoreIcon,

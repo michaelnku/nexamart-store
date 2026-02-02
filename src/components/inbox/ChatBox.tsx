@@ -45,17 +45,19 @@ export default function ChatBox({
   };
 
   return (
-    <div className="flex h-full flex-col bg-background">
-      <ChatHeader
-        title={header.title}
-        subtitle={header.subtitle}
-        online={online}
-      />
+    <div className="grid h-[100dvh] grid-rows-[auto_1fr_auto] bg-background">
+      <div className="shrink-0">
+        <ChatHeader
+          title={header.title}
+          subtitle={header.subtitle}
+          online={online}
+        />
+      </div>
 
       <MessageList messages={messages} typing={typing} />
 
-      <div className="border-t bg-background px-3 py-2">
-        <div className="flex gap-2">
+      <div className="shrink-0 border-t bg-background px-3 py-2">
+        <div className="flex gap-3">
           <Input
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -63,7 +65,10 @@ export default function ChatBox({
             placeholder="Type a message…"
             className="h-10"
           />
-          <Button onClick={send} className="h-10 bg-[var(--brand-blue)]">
+          <Button
+            onClick={send}
+            className="h-10 bg-[var(--brand-blue)] hover:bg-[var(--brand-blue)]/90"
+          >
             Send
           </Button>
         </div>
