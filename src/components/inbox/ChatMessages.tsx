@@ -7,8 +7,14 @@ import { Spinner } from "@/components/ui/spinner";
 
 export default function ChatMessages({
   conversationId,
+  onPreviewUpdate,
 }: {
   conversationId: string;
+  onPreviewUpdate?: (payload: {
+    content: string;
+    senderType: ChatMessage["senderType"];
+    createdAt: string;
+  }) => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[] | null>(null);
 
@@ -44,8 +50,12 @@ export default function ChatMessages({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <ChatBox conversationId={conversationId} initialMessages={messages} />
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <ChatBox
+        conversationId={conversationId}
+        initialMessages={messages}
+        onPreviewUpdate={onPreviewUpdate}
+      />
     </div>
   );
 }

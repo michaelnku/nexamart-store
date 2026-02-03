@@ -13,6 +13,11 @@ type Props = {
   agentId?: string | null;
 
   initialMessages: ChatMessage[];
+  onPreviewUpdate?: (payload: {
+    content: string;
+    senderType: ChatMessage["senderType"];
+    createdAt: string;
+  }) => void;
 };
 
 export default function ChatBox({
@@ -20,6 +25,7 @@ export default function ChatBox({
 
   initialMessages,
   agentId,
+  onPreviewUpdate,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
 
@@ -33,6 +39,11 @@ export default function ChatBox({
       setMessages((prev) => {
         if (prev.find((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
+      });
+      onPreviewUpdate?.({
+        content: msg.content,
+        senderType: msg.senderType,
+        createdAt: msg.createdAt,
       });
     },
   });
@@ -49,7 +60,12 @@ export default function ChatBox({
 
       <MessageList messages={messages} typing={typing} />
 
-      <ChatInput conversationId={conversationId} />
+      <div className="shrink-0">
+        <ChatInput
+          conversationId={conversationId}
+          onPreviewUpdate={onPreviewUpdate}
+        />
+      </div>
     </div>
   );
 }

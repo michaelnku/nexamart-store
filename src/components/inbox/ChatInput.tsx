@@ -4,14 +4,22 @@ import { useEffect, useRef, useState } from "react";
 import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
 import { sendMessageAction } from "@/actions/inbox/sendMessageAction";
+import { Spinner } from "@/components/ui/spinner";
+import { SenderType } from "@/generated/prisma/client";
 
 type Props = {
   conversationId: string;
+  onPreviewUpdate?: (payload: {
+    content: string;
+    senderType: SenderType;
+    createdAt: string;
+  }) => void;
 };
-export function ChatInput({ conversationId }: Props) {
+export function ChatInput({ conversationId, onPreviewUpdate }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
   const [text, setText] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -20,10 +28,22 @@ export function ChatInput({ conversationId }: Props) {
   }, [text]);
 
   const send = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || isSending) return;
     const value = text;
     setText("");
-    await sendMessageAction({ conversationId, content: value });
+    setIsSending(true);
+    try {
+      const res = await sendMessageAction({ conversationId, content: value });
+      if (!res?.error) {
+        onPreviewUpdate?.({
+          content: value,
+          senderType: SenderType.USER,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -41,13 +61,19 @@ export function ChatInput({ conversationId }: Props) {
           />
           <Button
             onClick={send}
-            className="absolute bottom-1.5 right-1.5 h-7 px-3 bg-[var(--brand-blue)] hover:bg-[var(--brand-blue)]/90"
+            disabled={isSending}
+            className="absolute bottom-1.5 right-1.5 h-7 px-3 bg-[var(--brand-blue)] hover:bg-[var(--brand-blue)]/90 disabled:opacity-70"
           >
-            Send
+            {isSending ? (
+              <span className="flex items-center">
+                <Spinner className="h-4 w-4 animate-spin text-white" />
+              </span>
+            ) : (
+              "Send"
+            )}
           </Button>
         </div>
       </div>
     </div>
   );
 }
-

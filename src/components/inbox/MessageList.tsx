@@ -11,13 +11,15 @@ type Props = {
 };
 
 export default function MessageList({ messages, typing }: Props) {
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, typing]);
   return (
-    <main className="flex-1 min-h-0 overflow-y-auto">
+    <main className="flex-1 min-h-0 overflow-y-auto" ref={listRef}>
       <div className="px-4 py-3">
         <div className="flex flex-col space-y-3">
           {messages.map((m) => (
@@ -25,7 +27,6 @@ export default function MessageList({ messages, typing }: Props) {
           ))}
 
           {typing && <TypingIndicator />}
-          {/* <div ref={bottomRef} /> */}
         </div>
       </div>
     </main>
