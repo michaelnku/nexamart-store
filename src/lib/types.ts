@@ -479,6 +479,8 @@ export type ChatMessage = {
 export type InboxPreview = {
   id: string;
   subject: string | null;
+  agentId?: string | null;
+  agentName?: string | null;
   lastMessage?: {
     content: string;
     createdAt: string;

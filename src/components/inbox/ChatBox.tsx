@@ -11,6 +11,7 @@ import { ChatInput } from "./ChatInput";
 type Props = {
   conversationId: string;
   agentId?: string | null;
+  agentName?: string | null;
 
   initialMessages: ChatMessage[];
   onPreviewUpdate?: (payload: {
@@ -25,6 +26,7 @@ export default function ChatBox({
 
   initialMessages,
   agentId,
+  agentName,
   onPreviewUpdate,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -52,7 +54,7 @@ export default function ChatBox({
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
       <div className="shrink-0">
         <ChatHeader
-          title={isBot ? "NexaMart Assistant" : "Support Agent"}
+          title={isBot ? "NexaMart Assistant" : agentName ?? "Support Agent"}
           subtitle={isBot ? "AI Moderator" : "Human Support"}
           online={isBot ? true : online}
         />

@@ -11,35 +11,42 @@ export async function assignAgentAction({
   conversationId: string;
   agentId: string;
 }) {
-  const conversation = await prisma.conversation.update({
-    where: { id: conversationId },
-    data: {
-      agentId,
-    },
-  });
+  if (!agentId) return { error: "Missing agent id" };
 
-  const systemMessage = await prisma.message.create({
-    data: {
+  try {
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        agentId,
+      },
+    });
+
+    const systemMessage = await prisma.message.create({
+      data: {
+        conversationId,
+        senderType: SenderType.SYSTEM,
+        content: "A support agent has joined the conversation 👋",
+      },
+    });
+
+    await pusherServer.trigger(`conversation-${conversationId}`, "new-message", {
+      id: systemMessage.id,
       conversationId,
+      senderId: null,
       senderType: SenderType.SYSTEM,
-      content: "A support agent has joined the conversation 👋",
-    },
-  });
+      content: systemMessage.content,
+      createdAt: systemMessage.createdAt.toISOString(),
+    });
 
-  await pusherServer.trigger(`conversation-${conversationId}`, "new-message", {
-    id: systemMessage.id,
-    conversationId,
-    senderId: null,
-    senderType: SenderType.SYSTEM,
-    content: systemMessage.content,
-    createdAt: systemMessage.createdAt.toISOString(),
-  });
+    await pusherServer.trigger(
+      `conversation-${conversationId}`,
+      "agent-assigned",
+      { agentId },
+    );
 
-  await pusherServer.trigger(
-    `conversation-${conversationId}`,
-    "agent-assigned",
-    { agentId },
-  );
-
-  return { success: true };
+    return { success: true };
+  } catch {
+    return { error: "Failed to assign agent" };
+  }
 }
+

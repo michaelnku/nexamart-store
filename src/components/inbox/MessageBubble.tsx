@@ -1,15 +1,18 @@
 "use client";
 
 import { ChatMessage } from "@/lib/types";
+import { SenderType } from "@/generated/prisma/client";
 import { cn } from "@/lib/utils";
 import { MessageStatus } from "./MessageStatus";
 
 type Props = {
   message: ChatMessage;
+  viewerSenderType?: SenderType;
 };
 
-export default function MessageBubble({ message }: Props) {
-  const isUser = message.senderType === "USER";
+export default function MessageBubble({ message, viewerSenderType }: Props) {
+  const selfType = viewerSenderType ?? "USER";
+  const isUser = message.senderType === selfType;
 
   return (
     <div

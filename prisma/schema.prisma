@@ -49,15 +49,17 @@ model User {
 
   Notification Notification[]
 
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  Account         Account[]
-  Session         Session[]
-  Review          Review[]
-  StoreFollower   StoreFollower[]
-  StoreReview     StoreReview[]
-  searchHistories SearchHistory[]
-  userPreference  UserPreference?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  Account            Account[]
+  Session            Session[]
+  Review             Review[]
+  StoreFollower      StoreFollower[]
+  StoreReview        StoreReview[]
+  searchHistories    SearchHistory[]
+  userPreference     UserPreference?
+  agentProfile       AgentProfile?
+  agentConversations Conversation[]  @relation("ConversationAgent")
 }
 
 enum UserRole {
@@ -761,8 +763,20 @@ model Conversation {
 
   messages Message[]
   members  ConversationMember[]
+  agent    User?                @relation("ConversationAgent", fields: [agentId], references: [id])
 
   @@index([userId, updatedAt])
+}
+
+model AgentProfile {
+  id       String  @id @default(cuid())
+  userId   String  @unique
+  isActive Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Message {

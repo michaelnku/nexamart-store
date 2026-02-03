@@ -7,9 +7,13 @@ import { Spinner } from "@/components/ui/spinner";
 
 export default function ChatMessages({
   conversationId,
+  agentId,
+  agentName,
   onPreviewUpdate,
 }: {
   conversationId: string;
+  agentId?: string | null;
+  agentName?: string | null;
   onPreviewUpdate?: (payload: {
     content: string;
     senderType: ChatMessage["senderType"];
@@ -54,6 +58,8 @@ export default function ChatMessages({
       <ChatBox
         conversationId={conversationId}
         initialMessages={messages}
+        agentId={agentId}
+        agentName={agentName}
         onPreviewUpdate={onPreviewUpdate}
       />
     </div>

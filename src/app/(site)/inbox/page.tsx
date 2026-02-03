@@ -24,6 +24,21 @@ export default async function InboxPage() {
     },
   });
 
+  const agentIds = Array.from(
+    new Set(conversations.map((c) => c.agentId).filter(Boolean)),
+  ) as string[];
+
+  const agents = agentIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: agentIds } },
+        select: { id: true, name: true, username: true },
+      })
+    : [];
+
+  const agentMap = new Map(
+    agents.map((a) => [a.id, a.name ?? a.username ?? "Support Agent"]),
+  );
+
   const previews = await Promise.all(
     conversations.map(async (c) => {
       const unreadCount = await prisma.message.count({
@@ -37,6 +52,8 @@ export default async function InboxPage() {
       return {
         id: c.id,
         subject: c.subject,
+        agentId: c.agentId ?? null,
+        agentName: c.agentId ? agentMap.get(c.agentId) ?? null : null,
         unreadCount,
         lastMessage: c.messages[0]
           ? {

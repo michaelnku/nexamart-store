@@ -13,21 +13,32 @@ export function useConversationPresence(conversationId: string) {
     const channel = pusherClient.subscribe(
       `presence-conversation-${conversationId}`,
     );
+    const isAgentMember = (member: any) => {
+      const role = member?.info?.role;
+      return role === "ADMIN" || role === "MODERATOR" || role === "SUPPORT";
+    };
+
+    const updateOnlineFromMembers = () => {
+      const members = channel?.members?.members ?? {};
+      const hasAgent = Object.values(members).some(isAgentMember);
+      setOnline(hasAgent);
+    };
+
     channel.bind("agent-assigned", () => {
       setAgentAssigned(true);
       setOnline(true);
     });
 
     channel.bind("pusher:subscription_succeeded", () => {
-      setOnline(true);
+      updateOnlineFromMembers();
     });
 
     channel.bind("pusher:member_added", () => {
-      setOnline(true);
+      updateOnlineFromMembers();
     });
 
     channel.bind("pusher:member_removed", () => {
-      setOnline(false);
+      updateOnlineFromMembers();
     });
 
     channel.bind("typing", () => {

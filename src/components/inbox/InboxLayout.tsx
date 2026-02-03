@@ -124,6 +124,8 @@ export default function InboxLayout({ conversations }: Props) {
           ) : (
             <ChatMessages
               conversationId={active.id}
+              agentId={active.agentId ?? null}
+              agentName={active.agentName ?? null}
               onPreviewUpdate={(p) =>
                 handlePreviewUpdate({ conversationId: active.id, ...p })
               }

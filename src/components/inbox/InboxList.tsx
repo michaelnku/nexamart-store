@@ -52,6 +52,18 @@ export default function InboxList({
   const [isPending, startTransition] = useTransition();
   const [clearOpen, setClearOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const formatPreviewTime = (value?: string) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
 
   useEffect(() => {
     router.refresh();
@@ -78,9 +90,24 @@ export default function InboxList({
               onClick={() => onSelect(c.id)}
               className="flex-1 min-w-0 text-left"
             >
-              <p className="truncate font-medium">{c.subject ?? "Support"}</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate font-medium">{c.subject ?? "Support"}</p>
+                <span
+                  className="shrink-0 text-[11px] text-muted-foreground"
+                  suppressHydrationWarning
+                >
+                  {mounted ? formatPreviewTime(c.lastMessage?.createdAt) : ""}
+                </span>
+              </div>
               {c.lastMessage && (
                 <p className="truncate text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground/70">
+                    {c.lastMessage.senderType === "USER"
+                      ? "You: "
+                      : c.lastMessage.senderType === "SUPPORT"
+                        ? "Agent: "
+                        : "System: "}
+                  </span>
                   {c.lastMessage.content}
                 </p>
               )}
