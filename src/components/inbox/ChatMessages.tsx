@@ -44,7 +44,7 @@ export default function ChatMessages({
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <ChatBox conversationId={conversationId} initialMessages={messages} />
     </div>
   );

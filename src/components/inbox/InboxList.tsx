@@ -27,14 +27,14 @@ export default function InboxList({
   }, [conversations]);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full min-h-0 flex flex-col">
       <div className="shrink-0 border-b p-3">
         <Button size="sm" className="w-full" onClick={onNew}>
           + New conversation
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {conversations.map((c) => (
           <button
             key={c.id}
@@ -54,7 +54,7 @@ export default function InboxList({
         ))}
       </div>
 
-      <div>
+      <div className="shrink-0">
         <Button variant={"ghost"} className="w-12 h-12">
           <MdDelete className="text-red-500" />
         </Button>
