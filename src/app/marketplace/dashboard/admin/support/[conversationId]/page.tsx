@@ -73,22 +73,24 @@ export default async function AdminSupportChatPage({
 
   return (
     <div className="h-[calc(100dvh-4rem)] min-h-0 overflow-hidden">
-      <AdminChatBox
-        conversationId={conversation.id}
-        selfUserId={agentId}
-        initialMessages={conversation.messages.map((m) => ({
-          id: m.id,
-          conversationId: m.conversationId,
-          senderType: m.senderType,
-          senderId: m.senderId ?? null,
-          content: m.content,
-          createdAt: m.createdAt.toISOString(),
-          readAt: m.readAt?.toISOString() ?? null,
-          deliveredAt: m.deliveredAt?.toISOString() ?? null,
-        }))}
-        customerName={customerName}
-        canSend={!conversation.agentId || conversation.agentId === agentId}
-      />
+      <div className="h-full min-h-0 w-full mx-auto max-w-6xl md:border md:rounded-lg md:overflow-hidden">
+        <AdminChatBox
+          conversationId={conversation.id}
+          selfUserId={agentId}
+          initialMessages={conversation.messages.map((m) => ({
+            id: m.id,
+            conversationId: m.conversationId,
+            senderType: m.senderType,
+            senderId: m.senderId ?? null,
+            content: m.content,
+            createdAt: m.createdAt.toISOString(),
+            readAt: m.readAt?.toISOString() ?? null,
+            deliveredAt: m.deliveredAt?.toISOString() ?? null,
+          }))}
+          customerName={customerName}
+          canSend={!conversation.agentId || conversation.agentId === agentId}
+        />
+      </div>
     </div>
   );
 }

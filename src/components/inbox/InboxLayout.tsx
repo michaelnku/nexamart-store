@@ -87,10 +87,10 @@ export default function InboxLayout({ conversations, currentUserId }: Props) {
 
   return (
     <main className="h-full min-h-0 w-full mx-auto max-w-6xl bg-background overflow-hidden">
-      <div className="grid h-full min-h-0 grid-cols-[320px_1fr] overflow-hidden">
+      <div className="grid h-full min-h-0 grid-cols-1 md:grid-cols-[320px_1fr] overflow-hidden">
         <aside
           className={cn(
-            "border-r h-full min-h-0 overflow-hidden",
+            "md:border-r h-full min-h-0 overflow-hidden",
             activeId && "hidden md:block",
           )}
         >
@@ -117,7 +117,12 @@ export default function InboxLayout({ conversations, currentUserId }: Props) {
           />
         </aside>
 
-        <main className="h-full min-h-0 flex flex-col overflow-hidden">
+        <main
+          className={cn(
+            "h-full min-h-0 flex flex-col overflow-hidden",
+            !activeId && "hidden md:flex",
+          )}
+        >
           {!active ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               Select a conversation

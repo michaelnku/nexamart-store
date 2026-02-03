@@ -18,7 +18,8 @@ export default function ChatHeader({
 }: Props) {
   const lastSeenText = (() => {
     if (!lastSeenAt) return "offline";
-    const date = typeof lastSeenAt === "string" ? new Date(lastSeenAt) : lastSeenAt;
+    const date =
+      typeof lastSeenAt === "string" ? new Date(lastSeenAt) : lastSeenAt;
     if (Number.isNaN(date.getTime())) return "offline";
 
     const now = new Date();
