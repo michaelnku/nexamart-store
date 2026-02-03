@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
-import InboxLayout from "@/components/inbox/InboxLayout";
+import ChatApp from "./[conversationId]/ChatApp";
+//import InboxLayout from "@/components/inbox/InboxLayout";
 
 export default async function InboxPage() {
   const userId = await CurrentUserId();
@@ -49,5 +50,7 @@ export default async function InboxPage() {
     }),
   );
 
-  return <InboxLayout conversations={previews} />;
+  //return <InboxLayout conversations={previews} />;
+
+  return <ChatApp />;
 }

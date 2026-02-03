@@ -45,7 +45,6 @@ export default function NewConversationModal({ onCreated, onClose }: Props) {
               placeholder="Subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              required
             />
           </Field>
           <Field>
