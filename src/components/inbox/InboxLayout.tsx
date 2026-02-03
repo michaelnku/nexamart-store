@@ -105,6 +105,14 @@ export default function InboxLayout({ conversations }: Props) {
               );
             }}
             onNew={() => setOpen(true)}
+            onDeleteConversation={(id) => {
+              setList((prev) => prev.filter((c) => c.id !== id));
+              setActiveId((prev) => (prev === id ? null : prev));
+            }}
+            onClearAll={() => {
+              setList([]);
+              setActiveId(null);
+            }}
           />
         </aside>
 

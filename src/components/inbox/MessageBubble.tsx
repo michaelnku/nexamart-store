@@ -37,6 +37,7 @@ export default function MessageBubble({ message }: Props) {
             <MessageStatus
               deliveredAt={message.deliveredAt}
               readAt={message.readAt}
+              sent
             />
           )}
         </div>
