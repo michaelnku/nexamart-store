@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
 import { sendMessageAction } from "@/actions/inbox/sendMessageAction";
+import { sendTypingAction } from "@/actions/inbox/sendTypingAction";
 import { Spinner } from "@/components/ui/spinner";
 import { SenderType } from "@/generated/prisma/client";
 
@@ -17,6 +18,7 @@ type Props = {
 };
 export function ChatInput({ conversationId, onPreviewUpdate }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const lastTypingAtRef = useRef(0);
 
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -54,7 +56,14 @@ export function ChatInput({ conversationId, onPreviewUpdate }: Props) {
             value={text}
             ref={ref}
             rows={1}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              const now = Date.now();
+              if (now - lastTypingAtRef.current > 1200) {
+                lastTypingAtRef.current = now;
+                void sendTypingAction({ conversationId });
+              }
+            }}
             onKeyDown={(e) => e.key === "Enter" && send()}
             placeholder="Type a message…"
             className="min-h-10 w-full resize-none max-h-40 overflow-y-auto rounded-md border px-3 py-2 pr-14 text-sm leading-6 focus:outline-none"

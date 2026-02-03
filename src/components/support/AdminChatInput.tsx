@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { sendSupportMessageAction } from "@/actions/inbox/admin/sendSupportMessageAction";
+import { sendTypingAction } from "@/actions/inbox/sendTypingAction";
 
 type Props = {
   conversationId: string;
@@ -15,6 +16,7 @@ export default function AdminChatInput({ conversationId, disabled }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const lastTypingAtRef = useRef(0);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -42,7 +44,14 @@ export default function AdminChatInput({ conversationId, disabled }: Props) {
             value={text}
             ref={ref}
             rows={1}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              const now = Date.now();
+              if (now - lastTypingAtRef.current > 1200) {
+                lastTypingAtRef.current = now;
+                void sendTypingAction({ conversationId });
+              }
+            }}
             onKeyDown={(e) => e.key === "Enter" && send()}
             placeholder={
               disabled ? "Assign this conversation to reply…" : "Type a reply…"

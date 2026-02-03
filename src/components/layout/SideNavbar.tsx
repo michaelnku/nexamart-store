@@ -166,7 +166,7 @@ export const DashboardSidebar = ({
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex fixed top-23 left-0 min-h-screen w-64 dark:bg-neutral-950 bg-white border-r shadow-sm z-20">
+    <aside className="hidden md:flex fixed top-20 left-0 min-h-screen w-64 dark:bg-neutral-950 bg-white border-r shadow-sm z-20">
       <SidebarContent user={user} pathname={pathname} />
     </aside>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { pusherClient } from "@/lib/pusher";
 import type { PresenceChannel } from "pusher-js";
 
@@ -16,11 +16,13 @@ type PresenceMembersCollection = {
 
 export function useConversationPresence(
   conversationId: string,
-  options?: { targetRoles?: Role[] },
+  options?: { targetRoles?: Role[]; selfUserId?: string | null },
 ) {
   const [online, setOnline] = useState(false);
   const [typing, setTyping] = useState(false);
   const [agentAssigned, setAgentAssigned] = useState(false);
+  const [lastSeenAt, setLastSeenAt] = useState<Date | null>(null);
+  const lastOnlineRef = useRef(false);
 
   useEffect(() => {
     const channelName = `presence-conversation-${conversationId}`;
@@ -71,7 +73,16 @@ export function useConversationPresence(
       if (process.env.NODE_ENV !== "production") {
         console.log("[presence] members", members);
       }
-      setOnline(members.some(hasTargetRole));
+      const hasTarget = members.some(hasTargetRole);
+      if (!hasTarget && lastOnlineRef.current) {
+        setLastSeenAt(new Date());
+      }
+      if (hasTarget) {
+        lastOnlineRef.current = true;
+      } else {
+        lastOnlineRef.current = false;
+      }
+      setOnline(hasTarget);
     };
 
     channel.bind(
@@ -95,9 +106,13 @@ export function useConversationPresence(
     channel.bind("agent-assigned", () => {
       setAgentAssigned(true);
       setOnline(true);
+      lastOnlineRef.current = true;
     });
 
-    channel.bind("typing", () => {
+    channel.bind("typing", (payload: { userId?: string }) => {
+      if (options?.selfUserId && payload?.userId === options.selfUserId) {
+        return;
+      }
       setTyping(true);
       setTimeout(() => setTyping(false), 1500);
     });
@@ -108,5 +123,5 @@ export function useConversationPresence(
     };
   }, [conversationId, options?.targetRoles?.join(",")]);
 
-  return { online, typing, agentAssigned };
+  return { online, typing, agentAssigned, lastSeenAt };
 }

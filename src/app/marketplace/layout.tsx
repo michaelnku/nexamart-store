@@ -24,7 +24,7 @@ export default async function DashboardLayout({
         <DashboardSidebar initialUser={user} />
 
         {/* MAIN CONTENT */}
-        <main className="flex-1 w-full max-w-full px-4 md:px-6 py-4 md:ml-64 overflow-x-hidden">
+        <main className="flex-1 w-full max-w-full px-4 md:px-6 py- md:ml-64 overflow-x-hidden">
           {/*global Currency rate*/}
           <CurrencyRateBootstrap />
           {children}

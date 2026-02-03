@@ -9,11 +9,13 @@ export default function ChatMessages({
   conversationId,
   agentId,
   agentName,
+  selfUserId,
   onPreviewUpdate,
 }: {
   conversationId: string;
   agentId?: string | null;
   agentName?: string | null;
+  selfUserId?: string | null;
   onPreviewUpdate?: (payload: {
     content: string;
     senderType: ChatMessage["senderType"];
@@ -40,6 +42,24 @@ export default function ChatMessages({
     };
   }, [conversationId]);
 
+  useEffect(() => {
+    if (!conversationId) return;
+    fetch("/api/messages/delivered", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId, targetSenderType: "SUPPORT" }),
+    }).catch(() => {});
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+    fetch("/api/messages/seen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId, targetSenderType: "SUPPORT" }),
+    }).catch(() => {});
+  }, [conversationId]);
+
   if (!messages) {
     return (
       <div className="flex h-full min-h-[60vh] w-full items-center justify-center">
@@ -60,6 +80,7 @@ export default function ChatMessages({
         initialMessages={messages}
         agentId={agentId}
         agentName={agentName}
+        selfUserId={selfUserId}
         onPreviewUpdate={onPreviewUpdate}
       />
     </div>

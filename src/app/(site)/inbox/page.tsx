@@ -68,7 +68,7 @@ export default async function InboxPage() {
 
   return (
     <div className="h-[calc(100dvh-4rem)] min-h-0 overflow-hidden">
-      <InboxLayout conversations={previews} />
+      <InboxLayout conversations={previews} currentUserId={userId} />
     </div>
   );
 }

@@ -46,7 +46,7 @@ export default async function AdminSupportChatPage({
 
   if (!conversation) {
     return (
-      <div className="max-w-3xl mx-auto p-6 text-sm text-muted-foreground">
+      <div className="max-w-3xl mx-auto py-32 text-sm text-center text-muted-foreground">
         Conversation not found.
       </div>
     );
@@ -75,6 +75,7 @@ export default async function AdminSupportChatPage({
     <div className="h-[calc(100dvh-4rem)] min-h-0 overflow-hidden">
       <AdminChatBox
         conversationId={conversation.id}
+        selfUserId={agentId}
         initialMessages={conversation.messages.map((m) => ({
           id: m.id,
           conversationId: m.conversationId,

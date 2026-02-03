@@ -10,6 +10,7 @@ import AdminChatInput from "./AdminChatInput";
 
 type Props = {
   conversationId: string;
+  selfUserId: string;
   initialMessages: ChatMessage[];
   customerName?: string | null;
   canSend: boolean;
@@ -17,6 +18,7 @@ type Props = {
 
 export default function AdminChatBox({
   conversationId,
+  selfUserId,
   initialMessages,
   customerName,
   canSend,
@@ -24,20 +26,39 @@ export default function AdminChatBox({
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const { online, typing } = useConversationPresence(conversationId, {
     targetRoles: ["USER"],
+    selfUserId,
   });
 
   useConversationMessages({
     conversationId,
-    onMessage: (msg) => {
+    onMessage: async (msg) => {
       setMessages((prev) => {
         if (prev.find((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
+      if (msg.senderType === "USER") {
+        await fetch("/api/messages/delivered", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversationId,
+            targetSenderType: "USER",
+          }),
+        }).catch(() => {});
+        await fetch("/api/messages/seen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversationId,
+            targetSenderType: "USER",
+          }),
+        }).catch(() => {});
+      }
     },
   });
 
   return (
-    <div className="flex h-full  min-h-0 flex-col overflow-hidden bg-background">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
       <div className="shrink-0">
         <ChatHeader
           title={customerName ?? "Customer"}
@@ -46,13 +67,11 @@ export default function AdminChatBox({
         />
       </div>
 
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <MessageList
-          messages={messages}
-          typing={typing}
-          viewerSenderType="SUPPORT"
-        />
-      </div>
+      <MessageList
+        messages={messages}
+        typing={typing}
+        viewerSenderType="SUPPORT"
+      />
 
       <div className="shrink-0">
         <AdminChatInput conversationId={conversationId} disabled={!canSend} />

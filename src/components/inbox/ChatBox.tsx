@@ -12,6 +12,7 @@ type Props = {
   conversationId: string;
   agentId?: string | null;
   agentName?: string | null;
+  selfUserId?: string | null;
 
   initialMessages: ChatMessage[];
   onPreviewUpdate?: (payload: {
@@ -27,19 +28,24 @@ export default function ChatBox({
   initialMessages,
   agentId,
   agentName,
+  selfUserId,
   onPreviewUpdate,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
 
-  const { online, typing } = useConversationPresence(conversationId, {
-    targetRoles: ["ADMIN", "MODERATOR", "SUPPORT"],
-  });
+  const { online, typing, lastSeenAt } = useConversationPresence(
+    conversationId,
+    {
+      targetRoles: ["ADMIN", "MODERATOR", "SELLER", "RIDER"],
+      selfUserId,
+    },
+  );
 
   const isBot = !agentId;
 
   useConversationMessages({
     conversationId,
-    onMessage: (msg) => {
+    onMessage: async (msg) => {
       setMessages((prev) => {
         if (prev.find((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
@@ -49,6 +55,38 @@ export default function ChatBox({
         senderType: msg.senderType,
         createdAt: msg.createdAt,
       });
+      if (msg.senderType === "SUPPORT") {
+        await fetch("/api/messages/delivered", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversationId,
+            targetSenderType: "SUPPORT",
+          }),
+        }).catch(() => {});
+        await fetch("/api/messages/seen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversationId,
+            targetSenderType: "SUPPORT",
+          }),
+        }).catch(() => {});
+      }
+    },
+    onDelivered: ({ deliveredAt }) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.senderType === "USER" && !m.deliveredAt ? { ...m, deliveredAt } : m,
+        ),
+      );
+    },
+    onSeen: ({ readAt }) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.senderType === "USER" && !m.readAt ? { ...m, readAt } : m,
+        ),
+      );
     },
   });
 
@@ -56,9 +94,10 @@ export default function ChatBox({
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
       <div className="shrink-0">
         <ChatHeader
-          title={isBot ? "NexaMart Assistant" : agentName ?? "Support Agent"}
+          title={isBot ? "NexaMart Assistant" : (agentName ?? "Support Agent")}
           subtitle={isBot ? "AI Moderator" : "Human Support"}
           online={isBot ? true : online}
+          lastSeenAt={isBot ? null : lastSeenAt}
         />
       </div>
 

@@ -39,6 +39,8 @@ export async function GET(
       senderType: m.senderType,
       content: m.content,
       createdAt: m.createdAt.toISOString(),
+      deliveredAt: m.deliveredAt?.toISOString() ?? null,
+      readAt: m.readAt?.toISOString() ?? null,
     })),
   });
 }

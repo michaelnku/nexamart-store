@@ -12,9 +12,10 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   conversations: InboxPreview[];
+  currentUserId: string;
 };
 
-export default function InboxLayout({ conversations }: Props) {
+export default function InboxLayout({ conversations, currentUserId }: Props) {
   const [list, setList] = useState(conversations);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -126,6 +127,7 @@ export default function InboxLayout({ conversations }: Props) {
               conversationId={active.id}
               agentId={active.agentId ?? null}
               agentName={active.agentName ?? null}
+              selfUserId={currentUserId}
               onPreviewUpdate={(p) =>
                 handlePreviewUpdate({ conversationId: active.id, ...p })
               }
