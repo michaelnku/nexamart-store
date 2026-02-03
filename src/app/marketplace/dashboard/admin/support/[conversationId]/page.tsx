@@ -5,8 +5,17 @@ import AdminChatBox from "@/components/support/AdminChatBox";
 export default async function AdminSupportChatPage({
   params,
 }: {
-  params: { conversationId: string };
+  params: Promise<{ conversationId: string }>;
 }) {
+  const conversationId = (await params).conversationId;
+  if (!conversationId) {
+    return (
+      <div className="max-w-3xl mx-auto p-6 text-sm text-muted-foreground">
+        Conversation with this ID: {conversationId} not found.
+      </div>
+    );
+  }
+
   const role = await CurrentRole();
   if (role !== "ADMIN") {
     return (
@@ -27,7 +36,7 @@ export default async function AdminSupportChatPage({
 
   const conversation = await prisma.conversation.findFirst({
     where: {
-      id: params.conversationId,
+      id: conversationId,
       type: "SUPPORT",
     },
     include: {
