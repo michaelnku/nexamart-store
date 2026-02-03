@@ -494,3 +494,10 @@ export type NewConversation = {
   subject: string | null;
   messages: ChatMessage[];
 };
+
+export type Member = {
+  id: string;
+  conversationId: String;
+  userId: String;
+  conversation: string;
+};

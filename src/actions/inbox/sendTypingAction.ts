@@ -11,9 +11,12 @@ export async function sendTypingAction({
   const userId = await CurrentUserId();
   if (!userId) return;
 
-  await pusherServer.trigger(`conversation-${conversationId}`, "typing", {
-    userId,
-    conversationId,
-    timestamp: Date.now(),
-  });
+  await pusherServer.trigger(
+    `presence-conversation-${conversationId}`,
+    "typing",
+    {
+      userId,
+      timestamp: Date.now(),
+    },
+  );
 }

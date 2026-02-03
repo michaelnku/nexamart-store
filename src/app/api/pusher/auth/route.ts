@@ -11,16 +11,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.formData();
-  const socketId = body.get("socket_id")?.toString();
-  const channel = body.get("channel_name")?.toString();
+  const form = await req.formData();
+  const socketId = form.get("socket_id");
+  const channel = form.get("channel_name");
 
-  if (!socketId || !channel) {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  if (typeof socketId !== "string" || typeof channel !== "string") {
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
   if (channel.startsWith(PRESENCE_PREFIX)) {
-    const conversationId = channel.slice(PRESENCE_PREFIX.length);
+    const conversationId = channel.replace(PRESENCE_PREFIX, "");
 
     if (user.role !== "ADMIN") {
       const isMember = await prisma.conversationMember.findFirst({
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   const auth = pusherServer.authorizeChannel(socketId, channel, {
     user_id: user.id,
     user_info: {
-      name: user.name ?? user.email ?? "User",
+      name: user.name ?? "User",
       role: user.role ?? "USER",
     },
   });

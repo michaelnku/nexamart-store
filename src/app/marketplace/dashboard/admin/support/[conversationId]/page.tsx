@@ -54,6 +54,14 @@ export default async function AdminSupportChatPage({
     },
   });
 
+  const customer = await prisma.user.findUnique({
+    where: { id: conversation.userId },
+    select: { name: true, username: true, email: true },
+  });
+
+  const customerName =
+    customer?.name ?? customer?.username ?? customer?.email ?? "Customer";
+
   return (
     <div className="h-[calc(100dvh-4rem)] min-h-0 overflow-hidden">
       <AdminChatBox
@@ -68,7 +76,7 @@ export default async function AdminSupportChatPage({
           readAt: m.readAt?.toISOString() ?? null,
           deliveredAt: m.deliveredAt?.toISOString() ?? null,
         }))}
-        agentName={null}
+        customerName={customerName}
         canSend={!conversation.agentId || conversation.agentId === agentId}
       />
     </div>

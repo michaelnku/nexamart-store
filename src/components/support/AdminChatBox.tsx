@@ -11,18 +11,20 @@ import AdminChatInput from "./AdminChatInput";
 type Props = {
   conversationId: string;
   initialMessages: ChatMessage[];
-  agentName?: string | null;
+  customerName?: string | null;
   canSend: boolean;
 };
 
 export default function AdminChatBox({
   conversationId,
   initialMessages,
-  agentName,
+  customerName,
   canSend,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const { online, typing } = useConversationPresence(conversationId);
+  const { online, typing } = useConversationPresence(conversationId, {
+    targetRoles: ["USER"],
+  });
 
   useConversationMessages({
     conversationId,
@@ -38,8 +40,8 @@ export default function AdminChatBox({
     <div className="flex h-full  min-h-0 flex-col overflow-hidden bg-background">
       <div className="shrink-0">
         <ChatHeader
-          title={agentName ? `Agent ${agentName}` : "Support Agent"}
-          subtitle="Admin Support"
+          title={customerName ?? "Customer"}
+          subtitle="Support Ticket"
           online={online}
         />
       </div>

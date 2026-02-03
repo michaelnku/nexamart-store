@@ -29,11 +29,7 @@ export function useConversationMessages({
 
     return () => {
       channel.unbind("new-message", onMessage);
-
-      if (onTyping) {
-        channel.unbind("typing", onTyping);
-      }
-
+      if (onTyping) channel.unbind("typing", onTyping);
       pusherClient.unsubscribe(channelName);
     };
   }, [conversationId, onMessage, onTyping]);

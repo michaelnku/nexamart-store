@@ -31,7 +31,9 @@ export default function ChatBox({
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
 
-  const { online, typing } = useConversationPresence(conversationId);
+  const { online, typing } = useConversationPresence(conversationId, {
+    targetRoles: ["ADMIN", "MODERATOR", "SUPPORT"],
+  });
 
   const isBot = !agentId;
 
