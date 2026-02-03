@@ -49,7 +49,7 @@ export default function InboxLayout({ conversations }: Props) {
   }
 
   return (
-    <main className="h-[100dvh] w-full mx-auto max-w-6xl border bg-background overflow-hidden">
+    <main className="h-[100dvh] pt-1 pb-10 w-full mx-auto max-w-6xl bg-background  overflow-hidden">
       <div className="grid h-full min-h-0 grid-cols-[320px_1fr] overflow-hidden">
         <aside
           className={cn(

@@ -20,13 +20,15 @@ export default function ChatHeader({ title, subtitle, online }: Props) {
         </Avatar>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium leading-none">{title}</p>
+          <p className="truncate text-base font-semibold leading-tight">
+            {title}
+          </p>
           <p>
-            <span className="text-muted-foreground text-xs">{subtitle}</span>
+            <span className="text-muted-foreground text-sm">{subtitle}</span>
           </p>
           <p
             className={cn(
-              "text-xs",
+              "text-[11px]",
               online ? "text-green-600" : "text-muted-foreground",
             )}
           >
