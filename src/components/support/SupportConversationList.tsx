@@ -22,6 +22,14 @@ export default function SupportConversationList({
     <div className="max-w-4xl mx-auto p-6 space-y-4">
       <h1 className="text-xl font-semibold">Support Tickets</h1>
 
+      <div>
+        {conversations.length === 0 && (
+          <p className="text-muted-foreground text-sm">
+            No support tickets found.
+          </p>
+        )}
+      </div>
+
       <div className="space-y-3">
         {conversations.map((c) => (
           <SupportConversationRow

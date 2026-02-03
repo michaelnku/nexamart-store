@@ -61,7 +61,7 @@ export default async function SupportPage() {
         id: c.id,
         subject: c.subject,
         agentId: c.agentId,
-        agentName: c.agentId ? agentMap.get(c.agentId) ?? null : null,
+        agentName: c.agentId ? (agentMap.get(c.agentId) ?? null) : null,
         lastMessage: c.messages[0]?.content ?? "",
         hasUnread:
           c.messages[0]?.senderType === "USER" && !c.messages[0]?.readAt,
