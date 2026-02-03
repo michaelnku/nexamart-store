@@ -4,11 +4,16 @@ import { toast } from "sonner";
 
 export function AssignAgentButton({
   conversationId,
+  agentId,
 }: {
   conversationId: string;
+  agentId: string;
 }) {
   const assign = async () => {
-    const res = await assignAgentAction(conversationId);
+    const res = await assignAgentAction({
+      conversationId,
+      agentId,
+    });
     if (res?.error) {
       toast.error(res.error);
       return;
