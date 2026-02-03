@@ -7,12 +7,26 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MdDelete } from "react-icons/md";
 import { MoreVertical, Trash2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "../ui/alert-dialog";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 import { deleteConversationAction } from "@/actions/inbox/deleteConversationAction";
 import { clearAllConversationsAction } from "@/actions/inbox/clearAllConversationsAction";
 
@@ -36,6 +50,8 @@ export default function InboxList({
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [clearOpen, setClearOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
 
   useEffect(() => {
     router.refresh();
@@ -103,20 +119,64 @@ export default function InboxList({
       </div>
 
       <div className="shrink-0 border-t p-3">
-        <Button
-          variant="ghost"
-          className="w-full justify-center gap-2 text-red-500 hover:text-red-600 hover:bg-red-50/60"
-          disabled={isPending}
-          onClick={() => {
-            startTransition(async () => {
-              const res = await clearAllConversationsAction();
-              if (!res?.error) onClearAll();
-            });
-          }}
-        >
-          <MdDelete className="h-5 w-5" />
-          Clear all
-        </Button>
+        <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              className="w-full justify-center gap-2 text-red-500 hover:text-red-600 hover:bg-red-50/60"
+              disabled={isPending}
+            >
+              <MdDelete className="h-5 w-5" />
+              Clear all
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear all conversations?</AlertDialogTitle>
+              <AlertDialogDescription className="flex flex-col">
+                <span>
+                  This will permanently delete all conversations and messages.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-2">
+              <Label>Type "CLEAR ALL" to confirm</Label>
+              <Input
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+              />
+            </div>
+
+            {isPending && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Clearing conversations...
+              </div>
+            )}
+
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  startTransition(async () => {
+                    const res = await clearAllConversationsAction();
+                    if (!res?.error) {
+                      onClearAll();
+                      setConfirmText("");
+                      setClearOpen(false);
+                    }
+                  });
+                }}
+                disabled={isPending || confirmText !== "CLEAR ALL"}
+                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isPending ? "Clearing…" : "Yes, clear all"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

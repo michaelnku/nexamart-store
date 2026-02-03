@@ -1,44 +1,44 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { CurrentUserId } from "@/lib/currentUser";
 import { pusherServer } from "@/lib/pusher";
+import { SenderType } from "@/generated/prisma/client";
 
-export async function assignAgentAction(conversationId: string) {
-  const agentId = await CurrentUserId();
-  if (!agentId) return { error: "Unauthorized" };
-
-  const conversation = await prisma.conversation.findUnique({
-    where: { id: conversationId },
-  });
-
-  if (!conversation) return { error: "Conversation not found" };
-  if (conversation.agentId) return { error: "Already assigned" };
-
-  const updated = await prisma.conversation.update({
+export async function assignAgentAction({
+  conversationId,
+  agentId,
+}: {
+  conversationId: string;
+  agentId: string;
+}) {
+  const conversation = await prisma.conversation.update({
     where: { id: conversationId },
     data: {
       agentId,
     },
   });
 
-  if (!updated) return { error: "Failed to assign agent" };
-
-  await prisma.message.create({
+  const systemMessage = await prisma.message.create({
     data: {
       conversationId,
-      senderType: "SYSTEM",
-      content: "A support agent has joined the conversation.",
+      senderType: SenderType.SYSTEM,
+      content: "A support agent has joined the conversation 👋",
     },
+  });
+
+  await pusherServer.trigger(`conversation-${conversationId}`, "new-message", {
+    id: systemMessage.id,
+    conversationId,
+    senderId: null,
+    senderType: SenderType.SYSTEM,
+    content: systemMessage.content,
+    createdAt: systemMessage.createdAt.toISOString(),
   });
 
   await pusherServer.trigger(
     `conversation-${conversationId}`,
     "agent-assigned",
-    {
-      agentId,
-      conversationId,
-    },
+    { agentId },
   );
 
   return { success: true };
