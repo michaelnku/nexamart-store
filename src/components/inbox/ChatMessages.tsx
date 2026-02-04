@@ -10,12 +10,14 @@ export default function ChatMessages({
   agentId,
   agentName,
   selfUserId,
+  onOpenMenu,
   onPreviewUpdate,
 }: {
   conversationId: string;
   agentId?: string | null;
   agentName?: string | null;
   selfUserId?: string | null;
+  onOpenMenu?: () => void;
   onPreviewUpdate?: (payload: {
     content: string;
     senderType: ChatMessage["senderType"];
@@ -81,6 +83,7 @@ export default function ChatMessages({
         agentId={agentId}
         agentName={agentName}
         selfUserId={selfUserId}
+        onOpenMenu={onOpenMenu}
         onPreviewUpdate={onPreviewUpdate}
       />
     </div>

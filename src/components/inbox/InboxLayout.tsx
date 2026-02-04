@@ -19,6 +19,7 @@ export default function InboxLayout({ conversations, currentUserId }: Props) {
   const [list, setList] = useState(conversations);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [mobileListOpen, setMobileListOpen] = useState(false);
 
   const hasConversations = list.length > 0;
   const active = list.find((c) => c.id === activeId);
@@ -90,8 +91,10 @@ export default function InboxLayout({ conversations, currentUserId }: Props) {
       <div className="grid h-full min-h-0 grid-cols-1 md:grid-cols-[320px_1fr] overflow-hidden">
         <aside
           className={cn(
-            "md:border-r h-full min-h-0 overflow-hidden",
-            activeId && "hidden md:block",
+            "md:border-r h-full min-h-0 overflow-hidden bg-background",
+            activeId && !mobileListOpen && "hidden md:block",
+            mobileListOpen &&
+              "fixed inset-0 z-20 md:static md:inset-auto md:z-auto",
           )}
         >
           <InboxList
@@ -99,6 +102,7 @@ export default function InboxLayout({ conversations, currentUserId }: Props) {
             activeId={activeId}
             onSelect={(id) => {
               setActiveId(id);
+              setMobileListOpen(false);
               setList((prev) =>
                 prev.map((c) =>
                   c.id === id ? { ...c, unreadCount: 0 } : c,
@@ -120,7 +124,7 @@ export default function InboxLayout({ conversations, currentUserId }: Props) {
         <main
           className={cn(
             "h-full min-h-0 flex flex-col overflow-hidden",
-            !activeId && "hidden md:flex",
+            (!activeId || mobileListOpen) && "hidden md:flex",
           )}
         >
           {!active ? (
@@ -133,6 +137,7 @@ export default function InboxLayout({ conversations, currentUserId }: Props) {
               agentId={active.agentId ?? null}
               agentName={active.agentName ?? null}
               selfUserId={currentUserId}
+              onOpenMenu={() => setMobileListOpen(true)}
               onPreviewUpdate={(p) =>
                 handlePreviewUpdate({ conversationId: active.id, ...p })
               }

@@ -13,6 +13,7 @@ type Props = {
   agentId?: string | null;
   agentName?: string | null;
   selfUserId?: string | null;
+  onOpenMenu?: () => void;
 
   initialMessages: ChatMessage[];
   onPreviewUpdate?: (payload: {
@@ -29,6 +30,7 @@ export default function ChatBox({
   agentId,
   agentName,
   selfUserId,
+  onOpenMenu,
   onPreviewUpdate,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -98,6 +100,8 @@ export default function ChatBox({
           subtitle={isBot ? "AI Moderator" : "Human Support"}
           online={isBot ? true : online}
           lastSeenAt={isBot ? null : lastSeenAt}
+          showMenuButton
+          onMenuToggle={onOpenMenu}
         />
       </div>
 

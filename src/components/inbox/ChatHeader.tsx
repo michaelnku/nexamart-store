@@ -2,12 +2,15 @@
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { Menu } from "lucide-react";
 
 type Props = {
   title: string;
   subtitle?: string;
   online?: boolean;
   lastSeenAt?: Date | string | null;
+  showMenuButton?: boolean;
+  onMenuToggle?: () => void;
 };
 
 export default function ChatHeader({
@@ -15,6 +18,8 @@ export default function ChatHeader({
   subtitle,
   online,
   lastSeenAt,
+  showMenuButton,
+  onMenuToggle,
 }: Props) {
   const lastSeenText = (() => {
     if (!lastSeenAt) return "offline";
@@ -56,6 +61,16 @@ export default function ChatHeader({
   return (
     <div className="sticky top-0 z-10 border-b bg-background">
       <div className="flex items-center gap-3 px-4 py-3">
+        {showMenuButton && (
+          <button
+            type="button"
+            onClick={onMenuToggle}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border bg-background text-muted-foreground hover:text-foreground md:hidden"
+            aria-label="Open conversations"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        )}
         <Avatar className="h-9 w-9">
           <AvatarFallback className="bg-muted text-sm font-medium">
             {subtitle?.charAt(0).toUpperCase() ?? "S"}
