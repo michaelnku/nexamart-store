@@ -6,8 +6,7 @@ import { Button } from "../ui/button";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MdDelete } from "react-icons/md";
-import { MoreVertical, Trash2 } from "lucide-react";
-import { Loader2 } from "lucide-react";
+import { MoreVertical, Trash2, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,15 +53,14 @@ export default function InboxList({
   const [confirmText, setConfirmText] = useState("");
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => setMounted(true), []);
 
   const formatPreviewTime = (value?: string) => {
     if (!value) return "";
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return Number.isNaN(date.getTime())
+      ? ""
+      : date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   useEffect(() => {
@@ -70,105 +68,144 @@ export default function InboxList({
   }, [conversations]);
 
   return (
-    <div className="h-full min-h-0 flex flex-col">
-      <div className="shrink-0 border-b p-3">
-        <Button size="sm" className="w-full" onClick={onNew}>
+    <aside className="h-full min-h-0 flex flex-col bg-white dark:bg-background border-r">
+      {/* HEADER */}
+      <div className="px-4 py-3 border-b">
+        <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          Support Inbox
+        </h1>
+      </div>
+
+      {/* NEW CONVERSATION */}
+      <div className="px-3 py-2 border-b">
+        <Button
+          size="sm"
+          className="w-full bg-[#3c9ee0] hover:bg-[#3c9ee0]/90 text-white"
+          onClick={onNew}
+        >
           + New conversation
         </Button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        {conversations.map((c) => (
-          <div
-            key={c.id}
-            className={cn(
-              "group flex items-center gap-2 px-3 py-2 hover:bg-muted",
-              activeId === c.id && "bg-muted",
-            )}
-          >
-            <button
-              onClick={() => onSelect(c.id)}
-              className="flex-1 min-w-0 text-left"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="truncate font-medium">{c.subject ?? "Support"}</p>
-                <span
-                  className="shrink-0 text-[11px] text-muted-foreground"
-                  suppressHydrationWarning
-                >
-                  {mounted ? formatPreviewTime(c.lastMessage?.createdAt) : ""}
-                </span>
-              </div>
-              {c.lastMessage && (
-                <p className="truncate text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground/70">
-                    {c.lastMessage.senderType === "USER"
-                      ? "You: "
-                      : c.lastMessage.senderType === "SUPPORT"
-                        ? "Agent: "
-                        : "System: "}
-                  </span>
-                  {c.lastMessage.content}
-                </p>
-              )}
-            </button>
+      {/* LIST */}
+      <div className="flex-1 min-h-0 overflow-y-auto divide-y">
+        {conversations.map((c) => {
+          const isActive = activeId === c.id;
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={isPending && pendingId === c.id}
-                  onClick={() => {
-                    setPendingId(c.id);
-                    startTransition(async () => {
-                      const res = await deleteConversationAction(c.id);
-                      if (!res?.error) onDeleteConversation(c.id);
-                      setPendingId(null);
-                    });
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ))}
+          return (
+            <div
+              key={c.id}
+              className={cn(
+                "group flex items-center gap-2 px-4 py-3 cursor-pointer transition",
+                isActive
+                  ? "bg-[#3c9ee0]/10 border-l-4 border-[#3c9ee0]"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-900",
+              )}
+            >
+              <button
+                onClick={() => onSelect(c.id)}
+                className="flex-1 min-w-0 text-left"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p
+                    className={cn(
+                      "truncate text-sm",
+                      isActive
+                        ? "font-semibold text-[#3c9ee0]"
+                        : "font-medium text-gray-900 dark:text-gray-100",
+                    )}
+                  >
+                    {c.subject ?? "Support"}
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    {c.unreadCount > 0 && (
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#3c9ee0]/60" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#3c9ee0]" />
+                      </span>
+                    )}
+                    <span className="text-[11px] text-gray-400">
+                      {mounted
+                        ? formatPreviewTime(c.lastMessage?.createdAt)
+                        : ""}
+                    </span>
+                  </div>
+                </div>
+
+                {c.lastMessage && (
+                  <p className="mt-0.5 truncate text-xs text-gray-500">
+                    <span className="font-medium text-gray-700">
+                      {c.lastMessage.senderType === "USER"
+                        ? "You: "
+                        : c.lastMessage.senderType === "SUPPORT"
+                          ? "Agent: "
+                          : "System: "}
+                    </span>
+                    {c.lastMessage.content}
+                  </p>
+                )}
+              </button>
+
+              {/* ACTIONS */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={isPending && pendingId === c.id}
+                    onClick={() => {
+                      setPendingId(c.id);
+                      startTransition(async () => {
+                        const res = await deleteConversationAction(c.id);
+                        if (!res?.error) onDeleteConversation(c.id);
+                        setPendingId(null);
+                      });
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="shrink-0 border-t p-3">
+      {/* CLEAR ALL */}
+      <div className="px-3 py-2 border-t">
         <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
           <AlertDialogTrigger asChild>
             <Button
               variant="ghost"
-              className="w-full justify-center gap-2 text-red-500 hover:text-red-600 hover:bg-red-50/60"
+              className="w-full justify-center gap-2 text-red-500 hover:bg-red-50"
               disabled={isPending}
             >
               <MdDelete className="h-5 w-5" />
-              Clear all
+              Clear all conversations
             </Button>
           </AlertDialogTrigger>
+
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Clear all conversations?</AlertDialogTitle>
-              <AlertDialogDescription className="flex flex-col">
-                <span>
-                  This will permanently delete all conversations and messages.
-                </span>
+              <AlertDialogDescription>
+                This action permanently deletes all messages and tickets.
               </AlertDialogDescription>
             </AlertDialogHeader>
 
             <div className="space-y-2">
-              <Label>Type "CLEAR ALL" to confirm</Label>
+              <Label>Type “CLEAR ALL” to confirm</Label>
               <Input
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
@@ -177,8 +214,8 @@ export default function InboxList({
 
             {isPending && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Clearing conversations...
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Clearing…
               </div>
             )}
 
@@ -196,15 +233,15 @@ export default function InboxList({
                     }
                   });
                 }}
-                disabled={isPending || confirmText !== "CLEAR ALL"}
-                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={confirmText !== "CLEAR ALL" || isPending}
+                className="bg-red-600 hover:bg-red-700 text-white"
               >
-                {isPending ? "Clearing…" : "Yes, clear all"}
+                Confirm
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </div>
+    </aside>
   );
 }

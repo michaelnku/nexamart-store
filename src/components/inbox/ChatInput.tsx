@@ -50,7 +50,7 @@ export function ChatInput({ conversationId, onPreviewUpdate }: Props) {
 
   return (
     <div className="border-t bg-background pb-[env(safe-area-inset-bottom)]">
-      <div className="px-4 py-3">
+      <div className="px-4 py-1">
         <div className="relative">
           <Textarea
             value={text}

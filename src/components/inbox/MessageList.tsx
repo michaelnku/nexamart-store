@@ -37,20 +37,24 @@ export default function MessageList({
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "";
     const now = new Date();
-    const toYmd = (d: Date) =>
+    const sentTodaymd = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
         d.getDate(),
       ).padStart(2, "0")}`;
-    const today = toYmd(now);
-    const yesterday = toYmd(new Date(now.getTime() - 86_400_000));
-    const current = toYmd(date);
+    const today = sentTodaymd(now);
+    const dayInMs = 86_400_000;
+    const yesterday = sentTodaymd(new Date(now.getTime() - dayInMs));
+    const current = sentTodaymd(date);
     if (current === today) return "Today";
     if (current === yesterday) return "Yesterday";
     return current;
   };
 
   const items = useMemo(() => {
-    const out: Array<{ type: "date"; key: string; label: string } | { type: "msg"; key: string; message: ChatMessage }> = [];
+    const out: Array<
+      | { type: "date"; key: string; label: string }
+      | { type: "msg"; key: string; message: ChatMessage }
+    > = [];
     let lastLabel = "";
     for (const m of messages) {
       const label = formatDateLabel(m.createdAt);
@@ -72,7 +76,7 @@ export default function MessageList({
       if (diff > 0) setNewCount((c) => c + diff);
     }
     prevCountRef.current = messages.length;
-  }, [messages, typing]);
+  }, [messages]);
 
   useEffect(() => {
     const el = listRef.current;
@@ -87,7 +91,7 @@ export default function MessageList({
   }, []);
   return (
     <main className="relative flex-1 min-h-0 overflow-y-auto" ref={listRef}>
-      <div className="px-4 py-3">
+      <div className="px-4 pt-3 pb-2">
         <div className="flex flex-col space-y-3">
           {items.map((item) =>
             item.type === "date" ? (

@@ -61,7 +61,7 @@ export default function InboxLayout({ conversations, currentUserId }: Props) {
 
   if (!hasConversations) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-background">
+      <div className="flex h-full w-full items-center border justify-center bg-background">
         <EmptyInboxState onNewConversation={() => setOpen(true)} />
 
         <Dialog open={open} onOpenChange={setOpen}>
@@ -87,7 +87,7 @@ export default function InboxLayout({ conversations, currentUserId }: Props) {
   }
 
   return (
-    <main className="h-full min-h-0 w-full mx-auto max-w-6xl bg-background overflow-hidden">
+    <main className="h-full min-h-0 w-full mx-auto max-w-6xl border bg-background overflow-hidden">
       <div className="grid h-full min-h-0 grid-cols-1 md:grid-cols-[320px_1fr] overflow-hidden">
         <aside
           className={cn(
@@ -104,9 +104,7 @@ export default function InboxLayout({ conversations, currentUserId }: Props) {
               setActiveId(id);
               setMobileListOpen(false);
               setList((prev) =>
-                prev.map((c) =>
-                  c.id === id ? { ...c, unreadCount: 0 } : c,
-                ),
+                prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)),
               );
             }}
             onNew={() => setOpen(true)}

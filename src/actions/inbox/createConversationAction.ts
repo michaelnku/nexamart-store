@@ -3,7 +3,6 @@
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
 import { SenderType } from "@/generated/prisma/client";
-import { read } from "fs";
 
 export async function createConversationAction({
   subject,
@@ -23,7 +22,7 @@ export async function createConversationAction({
     data: {
       userId,
       type: "SUPPORT",
-      subject: subject ?? "Support Request",
+      subject: subject?.trim() ? subject.trim() : "Support Request",
       members: {
         create: {
           userId,

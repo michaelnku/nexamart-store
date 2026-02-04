@@ -93,7 +93,7 @@ export default function ChatBox({
   });
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+    <div className="flex h-full min-h-0 flex-col justify-between py-4 overflow-hidden bg-background">
       <div className="shrink-0">
         <ChatHeader
           title={isBot ? "NexaMart Assistant" : (agentName ?? "Support Agent")}

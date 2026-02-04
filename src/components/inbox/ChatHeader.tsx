@@ -30,6 +30,10 @@ export default function ChatHeader({
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     if (diffMs >= 0 && diffMs < 60_000) return "last seen just now";
+    if (diffMs >= 60_000 && diffMs < 3_600_000) {
+      const mins = Math.floor(diffMs / 60_000);
+      return `last seen ${mins}m ago`;
+    }
 
     const toUtcYmd = (d: Date) =>
       `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(
@@ -37,12 +41,9 @@ export default function ChatHeader({
       ).padStart(2, "0")}`;
 
     const formatTimeUtc = (d: Date) => {
-      let hours = d.getUTCHours();
+      const hours = String(d.getUTCHours()).padStart(2, "0");
       const minutes = String(d.getUTCMinutes()).padStart(2, "0");
-      const ampm = hours >= 12 ? "PM" : "AM";
-      hours = hours % 12;
-      if (hours === 0) hours = 12;
-      return `${hours}:${minutes} ${ampm}`;
+      return `${hours}:${minutes}`;
     };
 
     const todayUtc = toUtcYmd(now);
@@ -60,7 +61,7 @@ export default function ChatHeader({
 
   return (
     <div className="sticky top-0 z-10 border-b bg-background">
-      <div className="flex items-center gap-3 px-4 py-3">
+      <div className="flex items-center gap-3 px-4 py-1">
         {showMenuButton && (
           <button
             type="button"
