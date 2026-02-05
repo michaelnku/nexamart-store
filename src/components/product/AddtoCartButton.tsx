@@ -24,8 +24,8 @@ const AddToCartControl = ({ productId, variantId = null }: Props) => {
   const qty = useCartStore(
     (s) =>
       s.items.find(
-        (i) => i.productId === productId && i.variantId === variantId
-      )?.quantity ?? 0
+        (i) => i.productId === productId && i.variantId === variantId,
+      )?.quantity ?? 0,
   );
 
   const add = useCartStore((s) => s.add);
@@ -70,7 +70,7 @@ const AddToCartControl = ({ productId, variantId = null }: Props) => {
       toastCart.updated();
     });
   };
-  /* -------- INITIAL STATE — ADD BUTTON -------- */
+
   if (qty === 0)
     return (
       <Button
@@ -80,11 +80,10 @@ const AddToCartControl = ({ productId, variantId = null }: Props) => {
         bg-brand hover:bg-brand-hover text-white shadow-md transition disabled:opacity-50"
       >
         <ShoppingBag className="w-4 h-4" />
-        Add to Cart
+        Cart
       </Button>
     );
 
-  /* -------- CART ACTIVE — QTY COUNTER -------- */
   return (
     <div className="flex items-center gap-3">
       <Button
