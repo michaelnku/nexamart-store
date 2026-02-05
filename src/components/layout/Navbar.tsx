@@ -200,10 +200,10 @@ export default function SiteNavbar({
 
                 <DropdownMenuItem asChild>
                   <Link
-                    href="/customer/voucher"
+                    href="/customer/coupons"
                     className={`flex gap-2 w-full px-2 py-1.5 rounded-md transition
       ${
-        pathname === "/customer/voucher"
+        pathname === "/customer/coupons"
           ? "bg-[#3c9ee0]/15 text-[#3c9ee0] font-semibold"
           : "hover:bg-muted hover:text-foreground"
       }

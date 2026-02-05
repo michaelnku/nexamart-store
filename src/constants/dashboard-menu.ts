@@ -286,7 +286,7 @@ export const DashboardMenuItems = {
       label: "Cart",
     },
     {
-      href: "/customer/voucher",
+      href: "/customer/coupons",
       icon: Ticket,
       label: "Voucher",
     },
