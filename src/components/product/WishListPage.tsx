@@ -35,7 +35,7 @@ const WishListPage = ({ initialData }: Props) => {
   }, [initialData, sync]);
 
   const wishlistProducts = initialData.filter((p) =>
-    items.some((i) => i.productId === p.id)
+    items.some((i) => i.productId === p.id),
   );
 
   const removeItem = (productId: string) => {
@@ -66,7 +66,6 @@ const WishListPage = ({ initialData }: Props) => {
 
   return (
     <main className="min-h-screen max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6">
-      {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
@@ -113,7 +112,6 @@ const WishListPage = ({ initialData }: Props) => {
                 key={product.id}
                 className="border rounded-xl bg-white shadow-sm hover:shadow-md transition-all p-3 flex flex-col group cursor-pointer"
               >
-                {/* PRODUCT IMAGE */}
                 <div
                   className="relative w-full aspect-square rounded-lg overflow-hidden bg-gray-50"
                   onClick={() => router.push(`/product/${product.id}`)}
@@ -131,7 +129,6 @@ const WishListPage = ({ initialData }: Props) => {
                   )}
                 </div>
 
-                {/* TEXT INFO */}
                 <div className="flex flex-col gap-1 flex-1 mt-2">
                   <p
                     className="font-medium text-sm line-clamp-2 leading-tight group-hover:text-[#3c9ee0]"
@@ -164,7 +161,6 @@ const WishListPage = ({ initialData }: Props) => {
                     </span>
                   </p>
 
-                  {/* REMOVE */}
                   <button
                     className="text-[#3c9ee0] hover:text-[#318bc4] hover:underline text-[12.5px] flex items-center gap-1 w-fit mt-1"
                     onClick={() => removeItem(product.id)}
@@ -173,7 +169,6 @@ const WishListPage = ({ initialData }: Props) => {
                   </button>
                 </div>
 
-                {/* ADD TO CART */}
                 <div className="mt-auto pt-3">
                   <AddToCartControl productId={product.id} variantId={null} />
                 </div>
