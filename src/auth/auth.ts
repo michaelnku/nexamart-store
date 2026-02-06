@@ -4,6 +4,7 @@ import { UserRole } from "@/generated/prisma/client";
 import { getUserById } from "../components/helper/data";
 import { prisma } from "@/lib/prisma";
 import authConfig from "./auth.config";
+import { createWelcomeCouponForUser } from "@/lib/coupons/createWelcomeCoupon";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -32,6 +33,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       token.role = existingUser.role;
 
       return token;
+    },
+  },
+
+  events: {
+    async createUser({ user }) {
+      if (user?.id) {
+        await createWelcomeCouponForUser(user.id);
+      }
     },
   },
 

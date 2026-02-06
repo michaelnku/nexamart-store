@@ -20,10 +20,10 @@ import { Prisma } from "@/generated/prisma";
 import { CurrentUser } from "@/lib/currentUser";
 import { revalidatePath } from "next/cache";
 import { UTApi } from "uploadthing/server";
+import { createWelcomeCouponForUser } from "@/lib/coupons/createWelcomeCoupon";
 
 const utapi = new UTApi();
 
-// delete image from DB + UploadThing
 export const deleteProfileAvatarAction = async () => {
   const user = await CurrentUser();
   if (!user) return { error: "Unauthorized" };
@@ -41,7 +41,6 @@ export const deleteProfileAvatarAction = async () => {
     };
 
     if (!avatar.key) {
-      // 🔥 delete record from DB
       await prisma.user.update({
         where: { id: user.id },
         data: {
@@ -88,13 +87,15 @@ export const createUser = async (values: registerSchemaType) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         username,
         email,
         password: hashedPassword,
       },
     });
+
+    await createWelcomeCouponForUser(user.id);
 
     return { success: "New user created!" };
   } catch (error) {
@@ -176,8 +177,8 @@ export async function updateUserProfile(values: updateUserSchemaType) {
         profileAvatar === undefined
           ? undefined
           : profileAvatar === null
-          ? Prisma.JsonNull
-          : profileAvatar,
+            ? Prisma.JsonNull
+            : profileAvatar,
     },
   });
 
