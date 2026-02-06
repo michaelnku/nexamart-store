@@ -21,6 +21,8 @@ import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { useCurrencyStore } from "@/stores/useCurrencyStore";
 import { useQuery } from "@tanstack/react-query";
+import { Input } from "../ui/input";
+import { validateCouponAction } from "@/actions/checkout/validateCoupon";
 
 const deliveryMethod = [
   {
@@ -96,6 +98,15 @@ export default function CheckoutSummary({ cart, address }: Props) {
   const [deliveryType, setDeliveryType] = useState<
     "HOME_DELIVERY" | "STORE_PICKUP" | "STATION_PICKUP" | "EXPRESS"
   >("HOME_DELIVERY");
+  const [couponCode, setCouponCode] = useState("");
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    id: string;
+    code: string;
+    type: string;
+    value: number;
+  } | null>(null);
+  const [discountUSD, setDiscountUSD] = useState(0);
 
   const items = useCartStore((state) => state.items);
 
@@ -118,8 +129,6 @@ export default function CheckoutSummary({ cart, address }: Props) {
     [cart.items],
   );
 
-  const approxUSD = currency !== "USD" ? subtotalUSD : null;
-
   const shippingUSD = useMemo(() => {
     if (!address) return null;
 
@@ -134,7 +143,9 @@ export default function CheckoutSummary({ cart, address }: Props) {
     }
   }, [deliveryType, address]);
 
-  const totalUSD = subtotalUSD + (shippingUSD ?? 0);
+  const totalUSD = Math.max(0, subtotalUSD + (shippingUSD ?? 0) - discountUSD);
+
+  const approxUSD = currency !== "USD" ? totalUSD : null;
 
   const canPayWithWallet =
     wallet && wallet.balance > 0 && wallet.balance >= totalUSD;
@@ -207,6 +218,32 @@ export default function CheckoutSummary({ cart, address }: Props) {
     }
   };
 
+  const handleVerifyCoupon = async () => {
+    setCouponError(null);
+
+    try {
+      const res = await validateCouponAction({
+        code: couponCode,
+        subtotalUSD,
+        shippingUSD: shippingUSD ?? 0,
+      });
+
+      if ("error" in res) {
+        setAppliedCoupon(null);
+        setDiscountUSD(0);
+        setCouponError(res.error ?? "Coupon not valid");
+        return;
+      }
+
+      setAppliedCoupon(res.coupon);
+      setDiscountUSD(res.discountAmount);
+    } catch (error) {
+      setAppliedCoupon(null);
+      setDiscountUSD(0);
+      setCouponError("Could not verify coupon. Please try again.");
+    }
+  };
+
   return (
     <>
       <div className="max-w-6xl mx-auto min-h-screen px-6 py-8 grid lg:grid-cols-3 gap-8">
@@ -252,9 +289,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
           })}
         </div>
 
-        {/* SUMMARY CARD */}
         <div className="space-y-6">
-          {/* DELIVERY TYPE SELECTION */}
           <div className="rounded-xl p-5 border bg-white shadow-sm space-y-4">
             <h2 className="text-lg font-semibold text-black">
               Delivery Method
@@ -278,7 +313,6 @@ export default function CheckoutSummary({ cart, address }: Props) {
             </div>
           </div>
 
-          {/* ADDRESS BOX */}
           <div className="rounded-xl p-5 border bg-white shadow-sm space-y-3">
             <h2 className="text-lg font-semibold text-black">
               Delivery Address
@@ -307,7 +341,6 @@ export default function CheckoutSummary({ cart, address }: Props) {
             </Button>
           </div>
 
-          {/* ORDER SUMMARY */}
           <div className="rounded-xl p-5 border bg-white shadow-md space-y-3 sticky top-28">
             <h2 className="text-xl font-semibold text-black">Order Summary</h2>
             <div className="text-sm space-y-1">
@@ -315,6 +348,47 @@ export default function CheckoutSummary({ cart, address }: Props) {
                 <span>Items subtotal</span>
                 <span>{formatMoneyFromUSD(subtotalUSD)}</span>
               </div>
+
+              <div className="flex justify-between">
+                <span>Coupon</span>
+                <div className="w-[200px]">
+                  <div className="relative">
+                    <Input
+                      placeholder="Enter code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      className="pr-16"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleVerifyCoupon}
+                      className="absolute top-1/2 -translate-y-1/2 right-1 text-[var(--brand-blue)] hover:bg-transparent"
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                  {couponError && (
+                    <p className="text-[11px] text-red-500 mt-1">
+                      {couponError}
+                    </p>
+                  )}
+                  {appliedCoupon && discountUSD > 0 && (
+                    <p className="text-[11px] text-green-600 mt-1">
+                      Applied {appliedCoupon.code} (-
+                      {formatMoneyFromUSD(discountUSD)})
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {discountUSD > 0 && (
+                <div className="flex justify-between text-green-700">
+                  <span>Discount</span>
+                  <span>-{formatMoneyFromUSD(discountUSD)}</span>
+                </div>
+              )}
+
               <div className="flex justify-between">
                 <span>Shipping</span>
                 <span>
@@ -328,7 +402,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
                 <span>Total</span>
                 <div className="space-y-1">
                   <span className="font-semibold">
-                    {formatMoneyFromUSD(subtotalUSD)}
+                    {formatMoneyFromUSD(totalUSD)}
                   </span>
 
                   {approxUSD && (
@@ -382,7 +456,6 @@ export default function CheckoutSummary({ cart, address }: Props) {
         </div>
       </div>
 
-      {/* ADDRESS DRAWER */}
       <Drawer open={openAddress} onOpenChange={setOpenAddress}>
         <DrawerContent className="w-full max-w-lg mx-auto p-4 space-y-3">
           <DrawerHeader>

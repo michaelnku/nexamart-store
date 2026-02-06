@@ -61,6 +61,7 @@ model User {
   agentProfile       AgentProfile?
   agentConversations Conversation[]  @relation("ConversationAgent")
   couponUsages       CouponUsage[]
+  couponClaims       CouponClaim[]
 }
 
 enum UserRole {
@@ -358,9 +359,11 @@ model Order {
   phone           String?
   trackingNumber  String?        @unique
 
-  shippingFee     Float @default(0)
+  shippingFee     Float   @default(0)
   totalAmount     Float
-  distanceInMiles Float @default(0)
+  distanceInMiles Float   @default(0)
+  couponId        String?
+  discountAmount  Float?
 
   isPaid            Boolean @default(false)
   isDelivered       Boolean @default(false)
@@ -384,10 +387,13 @@ model Order {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   orderTimelines OrderTimeline[]
+  coupon         Coupon?         @relation(fields: [couponId], references: [id])
+  couponUsages   CouponUsage[]
 
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@index([couponId])
 }
 
 model OrderTimeline {
@@ -830,20 +836,24 @@ model Coupon {
   id             String     @id @default(uuid())
   code           String     @unique
   type           CouponType
-  value          Int 
+  value          Int
   minOrderAmount Int?
   maxDiscount    Int?
   usageLimit     Int?
+  perUserLimit   Int?
   usedCount      Int        @default(0)
 
   isActive  Boolean   @default(true)
-  expiresAt DateTime?
+  validFrom DateTime?
+  validTo   DateTime?
 
   appliesTo      CouponScope
   createdByAdmin Boolean     @default(false)
 
   createdAt    DateTime      @default(now())
   couponUsages CouponUsage[]
+  couponClaims CouponClaim[]
+  orders       Order[]
 }
 
 enum CouponType {
@@ -869,6 +879,22 @@ model CouponUsage {
 
   coupon Coupon @relation(fields: [couponId], references: [id])
   user   User   @relation(fields: [userId], references: [id])
+  order  Order? @relation(fields: [orderId], references: [id])
+}
+
+model CouponClaim {
+  id        String   @id @default(uuid())
+  couponId  String
+  userId    String
+  claimedAt DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([couponId, userId])
+  @@index([couponId])
+  @@index([userId])
+  @@index([claimedAt])
 }
 
 /**

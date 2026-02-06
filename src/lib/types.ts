@@ -501,3 +501,16 @@ export type Member = {
   userId: String;
   conversation: string;
 };
+
+export type CouponItem = {
+  id: string;
+  code: string;
+  type: string;
+  value: number;
+  minOrderAmount?: number | null;
+  maxDiscount?: number | null;
+  perUserLimit?: number | null;
+  usageLimit?: number | null;
+  validFrom?: string | null;
+  validTo?: string | null;
+};
