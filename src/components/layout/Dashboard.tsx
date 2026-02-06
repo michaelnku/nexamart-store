@@ -10,6 +10,7 @@ import {
   StoreIcon,
   MessageSquareOffIcon,
   Mail,
+  Tag,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,7 +29,7 @@ const accountLinks = [
     icon: MessageSquareOffIcon,
   },
   { name: "My Wallet", href: "/customer/wallet", icon: Wallet },
-  { name: "Voucher", href: "/customer/coupon", icon: Wallet },
+  { name: "Coupons", href: "/customer/coupons", icon: Tag },
   {
     name: "Followed Sellers",
     href: "/customer/followed-sellers",

@@ -8,11 +8,11 @@ import {
   User,
   LogOut,
   Heart,
-  Ticket,
   Package,
   Mail,
   ChevronDown,
   Menu,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -212,7 +212,7 @@ export default function SiteNavbar({
                       setOpen(false);
                     }}
                   >
-                    <Ticket className="w-4 h-4" /> Voucher
+                    <Tag className="w-4 h-4" /> Coupons
                   </Link>
                 </DropdownMenuItem>
 

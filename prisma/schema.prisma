@@ -60,6 +60,7 @@ model User {
   userPreference     UserPreference?
   agentProfile       AgentProfile?
   agentConversations Conversation[]  @relation("ConversationAgent")
+  couponUsages       CouponUsage[]
 }
 
 enum UserRole {
@@ -822,10 +823,59 @@ enum SenderType {
 
 /**
  * ===========================
+ * COUPONS & PROMOTIONS
+ * ===========================
+ */
+model Coupon {
+  id             String     @id @default(uuid())
+  code           String     @unique
+  type           CouponType
+  value          Int 
+  minOrderAmount Int?
+  maxDiscount    Int?
+  usageLimit     Int?
+  usedCount      Int        @default(0)
+
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+
+  appliesTo      CouponScope
+  createdByAdmin Boolean     @default(false)
+
+  createdAt    DateTime      @default(now())
+  couponUsages CouponUsage[]
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+  FREE_SHIPPING
+}
+
+enum CouponScope {
+  ALL
+  FIRST_ORDER
+  NEW_USERS
+  CATEGORY
+}
+
+model CouponUsage {
+  id       String  @id @default(uuid())
+  couponId String
+  userId   String
+  orderId  String?
+
+  usedAt DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+/**
+ * ===========================
  * ADDRESS & SITE CONFIG
  * ===========================
  */
-
 enum AddressLabel {
   HOME
   OFFICE
