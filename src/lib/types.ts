@@ -212,6 +212,7 @@ export type CheckoutPayload = {
   deliveryType: "HOME_DELIVERY" | "STATION_PICKUP" | "EXPRESS" | "STORE_PICKUP";
   distanceInMiles?: number;
   deliveryAddress?: string | null;
+  couponId?: string | null;
 };
 
 export interface CartItemDTO {

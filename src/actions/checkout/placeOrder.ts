@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
 import { DeliveryType, PaymentMethod } from "@/generated/prisma/client";
 import { generateTrackingNumber } from "@/components/helper/generateTrackingNumber";
+import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
 
 const MAX_RETRIES = 3;
 
@@ -12,11 +13,13 @@ export const placeOrderAction = async ({
   paymentMethod,
   deliveryType,
   distanceInMiles,
+  couponId,
 }: {
   deliveryAddress: string;
   paymentMethod: PaymentMethod;
   deliveryType: DeliveryType;
   distanceInMiles?: number;
+  couponId?: string | null;
 }) => {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
@@ -56,6 +59,20 @@ export const placeOrderAction = async ({
 
   const totalAmount = subtotal + shippingFee;
 
+  const couponResult = await resolveCouponForOrder({
+    userId,
+    couponId,
+    subtotalUSD: subtotal,
+    shippingUSD: shippingFee,
+  });
+
+  if ("error" in couponResult) {
+    return { error: couponResult.error };
+  }
+
+  const discountAmount = couponResult.discountAmount ?? 0;
+  const totalWithDiscount = Math.max(0, totalAmount - discountAmount);
+
   let order;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -67,19 +84,19 @@ export const placeOrderAction = async ({
         if (paymentMethod === "WALLET") {
           const wallet = await tx.wallet.findUnique({ where: { userId } });
           if (!wallet) throw new Error("Wallet not found");
-          if (wallet.balance < totalAmount)
+          if (wallet.balance < totalWithDiscount)
             throw new Error("Insufficient wallet balance");
 
           await tx.wallet.update({
             where: { id: wallet.id },
-            data: { balance: { decrement: totalAmount } },
+            data: { balance: { decrement: totalWithDiscount } },
           });
 
           await tx.transaction.create({
             data: {
               walletId: wallet.id,
               userId,
-              amount: totalAmount,
+              amount: totalWithDiscount,
               type: "ORDER_PAYMENT",
               status: "SUCCESS",
               description: "Payment for order",
@@ -96,7 +113,9 @@ export const placeOrderAction = async ({
             deliveryType,
             distanceInMiles: miles,
             shippingFee,
-            totalAmount,
+            totalAmount: totalWithDiscount,
+            couponId: couponResult.coupon?.id ?? null,
+            discountAmount: discountAmount > 0 ? discountAmount : null,
             trackingNumber,
             status: "PENDING",
             items: {
@@ -111,6 +130,21 @@ export const placeOrderAction = async ({
             },
           },
         });
+
+        if (couponResult.coupon?.id) {
+          await tx.couponUsage.create({
+            data: {
+              couponId: couponResult.coupon.id,
+              userId,
+              orderId: createdOrder.id,
+            },
+          });
+
+          await tx.coupon.update({
+            where: { id: couponResult.coupon.id },
+            data: { usedCount: { increment: 1 } },
+          });
+        }
 
         // INITIAL TIMELINE ENTRY
         await tx.orderTimeline.create({

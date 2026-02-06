@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { CheckoutCartItem, CheckoutPayload } from "@/lib/types";
+import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,13 +26,14 @@ export async function POST(req: Request) {
       userId,
       distanceInMiles,
       deliveryAddress,
+      couponId,
     } = body;
 
     if (!cartItems || cartItems.length === 0) {
       return new NextResponse("Cart is empty", { status: 400 });
     }
 
-    // Fetch all products + variants used in the cart
+    //get products
     const products = await prisma.product.findMany({
       where: {
         id: { in: cartItems.map((i: CheckoutCartItem) => i.productId) },
@@ -65,10 +67,33 @@ export async function POST(req: Request) {
     }
 
     // Calculate shipping
-    const rate = 700; // same logic used in your UI
+    const rate = 700;
     const shippingFee = Math.round((distanceInMiles ?? 0) * rate);
 
-    const totalAmount = subtotal + shippingFee;
+    if (shippingFee > 0) {
+      line_items.push({
+        quantity: 1,
+        price_data: {
+          currency: "usd",
+          product_data: { name: "Shipping" },
+          unit_amount: Math.round(shippingFee * 100),
+        },
+      });
+    }
+
+    const couponResult = await resolveCouponForOrder({
+      userId,
+      couponId,
+      subtotalUSD: subtotal,
+      shippingUSD: shippingFee,
+    });
+
+    if ("error" in couponResult) {
+      return new NextResponse(couponResult.error, { status: 400 });
+    }
+
+    const discountAmount = couponResult.discountAmount ?? 0;
+    const totalAmount = Math.max(0, subtotal + shippingFee - discountAmount);
 
     // Create order with items but do NOT assign sellerGroups yet
     const order = await prisma.order.create({
@@ -80,6 +105,8 @@ export async function POST(req: Request) {
         deliveryAddress,
         distanceInMiles,
         isPaid: false,
+        couponId: couponResult.coupon?.id ?? null,
+        discountAmount: discountAmount > 0 ? discountAmount : null,
         items: {
           create: cartItems.map((item: CheckoutCartItem) => {
             const product = products.find((p) => p.id === item.productId);
@@ -108,6 +135,43 @@ export async function POST(req: Request) {
       },
     });
 
+    if (couponResult.coupon?.id) {
+      await prisma.couponUsage.create({
+        data: {
+          couponId: couponResult.coupon.id,
+          userId,
+          orderId: order.id,
+        },
+      });
+
+      await prisma.coupon.update({
+        where: { id: couponResult.coupon.id },
+        data: { usedCount: { increment: 1 } },
+      });
+    }
+
+    // Create Stripe coupon (if discount applies)
+    let stripeCouponId: string | undefined;
+    if (discountAmount > 0 && couponResult.coupon?.id) {
+      const isPercent = couponResult.coupon.type === "PERCENTAGE";
+      const clampedPercent = Math.min(
+        Math.max(couponResult.coupon.value, 1),
+        100,
+      );
+
+      const coupon = await stripe.coupons.create({
+        duration: "once",
+        ...(isPercent
+          ? { percent_off: clampedPercent }
+          : {
+              amount_off: Math.round(discountAmount * 100),
+              currency: "usd",
+            }),
+        name: `coupon-${couponResult.coupon.id}`,
+      });
+      stripeCouponId = coupon.id;
+    }
+
     // Create Stripe session
     const session = await stripe.checkout.sessions.create({
       line_items,
@@ -115,6 +179,9 @@ export async function POST(req: Request) {
       success_url: `${process.env.FRONTEND_STORE_URL}/customer/order/success/${order.id}`,
       cancel_url: `${process.env.FRONTEND_STORE_URL}/cart?canceled=1`,
       metadata: { orderId: order.id },
+      ...(stripeCouponId
+        ? { discounts: [{ coupon: stripeCouponId }] }
+        : undefined),
     });
 
     return NextResponse.json({ url: session.url });

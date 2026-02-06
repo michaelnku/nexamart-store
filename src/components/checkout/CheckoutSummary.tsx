@@ -182,6 +182,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
         paymentMethod,
         deliveryType,
         distanceInMiles: address?.distanceInMiles ?? 0,
+        couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
       });
 
       if ("error" in res) {
@@ -220,6 +221,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
               ? `${address.street}, ${address.city}, ${address.state}, ${address.country}`
               : null,
             paymentMethod: "CARD",
+            couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
           },
         })
         .json<{ url: string }>();

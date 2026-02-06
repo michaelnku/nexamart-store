@@ -9,11 +9,19 @@ type ValidateCouponInput = {
   shippingUSD: number;
 };
 
+type ValidateCouponResult =
+  | {
+      success: true;
+      coupon: { id: string; code: string; type: string; value: number };
+      discountAmount: number;
+    }
+  | { error: string };
+
 export const validateCouponAction = async ({
   code,
   subtotalUSD,
   shippingUSD,
-}: ValidateCouponInput) => {
+}: ValidateCouponInput): Promise<ValidateCouponResult> => {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
 
@@ -35,6 +43,11 @@ export const validateCouponAction = async ({
     return { error: "Coupon is not active yet" };
   if (coupon.validTo && coupon.validTo < now)
     return { error: "Coupon has expired" };
+
+  if (coupon.appliesTo === "FIRST_ORDER") {
+    const orderCount = await prisma.order.count({ where: { userId } });
+    if (orderCount > 0) return { error: "Coupon is for first order only" };
+  }
 
   if (coupon.minOrderAmount && subtotalUSD < coupon.minOrderAmount) {
     return {

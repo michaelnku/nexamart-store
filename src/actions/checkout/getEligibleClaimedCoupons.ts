@@ -51,6 +51,8 @@ export const getEligibleClaimedCouponsAction = async ({
   const userId = await CurrentUserId();
   if (!userId) return { coupons: [] };
 
+  const orderCount = await prisma.order.count({ where: { userId } });
+
   const claims = await prisma.couponClaim.findMany({
     where: { userId },
     orderBy: { claimedAt: "desc" },
@@ -67,6 +69,7 @@ export const getEligibleClaimedCouponsAction = async ({
     if (coupon.validFrom && coupon.validFrom > now) continue;
     if (coupon.validTo && coupon.validTo < now) continue;
     if (coupon.minOrderAmount && subtotalUSD < coupon.minOrderAmount) continue;
+    if (coupon.appliesTo === "FIRST_ORDER" && orderCount > 0) continue;
 
     const [usageCount, userUsageCount] = await Promise.all([
       prisma.couponUsage.count({ where: { couponId: coupon.id } }),
