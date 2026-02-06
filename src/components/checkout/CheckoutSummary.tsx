@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useTransition, useState, useMemo } from "react";
+import { useTransition, useState, useMemo, useEffect } from "react";
 import { placeOrderAction } from "@/actions/checkout/placeOrder";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,15 @@ import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { useCurrencyStore } from "@/stores/useCurrencyStore";
 import { useQuery } from "@tanstack/react-query";
-import { Input } from "../ui/input";
-import { validateCouponAction } from "@/actions/checkout/validateCoupon";
+import { getEligibleClaimedCouponsAction } from "@/actions/checkout/getEligibleClaimedCoupons";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const deliveryMethod = [
   {
@@ -98,8 +105,6 @@ export default function CheckoutSummary({ cart, address }: Props) {
   const [deliveryType, setDeliveryType] = useState<
     "HOME_DELIVERY" | "STORE_PICKUP" | "STATION_PICKUP" | "EXPRESS"
   >("HOME_DELIVERY");
-  const [couponCode, setCouponCode] = useState("");
-  const [couponError, setCouponError] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<{
     id: string;
     code: string;
@@ -107,6 +112,21 @@ export default function CheckoutSummary({ cart, address }: Props) {
     value: number;
   } | null>(null);
   const [discountUSD, setDiscountUSD] = useState(0);
+  const [activeDiscountUSD, setActiveDiscountUSD] = useState(0);
+  const [applyCoupon, setApplyCoupon] = useState(false);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponOptOut, setCouponOptOut] = useState(false);
+  const [couponDialogOpen, setCouponDialogOpen] = useState(false);
+  const [eligibleCoupons, setEligibleCoupons] = useState<
+    {
+      id: string;
+      code: string;
+      type: string;
+      value: number;
+      discountAmount: number;
+    }[]
+  >([]);
+  const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
 
   const items = useCartStore((state) => state.items);
 
@@ -218,31 +238,61 @@ export default function CheckoutSummary({ cart, address }: Props) {
     }
   };
 
-  const handleVerifyCoupon = async () => {
-    setCouponError(null);
+  useEffect(() => {
+    let cancelled = false;
 
-    try {
-      const res = await validateCouponAction({
-        code: couponCode,
-        subtotalUSD,
-        shippingUSD: shippingUSD ?? 0,
-      });
+    const run = async () => {
+      setCouponLoading(true);
+      try {
+        const res = await getEligibleClaimedCouponsAction({
+          subtotalUSD,
+          shippingUSD: shippingUSD ?? 0,
+        });
 
-      if ("error" in res) {
+        if (cancelled) return;
+
+        if (!res.coupons.length) {
+          setAppliedCoupon(null);
+          setActiveDiscountUSD(0);
+          setDiscountUSD(0);
+          setApplyCoupon(false);
+          setEligibleCoupons([]);
+          setSelectedCouponId(null);
+          return;
+        }
+
+        setEligibleCoupons(res.coupons);
+        setSelectedCouponId(res.coupons[0].id);
+        setAppliedCoupon({
+          id: res.coupons[0].id,
+          code: res.coupons[0].code,
+          type: res.coupons[0].type,
+          value: res.coupons[0].value,
+        });
+        setActiveDiscountUSD(res.coupons[0].discountAmount);
+
+        if (!couponOptOut) {
+          setApplyCoupon(true);
+          setDiscountUSD(res.coupons[0].discountAmount);
+        }
+      } catch {
+        if (cancelled) return;
         setAppliedCoupon(null);
+        setActiveDiscountUSD(0);
         setDiscountUSD(0);
-        setCouponError(res.error ?? "Coupon not valid");
-        return;
+        setApplyCoupon(false);
+        setEligibleCoupons([]);
+        setSelectedCouponId(null);
+      } finally {
+        if (!cancelled) setCouponLoading(false);
       }
+    };
 
-      setAppliedCoupon(res.coupon);
-      setDiscountUSD(res.discountAmount);
-    } catch (error) {
-      setAppliedCoupon(null);
-      setDiscountUSD(0);
-      setCouponError("Could not verify coupon. Please try again.");
-    }
-  };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [subtotalUSD, shippingUSD, couponOptOut]);
 
   return (
     <>
@@ -351,30 +401,56 @@ export default function CheckoutSummary({ cart, address }: Props) {
 
               <div className="flex justify-between">
                 <span>Coupon</span>
-                <div className="w-[200px]">
-                  <div className="relative">
-                    <Input
-                      placeholder="Enter code"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value)}
-                      className="pr-16"
+                <div className="w-[200px] space-y-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-[var(--brand-blue)]"
+                      checked={applyCoupon}
+                      disabled={!appliedCoupon || couponLoading}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setApplyCoupon(checked);
+                        if (!checked) {
+                          setCouponOptOut(true);
+                          setDiscountUSD(0);
+                        } else {
+                          setCouponOptOut(false);
+                          setDiscountUSD(activeDiscountUSD);
+                        }
+                      }}
                     />
+                    {couponLoading
+                      ? "Checking coupons..."
+                      : appliedCoupon
+                        ? `Apply ${appliedCoupon.code}`
+                        : "No active coupons"}
+                  </label>
+
+                  {!appliedCoupon && !couponLoading && (
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      onClick={handleVerifyCoupon}
-                      className="absolute top-1/2 -translate-y-1/2 right-1 text-[var(--brand-blue)] hover:bg-transparent"
+                      onClick={() => router.push("/customer/coupons")}
+                      className="w-full"
                     >
-                      Apply
+                      Check coupons to claim
                     </Button>
-                  </div>
-                  {couponError && (
-                    <p className="text-[11px] text-red-500 mt-1">
-                      {couponError}
-                    </p>
                   )}
-                  {appliedCoupon && discountUSD > 0 && (
-                    <p className="text-[11px] text-green-600 mt-1">
+
+                  {eligibleCoupons.length > 1 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCouponDialogOpen(true)}
+                      className="w-full"
+                    >
+                      Change coupon
+                    </Button>
+                  )}
+
+                  {appliedCoupon && applyCoupon && discountUSD > 0 && (
+                    <p className="text-[11px] text-green-600">
                       Applied {appliedCoupon.code} (-
                       {formatMoneyFromUSD(discountUSD)})
                     </p>
@@ -475,6 +551,79 @@ export default function CheckoutSummary({ cart, address }: Props) {
           />
         </DrawerContent>
       </Drawer>
+
+      <Dialog open={couponDialogOpen} onOpenChange={setCouponDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select a coupon</DialogTitle>
+            <DialogDescription>
+              Choose one of your active claimed coupons to apply.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {eligibleCoupons.map((c) => (
+              <label
+                key={c.id}
+                className="flex items-center justify-between gap-3 rounded-lg border p-3 cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="coupon"
+                    className="h-4 w-4 accent-[var(--brand-blue)]"
+                    checked={selectedCouponId === c.id}
+                    onChange={() => setSelectedCouponId(c.id)}
+                  />
+                  <div>
+                    <p className="font-medium">{c.code}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Saves {formatMoneyFromUSD(c.discountAmount)}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs text-gray-500">
+                  {c.type === "PERCENTAGE"
+                    ? `${c.value}% OFF`
+                    : c.type === "FIXED"
+                      ? `$${c.value} OFF`
+                      : "Free Shipping"}
+                </span>
+              </label>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCouponDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const selected = eligibleCoupons.find(
+                  (c) => c.id === selectedCouponId,
+                );
+                if (!selected) return;
+
+                setAppliedCoupon({
+                  id: selected.id,
+                  code: selected.code,
+                  type: selected.type,
+                  value: selected.value,
+                });
+                setActiveDiscountUSD(selected.discountAmount);
+
+                if (applyCoupon) {
+                  setDiscountUSD(selected.discountAmount);
+                }
+
+                setCouponDialogOpen(false);
+              }}
+            >
+              Apply selected
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
