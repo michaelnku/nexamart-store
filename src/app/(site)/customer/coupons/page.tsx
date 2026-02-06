@@ -9,6 +9,7 @@ export default async function CouponsPage() {
   const now = new Date();
 
   const coupons = await prisma.coupon.findMany({
+    where: { isDeleted: false },
     orderBy: { createdAt: "desc" },
     include: {
       couponClaims: { where: { userId }, select: { id: true } },

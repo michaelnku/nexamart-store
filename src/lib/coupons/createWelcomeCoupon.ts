@@ -30,6 +30,7 @@ export const createWelcomeCouponForUser = async (userId: string) => {
   if (existingClaim) return;
 
   const now = new Date();
+  const percentValue = Math.min(Math.max(10, 1), 100);
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateCode();
@@ -40,7 +41,7 @@ export const createWelcomeCouponForUser = async (userId: string) => {
           data: {
             code,
             type: "PERCENTAGE",
-            value: 10,
+            value: percentValue,
             usageLimit: 1,
             perUserLimit: 1,
             validFrom: now,

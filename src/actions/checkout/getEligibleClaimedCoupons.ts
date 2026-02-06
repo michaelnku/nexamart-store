@@ -65,6 +65,7 @@ export const getEligibleClaimedCouponsAction = async ({
   for (const claim of claims) {
     const coupon = claim.coupon;
 
+    if (coupon.isDeleted) continue;
     if (!coupon.isActive) continue;
     if (coupon.validFrom && coupon.validFrom > now) continue;
     if (coupon.validTo && coupon.validTo < now) continue;

@@ -36,6 +36,7 @@ export const validateCouponAction = async ({
 
   if (!coupon) return { error: "Coupon not found" };
 
+  if (coupon.isDeleted) return { error: "Coupon not available" };
   if (!coupon.isActive) return { error: "Coupon is not active" };
 
   const now = new Date();

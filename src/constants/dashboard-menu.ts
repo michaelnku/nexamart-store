@@ -162,8 +162,13 @@ export const DashboardMenu = {
         },
         {
           name: "Categories",
-          href: "/marketplace/dashboard/admin/products",
+          href: "/marketplace/dashboard/admin/categories",
           icon: Package,
+        },
+        {
+          name: "Coupons",
+          href: "/marketplace/dashboard/admin/coupons",
+          icon: Ticket,
         },
         {
           name: "Transactions",
@@ -221,6 +226,11 @@ export const DashboardMenu = {
           name: "Moderate Users",
           href: "/marketplace/dashboard/moderator/users",
           icon: Users,
+        },
+        {
+          name: "Products",
+          href: "/marketplace/dashboard/moderator/products",
+          icon: Package,
         },
         {
           name: "Content Review",

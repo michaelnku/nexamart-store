@@ -515,3 +515,18 @@ export type CouponItem = {
   validFrom?: string | null;
   validTo?: string | null;
 };
+
+export type CouponFormValues = {
+  id?: string;
+  code: string;
+  type: "PERCENTAGE" | "FIXED" | "FREE_SHIPPING";
+  value: number;
+  minOrderAmount?: number | null;
+  maxDiscount?: number | null;
+  usageLimit?: number | null;
+  perUserLimit?: number | null;
+  appliesTo: "ALL" | "FIRST_ORDER" | "NEW_USERS";
+  validFrom?: string | null;
+  validTo?: string | null;
+  isActive?: boolean;
+};
