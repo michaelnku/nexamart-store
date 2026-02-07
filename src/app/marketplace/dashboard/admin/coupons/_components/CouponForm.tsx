@@ -23,6 +23,7 @@ import {
   FormItem,
   FormLabel,
   FormControl,
+  FormDescription,
   FormMessage,
 } from "@/components/ui/form";
 import { CouponFormValues } from "@/lib/types";
@@ -110,54 +111,58 @@ export default function CouponForm({ mode, initial }: Props) {
               onSubmit={form.handleSubmit(onSubmit)}
               className="grid grid-cols-1 md:grid-cols-2 gap-4"
             >
-            <FormField
-              control={form.control}
-              name="code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Code</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Code (e.g., SALE)"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(e.target.value.toUpperCase())
-                      }
-                    />
-                  </FormControl>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const current = String(field.value ?? "").toUpperCase();
-                        if (!current.trim()) return;
-                        if (SUFFIX_RE.test(current)) return;
-                        const next = `${current.replace(/-+$/g, "")}-${generateSuffix()}`;
-                        form.setValue("code", next, { shouldValidate: true });
-                      }}
-                    >
-                      Add 6-char suffix
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        const current = String(field.value ?? "").toUpperCase();
-                        if (!SUFFIX_RE.test(current)) return;
-                        const next = current.replace(SUFFIX_RE, "");
-                        form.setValue("code", next, { shouldValidate: true });
-                      }}
-                    >
-                      Remove suffix
-                    </Button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Code</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Code (e.g., SALE)"
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(e.target.value.toUpperCase())
+                        }
+                      />
+                    </FormControl>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const current = String(
+                            field.value ?? "",
+                          ).toUpperCase();
+                          if (!current.trim()) return;
+                          if (SUFFIX_RE.test(current)) return;
+                          const next = `${current.replace(/-+$/g, "")}-${generateSuffix()}`;
+                          form.setValue("code", next, { shouldValidate: true });
+                        }}
+                      >
+                        Add 6-char suffix
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const current = String(
+                            field.value ?? "",
+                          ).toUpperCase();
+                          if (!SUFFIX_RE.test(current)) return;
+                          const next = current.replace(SUFFIX_RE, "");
+                          form.setValue("code", next, { shouldValidate: true });
+                        }}
+                      >
+                        Remove suffix
+                      </Button>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
@@ -216,6 +221,9 @@ export default function CouponForm({ mode, initial }: Props) {
                         <option value="ALL">All users</option>
                         <option value="FIRST_ORDER">First order only</option>
                         <option value="NEW_USERS">New users</option>
+                        <option value="CATEGORY">
+                          Category Optional (not enforced yet)
+                        </option>
                       </select>
                     </FormControl>
                     <FormMessage />
@@ -240,6 +248,9 @@ export default function CouponForm({ mode, initial }: Props) {
                         }
                       />
                     </FormControl>
+                    <FormDescription>
+                      Minimum subtotal required for the coupon to apply.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -262,6 +273,10 @@ export default function CouponForm({ mode, initial }: Props) {
                         }
                       />
                     </FormControl>
+                    <FormDescription>
+                      Caps the discount amount (especially for percentage
+                      coupons).
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -284,6 +299,10 @@ export default function CouponForm({ mode, initial }: Props) {
                         }
                       />
                     </FormControl>
+                    <FormDescription>
+                      Total number of times this coupon can be used by all
+                      users.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

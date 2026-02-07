@@ -49,8 +49,8 @@ model User {
 
   Notification Notification[]
 
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
   Account            Account[]
   Session            Session[]
   Review             Review[]
@@ -59,7 +59,11 @@ model User {
   searchHistories    SearchHistory[]
   userPreference     UserPreference?
   agentProfile       AgentProfile?
-  agentConversations Conversation[]  @relation("ConversationAgent")
+  agentConversations Conversation[]   @relation("ConversationAgent")
+  referralCode       ReferralCode?
+  referralsMade      Referral[]       @relation("Referrer")
+  referralsReceived  Referral[]       @relation("Referred")
+  referralRewards    ReferralReward[] @relation("ReferralRewardBeneficiary")
   couponUsages       CouponUsage[]
   couponClaims       CouponClaim[]
 }
@@ -389,6 +393,7 @@ model Order {
   orderTimelines OrderTimeline[]
   coupon         Coupon?         @relation(fields: [couponId], references: [id])
   couponUsages   CouponUsage[]
+  referrals      Referral[]
 
   @@index([userId])
   @@index([status])
@@ -597,8 +602,9 @@ model Transaction {
   order  Order?  @relation(fields: [orderId], references: [id])
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  referralRewards ReferralReward[]
 }
 
 enum TransactionType {
@@ -837,11 +843,13 @@ model Coupon {
   code           String     @unique
   type           CouponType
   value          Int
+  assignedUserId String?
+
   minOrderAmount Int?
   maxDiscount    Int?
   usageLimit     Int?
   perUserLimit   Int?
-  usedCount      Int        @default(0)
+  usedCount      Int  @default(0)
 
   isActive  Boolean   @default(true)
   isDeleted Boolean   @default(false)
@@ -897,6 +905,78 @@ model CouponClaim {
   @@index([couponId])
   @@index([userId])
   @@index([claimedAt])
+}
+
+model ReferralCode {
+  id     String @id @default(uuid())
+  code   String @unique
+  userId String @unique
+
+  user      User       @relation(fields: [userId], references: [id])
+  createdAt DateTime   @default(now())
+  referrals Referral[]
+}
+
+enum ReferralStatus {
+  PENDING
+  QUALIFIED
+  REWARDED
+}
+
+model Referral {
+  id             String  @id @default(uuid())
+  referrerId     String
+  referredId     String
+  referralCodeId String
+  orderId        String?
+
+  status      ReferralStatus @default(PENDING)
+  qualifiedAt DateTime?
+  rewardedAt  DateTime?
+  createdAt   DateTime       @default(now())
+
+  referrer        User             @relation("Referrer", fields: [referrerId], references: [id])
+  referred        User             @relation("Referred", fields: [referredId], references: [id])
+  referralCode    ReferralCode     @relation(fields: [referralCodeId], references: [id])
+  order           Order?           @relation(fields: [orderId], references: [id])
+  referralRewards ReferralReward[]
+
+  @@unique([referrerId, referredId])
+  @@unique([referredId])
+  @@index([referrerId])
+  @@index([referredId])
+  @@index([referralCodeId])
+}
+
+enum ReferralRewardRole {
+  REFERRER
+  REFERRED
+}
+
+enum ReferralRewardStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model ReferralReward {
+  id            String               @id @default(uuid())
+  referralId    String
+  beneficiaryId String
+  role          ReferralRewardRole
+  amount        Int
+  status        ReferralRewardStatus @default(PENDING)
+  issuedAt      DateTime?
+  transactionId String?
+
+  referral    Referral     @relation(fields: [referralId], references: [id])
+  beneficiary User         @relation("ReferralRewardBeneficiary", fields: [beneficiaryId], references: [id])
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@unique([referralId, role])
+  @@index([referralId])
+  @@index([beneficiaryId])
+  @@index([transactionId])
 }
 
 /**

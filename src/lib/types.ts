@@ -525,7 +525,7 @@ export type CouponFormValues = {
   maxDiscount?: number | null;
   usageLimit?: number | null;
   perUserLimit?: number | null;
-  appliesTo: "ALL" | "FIRST_ORDER" | "NEW_USERS";
+  appliesTo: "ALL" | "FIRST_ORDER" | "NEW_USERS" | "CATEGORY";
   validFrom?: string | null;
   validTo?: string | null;
   isActive?: boolean;

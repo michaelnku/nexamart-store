@@ -7,8 +7,10 @@ export default async function CreateCouponPage() {
   if (!user || user.role !== "ADMIN") redirect("/marketplace/dashboard");
 
   return (
-    <main className="max-w-3xl">
-      <CouponForm mode="create" />
+    <main className="min-h-[calc(100vh-120px)] flex items-start justify-center">
+      <div className="w-full max-w-3xl">
+        <CouponForm mode="create" />
+      </div>
     </main>
   );
 }

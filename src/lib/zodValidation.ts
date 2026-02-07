@@ -214,7 +214,7 @@ export const createCouponSchema = z.object({
   maxDiscount: z.number().optional(),
   usageLimit: z.number().optional(),
   perUserLimit: z.number().optional(),
-  appliesTo: z.enum(["ALL", "FIRST_ORDER", "NEW_USERS"]),
+  appliesTo: z.enum(["ALL", "FIRST_ORDER", "NEW_USERS", "CATEGORY"]),
   validFrom: z.date().optional(),
   validTo: z.date().optional(),
   isActive: z.boolean().optional(),

@@ -28,24 +28,26 @@ export default async function EditCouponPage({
   if (!coupon) return notFound();
 
   return (
-    <main className="max-w-3xl">
-      <CouponForm
-        mode="edit"
-        initial={{
-          id: coupon.id,
-          code: coupon.code,
-          type: coupon.type,
-          value: coupon.value,
-          minOrderAmount: coupon.minOrderAmount,
-          maxDiscount: coupon.maxDiscount,
-          usageLimit: coupon.usageLimit,
-          perUserLimit: coupon.perUserLimit,
-          appliesTo: coupon.appliesTo,
-          validFrom: formatDateInput(coupon.validFrom),
-          validTo: formatDateInput(coupon.validTo),
-          isActive: coupon.isActive,
-        }}
-      />
+    <main className="min-h-[calc(100vh-120px)] flex items-start justify-center">
+      <div className="w-full max-w-3xl">
+        <CouponForm
+          mode="edit"
+          initial={{
+            id: coupon.id,
+            code: coupon.code,
+            type: coupon.type,
+            value: coupon.value,
+            minOrderAmount: coupon.minOrderAmount,
+            maxDiscount: coupon.maxDiscount,
+            usageLimit: coupon.usageLimit,
+            perUserLimit: coupon.perUserLimit,
+            appliesTo: coupon.appliesTo,
+            validFrom: formatDateInput(coupon.validFrom),
+            validTo: formatDateInput(coupon.validTo),
+            isActive: coupon.isActive,
+          }}
+        />
+      </div>
     </main>
   );
 }
