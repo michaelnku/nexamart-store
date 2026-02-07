@@ -33,7 +33,6 @@ export default function ProductRowUI({
 
   return (
     <section className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between px-1">
         <h2 className="text-lg font-semibold">{title}</h2>
         {seeAllLink && (
@@ -41,18 +40,22 @@ export default function ProductRowUI({
             href={seeAllLink}
             className="text-[var(--brand-blue)] text-sm hover:underline font-medium"
           >
-            Explore
+            Explore check
           </Link>
         )}
       </div>
 
-      {/* Slider */}
       <div
         className="relative"
-        onMouseEnter={() => setShowNav(true)}
-        onMouseLeave={() => setShowNav(false)}
+        onMouseEnter={() => {
+          setShowNav(true);
+          if (autoplay) swiperRef.current?.autoplay?.stop();
+        }}
+        onMouseLeave={() => {
+          setShowNav(false);
+          if (autoplay) swiperRef.current?.autoplay?.start();
+        }}
       >
-        {/* Custom Prev Button */}
         {showNav && (
           <button
             onClick={() => swiperRef.current?.slidePrev()}
@@ -63,7 +66,6 @@ export default function ProductRowUI({
           </button>
         )}
 
-        {/* Custom Next Button */}
         {showNav && (
           <button
             onClick={() => swiperRef.current?.slideNext()}
