@@ -4,11 +4,11 @@ import { auth } from "@/auth/auth";
 
 export async function GET(
   req: Request,
-  { params }: { params: { storeId: string } }
+  context: { params: Promise<{ storeId: string }> }
 ) {
   const session = await auth();
   const userId = session?.user?.id;
-  const { storeId } = params;
+  const { storeId } = await context.params;
 
   if (!userId) return NextResponse.json({ following: false });
 
