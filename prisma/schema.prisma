@@ -29,8 +29,11 @@ model User {
   password      String?
   image         String?
 
-  role     UserRole @default(USER)
-  isBanned Boolean  @default(false)
+  role                UserRole  @default(USER)
+  isBanned            Boolean   @default(false)
+  isDeleted           Boolean   @default(false)
+  deletedAt           DateTime?
+  scheduledDeletionAt DateTime?
 
   addresses Address[]
   cart      Cart?
@@ -380,8 +383,8 @@ model Order {
   estimatedDeliveryMin DateTime?
   estimatedDeliveryMax DateTime?
 
-  customer User      @relation("CustomerOrders", fields: [userId], references: [id])
-  rider    User?     @relation("RiderOrders", fields: [riderId], references: [id])
+  customer User      @relation("CustomerOrders", fields: [userId], references: [id], onDelete: Cascade)
+  rider    User?     @relation("RiderOrders", fields: [riderId], references: [id], onDelete: Cascade)
   delivery Delivery? @relation("OrderDelivery")
 
   items        OrderItem[]
@@ -438,7 +441,7 @@ model OrderSellerGroup {
 
   order  Order @relation(fields: [orderId], references: [id])
   store  Store @relation(fields: [storeId], references: [id])
-  seller User  @relation("SellerGroupBySeller", fields: [sellerId], references: [id])
+  seller User  @relation("SellerGroupBySeller", fields: [sellerId], references: [id], onDelete: Cascade)
 
   items OrderItem[] @relation("GroupItems")
 }
@@ -662,7 +665,7 @@ model Store {
   products    Product[]
   storeGroups OrderSellerGroup[]
 
-  owner User @relation(fields: [userId], references: [id])
+  owner User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -698,8 +701,8 @@ model StoreFollower {
   userId    String
   createdAt DateTime @default(now())
 
-  store Store @relation(fields: [storeId], references: [id])
-  user  User  @relation(fields: [userId], references: [id])
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([storeId, userId])
   @@index([storeId])
@@ -715,8 +718,8 @@ model StoreReview {
   comment   String?
   createdAt DateTime @default(now())
 
-  store Store @relation(fields: [storeId], references: [id])
-  user  User  @relation(fields: [userId], references: [id])
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([storeId, userId])
 }
@@ -888,7 +891,7 @@ model CouponUsage {
   usedAt DateTime @default(now())
 
   coupon Coupon @relation(fields: [couponId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   order  Order? @relation(fields: [orderId], references: [id])
 }
 
@@ -899,7 +902,7 @@ model CouponClaim {
   claimedAt DateTime @default(now())
 
   coupon Coupon @relation(fields: [couponId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([couponId, userId])
   @@index([couponId])
@@ -912,7 +915,7 @@ model ReferralCode {
   code   String @unique
   userId String @unique
 
-  user      User       @relation(fields: [userId], references: [id])
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime   @default(now())
   referrals Referral[]
 }
@@ -935,8 +938,8 @@ model Referral {
   rewardedAt  DateTime?
   createdAt   DateTime       @default(now())
 
-  referrer        User             @relation("Referrer", fields: [referrerId], references: [id])
-  referred        User             @relation("Referred", fields: [referredId], references: [id])
+  referrer        User             @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred        User             @relation("Referred", fields: [referredId], references: [id], onDelete: Cascade)
   referralCode    ReferralCode     @relation(fields: [referralCodeId], references: [id])
   order           Order?           @relation(fields: [orderId], references: [id])
   referralRewards ReferralReward[]
@@ -970,7 +973,7 @@ model ReferralReward {
   transactionId String?
 
   referral    Referral     @relation(fields: [referralId], references: [id])
-  beneficiary User         @relation("ReferralRewardBeneficiary", fields: [beneficiaryId], references: [id])
+  beneficiary User         @relation("ReferralRewardBeneficiary", fields: [beneficiaryId], references: [id], onDelete: Cascade)
   transaction Transaction? @relation(fields: [transactionId], references: [id])
 
   @@unique([referralId, role])
