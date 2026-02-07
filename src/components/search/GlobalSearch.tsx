@@ -8,8 +8,8 @@ import { GlobalSearchResult } from "@/lib/types";
 import SearchSkeleton from "../skeletons/SearchSkeleton";
 import { useRouter } from "next/navigation";
 import { SearchInput } from "./SearchInput";
-import { saveLocalSearch } from "@/lib/searchHistory";
-import { createProductSlug } from "@/lib/productSlug";
+import { saveLocalSearch } from "@/lib/search/searchHistory";
+import { createProductSlug } from "@/lib/search/productSlug";
 
 type GlobalSearchProps = {
   variant?: "site" | "marketplace";
@@ -199,6 +199,6 @@ function highlightMatch(text: string, query: string) {
       </mark>
     ) : (
       part
-    )
+    ),
   );
 }

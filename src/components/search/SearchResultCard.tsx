@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { SearchProductCard } from "@/lib/types";
-import { createProductSlug } from "@/lib/productSlug";
+import { createProductSlug } from "@/lib/search/productSlug";
 
 type Props = {
   product: SearchProductCard;

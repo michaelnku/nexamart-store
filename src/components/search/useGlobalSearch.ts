@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { globalSearchAction, recordSearchAction } from "@/actions/search";
 import { GlobalSearchResult } from "@/lib/types";
-import { saveLocalSearch } from "@/lib/searchHistory";
+import { saveLocalSearch } from "@/lib/search/searchHistory";
 
 export function useGlobalSearch(limit = 8) {
   const [query, setQuery] = useState("");

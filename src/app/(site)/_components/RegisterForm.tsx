@@ -13,15 +13,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { createUser } from "@/actions/auth/user";
 import Link from "next/link";
 import SocialLogin from "@/components/auth/SocialLogin";
 import { Eye, EyeOff } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
 
@@ -39,8 +40,17 @@ export default function RegisterForm() {
       email: "",
       password: "",
       confirmPassword: "",
+      referralCode: "",
     },
   });
+
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (!ref) return;
+    const code = ref.toUpperCase();
+    form.setValue("referralCode", code);
+    document.cookie = `ref_code=${encodeURIComponent(code)}; path=/; max-age=604800`;
+  }, [searchParams, form]);
 
   const handleSubmit = (values: registerSchemaType) => {
     startTransition(async () => {
@@ -51,6 +61,7 @@ export default function RegisterForm() {
         } else if (res?.success) {
           setSuccess(res.success);
           setError("");
+          document.cookie = "ref_code=; path=/; max-age=0";
           form.reset();
           router.push("/auth/login");
         }
@@ -61,7 +72,6 @@ export default function RegisterForm() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-neutral-950 px-4 py-10">
       <div className="w-full max-w-md bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-lg p-8 space-y-6">
-        {/* Title */}
         <div className="text-center space-y-1">
           <h1
             className="text-3xl font-bold tracking-tight"
@@ -79,7 +89,21 @@ export default function RegisterForm() {
             onSubmit={form.handleSubmit(handleSubmit)}
             className="space-y-5"
           >
-            {/* NAME */}
+            <FormField
+              control={form.control}
+              disabled={isPending}
+              name="referralCode"
+              render={({ field }) => (
+                <FormItem className="hidden">
+                  <FormLabel>Referral Code</FormLabel>
+                  <FormControl>
+                    <Input type="hidden" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               disabled={isPending}
@@ -98,7 +122,7 @@ export default function RegisterForm() {
                 </FormItem>
               )}
             />
-            {/* NAME */}
+
             <FormField
               control={form.control}
               disabled={isPending}
@@ -118,7 +142,6 @@ export default function RegisterForm() {
               )}
             />
 
-            {/* EMAIL */}
             <FormField
               control={form.control}
               disabled={isPending}
@@ -139,7 +162,6 @@ export default function RegisterForm() {
               )}
             />
 
-            {/* PASSWORD */}
             <FormField
               control={form.control}
               disabled={isPending}
@@ -178,7 +200,6 @@ export default function RegisterForm() {
               )}
             />
 
-            {/* CONFIRM PASSWORD */}
             <FormField
               control={form.control}
               disabled={isPending}
@@ -215,7 +236,6 @@ export default function RegisterForm() {
               )}
             />
 
-            {/* Feedback */}
             {error && (
               <p className="text-sm text-red-600 text-center">{error}</p>
             )}
@@ -223,7 +243,6 @@ export default function RegisterForm() {
               <p className="text-sm text-green-600 text-center">{success}</p>
             )}
 
-            {/* SUBMIT */}
             <Button
               disabled={isPending}
               type="submit"
@@ -236,7 +255,6 @@ export default function RegisterForm() {
           <SocialLogin />
         </Form>
 
-        {/* Already have an account */}
         <p className="text-sm text-center text-gray-600 dark:text-gray-400 mt-4">
           Already have an account?{" "}
           <Link

@@ -5,6 +5,9 @@ import { getUserById } from "../components/helper/data";
 import { prisma } from "@/lib/prisma";
 import authConfig from "./auth.config";
 import { createWelcomeCouponForUser } from "@/lib/coupons/createWelcomeCoupon";
+import { createReferralCodeForUser } from "@/lib/referrals/createReferralCode";
+import { processReferralSignup } from "@/lib/referrals/processReferralSignup";
+import { cookies } from "next/headers";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -39,7 +42,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   events: {
     async createUser({ user }) {
       if (user?.id) {
+        const cookieStore = await cookies();
+        const refCode = cookieStore.get("ref_code")?.value;
+        await createReferralCodeForUser(user.id);
         await createWelcomeCouponForUser(user.id);
+        if (refCode) await processReferralSignup(user.id, refCode);
       }
     },
   },

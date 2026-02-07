@@ -1,7 +1,7 @@
 import ProductPublicDetail from "@/components/product/PublicProductDetail";
 import { CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { createProductSlug } from "@/lib/productSlug";
+import { createProductSlug } from "@/lib/search/productSlug";
 import { redirect } from "next/navigation";
 
 type PageProps = {

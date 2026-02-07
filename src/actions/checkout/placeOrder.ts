@@ -5,6 +5,7 @@ import { CurrentUserId } from "@/lib/currentUser";
 import { DeliveryType, PaymentMethod } from "@/generated/prisma/client";
 import { generateTrackingNumber } from "@/components/helper/generateTrackingNumber";
 import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
+import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
 
 const MAX_RETRIES = 3;
 
@@ -80,7 +81,6 @@ export const placeOrderAction = async ({
       const trackingNumber = generateTrackingNumber();
 
       order = await prisma.$transaction(async (tx) => {
-        // WALLET PAYMENT
         if (paymentMethod === "WALLET") {
           const wallet = await tx.wallet.findUnique({ where: { userId } });
           if (!wallet) throw new Error("Wallet not found");
@@ -104,7 +104,6 @@ export const placeOrderAction = async ({
           });
         }
 
-        // CREATE ORDER (PENDING)
         const createdOrder = await tx.order.create({
           data: {
             userId,
@@ -114,6 +113,7 @@ export const placeOrderAction = async ({
             distanceInMiles: miles,
             shippingFee,
             totalAmount: totalWithDiscount,
+            isPaid: paymentMethod === "WALLET",
             couponId: couponResult.coupon?.id ?? null,
             discountAmount: discountAmount > 0 ? discountAmount : null,
             trackingNumber,
@@ -146,7 +146,6 @@ export const placeOrderAction = async ({
           });
         }
 
-        // INITIAL TIMELINE ENTRY
         await tx.orderTimeline.create({
           data: {
             orderId: createdOrder.id,
@@ -166,6 +165,10 @@ export const placeOrderAction = async ({
 
   if (!order) {
     return { error: "Failed to generate tracking number" };
+  }
+
+  if (order.isPaid) {
+    await applyReferralRewardsForPaidOrder(order.id);
   }
 
   //   await prisma.notification.create({

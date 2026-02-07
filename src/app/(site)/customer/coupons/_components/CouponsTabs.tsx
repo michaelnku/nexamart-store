@@ -111,9 +111,6 @@ export default function CouponsTabs({ ready, active, expired }: Props) {
               Copy Referral Code
             </Button>
           </p>
-          <Button variant="secondary" className="mt-2">
-            Generate Referral Code
-          </Button>
         </div>
       </div>
     </main>

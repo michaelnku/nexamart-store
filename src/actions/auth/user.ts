@@ -21,6 +21,8 @@ import { CurrentUser } from "@/lib/currentUser";
 import { revalidatePath } from "next/cache";
 import { UTApi } from "uploadthing/server";
 import { createWelcomeCouponForUser } from "@/lib/coupons/createWelcomeCoupon";
+import { createReferralCodeForUser } from "@/lib/referrals/createReferralCode";
+import { processReferralSignup } from "@/lib/referrals/processReferralSignup";
 
 const utapi = new UTApi();
 
@@ -76,7 +78,7 @@ export const createUser = async (values: registerSchemaType) => {
       };
     }
 
-    const { email, username, password } = validatedFields.data;
+    const { email, username, password, referralCode } = validatedFields.data;
 
     const existingUser = await getUserByEmail(email);
 
@@ -95,7 +97,9 @@ export const createUser = async (values: registerSchemaType) => {
       },
     });
 
+    await createReferralCodeForUser(user.id);
     await createWelcomeCouponForUser(user.id);
+    await processReferralSignup(user.id, referralCode);
 
     return { success: "New user created!" };
   } catch (error) {
