@@ -14,7 +14,7 @@ const formatDate = (value?: string | null) => {
   if (!value) return "No expiry";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "No expiry";
-  return date.toLocaleDateString();
+  return date.toISOString().slice(0, 10);
 };
 
 const formatType = (type: string, value: number) => {
@@ -92,26 +92,6 @@ export default function CouponsTabs({ ready, active, expired }: Props) {
             ))}
           </div>
         )}
-      </div>
-
-      {/*referrals */}
-      <div className="" />
-      <div>
-        <span>
-          <h2 className="">Referrals</h2>
-          <p>
-            Refer friends and earn rewards! Share your unique referral code and
-            get discounts when your friends make their first purchase. It's a
-            win-win!
-          </p>
-        </span>
-        <div>
-          <p>
-            <Button variant="outline" className="mt-2">
-              Copy Referral Code
-            </Button>
-          </p>
-        </div>
       </div>
     </main>
   );

@@ -1,15 +1,25 @@
 import { CurrentUser } from "@/lib/currentUser";
+import { prisma } from "@/lib/prisma";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import DeleteAcountModal from "@/components/modal/DeleteAcountModal";
+import ReferralCodeCard from "../_components/ReferralCodeCard";
 
 export default async function ProfilePage() {
   const user = await CurrentUser();
   if (!user) return null;
 
   const avatar = user?.profileAvatar?.url ?? user?.image ?? null;
+  const referralCode = await prisma.referralCode.findUnique({
+    where: { userId: user.id },
+    select: { code: true },
+  });
+  const baseUrl = process.env.FRONTEND_STORE_URL ?? "";
+  const referralLink = referralCode?.code
+    ? `${baseUrl}/auth/register?ref=${referralCode.code}`
+    : "";
 
   return (
     <div className="max-w-xl mx-auto space-y-10 py-8">
@@ -57,6 +67,10 @@ export default async function ProfilePage() {
           </p>
         </CardContent>
       </Card>
+
+      {referralCode?.code && (
+        <ReferralCodeCard code={referralCode.code} link={referralLink} />
+      )}
 
       {/* ACTIONS */}
       <Card>

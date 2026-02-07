@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Truck, Store, ChevronRight, Copy } from "lucide-react";
-import { formatBaseUSD } from "@/lib/formatBaseUSD";
+import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
 import { OrderDetailDTO } from "@/lib/types";
 import { toast } from "sonner";
 

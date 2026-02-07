@@ -2,7 +2,7 @@
 
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { makeSlug } from "@/lib/slugify";
+import { makeSlug } from "@/lib/search/slugify";
 import {
   storeFormType,
   storeSchema,
@@ -69,7 +69,7 @@ export const createStoreAction = async (values: storeFormType) => {
         name,
         description,
         location: location.trim(),
-        address: requiresAddress ? address ?? null : null,
+        address: requiresAddress ? (address ?? null) : null,
         logo,
         type,
         fulfillmentType,

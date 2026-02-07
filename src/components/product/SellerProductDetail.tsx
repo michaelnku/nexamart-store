@@ -25,7 +25,7 @@ import {
   CarouselPrevious,
   CarouselNext,
 } from "../ui/carousel";
-import { formatBaseUSD } from "@/lib/formatBaseUSD";
+import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
 
 type ProductDetailProps = { data: FullProduct };
 

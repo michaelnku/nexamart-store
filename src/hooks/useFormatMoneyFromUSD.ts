@@ -1,6 +1,6 @@
 "use client";
 
-import { formatMoney } from "@/lib/formatMoney";
+import { formatMoney } from "@/lib/currency/formatMoney";
 import { useCurrencyStore } from "@/stores/useCurrencyStore";
 
 export function useFormatMoneyFromUSD() {

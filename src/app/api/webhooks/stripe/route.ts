@@ -2,8 +2,9 @@ import Stripe from "stripe";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { autoAssignRider } from "@/lib/logistics";
 import { pusherServer } from "@/lib/pusher";
+import { autoAssignRider } from "@/lib/rider/logistics";
+import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
     event = Stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      process.env.STRIPE_WEBHOOK_SECRET!,
     );
   } catch (error: any) {
     console.error("❌ Webhook signature verification failed:", error.message);
@@ -72,6 +73,8 @@ export async function POST(req: Request) {
       message: "Payment received! Your order is now processing.",
     });
 
+    await applyReferralRewardsForPaidOrder(orderId);
+
     // ============================
     // BUILD SELLER GROUPS
     // ============================
@@ -110,7 +113,7 @@ export async function POST(req: Request) {
     for (const [, group] of grouped.entries()) {
       const subtotal = group.items.reduce(
         (sum, i) => sum + i.price * i.quantity,
-        0
+        0,
       );
 
       const sg = await prisma.orderSellerGroup.create({

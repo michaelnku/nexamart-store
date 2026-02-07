@@ -40,7 +40,6 @@ export default function RegisterForm() {
       email: "",
       password: "",
       confirmPassword: "",
-      referralCode: "",
     },
   });
 
@@ -48,7 +47,6 @@ export default function RegisterForm() {
     const ref = searchParams.get("ref");
     if (!ref) return;
     const code = ref.toUpperCase();
-    form.setValue("referralCode", code);
     document.cookie = `ref_code=${encodeURIComponent(code)}; path=/; max-age=604800`;
   }, [searchParams, form]);
 
@@ -92,10 +90,10 @@ export default function RegisterForm() {
             <FormField
               control={form.control}
               disabled={isPending}
-              name="referralCode"
+              name="role"
               render={({ field }) => (
                 <FormItem className="hidden">
-                  <FormLabel>Referral Code</FormLabel>
+                  <FormLabel>Role</FormLabel>
                   <FormControl>
                     <Input type="hidden" {...field} />
                   </FormControl>

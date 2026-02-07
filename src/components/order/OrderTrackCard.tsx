@@ -13,7 +13,7 @@ import {
   Package,
   Copy,
 } from "lucide-react";
-import { formatBaseUSD } from "@/lib/formatBaseUSD";
+import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
 import { OrderTrackDTO } from "@/lib/types";
 import OrderTimeline from "./OrderTimeline";
 import { toast } from "sonner";

@@ -8,7 +8,7 @@ import { CurrentUser } from "@/lib/currentUser";
 import StoreMaintenancePage from "./_components/StoreMaintenancePage";
 import FollowStoreButton from "./_components/FollowStoreButton";
 import StoreRatingSummary from "./_components/StoreRatingSummary";
-import { formatBaseUSD } from "@/lib/formatBaseUSD";
+import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
 
 interface StoreFrontProps {
   params: Promise<{ slug: string }>;

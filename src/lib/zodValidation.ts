@@ -9,8 +9,8 @@ export const fileSchema = z.object({
 //register a user
 export const registerSchema = z
   .object({
-    name: z.string().min(2, {
-      message: "Name must be at least 2 characters.",
+    name: z.string().min(4, {
+      message: "Name must be at least 4 characters.",
     }),
     username: z.string().min(2, {
       message: "Username must be at least 2 characters.",
@@ -21,7 +21,7 @@ export const registerSchema = z
     email: z.string().email({ message: "Invalid email address." }),
     password: z
       .string()
-      .min(6)
+      .min(6, { message: "Password must be at least 6 characters" })
       .regex(/^(?=.*[A-Z])(?=.*\d)/, {
         message:
           "Password must contain at least one uppercase letter and one number.",
@@ -29,7 +29,6 @@ export const registerSchema = z
     confirmPassword: z
       .string()
       .min(6, { message: "Please confirm your password." }),
-    referralCode: z.string().min(3).optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match.",

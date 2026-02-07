@@ -23,6 +23,7 @@ import { UTApi } from "uploadthing/server";
 import { createWelcomeCouponForUser } from "@/lib/coupons/createWelcomeCoupon";
 import { createReferralCodeForUser } from "@/lib/referrals/createReferralCode";
 import { processReferralSignup } from "@/lib/referrals/processReferralSignup";
+import { cookies } from "next/headers";
 
 const utapi = new UTApi();
 
@@ -78,7 +79,7 @@ export const createUser = async (values: registerSchemaType) => {
       };
     }
 
-    const { email, username, password, referralCode } = validatedFields.data;
+    const { email, username, password } = validatedFields.data;
 
     const existingUser = await getUserByEmail(email);
 
@@ -97,9 +98,12 @@ export const createUser = async (values: registerSchemaType) => {
       },
     });
 
+    const cookieStore = await cookies();
+    const refCode = cookieStore.get("ref_code")?.value;
+
     await createReferralCodeForUser(user.id);
     await createWelcomeCouponForUser(user.id);
-    await processReferralSignup(user.id, referralCode);
+    if (refCode) await processReferralSignup(user.id, refCode);
 
     return { success: "New user created!" };
   } catch (error) {

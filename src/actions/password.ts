@@ -1,7 +1,7 @@
 "use server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/mail";
+import { sendEmail } from "@/lib/resend/mail";
 import bcrypt from "bcryptjs";
 
 async function checkRateLimit(email: string, ip?: string | null) {

@@ -161,6 +161,11 @@ export const DashboardMenu = {
           icon: Users,
         },
         {
+          name: "Referrals",
+          href: "/marketplace/dashboard/admin/referrals",
+          icon: Users,
+        },
+        {
           name: "Categories",
           href: "/marketplace/dashboard/admin/categories",
           icon: Package,
@@ -298,7 +303,12 @@ export const DashboardMenuItems = {
     {
       href: "/customer/coupons",
       icon: Ticket,
-      label: "Voucher",
+      label: "Coupons",
+    },
+    {
+      href: "/customer/referrals",
+      icon: Users,
+      label: "Referrals",
     },
     { href: "/inbox", icon: Mail, label: "Inbox" },
     {

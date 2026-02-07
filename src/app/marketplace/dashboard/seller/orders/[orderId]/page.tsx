@@ -10,7 +10,7 @@ import {
 import { toast } from "sonner";
 import { CheckCircle2, XCircle, Truck, LucideIcon } from "lucide-react";
 import { CurrentUser } from "@/lib/currentUser";
-import { formatBaseUSD } from "@/lib/formatBaseUSD";
+import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
 
 type ActionResult =
   | { success: string; error?: never }
@@ -169,7 +169,7 @@ export default async function SellerOrderDetails({
                 "use server";
                 const res = await action(group.id);
                 toast[res.error ? "error" : "success"](
-                  res.error || res.success
+                  res.error || res.success,
                 );
               }}
             >

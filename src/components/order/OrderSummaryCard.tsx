@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { CheckCircle, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatBaseUSD } from "@/lib/formatBaseUSD";
+import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
 import { ClearCartOnSuccess } from "@/app/(site)/customer/order/success/[orderId]/ClearCartOnSuccess";
 import { OrderSummaryDTO } from "@/lib/types";
 import { toast } from "sonner";
