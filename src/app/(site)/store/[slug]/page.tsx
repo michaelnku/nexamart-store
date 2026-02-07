@@ -57,7 +57,7 @@ export async function generateMetadata({
 
   const title = `${store.name} | ${APP_NAME}`;
   const description = toSeoDescription(
-    store.tagline || store.description,
+    store.tagline ?? store.description ?? undefined,
     `Shop ${store.name} on ${APP_NAME}. Discover great products and deals from this seller.`
   );
   const image = store.bannerImage || store.logo || APP_LOGO;
