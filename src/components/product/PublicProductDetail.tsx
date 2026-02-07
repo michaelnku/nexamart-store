@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FullProduct } from "@/lib/types";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import WishlistButton from "./WishlistButton";
 import AddToCartControl from "./AddtoCartButton";
 import Link from "next/link";
@@ -53,6 +53,8 @@ export default function ProductPublicDetail({
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImageFading, setIsImageFading] = useState(false);
+  const fadeRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     addRecentlyViewed(data.id);
@@ -99,7 +101,7 @@ export default function ProductPublicDetail({
     const match = data.variants.find(
       (v) =>
         (selectedColor ? v.color === selectedColor : true) &&
-        (selectedSize ? v.size === selectedSize : true)
+        (selectedSize ? v.size === selectedSize : true),
     );
 
     if (match) {
@@ -107,30 +109,69 @@ export default function ProductPublicDetail({
     }
   }, [selectedColor, selectedSize, data.variants]);
 
+  useEffect(() => {
+    setIsImageFading(true);
+    if (fadeRafRef.current) {
+      cancelAnimationFrame(fadeRafRef.current);
+    }
+    fadeRafRef.current = requestAnimationFrame(() => {
+      setIsImageFading(false);
+    });
+
+    return () => {
+      if (fadeRafRef.current) {
+        cancelAnimationFrame(fadeRafRef.current);
+      }
+    };
+  }, [activeIndex]);
+
   return (
-    <main className="max-w-7xl mx-auto space-y-10 py-8 px-3 sm:px-6">
-      {/* TOP SECTION */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-10 bg-white dark:bg-neutral-900 border rounded-xl shadow p-5">
-        {/* IMAGES */}
-        <div className="space-y-4">
-          <div
-            className="relative aspect-square bg-white rounded-xl overflow-hidden cursor-pointer border"
-            onClick={() => setIsModalOpen(true)}
-          >
-            <Image
-              src={mainImage}
-              alt={data.name}
-              fill
-              className="object-contain hover:scale-[1.02] transition"
-            />
+    <main className="w-full max-w-[1200px] mx-auto space-y-10 py-8 px-3 sm:px-6 lg:px-4">
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-10 bg-white dark:bg-neutral-900 border rounded-xl shadow p-5 items-stretch">
+        <div className="space-y-4 lg:h-full">
+          <div className="lg:flex lg:gap-4 lg:h-full">
+            <div className="hidden lg:flex lg:flex-col lg:gap-2 lg:w-20">
+              {images.map((img, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveIndex(i)}
+                  className={`relative w-20 h-20 rounded-lg overflow-hidden border transition ${
+                    activeIndex === i
+                      ? "border-[#3c9ee0] ring-2 ring-[#3c9ee0]"
+                      : "border-gray-300 hover:border-gray-500"
+                  }`}
+                >
+                  <Image
+                    fill
+                    src={img.imageUrl}
+                    alt=""
+                    className="object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+
+            <div
+              className="relative w-full h-[320px] sm:h-[380px] lg:h-full lg:min-h-[520px] bg-white rounded-xl overflow-hidden cursor-pointer border"
+              onClick={() => setIsModalOpen(true)}
+            >
+              <Image
+                key={mainImage}
+                src={mainImage}
+                alt={data.name}
+                fill
+                className={`object-contain hover:scale-[1.02] transition-opacity duration-300 ease-in-out ${
+                  isImageFading ? "opacity-0" : "opacity-100"
+                }`}
+              />
+            </div>
           </div>
 
-          {/* THUMBNAIL CAROUSEL */}
-          <div className="relative">
+          <div className="relative lg:hidden">
             <Carousel className="w-full">
-              <CarouselContent className="flex gap-2 px-10">
+              <CarouselContent className="flex gap-2 px-8">
                 {images.map((img, i) => (
-                  <CarouselItem key={i} className="basis-1/6 min-w-[72px]">
+                  <CarouselItem key={i} className="basis-1/5 min-w-[64px]">
                     <button
                       onClick={() => setActiveIndex(i)}
                       className={`relative w-full aspect-square rounded-lg overflow-hidden border transition ${
@@ -150,16 +191,13 @@ export default function ProductPublicDetail({
                 ))}
               </CarouselContent>
 
-              {/* Position arrows INSIDE instead of outside */}
               <CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2 z-20 bg-white shadow hover:bg-gray-100 text-gray-700 border rounded-full size-8" />
               <CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2 z-20 bg-white shadow hover:bg-gray-100 text-gray-700 border rounded-full size-8" />
             </Carousel>
           </div>
         </div>
 
-        {/* RIGHT INFO */}
         <section className="space-y-7">
-          {/* Title + wishlist */}
           <div className="flex justify-between gap-2">
             <h1 className="text-3xl font-semibold tracking-tight">
               {data.name}
@@ -171,7 +209,6 @@ export default function ProductPublicDetail({
             />
           </div>
 
-          {/* Brand + Store + Rating (placeholder) */}
           <div className="space-y-1">
             {data.brand && (
               <p className="text-gray-600 dark:text-gray-300 text-sm">
@@ -190,7 +227,6 @@ export default function ProductPublicDetail({
             </p>
           </div>
 
-          {/* Stock */}
           <p
             className={`px-3 py-1 w-fit text-sm rounded-full shadow-sm
           ${
@@ -200,7 +236,6 @@ export default function ProductPublicDetail({
             {inStock ? `In Stock — ${totalStock} available` : "Out of Stock"}
           </p>
 
-          {/* Pricing Box */}
           <div className="p-6 rounded-xl border bg-white dark:bg-neutral-900 shadow space-y-2">
             <div className="text-4xl font-semibold text-gray-900 dark:text-gray-100">
               {formatMoneyFromUSD(priceUSD)}
@@ -218,7 +253,6 @@ export default function ProductPublicDetail({
             )}
           </div>
 
-          {/* Color Selector */}
           {colors.length > 0 && (
             <div>
               <p className="font-medium mb-2">Color</p>
@@ -241,7 +275,6 @@ export default function ProductPublicDetail({
             </div>
           )}
 
-          {/* Size Selector */}
           {sizes.length > 0 && (
             <div>
               <p className="font-medium mb-2">Size</p>
@@ -264,14 +297,11 @@ export default function ProductPublicDetail({
             </div>
           )}
 
-          {/* Add to Cart */}
           <AddToCartControl
             productId={data.id}
             variantId={selectedVariant?.id ?? null}
-            // disabled={!inStock}
           />
 
-          {/* Badges */}
           <div className="border p-4 rounded-xl bg-gray-50 dark:bg-neutral-900 space-y-2 text-sm">
             <p className="flex items-center gap-2">
               <Truck className="w-4 h-4 text-green-600" /> Fast delivery
@@ -285,7 +315,6 @@ export default function ProductPublicDetail({
         </section>
       </section>
 
-      {/* DESCRIPTION */}
       {data.description && (
         <section className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm">
           <h2 className="font-semibold text-lg p-4">Product Details</h2>
@@ -296,7 +325,6 @@ export default function ProductPublicDetail({
         </section>
       )}
 
-      {/* SPECS + TECH */}
       <section className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm">
         <h2 className="font-semibold text-lg p-4">
           Specifications Information
@@ -305,7 +333,6 @@ export default function ProductPublicDetail({
 
         <div className="p-6 grid grid-cols-1 gap-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* KEY FEATURES */}
             <div className="border rounded-lg shadow-sm">
               <h3 className="font-semibold text-lg p-4 border-b">
                 Key Features
@@ -324,7 +351,6 @@ export default function ProductPublicDetail({
               </div>
             </div>
 
-            {/* WHAT'S IN THE BOX*/}
             <div className="border rounded-lg shadow-sm">
               <h3 className="font-semibold text-lg p-4 border-b">
                 What's in the box
@@ -335,7 +361,6 @@ export default function ProductPublicDetail({
             </div>
           </div>
 
-          {/* TECH DETAILS */}
           <div className="border rounded-lg shadow-sm">
             <h3 className="font-semibold text-lg p-4 border-b">
               Technical Details
@@ -367,7 +392,6 @@ export default function ProductPublicDetail({
         </div>
       </section>
 
-      {/* IMAGE MODAL */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogPortal>
           <DialogOverlay className="fixed inset-0 z-50" />
@@ -375,14 +399,12 @@ export default function ProductPublicDetail({
             <DialogTitle className="sr-only">Image Preview</DialogTitle>
             <DialogTitle className="pt-4 -ml-64">Product Image</DialogTitle>
 
-            {/* CLOSE BTN */}
             <DialogClose asChild>
               <button className="absolute hidden top-4 right-4 text-white hover:text-gray-300">
                 <X className="w-7 h-7" />
               </button>
             </DialogClose>
 
-            {/* SHADCN CAROUSEL */}
             <Carousel className="w-full max-w-4xl">
               <CarouselContent>
                 {images.map((img, i) => (
@@ -399,7 +421,6 @@ export default function ProductPublicDetail({
                 ))}
               </CarouselContent>
 
-              {/* Hover buttons */}
               <CarouselPrevious className="left-5 bg-white/30 hover:bg-white text-black hover:text-black transition opacity-0 group-hover:opacity-100" />
               <CarouselNext className="right-5 bg-white/30 hover:bg-white text-black hover:text-black transition opacity-0 group-hover:opacity-100" />
             </Carousel>

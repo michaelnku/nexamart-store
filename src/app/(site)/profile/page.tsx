@@ -22,7 +22,7 @@ export default async function ProfilePage() {
     : "";
 
   return (
-    <div className="max-w-xl mx-auto space-y-10 py-8">
+    <div className="max-w-3xl mx-auto space-y-8 sm:space-y-10 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold text-black">My Profile</h1>
         <p className="text-sm text-gray-500">
@@ -32,23 +32,27 @@ export default async function ProfilePage() {
 
       {/* PROFILE CARD */}
       <Card className="border-gray-200">
-        <CardContent className="pt-6 flex flex-col md:flex-row gap-6 items-start">
-          <div className="relative w-32 h-32">
+        <CardContent className="pt-6 flex flex-col sm:flex-row gap-6 items-center sm:items-start">
+          <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 shrink-0">
             {avatar ? (
               <Image
                 src={avatar}
                 alt={user?.name ?? "Profile image"}
-                width={120}
-                height={120}
+                width={128}
+                height={128}
                 className="rounded-full object-cover border-2 border-[var(--brand-blue)]"
               />
             ) : (
               <div className="w-full h-full rounded-full border-2 border-dashed border-[var(--brand-blue)] flex items-center justify-center">
-                <div className="uppercase text-xl font-semibold text-[var(--brand-blue)]">
+                <div className="uppercase text-lg sm:text-xl font-semibold text-[var(--brand-blue)]">
                   {user?.name?.[0] ?? user?.email[0]}
                 </div>
               </div>
             )}
+          </div>
+          <div className="text-center sm:text-left">
+            <h2 className="text-lg font-semibold">{user.name ?? "Your Profile"}</h2>
+            <p className="text-sm text-muted-foreground">{user.email}</p>
           </div>
         </CardContent>
       </Card>
@@ -77,10 +81,10 @@ export default async function ProfilePage() {
         <CardContent className="pt-6 space-y-4">
           <h3 className="font-medium text-black">Actions</h3>
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:justify-between">
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
             <Button
               asChild
-              className="bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white"
+              className="w-full sm:w-auto bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white"
             >
               <Link href="/profile/update">Update Profile & Password</Link>
             </Button>
