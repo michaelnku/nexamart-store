@@ -1,5 +1,3 @@
-// app/[slug]/page.tsx
-
 import PublicProductCard from "@/components/product/PublicProductCard";
 import { prisma } from "@/lib/prisma";
 import Image from "next/image";

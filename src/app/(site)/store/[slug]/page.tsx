@@ -9,19 +9,22 @@ import StoreMaintenancePage from "./_components/StoreMaintenancePage";
 import FollowStoreButton from "./_components/FollowStoreButton";
 import StoreRatingSummary from "./_components/StoreRatingSummary";
 import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
+import type { Metadata } from "next";
+import { cache } from "react";
+import {
+  APP_DESCRIPTION,
+  APP_LOGO,
+  APP_NAME,
+  absoluteUrl,
+  toSeoDescription,
+} from "@/lib/seo";
 
 interface StoreFrontProps {
   params: Promise<{ slug: string }>;
 }
 
-const page = async ({ params }: StoreFrontProps) => {
-  const { slug } = await params;
-  const user = await CurrentUser();
-
-  if (!slug) return notFound();
-
-  // Fetch store by slug
-  const store = await prisma.store.findUnique({
+const getStoreBySlug = cache(async (slug: string) => {
+  return prisma.store.findUnique({
     where: { slug },
     include: {
       products: {
@@ -35,6 +38,66 @@ const page = async ({ params }: StoreFrontProps) => {
       },
     },
   });
+});
+
+export async function generateMetadata({
+  params,
+}: StoreFrontProps): Promise<Metadata> {
+  const { slug } = await params;
+
+  const store = await getStoreBySlug(slug);
+
+  if (!store || store.isDeleted) {
+    return {
+      title: `Store Not Found | ${APP_NAME}`,
+      description: APP_DESCRIPTION,
+      alternates: { canonical: absoluteUrl(`/store/${slug}`) },
+    };
+  }
+
+  const title = `${store.name} | ${APP_NAME}`;
+  const description = toSeoDescription(
+    store.tagline || store.description,
+    `Shop ${store.name} on ${APP_NAME}. Discover great products and deals from this seller.`
+  );
+  const image = store.bannerImage || store.logo || APP_LOGO;
+  const url = absoluteUrl(`/store/${store.slug}`);
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: "website",
+      images: [
+        {
+          url: image,
+          width: 1200,
+          height: 630,
+          alt: `${store.name} storefront`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
+  };
+}
+
+const page = async ({ params }: StoreFrontProps) => {
+  const { slug } = await params;
+  const user = await CurrentUser();
+
+  if (!slug) return notFound();
+
+  // Fetch store by slug
+  const store = await getStoreBySlug(slug);
 
   if (!store) return notFound();
 

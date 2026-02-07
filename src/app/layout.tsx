@@ -13,6 +13,13 @@ import { extractRouterConfig } from "uploadthing/server";
 import { ourFileRouter } from "./api/uploadthing/core";
 import { CurrencyProvider } from "@/providers/currencyProvider";
 import { CartHydrator } from "@/components/market-place/CartHydrator";
+import {
+  APP_DESCRIPTION,
+  APP_LOGO,
+  APP_NAME,
+  APP_TWITTER,
+  APP_URL,
+} from "@/lib/seo";
 
 /* ===========================
    Fonts
@@ -33,13 +40,6 @@ const geistMono = Geist_Mono({
 /* ===========================
    App Constants
 =========================== */
-
-const APP_NAME = "NexaMart";
-const APP_DESCRIPTION =
-  "NexaMart is a modern multi-vendor e-commerce marketplace where you can shop, sell, and manage deliveries seamlessly.";
-const APP_URL = "https://nexamart-store-psi.vercel.app";
-const APP_LOGO =
-  "https://ijucjait38.ufs.sh/f/rO7LkXAj4RVlnNw2KuOByscQRmqV3jX4rStz8G2Mv0IpxKJA";
 
 /* ===========================
    Metadata (SEO + Social)
@@ -105,7 +105,7 @@ export const metadata: Metadata = {
     title: `${APP_NAME} | Smart Online Marketplace`,
     description: APP_DESCRIPTION,
     images: [APP_LOGO],
-    creator: "@nexamart",
+    creator: APP_TWITTER,
   },
 
   icons: {
