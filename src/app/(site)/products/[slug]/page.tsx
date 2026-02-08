@@ -112,10 +112,6 @@ export default async function Page({ params }: PageProps) {
     redirect(`/products/${canonicalSlug}`);
   }
 
-  // const wishlistCount = await prisma.wishlistItem.count({
-  //   where: { productId },
-  // });
-
   const isWishlisted = userId
     ? !!(await prisma.wishlistItem.findFirst({
         where: { productId, wishlist: { userId } },

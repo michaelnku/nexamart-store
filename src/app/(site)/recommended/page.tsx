@@ -10,14 +10,8 @@ export const metadata = {
 export default async function RecommendedPage() {
   const user = await CurrentUser();
 
-  // 🔒 Must be logged in
   if (!user) redirect("/auth/login");
 
-  /**
-   * 1. Get recently viewed product IDs
-   * (from DB if you later persist them;
-   * for now, this page assumes frontend history exists)
-   */
   const viewedProducts = await prisma.product.findMany({
     where: {
       reviews: {
@@ -30,12 +24,9 @@ export default async function RecommendedPage() {
 
   const viewedProductIds = viewedProducts.map((p) => p.id);
   const viewedCategoryIds = Array.from(
-    new Set(viewedProducts.map((p) => p.categoryId))
+    new Set(viewedProducts.map((p) => p.categoryId)),
   );
 
-  /**
-   * 2. Recommended products
-   */
   const recommendedProducts =
     viewedCategoryIds.length > 0
       ? await prisma.product.findMany({
@@ -54,9 +45,6 @@ export default async function RecommendedPage() {
         })
       : [];
 
-  /**
-   * 3. Fallback (no history)
-   */
   const fallbackProducts =
     recommendedProducts.length === 0
       ? await prisma.product.findMany({

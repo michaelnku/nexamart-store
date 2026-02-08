@@ -40,7 +40,7 @@ export default function ProductRowUI({
             href={seeAllLink}
             className="text-[var(--brand-blue)] text-sm hover:underline font-medium"
           >
-            Explore check
+            Explore
           </Link>
         )}
       </div>

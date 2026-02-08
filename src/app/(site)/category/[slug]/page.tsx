@@ -68,12 +68,10 @@ export default async function CategorySlugPage({ params }: Props) {
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10">
       <Breadcrumb>
         <BreadcrumbList className="flex-wrap text-sm">
-          {/* Root */}
           <BreadcrumbItem>
             <BreadcrumbLink href="/category">All Categories</BreadcrumbLink>
           </BreadcrumbItem>
 
-          {/* Mobile ellipsis */}
           {path.length > 1 && (
             <>
               <BreadcrumbSeparator />
@@ -83,7 +81,6 @@ export default async function CategorySlugPage({ params }: Props) {
             </>
           )}
 
-          {/* Parent path (desktop only if long) */}
           {path.map((p) => (
             <span
               key={p.slug}
@@ -106,7 +103,6 @@ export default async function CategorySlugPage({ params }: Props) {
             </span>
           ))}
 
-          {/* Current page */}
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage

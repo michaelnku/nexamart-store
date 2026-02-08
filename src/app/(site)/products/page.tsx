@@ -29,12 +29,12 @@ export default async function ProductsPage({
     sort === "discount"
       ? { createdAt: "desc" }
       : sort === "new"
-      ? { createdAt: "desc" }
-      : sort === "rating"
-      ? { sold: "desc" }
-      : sort === "trending"
-      ? { sold: "desc" }
-      : { createdAt: "desc" };
+        ? { createdAt: "desc" }
+        : sort === "Top_Rated"
+          ? { sold: "desc" }
+          : sort === "trending"
+            ? { sold: "desc" }
+            : { createdAt: "desc" };
 
   const products = await prisma.product.findMany({
     where: {
@@ -71,7 +71,7 @@ export default async function ProductsPage({
   return (
     <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       <h1 className="text-xl font-semibold capitalize">
-        {sort ? sort.replaceAll("-", " ") : "All Products"} Products
+        {sort ? sort.replaceAll("-", " ") : "Shop"} Products
       </h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
