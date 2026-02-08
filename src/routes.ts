@@ -8,6 +8,9 @@ export const publicRoutes = [
   "/product/:slug",
   "/search",
   "/products",
+  "/privacy-policy",
+  "/terms-of-service",
+  "/cookies",
 ];
 
 export const authRoutes = [
