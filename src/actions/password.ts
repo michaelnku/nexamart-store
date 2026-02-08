@@ -53,6 +53,8 @@ export async function forgotPassword(email: string, ip?: string | null) {
 
   await sendEmail({
     to: email,
+    from: `NexaMart <${process.env.EMAIL_FROM_NO_REPLY ?? process.env.EMAIL_FROM}>`,
+    replyTo: `NexaMart Support <${process.env.EMAIL_FROM_SUPPORT ?? process.env.EMAIL_FROM}>`,
     subject: "Reset your password",
     html: `
       <p>You requested a password reset.</p>
