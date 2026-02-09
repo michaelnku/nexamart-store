@@ -18,7 +18,7 @@ export default async function CustomerLayout({
         <Dashboard />
       </aside>
 
-      <main className="flex-1 h-full overflow-y-auto px-4 md:px-8 py-6">
+      <main className="flex-1 h-full overflow-y-auto px-4 md:px-8 py-4">
         {children}
       </main>
     </div>

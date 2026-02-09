@@ -36,7 +36,6 @@ export default async function Page({
 
   if (!product) {
     return redirect("/market-place/dashboard/seller/products");
-    // return "No product found";
   }
 
   return (

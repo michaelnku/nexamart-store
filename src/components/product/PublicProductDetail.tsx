@@ -128,50 +128,27 @@ export default function ProductPublicDetail({
   return (
     <main className="w-full max-w-[1200px] mx-auto space-y-10 py-8 px-3 sm:px-6 lg:px-4">
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-10 bg-white dark:bg-neutral-900 border rounded-xl shadow p-5 items-stretch">
-        <div className="space-y-4 lg:h-full">
-          <div className="lg:flex lg:gap-4 lg:h-full">
-            <div className="hidden lg:flex lg:flex-col lg:gap-2 lg:w-20">
-              {images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveIndex(i)}
-                  className={`relative w-20 h-20 rounded-lg overflow-hidden border transition ${
-                    activeIndex === i
-                      ? "border-[#3c9ee0] ring-2 ring-[#3c9ee0]"
-                      : "border-gray-300 hover:border-gray-500"
-                  }`}
-                >
-                  <Image
-                    fill
-                    src={img.imageUrl}
-                    alt=""
-                    className="object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-
-            <div
-              className="relative w-full h-[320px] sm:h-[380px] lg:h-full lg:min-h-[520px] bg-white rounded-xl overflow-hidden cursor-pointer border"
-              onClick={() => setIsModalOpen(true)}
-            >
-              <Image
-                key={mainImage}
-                src={mainImage}
-                alt={data.name}
-                fill
-                className={`object-contain hover:scale-[1.02] transition-opacity duration-300 ease-in-out ${
-                  isImageFading ? "opacity-0" : "opacity-100"
-                }`}
-              />
-            </div>
+        <div className="space-y-4">
+          <div
+            className="relative aspect-square bg-white rounded-xl overflow-hidden cursor-pointer border"
+            onClick={() => setIsModalOpen(true)}
+          >
+            <Image
+              key={mainImage}
+              src={mainImage}
+              alt={data.name}
+              fill
+              className={`object-contain hover:scale-[1.02] transition-opacity duration-300 ease-in-out ${
+                isImageFading ? "opacity-0" : "opacity-100"
+              }`}
+            />
           </div>
 
-          <div className="relative lg:hidden">
+          <div className="relative">
             <Carousel className="w-full">
-              <CarouselContent className="flex gap-2 px-8">
+              <CarouselContent className="flex gap-2 px-10">
                 {images.map((img, i) => (
-                  <CarouselItem key={i} className="basis-1/5 min-w-[64px]">
+                  <CarouselItem key={i} className="basis-1/6 min-w-[72px]">
                     <button
                       onClick={() => setActiveIndex(i)}
                       className={`relative w-full aspect-square rounded-lg overflow-hidden border transition ${
@@ -421,8 +398,8 @@ export default function ProductPublicDetail({
                 ))}
               </CarouselContent>
 
-              <CarouselPrevious className="left-5 bg-white/30 hover:bg-white text-black hover:text-black transition opacity-0 group-hover:opacity-100" />
-              <CarouselNext className="right-5 bg-white/30 hover:bg-white text-black hover:text-black transition opacity-0 group-hover:opacity-100" />
+              <CarouselPrevious className="left-5 bg-white text-black shadow hover:bg-gray-100 transition opacity-100" />
+              <CarouselNext className="right-5 bg-white text-black shadow hover:bg-gray-100 transition opacity-100" />
             </Carousel>
           </DialogContent>
         </DialogPortal>

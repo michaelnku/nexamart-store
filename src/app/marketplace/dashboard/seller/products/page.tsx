@@ -43,7 +43,7 @@ const page = async () => {
           className="flex text-blue-700 font-semibold p-4 gap-1"
         >
           <Plus />
-          New Product
+          <p className="hidden md:block"> New Product</p>
         </Link>
       </div>
       <ProductGrid products={products} />

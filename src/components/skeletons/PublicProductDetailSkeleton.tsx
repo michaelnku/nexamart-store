@@ -4,20 +4,12 @@ export default function PublicProductDetailSkeleton() {
   return (
     <main className="w-full max-w-[1200px] mx-auto space-y-10 py-8 px-3 sm:px-6 lg:px-4">
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-10 bg-white dark:bg-neutral-900 border rounded-xl shadow p-5 items-stretch">
-        <div className="space-y-4 lg:h-full">
-          <div className="lg:flex lg:gap-4 lg:h-full">
-            <div className="hidden lg:flex lg:flex-col lg:gap-2 lg:w-20">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="w-20 h-20 rounded-lg" />
-              ))}
-            </div>
+        <div className="space-y-4">
+          <Skeleton className="w-full aspect-square rounded-xl" />
 
-            <Skeleton className="w-full h-[320px] sm:h-[380px] lg:h-full lg:min-h-[520px] rounded-xl" />
-          </div>
-
-          <div className="flex gap-2 px-2 sm:px-6 md:px-10 overflow-x-auto lg:hidden">
+          <div className="flex gap-2 px-10">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-square w-[64px] rounded-lg" />
+              <Skeleton key={i} className="aspect-square w-[72px] rounded-lg" />
             ))}
           </div>
         </div>

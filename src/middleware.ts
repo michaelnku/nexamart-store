@@ -50,13 +50,8 @@ export default Middleware((req) => {
   );
 
   // Logged-in staff should never land on "/"
-  if (pathname === "/" && isLoggedIn) {
-    if (role && STAFF_ROLES.has(role)) {
-      return Response.redirect(new URL(ROLE_DASHBOARD[role], nextUrl));
-    }
-    if (!role) {
-      return Response.redirect(new URL(MARKET_PLACE_LOGIN_REDIRECT, nextUrl));
-    }
+  if (pathname === "/" && isLoggedIn && role && STAFF_ROLES.has(role)) {
+    return Response.redirect(new URL(ROLE_DASHBOARD[role], nextUrl));
   }
 
   if (pathname.startsWith("/api/currency-rates")) {

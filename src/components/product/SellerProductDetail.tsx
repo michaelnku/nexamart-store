@@ -78,9 +78,7 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
 
   return (
     <main className="max-w-7xl mx-auto space-y-10 py-8 px-3 sm:px-6">
-      {/* TOP SECTION */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-10 bg-white dark:bg-neutral-900 border rounded-xl shadow p-5">
-        {/* IMAGES */}
         <div className="space-y-4">
           <div
             className="relative aspect-square bg-white rounded-xl overflow-hidden cursor-pointer border"
@@ -94,7 +92,6 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
             />
           </div>
 
-          {/* THUMBNAIL CAROUSEL */}
           <div className="relative">
             <Carousel className="w-full">
               <CarouselContent className="flex gap-2 px-10">
@@ -119,28 +116,23 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
                 ))}
               </CarouselContent>
 
-              {/* Position arrows INSIDE instead of outside */}
               <CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2 z-20 bg-white shadow hover:bg-gray-100 text-gray-700 border rounded-full size-8" />
               <CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2 z-20 bg-white shadow hover:bg-gray-100 text-gray-700 border rounded-full size-8" />
             </Carousel>
           </div>
         </div>
 
-        {/* RIGHT INFO */}
         <div className="space-y-6 flex flex-col">
-          {/* TITLE + DELETE */}
           <h1 className="text-2xl sm:text-3xl font-semibold leading-snug">
             {data.name}
           </h1>
 
-          {/* BRAND */}
           {data.brand && (
             <p className="text-gray-600 text-sm">
               Brand: <span className="font-medium">{data.brand}</span>
             </p>
           )}
 
-          {/* PRICE BOX */}
           <div className="p-5 border rounded-xl shadow bg-[#f8fafc] space-y-2">
             <p className="text-3xl sm:text-4xl font-bold text-[#111]">
               {priceDisplay}
@@ -159,7 +151,6 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
             </p>
           </div>
 
-          {/* VARIANTS LIST — DISPLAY ONLY */}
           {data.variants.length > 0 && (
             <div className="border rounded-xl shadow bg-white dark:bg-neutral-800 p-5 space-y-3">
               <h3 className="font-semibold text-lg">Variants</h3>
@@ -184,7 +175,6 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
             </div>
           )}
 
-          {/* EDIT BUTTON */}
           <div className="flex gap-12">
             <div className="flex-1">
               {isOwner && (
@@ -218,7 +208,6 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
         </div>
       </section>
 
-      {/* DESCRIPTION */}
       {data.description && (
         <section className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm">
           <h2 className="font-semibold text-lg p-4">Product Details</h2>
@@ -229,7 +218,6 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
         </section>
       )}
 
-      {/* SPECS + TECH */}
       <section className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm">
         <h2 className="font-semibold text-lg p-4">
           Specifications Information
@@ -237,7 +225,6 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
         <Separator />
 
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* KEY FEATURES */}
           <div className="border rounded-lg shadow-sm">
             <h3 className="font-semibold text-lg p-4 border-b">Key Features</h3>
             <div className="p-4">
@@ -254,7 +241,6 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
             </div>
           </div>
 
-          {/* WHAT'S IN THE BOX*/}
           <div className="border rounded-lg shadow-sm">
             <h3 className="font-semibold text-lg p-4 border-b">
               What's in the box
@@ -263,7 +249,6 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
               <p className="text-gray-500 text-sm">No data available</p>
             </div>
           </div>
-          {/* TECH DETAILS */}
           <div className="border rounded-lg shadow-sm">
             <h3 className="font-semibold text-lg p-4 border-b">
               Technical Details
@@ -295,7 +280,6 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
         </div>
       </section>
 
-      {/* IMAGE MODAL */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogPortal>
           <DialogOverlay className="fixed inset-0 z-50" />
@@ -303,14 +287,12 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
             <DialogTitle className="sr-only">Image Preview</DialogTitle>
             <DialogTitle className="pt-4 -ml-64">Product Image</DialogTitle>
 
-            {/* CLOSE BTN */}
             <DialogClose asChild>
               <button className="absolute hidden top-4 right-4 text-white hover:text-gray-300">
                 <X className="w-7 h-7" />
               </button>
             </DialogClose>
 
-            {/* SHADCN CAROUSEL */}
             <Carousel className="w-full max-w-4xl">
               <CarouselContent>
                 {images.map((img, i) => (
@@ -327,9 +309,8 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
                 ))}
               </CarouselContent>
 
-              {/* Hover buttons */}
-              <CarouselPrevious className="left-5 bg-white/30 hover:bg-white text-black hover:text-black transition opacity-0 group-hover:opacity-100" />
-              <CarouselNext className="right-5 bg-white/30 hover:bg-white text-black hover:text-black transition opacity-0 group-hover:opacity-100" />
+              <CarouselPrevious className="left-5 bg-white text-black shadow hover:bg-gray-100 transition opacity-100" />
+              <CarouselNext className="right-5 bg-white text-black shadow hover:bg-gray-100 transition opacity-100" />
             </Carousel>
           </DialogContent>
         </DialogPortal>
