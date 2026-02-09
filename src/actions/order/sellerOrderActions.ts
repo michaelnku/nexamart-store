@@ -2,55 +2,56 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-export const acceptOrderAction = async (orderId: string) => {
+export const acceptOrderAction = async (sellerGroupId: string) => {
   try {
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { status: "PROCESSING" },
+    await prisma.orderSellerGroup.update({
+      where: { id: sellerGroupId },
+      data: { status: "IN_TRANSIT_TO_HUB" },
     });
-    revalidatePath("/market-place/dashboard/seller/orders");
+    revalidatePath("/marketplace/dashboard/seller/orders");
     return { success: "Order accepted" };
   } catch {
     return { error: "Failed to accept order" };
   }
 };
 
-export const shipOrderAction = async (orderId: string) => {
+export const shipOrderAction = async (sellerGroupId: string) => {
   try {
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { status: "SHIPPED" },
+    await prisma.orderSellerGroup.update({
+      where: { id: sellerGroupId },
+      data: { status: "ARRIVED_AT_HUB" },
     });
-    revalidatePath("/market-place/dashboard/seller/orders");
+    revalidatePath("/marketplace/dashboard/seller/orders");
     return { success: "Order marked as shipped" };
   } catch {
     return { error: "Failed to update order" };
   }
 };
 
-export const cancelOrderAction = async (orderId: string) => {
+export const cancelOrderAction = async (sellerGroupId: string) => {
   try {
-    const order = await prisma.order.update({
-      where: { id: orderId },
+    const group = await prisma.orderSellerGroup.update({
+      where: { id: sellerGroupId },
       data: { status: "CANCELLED" },
+      include: { order: true },
     });
 
     // Refund buyer automatically
     await prisma.wallet.update({
-      where: { userId: order.userId },
+      where: { userId: group.order.userId },
       data: {
-        balance: { increment: order.totalAmount },
+        balance: { increment: group.subtotal + group.shippingFee },
         transactions: {
           create: {
             type: "REFUND",
-            amount: order.totalAmount,
-            description: `Refund for cancelled order #${order.id}`,
+            amount: group.subtotal + group.shippingFee,
+            description: `Refund for cancelled order #${group.order.id}`,
           },
         },
       },
     });
 
-    revalidatePath("/market-place/dashboard/seller/orders");
+    revalidatePath("/marketplace/dashboard/seller/orders");
     return { success: "Order cancelled & refund issued" };
   } catch {
     return { error: "Failed to cancel order" };

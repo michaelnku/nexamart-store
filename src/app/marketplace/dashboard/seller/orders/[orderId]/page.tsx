@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
-import SellerOrderActions from "./SellerOrderActions";
 import { CurrentUser } from "@/lib/currentUser";
 import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
 
@@ -119,7 +118,6 @@ export default async function SellerOrderDetails({
         </div>
       </div>
 
-      <SellerOrderActions groupId={group.id} status={group.status} />
     </div>
   );
 }
