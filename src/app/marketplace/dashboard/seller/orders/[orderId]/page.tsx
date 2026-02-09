@@ -1,27 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
-import {
-  acceptOrderAction,
-  cancelOrderAction,
-  shipOrderAction,
-} from "@/actions/order/sellerOrderActions";
-import { toast } from "sonner";
-import { CheckCircle2, XCircle, Truck, LucideIcon } from "lucide-react";
+import SellerOrderActions from "./SellerOrderActions";
 import { CurrentUser } from "@/lib/currentUser";
 import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
-
-type ActionResult =
-  | { success: string; error?: never }
-  | { error: string; success?: never };
-
-type ActionButton = {
-  label: string;
-  Icon: LucideIcon;
-  action: (sellerGroupId: string) => Promise<ActionResult>;
-  variant: React.ComponentProps<typeof Button>["variant"];
-};
 
 export default async function SellerOrderDetails({
   params,
@@ -67,27 +49,6 @@ export default async function SellerOrderDetails({
 
   const group = order.sellerGroups[0];
   if (!group) return "Seller group not found";
-
-  const actionButtons = [
-    group.status === "PENDING_PICKUP" && {
-      label: "Accept Order",
-      Icon: CheckCircle2,
-      action: acceptOrderAction,
-      variant: "default",
-    },
-    group.status === "PENDING_PICKUP" && {
-      label: "Cancel Order",
-      Icon: XCircle,
-      action: cancelOrderAction,
-      variant: "destructive",
-    },
-    group.status === "IN_TRANSIT_TO_HUB" && {
-      label: "Mark as Shipped",
-      Icon: Truck,
-      action: shipOrderAction,
-      variant: "default",
-    },
-  ].filter(Boolean) as ActionButton[];
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-10">
@@ -159,27 +120,7 @@ export default async function SellerOrderDetails({
         </div>
       </div>
 
-      {/* ACTION BUTTONS */}
-      {actionButtons.length > 0 && (
-        <div className="flex gap-3 flex-wrap">
-          {actionButtons.map(({ label, Icon, action, variant }) => (
-            <form
-              key={label}
-              action={async () => {
-                "use server";
-                const res = await action(group.id);
-                toast[res.error ? "error" : "success"](
-                  res.error || res.success,
-                );
-              }}
-            >
-              <Button variant={variant} className="flex gap-2">
-                <Icon className="w-4 h-4" /> {label}
-              </Button>
-            </form>
-          ))}
-        </div>
-      )}
+      <SellerOrderActions groupId={group.id} status={group.status} />
     </div>
   );
 }

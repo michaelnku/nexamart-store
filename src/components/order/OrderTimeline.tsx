@@ -63,6 +63,16 @@ type Props = {
 
 export default function OrderTimeline({ order, timeline }: Props) {
   const isCancelled = order.status === "CANCELLED";
+  const formatTimelineDate = (value: string) =>
+    new Date(value).toLocaleString("en-US", {
+      timeZone: "UTC",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
 
   /**
    * Latest known status (timeline is the source of truth)
@@ -193,7 +203,7 @@ export default function OrderTimeline({ order, timeline }: Props) {
                   )}
 
                   <p className="text-xs text-gray-400 mt-1">
-                    {new Date(item.createdAt).toLocaleString()}
+                    {formatTimelineDate(item.createdAt)}
                   </p>
                 </div>
               </li>
