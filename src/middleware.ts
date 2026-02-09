@@ -13,6 +13,7 @@ import {
   moderatorRoutePrefix,
   sharedRoutes,
   MODERATOR_LOGIN_REDIRECT,
+  MARKET_PLACE_LOGIN_REDIRECT,
 } from "@/routes";
 import authConfig from "./auth.config";
 
@@ -48,15 +49,14 @@ export default Middleware((req) => {
     (route) => pathname === route || pathname.startsWith(route + "/")
   );
 
-  // STAFF MUST NEVER ACCESS "/"
-  if (
-    pathname === "/" &&
-    req.auth?.user?.role &&
-    req.auth.user.role !== "USER"
-  ) {
-    return Response.redirect(
-      new URL(ROLE_DASHBOARD[req.auth.user.role], nextUrl)
-    );
+  // Logged-in staff should never land on "/"
+  if (pathname === "/" && isLoggedIn) {
+    if (role && STAFF_ROLES.has(role)) {
+      return Response.redirect(new URL(ROLE_DASHBOARD[role], nextUrl));
+    }
+    if (!role) {
+      return Response.redirect(new URL(MARKET_PLACE_LOGIN_REDIRECT, nextUrl));
+    }
   }
 
   if (pathname.startsWith("/api/currency-rates")) {
@@ -107,11 +107,6 @@ export default Middleware((req) => {
       return Response.redirect(new URL("/403", nextUrl));
     }
 
-    // Staff cannot access "/"
-    if (pathname === "/" && STAFF_ROLES.has(role)) {
-      return Response.redirect(new URL("/403", nextUrl));
-    }
-
     // Staff accessing wrong dashboard
     if (ROLE_PREFIX[role]) {
       const allowedPrefix = ROLE_PREFIX[role];
@@ -123,12 +118,6 @@ export default Middleware((req) => {
         return Response.redirect(new URL("/403", nextUrl));
       }
     }
-  }
-
-  //  ROLE-BASED HOME REDIRECT
-  if (pathname === "/" && isLoggedIn) {
-    if (!role || role === "USER") return;
-    return Response.redirect(new URL(ROLE_DASHBOARD[role], nextUrl));
   }
 
   console.log("✅ Access allowed\n");
