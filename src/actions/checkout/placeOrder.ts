@@ -6,24 +6,40 @@ import { DeliveryType, PaymentMethod } from "@/generated/prisma/client";
 import { generateTrackingNumber } from "@/components/helper/generateTrackingNumber";
 import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
 import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
+import { randomUUID } from "crypto";
 
-const MAX_RETRIES = 3;
-
-export const placeOrderAction = async ({
+export async function placeOrderAction({
   deliveryAddress,
   paymentMethod,
   deliveryType,
   distanceInMiles,
   couponId,
+  idempotencyKey,
 }: {
   deliveryAddress: string;
   paymentMethod: PaymentMethod;
   deliveryType: DeliveryType;
   distanceInMiles?: number;
   couponId?: string | null;
-}) => {
+  idempotencyKey: string;
+}) {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
+
+  /* --------------------------------
+     IDEMPOTENCY CHECK
+  --------------------------------- */
+  // const idempotencyKey = idempotencyOrderKey ?? randomUUID();
+  const existingKey = await prisma.idempotencyKey.findUnique({
+    where: { key: idempotencyKey },
+  });
+
+  if (existingKey?.orderId) {
+    return {
+      success: true,
+      orderId: existingKey.orderId,
+    };
+  }
 
   const cart = await prisma.cart.findUnique({
     where: { userId },
@@ -32,7 +48,9 @@ export const placeOrderAction = async ({
         include: {
           product: {
             include: {
-              store: { select: { userId: true, shippingRatePerMile: true } },
+              store: {
+                select: { id: true, userId: true, shippingRatePerMile: true },
+              },
             },
           },
           variant: true,
@@ -45,20 +63,16 @@ export const placeOrderAction = async ({
     return { error: "Cart is empty" };
   }
 
+  const miles = distanceInMiles ?? 0;
+
   const subtotal = cart.items.reduce(
-    (sum, item) =>
-      sum +
-      item.quantity * (item.variant?.priceUSD ?? item.product.basePriceUSD),
+    (s, i) => s + i.quantity * (i.variant?.priceUSD ?? i.product.basePriceUSD),
     0,
   );
 
-  const miles = distanceInMiles ?? 0;
-  const shippingFee = cart.items.reduce((sum, item) => {
-    const rate = item.product.store.shippingRatePerMile ?? 0;
-    return sum + rate * miles;
+  const shippingFee = cart.items.reduce((s, i) => {
+    return s + (i.product.store.shippingRatePerMile ?? 0) * miles;
   }, 0);
-
-  const totalAmount = subtotal + shippingFee;
 
   const couponResult = await resolveCouponForOrder({
     userId,
@@ -67,105 +81,165 @@ export const placeOrderAction = async ({
     shippingUSD: shippingFee,
   });
 
-  if ("error" in couponResult) {
-    return { error: couponResult.error };
-  }
+  if ("error" in couponResult) return { error: couponResult.error };
 
   const discountAmount = couponResult.discountAmount ?? 0;
-  const totalWithDiscount = Math.max(0, totalAmount - discountAmount);
+  const totalAmount = Math.max(0, subtotal + shippingFee - discountAmount);
 
-  let order;
+  /* --------------------------------
+     GROUP ITEMS BY STORE
+  --------------------------------- */
+  const itemsByStore = new Map<string, typeof cart.items>();
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      const trackingNumber = generateTrackingNumber();
+  for (const item of cart.items) {
+    const storeId = item.product.store.id;
+    if (!itemsByStore.has(storeId)) itemsByStore.set(storeId, []);
+    itemsByStore.get(storeId)!.push(item);
+  }
 
-      order = await prisma.$transaction(async (tx) => {
-        if (paymentMethod === "WALLET") {
-          const wallet = await tx.wallet.findUnique({ where: { userId } });
-          if (!wallet) throw new Error("Wallet not found");
-          if (wallet.balance < totalWithDiscount)
-            throw new Error("Insufficient wallet balance");
+  const trackingNumber = generateTrackingNumber();
 
-          await tx.wallet.update({
-            where: { id: wallet.id },
-            data: { balance: { decrement: totalWithDiscount } },
-          });
-
-          await tx.transaction.create({
-            data: {
-              walletId: wallet.id,
-              userId,
-              amount: totalWithDiscount,
-              type: "ORDER_PAYMENT",
-              status: "SUCCESS",
-              description: "Payment for order",
-            },
-          });
-        }
-
-        const createdOrder = await tx.order.create({
-          data: {
-            userId,
-            deliveryAddress,
-            paymentMethod,
-            deliveryType,
-            distanceInMiles: miles,
-            shippingFee,
-            totalAmount: totalWithDiscount,
-            isPaid: paymentMethod === "WALLET",
-            couponId: couponResult.coupon?.id ?? null,
-            discountAmount: discountAmount > 0 ? discountAmount : null,
-            trackingNumber,
-            status: "PENDING",
-            items: {
-              createMany: {
-                data: cart.items.map((item) => ({
-                  productId: item.productId,
-                  variantId: item.variantId,
-                  quantity: item.quantity,
-                  price: item.variant?.priceUSD ?? item.product.basePriceUSD,
-                })),
-              },
-            },
-          },
-        });
-
-        if (couponResult.coupon?.id) {
-          await tx.couponUsage.create({
-            data: {
-              couponId: couponResult.coupon.id,
-              userId,
-              orderId: createdOrder.id,
-            },
-          });
-
-          await tx.coupon.update({
-            where: { id: couponResult.coupon.id },
-            data: { usedCount: { increment: 1 } },
-          });
-        }
-
-        await tx.orderTimeline.create({
-          data: {
-            orderId: createdOrder.id,
-            status: "PENDING",
-            message: "Order placed successfully",
-          },
-        });
-
-        return createdOrder;
+  /* --------------------------------
+     TRANSACTION (DB ONLY)
+  --------------------------------- */
+  const order = await prisma.$transaction(async (tx) => {
+    // WALLET PAYMENT
+    if (paymentMethod === "WALLET") {
+      const wallet = await tx.wallet.findUnique({
+        where: { userId },
+        select: { id: true, balance: true },
       });
 
-      break;
-    } catch (err: any) {
-      if (err.code !== "P2002") throw err;
-    }
-  }
+      if (!wallet || wallet.balance < totalAmount) {
+        throw new Error("Insufficient wallet balance");
+      }
 
-  if (!order) {
-    return { error: "Failed to generate tracking number" };
-  }
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: { decrement: totalAmount } },
+      });
+
+      await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          userId,
+          amount: totalAmount,
+          type: "ORDER_PAYMENT",
+          status: "SUCCESS",
+          description: "Order payment",
+        },
+      });
+    }
+
+    // CREATE MAIN ORDER
+    const createdOrder = await tx.order.create({
+      data: {
+        userId,
+        deliveryAddress,
+        paymentMethod,
+        deliveryType,
+        distanceInMiles: miles,
+        shippingFee,
+        totalAmount,
+        isPaid: paymentMethod === "WALLET",
+        couponId: couponResult.coupon?.id ?? null,
+        discountAmount: discountAmount || null,
+        trackingNumber,
+        status: "PENDING",
+      },
+    });
+
+    // CREATE SELLER GROUPS + ITEMS
+    for (const [storeId, items] of itemsByStore) {
+      const sellerId = items[0].product.store.userId;
+
+      const groupSubtotal = items.reduce(
+        (s, i) =>
+          s + i.quantity * (i.variant?.priceUSD ?? i.product.basePriceUSD),
+        0,
+      );
+
+      const groupShipping = items.reduce(
+        (s) => s + (items[0].product.store.shippingRatePerMile ?? 0) * miles,
+        0,
+      );
+
+      const group = await tx.orderSellerGroup.create({
+        data: {
+          orderId: createdOrder.id,
+          storeId,
+          sellerId,
+          subtotal: groupSubtotal,
+          shippingFee: groupShipping,
+        },
+      });
+
+      await tx.orderItem.createMany({
+        data: items.map((i) => ({
+          orderId: createdOrder.id,
+          sellerGroupId: group.id,
+          productId: i.productId,
+          variantId: i.variantId,
+          quantity: i.quantity,
+          price: i.variant?.priceUSD ?? i.product.basePriceUSD,
+        })),
+      });
+    }
+
+    // COUPON USAGE
+    if (couponResult.coupon?.id) {
+      await tx.couponUsage.create({
+        data: {
+          couponId: couponResult.coupon.id,
+          userId,
+          orderId: createdOrder.id,
+        },
+      });
+
+      await tx.coupon.update({
+        where: { id: couponResult.coupon.id },
+        data: { usedCount: { increment: 1 } },
+      });
+    }
+
+    // IDEMPOTENCY SAVE
+    await tx.idempotencyKey.create({
+      data: {
+        key: idempotencyKey,
+        userId,
+        orderId: createdOrder.id,
+      },
+    });
+
+    return createdOrder;
+  });
+
+  /* --------------------------------
+     POST-TRANSACTION (SAFE)
+  --------------------------------- */
+  await prisma.orderTimeline.create({
+    data: {
+      orderId: order.id,
+      status: "PENDING",
+      message: "Order placed successfully",
+    },
+  });
+
+  // BACKGROUND NOTIFICATIONS (ASYNC SAFE)
+  await prisma.notification.createMany({
+    data: [
+      {
+        userId,
+        title: "Order Confirmed",
+        message: `Your order ${order.trackingNumber} was placed successfully`,
+      },
+      ...Array.from(itemsByStore.values()).map((items) => ({
+        userId: items[0].product.store.userId,
+        title: "New Order Received",
+        message: `You have a new order to fulfill`,
+      })),
+    ],
+  });
 
   if (order.isPaid) {
     await applyReferralRewardsForPaidOrder(order.id);
@@ -187,12 +261,13 @@ export const placeOrderAction = async ({
   //   },
   // });
 
-  // CLEANUP
-  await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+  await prisma.cartItem.deleteMany({
+    where: { cartId: cart.id },
+  });
 
   return {
     success: true,
     orderId: order.id,
     trackingNumber: order.trackingNumber,
   };
-};
+}

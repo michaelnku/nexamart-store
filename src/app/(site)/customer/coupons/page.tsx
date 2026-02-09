@@ -9,7 +9,14 @@ export default async function CouponsPage() {
   const now = new Date();
 
   const coupons = await prisma.coupon.findMany({
-    where: { isDeleted: false },
+    where: {
+      isDeleted: false,
+      OR: [
+        { createdByAdmin: true },
+        { couponClaims: { some: { userId } } },
+        { couponUsages: { some: { userId } } },
+      ],
+    },
     orderBy: { createdAt: "desc" },
     include: {
       couponClaims: { where: { userId }, select: { id: true } },
@@ -35,7 +42,15 @@ export default async function CouponsPage() {
       c.couponUsages.length === 0,
   );
 
-  const active = coupons.filter((c) => c.couponUsages.length > 0);
+  const active = coupons.filter(
+    (c) =>
+      c.isActive &&
+      isValidNow(c) &&
+      c.couponClaims.length > 0 &&
+      c.couponUsages.length === 0,
+  );
+
+  const used = coupons.filter((c) => c.couponUsages.length > 0);
 
   const expired = coupons.filter(
     (c) =>
@@ -68,6 +83,7 @@ export default async function CouponsPage() {
       <CouponsTabs
         ready={ready.map(mapCoupon)}
         active={active.map(mapCoupon)}
+        used={used.map(mapCoupon)}
         expired={expired.map(mapCoupon)}
       />
     </main>

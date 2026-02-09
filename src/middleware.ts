@@ -13,7 +13,6 @@ import {
   moderatorRoutePrefix,
   sharedRoutes,
   MODERATOR_LOGIN_REDIRECT,
-  MARKET_PLACE_LOGIN_REDIRECT,
 } from "@/routes";
 import authConfig from "./auth.config";
 
@@ -46,7 +45,7 @@ export default Middleware((req) => {
   const isApiAuthRoute = pathname.startsWith(apiAuthPrefix);
   const isAuthRoute = authRoutes.includes(pathname);
   const isPublicRoute = publicRoutes.some(
-    (route) => pathname === route || pathname.startsWith(route + "/")
+    (route) => pathname === route || pathname.startsWith(route + "/"),
   );
 
   // Logged-in staff should never land on "/"

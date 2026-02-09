@@ -183,6 +183,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
         deliveryType,
         distanceInMiles: address?.distanceInMiles ?? 0,
         couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
+        idempotencyKey: crypto.randomUUID(),
       });
 
       if ("error" in res) {
@@ -196,12 +197,6 @@ export default function CheckoutSummary({ cart, address }: Props) {
     });
   };
 
-  if (!cart || cart.items.length === 0)
-    return (
-      <p className="min-h-screen text-center py-40 text-gray-500">
-        Cart is empty — add items before checking out
-      </p>
-    );
 
   const onCheckout = async () => {
     setIsLoading(true);
@@ -295,6 +290,13 @@ export default function CheckoutSummary({ cart, address }: Props) {
       cancelled = true;
     };
   }, [subtotalUSD, shippingUSD, couponOptOut]);
+
+  if (!cart || cart.items.length === 0)
+    return (
+      <p className="min-h-screen text-center py-40 text-gray-500">
+        Cart is empty — add items before checking out
+      </p>
+    );
 
   return (
     <>
@@ -596,7 +598,10 @@ export default function CheckoutSummary({ cart, address }: Props) {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCouponDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setCouponDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button

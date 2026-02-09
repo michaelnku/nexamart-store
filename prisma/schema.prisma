@@ -435,6 +435,7 @@ model OrderSellerGroup {
 
   payoutStatus  PayoutStatus      @default(PENDING)
   status        SellerGroupStatus @default(PENDING_PICKUP)
+  createdAt     DateTime          @default(now())
   expectedAtHub DateTime?
   arrivedAtHub  DateTime?
   verified      Boolean           @default(false)
@@ -491,6 +492,22 @@ enum PayoutStatus {
   APPROVED
   REJECTED
   COMPLETED
+}
+
+model Job {
+  id        String   @id @default(cuid())
+  type      String
+  payload   Json
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@index([type])
+}
+
+model CronLock {
+  name     String   @id
+  lockedAt DateTime
 }
 
 /**
@@ -623,6 +640,15 @@ enum TransactionStatus {
   PENDING
   SUCCESS
   FAILED
+}
+
+model IdempotencyKey {
+  key       String   @id
+  userId    String
+  orderId   String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /**

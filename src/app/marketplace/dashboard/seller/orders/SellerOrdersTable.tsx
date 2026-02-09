@@ -21,7 +21,7 @@ import { OrderStatus, SellerOrder } from "@/lib/types";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 
 type SellerOrderAction = (
-  sellerGroupId: string
+  sellerGroupId: string,
 ) => Promise<{ success?: string; error?: string }>;
 
 export default function SellerOrdersTable({
@@ -56,7 +56,6 @@ export default function SellerOrdersTable({
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
 
-      {/* DESKTOP TABLE */}
       <div className="hidden md:block overflow-hidden rounded-xl border bg-white shadow">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 sticky top-0 z-10 border-b">
@@ -87,7 +86,7 @@ export default function SellerOrdersTable({
               >
                 <td className="p-4 font-medium">
                   <Link
-                    href={`/market-place/dashboard/seller/orders/${o.id}`}
+                    href={`/marketplace/dashboard/seller/orders/${o.id}`}
                     className="hover:underline"
                   >
                     #{o.id.slice(-6)}
@@ -110,7 +109,6 @@ export default function SellerOrdersTable({
                   </span>
                 </td>
 
-                {/* DELIVERY TYPE */}
                 <td className="p-4">
                   <span className="px-2 py-[3px] text-[11px] rounded-full bg-[#3c9ee0]/10 text-[#3c9ee0] font-medium">
                     {o.deliveryType.replaceAll("_", " ")}
@@ -119,15 +117,12 @@ export default function SellerOrdersTable({
 
                 <td className="p-4">
                   <div className="flex justify-end gap-2 flex-wrap">
-                    <Link
-                      href={`/market-place/dashboard/seller/orders/${o.id}`}
-                    >
+                    <Link href={`/marketplace/dashboard/seller/orders/${o.id}`}>
                       <Button size="sm" variant="outline">
                         <Eye className="w-4 h-4" />
                       </Button>
                     </Link>
 
-                    {/* Status Actions */}
                     {o.status === "PENDING" && (
                       <>
                         <Button
@@ -176,7 +171,6 @@ export default function SellerOrdersTable({
         </table>
       </div>
 
-      {/* MOBILE CARD VIEW */}
       <div className="md:hidden space-y-4">
         {orders.length === 0 && (
           <div className="text-center py-16 text-gray-500">
@@ -218,7 +212,7 @@ export default function SellerOrdersTable({
             </p>
 
             <div className="flex flex-wrap gap-2 justify-between pt-2">
-              <Link href={`/market-place/dashboard/seller/orders/${o.id}`}>
+              <Link href={`/marketplace/dashboard/seller/orders/${o.id}`}>
                 <Button size="sm" variant="outline" className="w-full">
                   <Eye className="w-4 h-4 mr-1" /> View
                 </Button>
