@@ -52,7 +52,6 @@ export default async function SellerOrderDetails({
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-10">
-      {/* TOP BAR */}
       <div className="flex justify-between items-start gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
@@ -67,11 +66,12 @@ export default async function SellerOrderDetails({
         </div>
 
         <Badge className="px-4 py-1 text-sm capitalize">
-          {group.status.replace("_", " ")}
+          {group.status === "CANCELLED"
+            ? "Cancelled"
+            : group.status.replace("_", " ")}
         </Badge>
       </div>
 
-      {/* CUSTOMER INFORMATION */}
       <div className="rounded-xl border bg-white p-5 shadow-sm space-y-3">
         <h2 className="font-semibold text-lg">Buyer Information</h2>
         <p className="text-sm">{order.customer?.name}</p>
@@ -80,7 +80,6 @@ export default async function SellerOrderDetails({
         <p className="text-sm text-gray-700">{order.deliveryAddress}</p>
       </div>
 
-      {/* ITEMS */}
       <div className="rounded-xl border bg-white p-5 shadow-sm space-y-6">
         <h2 className="font-semibold text-lg">Items Purchased</h2>
 

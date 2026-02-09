@@ -18,6 +18,7 @@ type ActionResult =
 
 type ActionButton = {
   label: string;
+  disabled?: boolean;
   Icon: LucideIcon;
   action: (sellerGroupId: string) => Promise<ActionResult>;
   variant: React.ComponentProps<typeof Button>["variant"];
@@ -45,6 +46,20 @@ export default function SellerOrderActions({ groupId, status }: Props) {
       action: cancelOrderAction,
       variant: "destructive",
     },
+    status === "CANCELLED" && {
+      label: "Accept Order",
+      Icon: CheckCircle2,
+      action: acceptOrderAction,
+      variant: "default",
+      disabled: true,
+    },
+    status === "CANCELLED" && {
+      label: "Cancelled",
+      Icon: XCircle,
+      action: cancelOrderAction,
+      variant: "secondary",
+      disabled: true,
+    },
     status === "IN_TRANSIT_TO_HUB" && {
       label: "Mark as Shipped",
       Icon: Truck,
@@ -65,13 +80,13 @@ export default function SellerOrderActions({ groupId, status }: Props) {
 
   return (
     <div className="flex gap-3 flex-wrap">
-      {actionButtons.map(({ label, Icon, action, variant }) => (
+      {actionButtons.map(({ label, Icon, action, variant, disabled }) => (
         <Button
           key={label}
           variant={variant}
           className="flex gap-2"
           onClick={() => handleAction(action)}
-          disabled={pending}
+          disabled={pending || disabled}
         >
           <Icon className="w-4 h-4" /> {label}
         </Button>
