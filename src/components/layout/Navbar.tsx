@@ -36,6 +36,7 @@ import { ModeToggle } from "./ModeToggle";
 import { SiteSearch } from "../search/SiteSearch";
 import { MobileSearchSheet } from "../search/MobileSearchSheet";
 import { DashboardMenuItems } from "@/constants/dashboard-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function SiteNavbar({
   initialUser,
@@ -53,6 +54,15 @@ export default function SiteNavbar({
 
   const role = user?.role as "USER";
   const menuItems = DashboardMenuItems[role] || [];
+  const initials =
+    user?.name
+      ?.split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") ||
+    user?.username?.slice(0, 2).toUpperCase() ||
+    "U";
 
   return (
     <nav>
@@ -65,7 +75,6 @@ export default function SiteNavbar({
   "
       >
         <div className="flex items-center justify-between gap-6 h-16 px-4 md:px-8 lg:px-12">
-          {/* LOGO */}
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="https://ijucjait38.ufs.sh/f/rO7LkXAj4RVlnNw2KuOByscQRmqV3jX4rStz8G2Mv0IpxKJA"
@@ -80,7 +89,6 @@ export default function SiteNavbar({
             </span>
           </Link>
 
-          {/* SEARCH BAR */}
           <div className="hidden md:block flex-1 max-w-3xl mx-5">
             <SiteSearch />
           </div>
@@ -89,19 +97,26 @@ export default function SiteNavbar({
           </div>
 
           <div className="hidden md:flex items-center gap-8">
-            {/* ACCOUNT DROPDOWN */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex flex-col text-left leading-tight hover:text-[#3c9ee0]">
-                  <span className="text-xs">
-                    Hello,{" "}
-                    {user
-                      ? user.name?.split(" ")[0] || user.username
-                      : "Sign in"}
-                  </span>
-                  <span className="font-semibold flex items-center gap-1">
-                    Account & More
-                    <ChevronDown className="w-4 h-4" />
+                <button className="flex items-center gap-2 text-left hover:text-[#3c9ee0]">
+                  <Avatar size="sm">
+                    {user?.image ? (
+                      <AvatarImage src={user.image} alt="Profile" />
+                    ) : null}
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  </Avatar>
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-xs">
+                      Hello,{" "}
+                      {user
+                        ? user.name?.split(" ")[0] || user.username
+                        : "Sign in"}
+                    </span>
+                    <span className="font-semibold flex items-center gap-1">
+                      Account & More
+                      <ChevronDown className="w-4 h-4" />
+                    </span>
                   </span>
                 </button>
               </DropdownMenuTrigger>
@@ -236,7 +251,6 @@ export default function SiteNavbar({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* RETURNS & ORDERS */}
             <Link
               href="/customer/order/history"
               className="flex flex-col leading-none hover:text-[#3c9ee0]"
@@ -247,7 +261,6 @@ export default function SiteNavbar({
 
             <CurrencySelector />
 
-            {/* CART */}
             {user?.role === "USER" && (
               <Link href="/cart" className="hover:text-[#3c9ee0]">
                 <CartBadge />
@@ -257,7 +270,6 @@ export default function SiteNavbar({
             <ModeToggle />
           </div>
 
-          {/* MOBILE ONLY */}
           <div className="flex md:hidden items-center gap-3">
             <CurrencySelector />
 
@@ -269,7 +281,6 @@ export default function SiteNavbar({
 
             <ModeToggle />
 
-            {/* Mobile Drawer */}
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button
@@ -292,7 +303,6 @@ export default function SiteNavbar({
                   </VisuallyHidden>
                 </DialogHeader>
 
-                {/* Profile Header */}
                 <div className="p-5 flex items-center gap-3 border-b">
                   {user?.image ? (
                     <Image
@@ -317,9 +327,7 @@ export default function SiteNavbar({
                   </span>
                 </div>
 
-                {/* MENU ITEMS */}
                 <div className="flex flex-col px-1 space-y-1">
-                  {/* Section Title */}
                   <p className="font-semibold text-gray-800 uppercase text-[13px] tracking-wide px-4 pb-2">
                     My NexaMart Account
                   </p>
@@ -366,7 +374,6 @@ export default function SiteNavbar({
 
                 <Separator />
 
-                {/* SIGN IN / LOGOUT BUTTON */}
                 <div className="px-4 mt-2 pb-6">
                   {user ? (
                     <Button

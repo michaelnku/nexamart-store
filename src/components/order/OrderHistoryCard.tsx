@@ -12,6 +12,14 @@ type Props = {
 };
 
 const OrderHistoryCard = ({ orders }: Props) => {
+  const formatOrderDate = (value: string) =>
+    new Date(value).toLocaleDateString("en-US", {
+      timeZone: "UTC",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+
   return (
     <main className="max-w-6xl mx-auto px-4 ">
       <h1 className="text-3xl font-semibold mb-6">Your Orders</h1>
@@ -35,7 +43,7 @@ const OrderHistoryCard = ({ orders }: Props) => {
                   <p className="text-sm text-gray-500">
                     ORDER PLACED:
                     <span className="font-medium text-gray-900 dark:text-gray-400">
-                      {""} {new Date(order.createdAt).toLocaleDateString()}
+                      {""} {formatOrderDate(order.createdAt)}
                     </span>
                   </p>
                   <p className="text-sm text-gray-500">

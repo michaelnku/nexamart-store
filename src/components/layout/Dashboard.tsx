@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useLogout } from "@/hooks/useLogout";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const accountLinks = [
   { name: "Orders", href: "/customer/order/history", icon: ShoppingBag },
@@ -57,6 +58,15 @@ export default function Dashboard() {
     pathname.startsWith(href + "/");
 
   const logout = useLogout();
+  const initials =
+    user?.name
+      ?.split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") ||
+    user?.username?.slice(0, 2).toUpperCase() ||
+    "U";
 
   const navItem = (href: string, IconComponent: IconType, name: string) => (
     <Link
@@ -76,27 +86,33 @@ export default function Dashboard() {
 
   const SidebarContent = (
     <div className="flex flex-col h-full light:bg-white">
-      {/* Greeting */}
       <div className="px-4 pb-3">
-        <p className="font-semibold text-[17px] text-gray-900 dark:text-gray-400">
-          Hello, {user?.name?.split(" ")[0] || user?.username}
-        </p>
-        <p className="text-sm text-gray-500">{user?.email}</p>
+        <div className="flex items-center gap-3">
+          <Avatar size="lg">
+            {user?.image ? (
+              <AvatarImage src={user.image} alt="Profile" />
+            ) : null}
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="font-semibold text-[17px] text-gray-900 dark:text-gray-400">
+              Hello, {user?.name?.split(" ")[0] || user?.username}
+            </p>
+            <p className="text-sm text-gray-500">{user?.email}</p>
+          </div>
+        </div>
       </div>
 
       <Separator />
 
-      {/* Section Title */}
       <p className="font-semibold text-gray-900 dark:text-gray-400 uppercase text-[13px] tracking-wide px-4 pt-4 pb-2">
         My NexaMart Account
       </p>
 
-      {/* Navigation */}
       <div className="flex flex-col gap-1 w-full space-y-1 px-4">
         {accountLinks.map((link) => navItem(link.href, link.icon, link.name))}
       </div>
 
-      {/* Sticky Logout */}
       <div>
         <Separator className="mb-4 mt-4" />
         <div className="mt-auto p-4">
