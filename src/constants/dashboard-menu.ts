@@ -34,12 +34,12 @@ export const DashboardMenu = {
       links: [
         { name: "Dashboard", href: "/marketplace/dashboard", icon: Home },
         {
-          name: "My Products",
+          name: "Products",
           href: "/marketplace/dashboard/seller/products",
           icon: Package,
         },
         {
-          name: "My Store",
+          name: "Store",
           href: "/marketplace/dashboard/seller/store",
           icon: Store,
         },
