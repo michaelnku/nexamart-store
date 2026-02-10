@@ -20,6 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { useLogout } from "@/hooks/useLogout";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getUserInitials } from "@/lib/user";
 
 const accountLinks = [
   { name: "Orders", href: "/customer/order/history", icon: ShoppingBag },
@@ -58,15 +59,8 @@ export default function Dashboard() {
     pathname.startsWith(href + "/");
 
   const logout = useLogout();
-  const initials =
-    user?.name
-      ?.split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("") ||
-    user?.username?.slice(0, 2).toUpperCase() ||
-    "U";
+  const initials = getUserInitials(user);
+  const avatarUrl = user?.image || user?.profileAvatar?.url;
 
   const navItem = (href: string, IconComponent: IconType, name: string) => (
     <Link
@@ -89,8 +83,8 @@ export default function Dashboard() {
       <div className="px-4 pb-3">
         <div className="flex items-center gap-3">
           <Avatar size="lg">
-            {user?.image ? (
-              <AvatarImage src={user.image} alt="Profile" />
+            {avatarUrl ? (
+              <AvatarImage src={avatarUrl} alt="Profile" />
             ) : null}
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>

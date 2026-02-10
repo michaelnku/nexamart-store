@@ -37,6 +37,7 @@ import { SiteSearch } from "../search/SiteSearch";
 import { MobileSearchSheet } from "../search/MobileSearchSheet";
 import { DashboardMenuItems } from "@/constants/dashboard-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getUserInitials } from "@/lib/user";
 
 export default function SiteNavbar({
   initialUser,
@@ -54,15 +55,8 @@ export default function SiteNavbar({
 
   const role = user?.role as "USER";
   const menuItems = DashboardMenuItems[role] || [];
-  const initials =
-    user?.name
-      ?.split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("") ||
-    user?.username?.slice(0, 2).toUpperCase() ||
-    "U";
+  const initials = getUserInitials(user);
+  const avatarUrl = user?.image || user?.profileAvatar?.url;
 
   return (
     <nav>
@@ -101,8 +95,8 @@ export default function SiteNavbar({
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 text-left hover:text-[#3c9ee0]">
                   <Avatar size="sm">
-                    {user?.image ? (
-                      <AvatarImage src={user.image} alt="Profile" />
+                    {avatarUrl ? (
+                      <AvatarImage src={avatarUrl} alt="Profile" />
                     ) : null}
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
@@ -304,9 +298,9 @@ export default function SiteNavbar({
                 </DialogHeader>
 
                 <div className="p-5 flex items-center gap-3 border-b">
-                  {user?.image ? (
+                  {avatarUrl ? (
                     <Image
-                      src={user.image}
+                      src={avatarUrl}
                       alt="profile"
                       width={40}
                       height={40}
@@ -314,7 +308,9 @@ export default function SiteNavbar({
                     />
                   ) : (
                     <div className="w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center">
-                      <User className="w-6 h-6 text-gray-600" />
+                      <span className="text-xs font-semibold text-gray-700">
+                        {initials}
+                      </span>
                     </div>
                   )}
                   <span>

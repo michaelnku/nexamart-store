@@ -4,86 +4,59 @@ import { pusherServer } from "../pusher";
 export async function autoAssignRider(orderId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    include: {
-      items: { include: { product: { include: { store: true } } } },
+    select: {
+      id: true,
+      userId: true,
+      shippingFee: true,
+      delivery: true,
+      sellerGroups: { select: { status: true } },
     },
   });
 
-  if (!order) return;
-
-  const sellerCount = new Set(order.items.map((i) => i.product.storeId)).size;
-
-  if (order.isFoodOrder) {
-    const rider = await prisma.user.findFirst({
-      where: { role: "RIDER", riderProfile: { isAvailable: true } },
-    });
-
-    if (!rider) return;
-
-    await prisma.delivery.create({
-      data: {
-        orderId,
-        riderId: rider.id,
-        fee: order.shippingFee,
-        status: "ASSIGNED",
-        assignedAt: new Date(),
-      },
-    });
-
-    await pusherServer.trigger(`user-${order.userId}`, "rider-assigned", {
-      orderId,
-      riderId: rider.id,
-    });
-
-    await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: "SHIPPED",
-      },
-    });
-
+  if (!order || order.delivery) return;
+  if (order.sellerGroups.some((g) => g.status !== "IN_TRANSIT_TO_HUB")) {
     return;
   }
 
-  // NON-FOOD ORDERS
-  // If only one store → assign rider directly (skip hub)
-  if (sellerCount === 1) {
-    const rider = await prisma.user.findFirst({
-      where: { role: "RIDER", riderProfile: { isAvailable: true } },
-    });
-
-    if (!rider) return;
-
-    await prisma.delivery.create({
-      data: {
-        orderId,
-        riderId: rider.id,
-        fee: order.shippingFee,
-        status: "ASSIGNED",
-        assignedAt: new Date(),
-      },
-    });
-
-    await pusherServer.trigger(`user-${order.userId}`, "rider-assigned", {
-      orderId,
-      riderId: rider.id,
-    });
-
-    await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: "SHIPPED",
-      },
-    });
-
-    return;
-  }
-
-  await prisma.order.update({
-    where: { id: orderId },
-    data: {
-      status: "ACCEPTED",
-      isReadyForDispatch: false,
+  const rider = await prisma.user.findFirst({
+    where: {
+      role: "RIDER",
+      riderProfile: { isAvailable: true, isVerified: true },
     },
+    include: { riderProfile: true },
+  });
+
+  if (!rider) return;
+
+  await prisma.$transaction([
+    prisma.delivery.create({
+      data: {
+        orderId,
+        riderId: rider.id,
+        fee: order.shippingFee,
+        status: "ASSIGNED",
+        assignedAt: new Date(),
+      },
+    }),
+    prisma.riderProfile.update({
+      where: { userId: rider.id },
+      data: { isAvailable: false },
+    }),
+    prisma.order.update({
+      where: { id: orderId },
+      data: { status: "SHIPPED" },
+    }),
+    prisma.orderTimeline.create({
+      data: {
+        orderId,
+        status: "SHIPPED",
+        message: "Rider assigned automatically",
+      },
+    }),
+  ]);
+
+  await pusherServer.trigger(`user-${order.userId}`, "rider-assigned", {
+    orderId,
+    riderId: rider.id,
   });
 }

@@ -1,14 +1,14 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useSellerWallet } from "@/hooks/useWallet";
+import { useRiderWallet } from "@/hooks/useWallet";
 import Link from "next/link";
 import { WalletSkeleton } from "@/components/skeletons/WalletSkeleton";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import { SellerWalletBalanceConverter } from "@/components/currency/WalletBalanceConverter";
 
-export default function SellerWalletPage() {
-  const { data: wallet, isLoading, isError } = useSellerWallet();
+export default function RiderWalletPage() {
+  const { data: wallet, isLoading, isError } = useRiderWallet();
   const { data: user } = useCurrentUserQuery();
 
   if (isLoading) {
@@ -45,16 +45,19 @@ export default function SellerWalletPage() {
           </p>
         </div>
 
-        <Link href="/market-place/dashboard/seller/wallet/withdraw">
+        <Link href="/marketplace/dashboard/rider/wallet/withdraw">
           <Button className="bg-[#3c9ee0] hover:bg-[#318bc4] shadow px-6">
-            Withdraw Funds
+            Withdraw Earnings
           </Button>
         </Link>
       </div>
 
+      {/* BALANCE SUMMARY */}
       <section className="grid md:grid-cols-3 gap-6 ">
+        {/* Available */}
         <SellerWalletBalanceConverter usdBalance={balance} />
 
+        {/* Pending */}
         <div className="border dark:bg-neutral-950 rounded-xl shadow-sm p-5  hover:shadow-md transition-all">
           <p className="text-sm text-gray-500">Pending</p>
           <h2 className="text-2xl font-semibold mt-2 text-[var(--brand-blue)] transition-all duration-300">

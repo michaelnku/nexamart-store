@@ -1,13 +1,27 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { autoAssignRider } from "@/lib/rider/logistics";
 
 export const acceptOrderAction = async (sellerGroupId: string) => {
   try {
-    await prisma.orderSellerGroup.update({
+    const group = await prisma.orderSellerGroup.update({
       where: { id: sellerGroupId },
       data: { status: "IN_TRANSIT_TO_HUB" },
+      select: { orderId: true },
     });
+
+    const remaining = await prisma.orderSellerGroup.count({
+      where: {
+        orderId: group.orderId,
+        status: { not: "IN_TRANSIT_TO_HUB" },
+      },
+    });
+
+    if (remaining === 0) {
+      await autoAssignRider(group.orderId);
+    }
+
     revalidatePath("/marketplace/dashboard/seller/orders");
     return { success: "Order accepted" };
   } catch {

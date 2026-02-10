@@ -28,8 +28,11 @@ export async function acquireCronLock(name: string) {
       return false;
     }
 
-    await prisma.cronLock.update({
-      where: { name },
+    await prisma.cronLock.updateMany({
+      where: {
+        name,
+        lockedAt: existing.lockedAt,
+      },
       data: { lockedAt: now },
     });
 

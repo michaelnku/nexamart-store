@@ -2,6 +2,7 @@
 
 import {
   getBuyerWalletAction,
+  getRiderWalletAction,
   getSellerWalletAction,
 } from "@/actions/wallet/wallet";
 import { useQuery } from "@tanstack/react-query";
@@ -26,6 +27,17 @@ export function useSellerWallet() {
     queryKey: ["seller-wallet"],
     queryFn: async () => {
       const wallet = await getSellerWalletAction();
+      return wallet;
+    },
+    staleTime: 1000 * 60 * 1,
+  });
+}
+
+export function useRiderWallet() {
+  return useQuery({
+    queryKey: ["rider-wallet"],
+    queryFn: async () => {
+      const wallet = await getRiderWalletAction();
       return wallet;
     },
     staleTime: 1000 * 60 * 1,

@@ -33,7 +33,6 @@ export async function POST(req: Request) {
       return new NextResponse("Cart is empty", { status: 400 });
     }
 
-    //get products
     const products = await prisma.product.findMany({
       where: {
         id: { in: cartItems.map((i: CheckoutCartItem) => i.productId) },
@@ -41,7 +40,15 @@ export async function POST(req: Request) {
       include: { variants: true, store: true },
     });
 
-    // Build line items + compute total
+    const storeTypes = new Set(products.map((p) => p.store.type));
+    const isFoodOrder = storeTypes.has("FOOD");
+    if (isFoodOrder && storeTypes.size > 1) {
+      return new NextResponse(
+        "Food orders cannot be mixed with non-food items",
+        { status: 400 },
+      );
+    }
+
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
     let subtotal = 0;
@@ -105,6 +112,7 @@ export async function POST(req: Request) {
         deliveryAddress,
         distanceInMiles,
         isPaid: false,
+        isFoodOrder,
         couponId: couponResult.coupon?.id ?? null,
         discountAmount: discountAmount > 0 ? discountAmount : null,
         items: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { User, LogOut, ChevronDown, ChevronRight } from "lucide-react";
+import { LogOut, ChevronDown, ChevronRight } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
@@ -13,8 +13,7 @@ import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import { UserDTO } from "@/lib/types";
 import { useLogout } from "@/hooks/useLogout";
 import { VerifiedBadge } from "@/components/market-place/BadgeCounts";
-
-/* --------------------- SHARED SIDEBAR COMPONENT --------------------- */
+import { getUserInitials } from "@/lib/user";
 
 function SidebarContent({
   user,
@@ -41,6 +40,7 @@ function SidebarContent({
   };
 
   const logout = useLogout();
+  const avatarUrl = user?.image || user?.profileAvatar?.url;
 
   return (
     <div
@@ -53,7 +53,6 @@ function SidebarContent({
         Menu
       </h2>
 
-      {/* NAVIGATION */}
       <div className="flex-1 overflow-y-auto py-6 space-y-4">
         {menu.map((section) => (
           <div key={section.title}>
@@ -101,14 +100,13 @@ function SidebarContent({
         ))}
       </div>
 
-      {/* BOTTOM — PROFILE & LOGOUT */}
       <div className={cn("w-full", isMobile && "hidden")}>
         <Separator />
         <div className="px-4 py-5 space-y-4">
           <div className="flex items-center gap-3">
-            {user?.image ? (
+            {avatarUrl ? (
               <Image
-                src={user.image}
+                src={avatarUrl}
                 width={42}
                 height={42}
                 alt="avatar"
@@ -116,7 +114,9 @@ function SidebarContent({
               />
             ) : (
               <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
-                <User className="w-5 h-5 text-gray-600" />
+                <span className="text-xs font-semibold text-gray-700">
+                  {getUserInitials(user)}
+                </span>
               </div>
             )}
 
@@ -155,8 +155,6 @@ function SidebarContent({
   );
 }
 
-/* ----------------------- DESKTOP SIDEBAR ----------------------- */
-
 export const DashboardSidebar = ({
   initialUser,
 }: {
@@ -171,8 +169,6 @@ export const DashboardSidebar = ({
     </aside>
   );
 };
-
-/* ----------------------- MOBILE SIDEBAR ----------------------- */
 
 export const MobileSideNav = ({
   initialUser,

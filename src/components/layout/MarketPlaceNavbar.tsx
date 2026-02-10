@@ -37,13 +37,17 @@ import { MobileSideNav } from "@/components/layout/SideNavbar";
 import DashboardPageSkeleton from "../skeletons/DashboardPageSkeleton";
 import { MarketplaceSearch } from "../search/MarketplaceSearch";
 import { MobileSearchSheet } from "../search/MobileSearchSheet";
+import { getUserInitials } from "@/lib/user";
+import RiderTripsDropdown from "@/components/layout/RiderTripsDropdown";
 
 type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
 type QuickNavItem = {
   icon: IconType;
   label: string;
-  href: string;
+  href?: string;
+  onClick?: () => void;
+  isActive?: () => boolean;
 };
 
 export default function MarketPlaceNavbar({
@@ -88,13 +92,30 @@ export default function MarketPlaceNavbar({
   ];
 
   const riderNav: QuickNavItem[] = [
-    { icon: ShoppingBag, label: "Assigned Trips", href: "/dashboard/trips" },
-    { icon: Bell, label: "Delivery Alerts", href: "/dashboard/notifications" },
+    {
+      icon: ShoppingBag,
+      label: "Assigned Trips",
+      onClick: undefined,
+      isActive: () => pathname.startsWith("/marketplace/dashboard/rider/trips"),
+    },
+    {
+      icon: Bell,
+      label: "Delivery Alerts",
+      href: "/marketplace/dashboard/rider/notifications",
+    },
   ];
 
   const adminNav: QuickNavItem[] = [
-    { icon: FileChartColumn, label: "Reports", href: "/dashboard/reports" },
-    { icon: MessageSquare, label: "Tickets", href: "/dashboard/tickets" },
+    {
+      icon: FileChartColumn,
+      label: "Reports",
+      href: "/marketplace/dashboard/admin/reports",
+    },
+    {
+      icon: MessageSquare,
+      label: "Tickets",
+      href: "/marketplace/dashboard/admin/tickets",
+    },
   ];
 
   const moderatorNav: QuickNavItem[] = [
@@ -128,6 +149,8 @@ export default function MarketPlaceNavbar({
     }
   };
 
+  const avatarUrl = user?.image || user?.profileAvatar?.url;
+
   return (
     <header className="sticky top-0 z-50 light:bg-white/90 backdrop-blur border-b shadow-sm">
       <div className="flex items-center justify-between h-16 px-4 md:px-8">
@@ -154,7 +177,6 @@ export default function MarketPlaceNavbar({
           </div>
         </div>
 
-        {/* CENTER — SEARCH BAR */}
         <div className="hidden md:flex flex-1 max-w-2xl mx-6">
           <MarketplaceSearch />
         </div>
@@ -162,46 +184,57 @@ export default function MarketPlaceNavbar({
           <MobileSearchSheet variant="marketplace" />
         </div>
 
-        {/* RIGHT — QUICK ICONS + ACCOUNT */}
         <div className="hidden md:flex items-center gap-7">
-          {quickNav.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`relative text-sm font-medium transition flex flex-col items-center ${
-                isActive(item.href)
-                  ? "text-[var(--brand-blue)]"
-                  : "text-gray-600 hover:text-[var(--brand-blue)]"
-              }`}
-            >
-              <item.icon className="w-5 h-5" />
-              <span className="text-[11px] hidden lg:block mt-[2px]">
-                {item.label}
-              </span>
-            </Link>
-          ))}
-
-          <Link
-            href={"/marketplace/dashboard/seller/notifications"}
-            className={`relative text-sm font-medium transition flex flex-col items-center ${
-              isActive("/marketplace/dashboard/seller/notifications")
+          {quickNav.map((item) => {
+            const active = item.onClick
+              ? item.isActive?.() ?? false
+              : item.href
+                ? isActive(item.href)
+                : false;
+            const className = `relative text-sm font-medium transition flex flex-col items-center ${
+              active
                 ? "text-[var(--brand-blue)]"
                 : "text-gray-600 hover:text-[var(--brand-blue)]"
-            }`}
-          >
-            <div className="relative">
-              <Bell className="w-5 h-5" />
-              {hasNewAlert && (
-                <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-              )}
+            }`;
 
-              <span className="text-[11px] hidden lg:block mt-[2px]">
-                alert
-              </span>
-            </div>
-          </Link>
+            if (role === "RIDER" && item.label === "Assigned Trips") {
+              return (
+                <RiderTripsDropdown
+                  key={item.label}
+                  className={className}
+                  isActive={active}
+                  Icon={item.icon}
+                  label={item.label}
+                />
+              );
+            }
 
-          {/* ACCOUNT DROPDOWN */}
+            if (item.onClick) {
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={item.onClick}
+                  className={className}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className="text-[11px] hidden lg:block mt-[2px]">
+                    {item.label}
+                  </span>
+                </button>
+              );
+            }
+
+            return item.href ? (
+              <Link key={item.label} href={item.href} className={className}>
+                <item.icon className="w-5 h-5" />
+                <span className="text-[11px] hidden lg:block mt-[2px]">
+                  {item.label}
+                </span>
+              </Link>
+            ) : null;
+          })}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 hover:text-[var(--brand-blue)] transition">
@@ -215,7 +248,9 @@ export default function MarketPlaceNavbar({
                   />
                 ) : (
                   <div className="w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center">
-                    <User className="w-5 h-5 text-gray-600" />
+                    <span className="text-xs font-semibold text-gray-700">
+                      {getUserInitials(user)}
+                    </span>
                   </div>
                 )}
                 <span className="hidden lg:block font-semibold">
@@ -286,7 +321,6 @@ export default function MarketPlaceNavbar({
           <ModeToggle />
         </div>
 
-        {/* MOBILE DRAWER */}
         <div className="flex md:hidden items-center gap-2">
           <ModeToggle />
 
@@ -304,12 +338,11 @@ export default function MarketPlaceNavbar({
                 </VisuallyHidden>
               </DialogHeader>
 
-              {/* HEADER */}
               <div className="border-b p-5">
                 <div className="flex items-start gap-4">
-                  {user?.image ? (
+                  {avatarUrl ? (
                     <Image
-                      src={user.image}
+                      src={avatarUrl}
                       width={48}
                       height={48}
                       alt="avatar"
@@ -317,7 +350,9 @@ export default function MarketPlaceNavbar({
                     />
                   ) : (
                     <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center border shadow-sm shrink-0">
-                      <User className="w-6 h-6 text-gray-600" />
+                      <span className="text-sm font-semibold text-gray-700">
+                        {getUserInitials(user)}
+                      </span>
                     </div>
                   )}
 
@@ -420,6 +455,7 @@ export default function MarketPlaceNavbar({
           })()}
         </div>
       </div>
+
     </header>
   );
 }

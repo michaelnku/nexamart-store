@@ -1,11 +1,12 @@
 import { CurrentUser } from "@/lib/currentUser";
-import { RoleBasedPageContent } from "../../_components/RoleBasedPageContent";
+import RiderPage from "../../_components/RiderPage";
 
 const page = async () => {
   const user = await CurrentUser();
+  if (!user || user.role !== "RIDER") return;
   return (
     <div>
-      <RoleBasedPageContent initialUser={user ?? null} />
+      <RiderPage />
     </div>
   );
 };

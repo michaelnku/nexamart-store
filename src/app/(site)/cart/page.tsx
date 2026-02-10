@@ -20,6 +20,11 @@ export default async function page() {
               name: true,
               basePriceUSD: true,
               images: true,
+              store: {
+                select: {
+                  type: true,
+                },
+              },
             },
           },
           variant: {
@@ -43,5 +48,9 @@ export default async function page() {
     );
   }
 
-  return <CartPage cart={cart} />;
+  const hasFood = cart.items.some((i) => i.product.store?.type === "FOOD");
+  const hasNonFood = cart.items.some((i) => i.product.store?.type !== "FOOD");
+  const mixedCart = hasFood && hasNonFood;
+
+  return <CartPage cart={cart} mixedCart={mixedCart} />;
 }

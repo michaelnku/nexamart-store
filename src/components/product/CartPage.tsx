@@ -18,9 +18,10 @@ import { useCurrencyStore } from "@/stores/useCurrencyStore";
 
 interface Props {
   cart: FullCart;
+  mixedCart: boolean;
 }
 
-const CartPage = ({ cart }: Props) => {
+const CartPage = ({ cart, mixedCart }: Props) => {
   const { currency } = useCurrencyStore();
 
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
@@ -240,10 +241,15 @@ const CartPage = ({ cart }: Props) => {
             <Button
               className="w-full mt-5 py-6 text-[16px] font-semibold rounded-lg bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white shadow-sm"
               onClick={handleCheckout}
-              disabled={pending}
+              disabled={pending || mixedCart}
             >
               {pending ? "Processing..." : "Proceed to Checkout"}
             </Button>
+            {mixedCart && (
+              <p className="mt-3 text-sm text-red-600">
+                Food items must be ordered separately for faster delivery.
+              </p>
+            )}
           </Card>
         </div>
       )}

@@ -6,7 +6,6 @@ import { DeliveryType, PaymentMethod } from "@/generated/prisma/client";
 import { generateTrackingNumber } from "@/components/helper/generateTrackingNumber";
 import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
 import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
-import { randomUUID } from "crypto";
 
 export async function placeOrderAction({
   deliveryAddress,
@@ -26,10 +25,6 @@ export async function placeOrderAction({
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
 
-  /* --------------------------------
-     IDEMPOTENCY CHECK
-  --------------------------------- */
-  // const idempotencyKey = idempotencyOrderKey ?? randomUUID();
   const existingKey = await prisma.idempotencyKey.findUnique({
     where: { key: idempotencyKey },
   });
@@ -49,7 +44,12 @@ export async function placeOrderAction({
           product: {
             include: {
               store: {
-                select: { id: true, userId: true, shippingRatePerMile: true },
+                select: {
+                  id: true,
+                  userId: true,
+                  shippingRatePerMile: true,
+                  type: true,
+                },
               },
             },
           },
@@ -72,6 +72,12 @@ export async function placeOrderAction({
 
   const miles = distanceInMiles ?? 0;
 
+  const storeTypes = new Set(cart.items.map((i) => i.product.store.type));
+  const isFoodOrder = storeTypes.has("FOOD");
+  if (isFoodOrder && storeTypes.size > 1) {
+    return { error: "Food orders cannot be mixed with non-food items" };
+  }
+
   const subtotal = cart.items.reduce(
     (s, i) => s + i.quantity * (i.variant?.priceUSD ?? i.product.basePriceUSD),
     0,
@@ -93,9 +99,6 @@ export async function placeOrderAction({
   const discountAmount = couponResult.discountAmount ?? 0;
   const totalAmount = Math.max(0, subtotal + shippingFee - discountAmount);
 
-  /* --------------------------------
-     GROUP ITEMS BY STORE
-  --------------------------------- */
   const itemsByStore = new Map<string, typeof cart.items>();
 
   for (const item of cart.items) {
@@ -106,11 +109,7 @@ export async function placeOrderAction({
 
   const trackingNumber = generateTrackingNumber();
 
-  /* --------------------------------
-     TRANSACTION (DB ONLY)
-  --------------------------------- */
   const order = await prisma.$transaction(async (tx) => {
-    // WALLET PAYMENT
     if (paymentMethod === "WALLET") {
       const wallet = await tx.wallet.findUnique({
         where: { userId },
@@ -138,7 +137,6 @@ export async function placeOrderAction({
       });
     }
 
-    // CREATE MAIN ORDER
     const createdOrder = await tx.order.create({
       data: {
         userId,
@@ -149,6 +147,7 @@ export async function placeOrderAction({
         shippingFee,
         totalAmount,
         isPaid: paymentMethod === "WALLET",
+        isFoodOrder,
         couponId: couponResult.coupon?.id ?? null,
         discountAmount: discountAmount || null,
         trackingNumber,
@@ -165,7 +164,6 @@ export async function placeOrderAction({
       }
     }
 
-    // CREATE SELLER GROUPS + ITEMS
     for (const [storeId, items] of itemsByStore) {
       const sellerId = items[0].product.store.userId;
 
@@ -202,7 +200,6 @@ export async function placeOrderAction({
       });
     }
 
-    // COUPON USAGE
     if (couponResult.coupon?.id) {
       await tx.couponUsage.create({
         data: {
@@ -218,7 +215,6 @@ export async function placeOrderAction({
       });
     }
 
-    // IDEMPOTENCY SAVE
     await tx.idempotencyKey.create({
       data: {
         key: idempotencyKey,
@@ -230,9 +226,6 @@ export async function placeOrderAction({
     return createdOrder;
   });
 
-  /* --------------------------------
-     POST-TRANSACTION (SAFE)
-  --------------------------------- */
   await prisma.orderTimeline.create({
     data: {
       orderId: order.id,
@@ -241,7 +234,6 @@ export async function placeOrderAction({
     },
   });
 
-  // BACKGROUND NOTIFICATIONS (ASYNC SAFE)
   await prisma.notification.createMany({
     data: [
       {

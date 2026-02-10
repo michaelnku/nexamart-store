@@ -44,17 +44,13 @@ export default function SellerPage({ stats }: { stats: SellerStats }) {
 
   return (
     <main className="space-y-8">
-      {/* HEADER */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Dashboard Overview
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
         <p className="text-sm text-gray-500">
           Welcome back — monitor sales and manage your store
         </p>
       </div>
 
-      {/* 🔔 WARNINGS */}
       {!stats.isStoreVerified && (
         <div className="p-4 bg-yellow-50 border rounded-xl flex gap-3">
           <AlertTriangle className="w-5 h-5 text-yellow-700" />
@@ -82,7 +78,6 @@ export default function SellerPage({ stats }: { stats: SellerStats }) {
         </div>
       )}
 
-      {/* STATS */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {dashboardStats.map((stat) => {
           const Icon = stat.icon;

@@ -32,11 +32,35 @@ export const addToCartAction = async (
   if (!userId) return { error: "Unauthorized" };
 
   try {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { store: { select: { type: true } } },
+    });
+
+    if (!product) return { error: "Product not found" };
+
     const cart = await prisma.cart.upsert({
       where: { userId },
       update: {},
       create: { userId },
     });
+
+    const cartItems = await prisma.cartItem.findMany({
+      where: { cartId: cart.id },
+      include: { product: { select: { store: { select: { type: true } } } } },
+    });
+
+    if (cartItems.length > 0) {
+      const hasFood = cartItems.some((i) => i.product.store.type === "FOOD");
+      const hasNonFood = cartItems.some((i) => i.product.store.type !== "FOOD");
+      const newIsFood = product.store.type === "FOOD";
+
+      if ((hasFood && !newIsFood) || (hasNonFood && newIsFood)) {
+        return {
+          error: "Food items must be ordered separately for faster delivery.",
+        };
+      }
+    }
 
     const existingItem = await prisma.cartItem.findFirst({
       where: { cartId: cart.id, productId, variantId: variantId ?? null },

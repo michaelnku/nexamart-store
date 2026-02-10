@@ -1,4 +1,5 @@
 import {
+  DeliveryStatus,
   PaymentMethod,
   Product,
   ProductImage,
@@ -6,6 +7,8 @@ import {
   Review,
   SenderType,
   Store,
+  TransactionStatus,
+  TransactionType,
   UserRole,
 } from "@/generated/prisma/client";
 
@@ -60,6 +63,18 @@ export type OrderTrackDeliveryDTO = {
     name: string | null;
     email: string;
   } | null;
+};
+
+export type DeliveryDTO = {
+  id: string;
+  orderId: string;
+  riderId?: string | null;
+  status: DeliveryStatus;
+  deliveryAddress?: string | null;
+  distance?: number | null;
+  fee: number;
+  assignedAt?: string | null;
+  deliveredAt?: string | null;
 };
 
 export type OrderTrackTimelineDTO = {
@@ -243,6 +258,9 @@ export type FullCart = {
       name: string;
       basePriceUSD: number;
       images: ProductImage[];
+      store?: {
+        type?: "GENERAL" | "FOOD";
+      };
     };
     variant?: {
       id: string;
@@ -413,6 +431,20 @@ export type WalletTransaction = {
   createdAt: string | Date;
 };
 
+export type TransactionDTO = {
+  id: string;
+  walletId?: string | null;
+  orderId?: string | null;
+  userId?: string | null;
+  type: TransactionType;
+  amount: number;
+  reference?: string | null;
+  description?: string | null;
+  status: TransactionStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type BuyerWallet = {
   id: string;
   balance: number;
@@ -531,4 +563,13 @@ export type CouponFormValues = {
   validFrom?: string | null;
   validTo?: string | null;
   isActive?: boolean;
+};
+
+export type NotificationDTO = {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
 };

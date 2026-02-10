@@ -132,3 +132,33 @@ export const getSellerWalletAction = async () => {
     withdrawals: wallet.withdrawals,
   };
 };
+
+// rider wallet action
+export const getRiderWalletAction = async () => {
+  const userId = await CurrentUserId();
+  const user = await CurrentUser();
+
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+
+  if (user?.role !== "RIDER") return { error: "Forbidden" };
+
+  const wallet = await prisma.wallet.findFirst({
+    where: { userId: user.id },
+    include: {
+      withdrawals: true,
+    },
+  });
+
+  if (!wallet)
+    return { balance: 0, pending: 0, totalEarnings: 0, withdrawals: [] };
+
+  return {
+    balance: wallet.balance,
+    pending: wallet.pending,
+    totalEarnings: wallet.totalEarnings,
+    currency: wallet.currency,
+    withdrawals: wallet.withdrawals,
+  };
+};
