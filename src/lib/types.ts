@@ -422,12 +422,14 @@ export type BuyerWallet = {
 
 export type OrderStatus =
   | "PENDING"
-  | "PROCESSING"
+  | "ACCEPTED"
   | "SHIPPED"
-  | "IN_TRANSIT"
   | "DELIVERED"
+  | "COMPLETED"
   | "CANCELLED"
-  | "RETURNED";
+  | "RETURN_REQUESTED"
+  | "RETURNED"
+  | "REFUNDED";
 
 export type DeliveryType =
   | "HOME_DELIVERY"

@@ -46,7 +46,6 @@ model User {
   transactions Transaction[]
 
   customerOrders Order[]            @relation("CustomerOrders")
-  riderOrders    Order[]            @relation("RiderOrders")
   deliveries     Delivery[]         @relation("RiderDeliveries")
   sellerGroups   OrderSellerGroup[] @relation("SellerGroupBySeller")
 
@@ -355,9 +354,8 @@ model WishlistItem {
  * ===========================
  */
 model Order {
-  id      String  @id @default(cuid())
-  userId  String
-  riderId String?
+  id     String @id @default(cuid())
+  userId String
 
   status          OrderStatus    @default(PENDING)
   paymentMethod   PaymentMethod?
@@ -366,25 +364,25 @@ model Order {
   phone           String?
   trackingNumber  String?        @unique
 
+  deliveryOtpHash      String?
+  deliveryOtpExpiresAt DateTime?
+  customerConfirmedAt  DateTime?
+
   shippingFee     Float   @default(0)
   totalAmount     Float
   distanceInMiles Float   @default(0)
   couponId        String?
   discountAmount  Float?
 
-  isPaid            Boolean @default(false)
-  isDelivered       Boolean @default(false)
-  customerConfirmed Boolean @default(false)
-  payoutReleased    Boolean @default(false)
+  isPaid         Boolean @default(false)
+  payoutReleased Boolean @default(false)
 
-  isReadyForDispatch Boolean @default(false)
-  isFoodOrder        Boolean @default(false)
+  isFoodOrder Boolean @default(false)
 
   estimatedDeliveryMin DateTime?
   estimatedDeliveryMax DateTime?
 
   customer User      @relation("CustomerOrders", fields: [userId], references: [id], onDelete: Cascade)
-  rider    User?     @relation("RiderOrders", fields: [riderId], references: [id], onDelete: Cascade)
   delivery Delivery? @relation("OrderDelivery")
 
   items        OrderItem[]
@@ -464,12 +462,14 @@ model OrderItem {
 
 enum OrderStatus {
   PENDING
-  PROCESSING
+  ACCEPTED
   SHIPPED
-  IN_TRANSIT
   DELIVERED
+  COMPLETED
   CANCELLED
+  RETURN_REQUESTED
   RETURNED
+  REFUNDED
 }
 
 enum SellerGroupStatus {
@@ -520,6 +520,8 @@ model Delivery {
   id      String  @id @default(cuid())
   orderId String  @unique
   riderId String?
+
+  otpAttempts Int @default(0)
 
   status          DeliveryStatus @default(PENDING)
   deliveryAddress String?

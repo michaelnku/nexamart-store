@@ -30,14 +30,14 @@ export async function GET() {
       await prisma.$transaction(async (tx) => {
         await tx.order.update({
           where: { id: order.id },
-          data: { status: "PROCESSING" },
+          data: { status: "ACCEPTED" },
         });
 
         await tx.orderTimeline.create({
           data: {
             orderId: order.id,
-            status: "PROCESSING",
-            message: "Order auto-moved to processing due to inactivity",
+            status: "ACCEPTED",
+            message: "Order auto-moved to accepted due to inactivity",
           },
         });
 
@@ -45,7 +45,7 @@ export async function GET() {
           data: {
             userId: order.userId,
             title: "Order Update",
-            message: "Your order is now being processed.",
+            message: "Your order has been accepted.",
           },
         });
       });

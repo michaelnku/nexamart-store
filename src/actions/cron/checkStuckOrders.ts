@@ -18,14 +18,14 @@ export async function checkStuckOrders() {
     await prisma.$transaction(async (tx) => {
       await tx.order.update({
         where: { id: order.id },
-        data: { status: "PROCESSING" },
+        data: { status: "ACCEPTED" },
       });
 
       await tx.orderTimeline.create({
         data: {
           orderId: order.id,
-          status: "PROCESSING",
-          message: "Order auto-moved to processing due to inactivity",
+          status: "ACCEPTED",
+          message: "Order auto-moved to accepted due to inactivity",
         },
       });
 
@@ -33,7 +33,7 @@ export async function checkStuckOrders() {
         data: {
           userId: order.userId,
           title: "Order Update",
-          message: "Your order is now being processed.",
+          message: "Your order has been accepted.",
         },
       });
     });
@@ -97,13 +97,13 @@ export async function checkStuckOrders() {
 
       await tx.order.update({
         where: { id: delivery.orderId },
-        data: { status: "IN_TRANSIT" },
+        data: { status: "SHIPPED" },
       });
 
       await tx.orderTimeline.create({
         data: {
           orderId: delivery.orderId,
-          status: "IN_TRANSIT",
+          status: "SHIPPED",
           message: "Delivery reassignment required due to rider inactivity",
         },
       });

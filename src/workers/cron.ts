@@ -13,14 +13,14 @@ cron.schedule("*/2 * * * *", async () => {
     await prisma.$transaction(async (tx) => {
       await tx.order.update({
         where: { id: orderId },
-        data: { status: "PROCESSING" },
+        data: { status: "ACCEPTED" },
       });
 
       await tx.orderTimeline.create({
         data: {
           orderId,
-          status: "PROCESSING",
-          message: "Order auto-recovered by worker",
+          status: "ACCEPTED",
+          message: "Order auto-accepted by worker",
         },
       });
 

@@ -63,6 +63,13 @@ export async function placeOrderAction({
     return { error: "Cart is empty" };
   }
 
+  const variantQuantities = new Map<string, number>();
+  for (const item of cart.items) {
+    if (!item.variantId) continue;
+    const current = variantQuantities.get(item.variantId) ?? 0;
+    variantQuantities.set(item.variantId, current + item.quantity);
+  }
+
   const miles = distanceInMiles ?? 0;
 
   const subtotal = cart.items.reduce(
@@ -148,6 +155,15 @@ export async function placeOrderAction({
         status: "PENDING",
       },
     });
+
+    if (paymentMethod === "WALLET" && variantQuantities.size > 0) {
+      for (const [variantId, quantity] of variantQuantities.entries()) {
+        await tx.productVariant.updateMany({
+          where: { id: variantId },
+          data: { stock: { decrement: quantity } },
+        });
+      }
+    }
 
     // CREATE SELLER GROUPS + ITEMS
     for (const [storeId, items] of itemsByStore) {
@@ -244,22 +260,6 @@ export async function placeOrderAction({
   if (order.isPaid) {
     await applyReferralRewardsForPaidOrder(order.id);
   }
-
-  //   await prisma.notification.create({
-  //   data: {
-  //     userId,
-  //     title: "Order Confirmed",
-  //     message: `Your order has been placed. Tracking number: ${order.trackingNumber}`,
-  //   },
-  // });
-
-  // await prisma.notification.create({
-  //   data: {
-  //     userId: cart.items[0].product.store.userId,
-  //     title: "New Order Received",
-  //     message: `You received a new order: ${order.id}`,
-  //   },
-  // });
 
   await prisma.cartItem.deleteMany({
     where: { cartId: cart.id },

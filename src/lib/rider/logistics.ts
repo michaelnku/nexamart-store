@@ -38,7 +38,7 @@ export async function autoAssignRider(orderId: string) {
     await prisma.order.update({
       where: { id: orderId },
       data: {
-        status: "IN_TRANSIT",
+        status: "SHIPPED",
       },
     });
 
@@ -72,7 +72,7 @@ export async function autoAssignRider(orderId: string) {
     await prisma.order.update({
       where: { id: orderId },
       data: {
-        status: "IN_TRANSIT",
+        status: "SHIPPED",
       },
     });
 
@@ -82,7 +82,7 @@ export async function autoAssignRider(orderId: string) {
   await prisma.order.update({
     where: { id: orderId },
     data: {
-      status: "PROCESSING",
+      status: "ACCEPTED",
       isReadyForDispatch: false,
     },
   });

@@ -28,11 +28,14 @@ export default function OrderTrackCard({ order }: Props) {
 
   const statusColors: Record<string, string> = {
     PENDING: "bg-yellow-500",
-    PROCESSING: "bg-blue-500",
-    IN_TRANSIT: "bg-orange-500",
+    ACCEPTED: "bg-blue-500",
+    SHIPPED: "bg-purple-500",
     DELIVERED: "bg-green-600",
+    COMPLETED: "bg-green-700",
     CANCELLED: "bg-red-600",
+    RETURN_REQUESTED: "bg-orange-500",
     RETURNED: "bg-red-500",
+    REFUNDED: "bg-gray-600",
   };
 
   const trackingUrl =

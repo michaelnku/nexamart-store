@@ -52,12 +52,26 @@ export async function POST(req: Request) {
         isPaid: true,
         deliveryAddress: addressString,
         phone: session?.customer_details?.phone ?? null,
-        status: "PROCESSING",
+        status: "ACCEPTED",
       },
       include: {
         items: { include: { product: { include: { store: true } } } },
       },
     });
+
+    const variantQuantities = new Map<string, number>();
+    for (const item of order.items) {
+      if (!item.variantId) continue;
+      const current = variantQuantities.get(item.variantId) ?? 0;
+      variantQuantities.set(item.variantId, current + item.quantity);
+    }
+
+    for (const [variantId, quantity] of variantQuantities.entries()) {
+      await prisma.productVariant.updateMany({
+        where: { id: variantId },
+        data: { stock: { decrement: quantity } },
+      });
+    }
 
     const productIds = order.items.map((i) => i.productId);
     await prisma.product.updateMany({

@@ -44,12 +44,14 @@ export default function SellerOrdersTable({
 
   const statusColor: Record<OrderStatus, string> = {
     PENDING: "bg-yellow-200 text-yellow-800",
-    PROCESSING: "bg-[#e0efff] text-[#3c9ee0]",
+    ACCEPTED: "bg-[#e0efff] text-[#3c9ee0]",
     SHIPPED: "bg-purple-100 text-purple-700",
-    IN_TRANSIT: "bg-purple-200 text-purple-800",
     DELIVERED: "bg-green-100 text-green-700",
+    COMPLETED: "bg-green-200 text-green-800",
     CANCELLED: "bg-red-100 text-red-700",
+    RETURN_REQUESTED: "bg-orange-200 text-orange-800",
     RETURNED: "bg-red-200 text-red-800",
+    REFUNDED: "bg-gray-200 text-gray-800",
   };
 
   return (
@@ -152,7 +154,7 @@ export default function SellerOrdersTable({
                       </>
                     )}
 
-                    {o.status === "PROCESSING" && (
+                    {o.status === "ACCEPTED" && (
                       <Button
                         size="sm"
                         disabled={isPending}
@@ -245,7 +247,7 @@ export default function SellerOrdersTable({
                 </>
               )}
 
-              {o.status === "PROCESSING" && (
+              {o.status === "ACCEPTED" && (
                 <Button
                   size="sm"
                   disabled={isPending}

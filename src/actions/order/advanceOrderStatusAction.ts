@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
-import { OrderStatus } from "@/generated/prisma/client";
+import { OrderStatus, Prisma } from "@/generated/prisma/client";
 
 type AdvanceOrderInput = {
   orderId: string;
@@ -20,26 +20,33 @@ export async function advanceOrderStatusAction({
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { status: true, userId: true },
+    select: {
+      status: true,
+      isPaid: true,
+      userId: true,
+      items: { select: { variantId: true, quantity: true } },
+    },
   });
 
   if (!order) return { error: "Order not found" };
 
   const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-    PENDING: ["PROCESSING", "CANCELLED"],
-    PROCESSING: ["IN_TRANSIT", "CANCELLED"],
-    IN_TRANSIT: ["DELIVERED", "CANCELLED"],
-    DELIVERED: ["DELIVERED"],
-    SHIPPED: ["SHIPPED"],
+    PENDING: ["ACCEPTED", "CANCELLED"],
+    ACCEPTED: ["SHIPPED", "CANCELLED"],
+    SHIPPED: ["DELIVERED", "CANCELLED"],
+    DELIVERED: ["COMPLETED", "RETURN_REQUESTED"],
+    COMPLETED: ["COMPLETED"],
+    RETURN_REQUESTED: ["RETURNED"],
+    RETURNED: ["REFUNDED"],
+    REFUNDED: ["REFUNDED"],
     CANCELLED: ["CANCELLED"],
-    RETURNED: ["RETURNED"],
   };
 
   if (!VALID_TRANSITIONS[order.status]?.includes(nextStatus)) {
     return { error: `Invalid transition from ${order.status} → ${nextStatus}` };
   }
 
-  await prisma.$transaction([
+  const operations: Prisma.PrismaPromise<unknown>[] = [
     prisma.order.update({
       where: { id: orderId },
       data: { status: nextStatus },
@@ -52,21 +59,49 @@ export async function advanceOrderStatusAction({
         message: message ?? defaultTimelineMessage(nextStatus),
       },
     }),
-  ]);
+  ];
+
+  if (nextStatus === "CANCELLED" && order.isPaid) {
+    const variantQuantities = new Map<string, number>();
+    for (const item of order.items) {
+      if (!item.variantId) continue;
+      const current = variantQuantities.get(item.variantId) ?? 0;
+      variantQuantities.set(item.variantId, current + item.quantity);
+    }
+
+    for (const [variantId, quantity] of variantQuantities.entries()) {
+      operations.push(
+        prisma.productVariant.updateMany({
+          where: { id: variantId },
+          data: { stock: { increment: quantity } },
+        }),
+      );
+    }
+  }
+
+  await prisma.$transaction(operations);
 
   return { success: true };
 }
 
 function defaultTimelineMessage(status: OrderStatus) {
   switch (status) {
-    case "PROCESSING":
-      return "Seller started preparing your order";
-    case "IN_TRANSIT":
-      return "Order is on the way";
+    case "ACCEPTED":
+      return "Seller accepted your order";
+    case "SHIPPED":
+      return "Order has been shipped";
     case "DELIVERED":
       return "Order delivered successfully";
+    case "COMPLETED":
+      return "Order completed";
     case "CANCELLED":
       return "Order was cancelled";
+    case "RETURN_REQUESTED":
+      return "Return requested";
+    case "RETURNED":
+      return "Order returned";
+    case "REFUNDED":
+      return "Refund issued";
     default:
       return "Order updated";
   }

@@ -21,9 +21,10 @@ type TimelineItem = {
 
 const ORDER_STEPS = [
   "PENDING",
-  "PROCESSING",
-  "IN_TRANSIT",
+  "ACCEPTED",
+  "SHIPPED",
   "DELIVERED",
+  "COMPLETED",
 ] as const;
 
 const STEP_CONFIG: Record<
@@ -39,19 +40,24 @@ const STEP_CONFIG: Record<
     description: "We've received your order",
     icon: Package,
   },
-  PROCESSING: {
-    label: "Processing",
-    description: "Seller is preparing your order",
+  ACCEPTED: {
+    label: "Accepted",
+    description: "Seller accepted your order",
     icon: Clock,
   },
-  IN_TRANSIT: {
-    label: "On the Way",
-    description: "Your order is on the way",
+  SHIPPED: {
+    label: "Shipped",
+    description: "Your order has been shipped",
     icon: Truck,
   },
   DELIVERED: {
     label: "Delivered",
     description: "Order completed successfully",
+    icon: CheckCircle2,
+  },
+  COMPLETED: {
+    label: "Completed",
+    description: "Order completed",
     icon: CheckCircle2,
   },
 };

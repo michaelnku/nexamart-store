@@ -64,11 +64,17 @@ const OrderHistoryCard = ({ orders }: Props) => {
                   className={`text-white px-3 py-1 rounded-md text-xs font-semibold ${
                     order.status === "DELIVERED"
                       ? "bg-green-600"
-                      : order.status === "SHIPPED"
-                        ? "bg-blue-600"
-                        : order.status === "PENDING"
-                          ? "bg-yellow-600"
-                          : "bg-gray-500"
+                      : order.status === "COMPLETED"
+                        ? "bg-green-700"
+                        : order.status === "SHIPPED"
+                          ? "bg-purple-600"
+                          : order.status === "ACCEPTED"
+                            ? "bg-blue-600"
+                            : order.status === "PENDING"
+                              ? "bg-yellow-600"
+                              : order.status === "CANCELLED"
+                                ? "bg-red-600"
+                                : "bg-gray-500"
                   }`}
                 >
                   {order.status}
@@ -115,6 +121,7 @@ const OrderHistoryCard = ({ orders }: Props) => {
                 </Link>
 
                 {order.status !== "DELIVERED" &&
+                  order.status !== "COMPLETED" &&
                   order.status !== "CANCELLED" && (
                     <Link
                       href={`/customer/order/track/tn/${order.trackingNumber}`}
@@ -125,7 +132,8 @@ const OrderHistoryCard = ({ orders }: Props) => {
                     </Link>
                   )}
 
-                {order.status === "DELIVERED" && (
+                {(order.status === "DELIVERED" ||
+                  order.status === "COMPLETED") && (
                   <Link href={`/customer/order/${order.id}#review`}>
                     <Button
                       variant="outline"

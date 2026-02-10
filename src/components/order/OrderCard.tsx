@@ -16,12 +16,14 @@ type Props = {
 const OrderCard = ({ order }: Props) => {
   const statusColor: Record<string, string> = {
     PENDING: "bg-yellow-500",
-    PROCESSING: "bg-blue-500",
+    ACCEPTED: "bg-blue-500",
     SHIPPED: "bg-purple-500",
-    IN_TRANSIT: "bg-orange-500",
     DELIVERED: "bg-green-600",
+    COMPLETED: "bg-green-700",
     CANCELLED: "bg-red-600",
+    RETURN_REQUESTED: "bg-orange-500",
     RETURNED: "bg-red-500",
+    REFUNDED: "bg-gray-600",
   };
 
   const trackingUrl =
@@ -40,7 +42,6 @@ const OrderCard = ({ order }: Props) => {
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-6 space-y-10">
-      {/* HEADER */}
       <div className="text-center space-y-3">
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
           Order Details
@@ -71,7 +72,6 @@ const OrderCard = ({ order }: Props) => {
         </Badge>
       </div>
 
-      {/* DELIVERY INFO + CUSTOMER */}
       <section className="grid gap-6 md:grid-cols-[2fr,1.3fr]">
         <div className="border rounded-xl p-6 bg-white dark:bg-background shadow-sm space-y-3">
           <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -121,7 +121,6 @@ const OrderCard = ({ order }: Props) => {
           )}
         </div>
 
-        {/* CUSTOMER INFO */}
         <div className="border rounded-xl p-6 bg-white dark:bg-background shadow-sm">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Store className="w-5 h-5 text-green-600" /> Customer Info
@@ -134,14 +133,12 @@ const OrderCard = ({ order }: Props) => {
         </div>
       </section>
 
-      {/* 🛒 MULTI-SELLER GROUPS */}
       <section className="space-y-8">
         {order.sellerGroups.map((group) => (
           <div
             key={group.id}
             className="border rounded-xl bg-white shadow-sm p-6 space-y-5"
           >
-            {/* SELLER HEADER */}
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -164,7 +161,6 @@ const OrderCard = ({ order }: Props) => {
               </Badge>
             </div>
 
-            {/* SELLER ITEMS */}
             <div className="space-y-5">
               {group.items.map((item) => (
                 <div
@@ -200,20 +196,17 @@ const OrderCard = ({ order }: Props) => {
               ))}
             </div>
 
-            {/* SUBTOTAL */}
             <p className="text-right font-bold text-lg dark:text-gray-400">
-              Subtotal:{formatBaseUSD(group.subtotal)}
+              Subtotal: {formatBaseUSD(group.subtotal)}
             </p>
           </div>
         ))}
       </section>
 
-      {/* TOTAL */}
       <div className="text-right text-2xl font-bold dark:text-gray-400">
         Total: {formatBaseUSD(order.totalAmount)}
       </div>
 
-      {/* ACTIONS */}
       <section className="flex flex-col sm:flex-row gap-4">
         <Link href="/" className="w-full">
           <Button className="w-full bg-[#3c9ee0] hover:bg-[#318bc4] text-white font-semibold">
