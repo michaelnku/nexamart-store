@@ -25,7 +25,6 @@ export default async function SellerOrderDetails({
     },
     include: {
       customer: true,
-      rider: true,
       sellerGroups: {
         where: {
           sellerId: user.id,
