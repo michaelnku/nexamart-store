@@ -24,8 +24,12 @@ export const acceptOrderAction = async (sellerGroupId: string) => {
 
     revalidatePath("/marketplace/dashboard/seller/orders");
     return { success: "Order accepted" };
-  } catch {
-    return { error: "Failed to accept order" };
+  } catch (error) {
+    console.error("acceptOrderAction error:", error);
+    return {
+      error:
+        error instanceof Error ? error.message : "Failed to accept order",
+    };
   }
 };
 
