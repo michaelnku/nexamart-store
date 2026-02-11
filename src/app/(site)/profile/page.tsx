@@ -6,12 +6,18 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import DeleteAcountModal from "@/components/modal/DeleteAcountModal";
 import ReferralCodeCard from "../_components/ReferralCodeCard";
+import { getUserInitials } from "@/lib/user";
 
 export default async function ProfilePage() {
   const user = await CurrentUser();
   if (!user) return null;
 
   const avatar = user?.profileAvatar?.url ?? user?.image ?? null;
+  const initials = getUserInitials({
+    name: user?.name ?? null,
+    username: user?.username ?? null,
+    email: user?.email ?? null,
+  });
   const referralCode = await prisma.referralCode.findUnique({
     where: { userId: user.id },
     select: { code: true },
@@ -30,7 +36,6 @@ export default async function ProfilePage() {
         </p>
       </header>
 
-      {/* PROFILE CARD */}
       <Card className="border-gray-200">
         <CardContent className="pt-6 flex flex-col sm:flex-row gap-6 items-center sm:items-start">
           <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 shrink-0">
@@ -45,19 +50,20 @@ export default async function ProfilePage() {
             ) : (
               <div className="w-full h-full rounded-full border-2 border-dashed border-[var(--brand-blue)] flex items-center justify-center">
                 <div className="uppercase text-lg sm:text-xl font-semibold text-[var(--brand-blue)]">
-                  {user?.name?.[0] ?? user?.email[0]}
+                  {initials}
                 </div>
               </div>
             )}
           </div>
           <div className="text-center sm:text-left">
-            <h2 className="text-lg font-semibold">{user.name ?? "Your Profile"}</h2>
+            <h2 className="text-lg font-semibold">
+              {user.name ?? "Your Profile"}
+            </h2>
             <p className="text-sm text-muted-foreground">{user.email}</p>
           </div>
         </CardContent>
       </Card>
 
-      {/* ACCOUNT INFO */}
       <Card>
         <CardContent className="pt-6 space-y-2">
           <h3 className="font-medium">Account Information</h3>
@@ -76,7 +82,6 @@ export default async function ProfilePage() {
         <ReferralCodeCard code={referralCode.code} link={referralLink} />
       )}
 
-      {/* ACTIONS */}
       <Card>
         <CardContent className="pt-6 space-y-4">
           <h3 className="font-medium text-black">Actions</h3>

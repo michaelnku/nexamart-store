@@ -1,4 +1,5 @@
-import NextAuth from "next-auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import {
   publicRoutes,
   DEFAULT_LOGIN_REDIRECT,
@@ -14,9 +15,6 @@ import {
   sharedRoutes,
   MODERATOR_LOGIN_REDIRECT,
 } from "@/routes";
-import authConfig from "./auth.config";
-
-const { auth: Middleware } = NextAuth(authConfig);
 
 const ROLE_DASHBOARD: Record<string, string> = {
   ADMIN: ADMIN_LOGIN_REDIRECT,
@@ -35,12 +33,16 @@ const ROLE_PREFIX: Record<string, string> = {
 
 const STAFF_ROLES = new Set(["ADMIN", "SELLER", "RIDER", "MODERATOR"]);
 
-export default Middleware((req) => {
+export default async function middleware(req: NextRequest) {
+  const token = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET,
+  });
   const { nextUrl } = req;
   const pathname = nextUrl.pathname;
 
-  const isLoggedIn = !!req.auth;
-  const role = req.auth?.user.role;
+  const isLoggedIn = !!token;
+  const role = token?.role as string | undefined;
 
   const isApiAuthRoute = pathname.startsWith(apiAuthPrefix);
   const isAuthRoute = authRoutes.includes(pathname);
@@ -50,7 +52,7 @@ export default Middleware((req) => {
 
   // Logged-in staff should never land on "/"
   if (pathname === "/" && isLoggedIn && role && STAFF_ROLES.has(role)) {
-    return Response.redirect(new URL(ROLE_DASHBOARD[role], nextUrl));
+    return NextResponse.redirect(new URL(ROLE_DASHBOARD[role], nextUrl));
   }
 
   if (pathname.startsWith("/api/currency-rates")) {
@@ -65,7 +67,7 @@ export default Middleware((req) => {
     return;
   }
 
-  console.log("Middleware isLoggedIn:", !!req.auth);
+  console.log("Middleware isLoggedIn:", isLoggedIn);
 
   // --- DEBUG LOGGING ---
   if (process.env.NODE_ENV === "development") {
@@ -85,20 +87,20 @@ export default Middleware((req) => {
 
   //  If user is logged in and visits /login or /register → redirect to dashboard
   if (isAuthRoute && isLoggedIn && role) {
-    return Response.redirect(new URL(ROLE_DASHBOARD[role], nextUrl));
+    return NextResponse.redirect(new URL(ROLE_DASHBOARD[role], nextUrl));
   }
 
   //  If user is not logged in and visits a protected page → redirect to /login
   if (!isLoggedIn && !isPublicRoute && !isAuthRoute) {
     console.log("🚫 Not logged in → redirecting to /login\n");
-    return Response.redirect(new URL("/auth/login", nextUrl));
+    return NextResponse.redirect(new URL("/auth/login", nextUrl));
   }
 
   //  ROLE-BASED AUTHORIZATION (STRICT)
   if (isLoggedIn && role) {
     // USER cannot access marketplace dashboards
     if (role === "USER" && pathname.startsWith("/marketplace")) {
-      return Response.redirect(new URL("/403", nextUrl));
+      return NextResponse.redirect(new URL("/403", nextUrl));
     }
 
     // Staff accessing wrong dashboard
@@ -109,14 +111,14 @@ export default Middleware((req) => {
         !pathname.startsWith(allowedPrefix) &&
         !pathname.startsWith("/marketplace")
       ) {
-        return Response.redirect(new URL("/403", nextUrl));
+        return NextResponse.redirect(new URL("/403", nextUrl));
       }
     }
   }
 
   console.log("✅ Access allowed\n");
   return;
-});
+}
 
 export const config = {
   matcher: [

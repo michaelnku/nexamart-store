@@ -30,6 +30,7 @@ export async function normalizeUser(
     name: db.name ?? "",
     username: db.username ?? "",
     image: db.image ?? null,
+    profileAvatar: (db.profileAvatar as UserDTO["profileAvatar"]) ?? null,
     isBanned: db.isBanned,
     isVerified,
   };

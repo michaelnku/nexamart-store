@@ -34,6 +34,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { getUserInitials } from "@/lib/user";
 
 type Props = {
   userData: UserDTO;
@@ -104,6 +105,11 @@ export default function ProfileForm({ userData }: Props) {
     user?.profileAvatar?.url ??
     user?.image ??
     null;
+  const initials = getUserInitials({
+    name: user?.name ?? null,
+    username: user?.username ?? null,
+    email: user?.email ?? null,
+  });
 
   return (
     <Card>
@@ -143,7 +149,7 @@ export default function ProfileForm({ userData }: Props) {
                   ) : (
                     <div className="w-full h-full rounded-full border flex items-center justify-center text-sm text-muted-foreground">
                       <div className="uppercase text-xl font-semibold">
-                        {user.name?.[0] ?? user.email[0]}
+                        {initials}
                       </div>
                     </div>
                   )}
