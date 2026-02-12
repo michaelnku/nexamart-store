@@ -224,9 +224,9 @@ export type CheckoutCartItem = {
 export type CheckoutPayload = {
   cartItems: CheckoutCartItem[];
   userId: string;
+  addressId: string;
   deliveryType: "HOME_DELIVERY" | "STATION_PICKUP" | "EXPRESS" | "STORE_PICKUP";
   distanceInMiles?: number;
-  deliveryAddress?: string | null;
   couponId?: string | null;
 };
 
@@ -456,6 +456,7 @@ export type OrderStatus =
   | "PENDING"
   | "ACCEPTED"
   | "SHIPPED"
+  | "OUT_FOR_DELIVERY"
   | "DELIVERED"
   | "COMPLETED"
   | "CANCELLED"

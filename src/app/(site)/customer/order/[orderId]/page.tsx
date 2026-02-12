@@ -49,12 +49,22 @@ export default async function OrderDetailsPage({
     return <p>Unauthorized</p>;
   }
 
+  const deliveryAddress = [
+    order.deliveryStreet,
+    order.deliveryCity,
+    order.deliveryState,
+    order.deliveryCountry,
+    order.deliveryPostal,
+  ]
+    .filter((part) => Boolean(part && part.trim()))
+    .join(", ");
+
   const orderDTO: OrderDetailDTO = {
     id: order.id,
     status: order.status,
     trackingNumber: order.trackingNumber,
     deliveryType: order.deliveryType,
-    deliveryAddress: order.deliveryAddress,
+    deliveryAddress,
     paymentMethod: order.paymentMethod,
     shippingFee: order.shippingFee,
     totalAmount: order.totalAmount,

@@ -16,10 +16,14 @@ export async function generateDeliveryOtpAndCreateDelivery(orderId: string) {
     where: { id: orderId },
     select: {
       id: true,
-      deliveryAddress: true,
+      deliveryStreet: true,
+      deliveryCity: true,
+      deliveryState: true,
+      deliveryCountry: true,
+      deliveryPostal: true,
       shippingFee: true,
       distanceInMiles: true,
-      user: { select: { phone: true } },
+      deliveryPhone: true,
     },
   });
 
@@ -30,12 +34,35 @@ export async function generateDeliveryOtpAndCreateDelivery(orderId: string) {
 
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-  const delivery = await prisma.delivery.create({
-    data: {
+  const deliveryAddress = [
+    order.deliveryStreet,
+    order.deliveryCity,
+    order.deliveryState,
+    order.deliveryCountry,
+    order.deliveryPostal,
+  ]
+    .filter((part) => Boolean(part && part.trim()))
+    .join(", ");
+
+  const delivery = await prisma.delivery.upsert({
+    where: { orderId },
+    update: {
+      status: "PENDING",
+      fee: order.shippingFee,
+      deliveryAddress,
+      distance: order.distanceInMiles,
+      otpHash,
+      otpExpiresAt: expiresAt,
+      otpAttempts: 0,
+      riderId: null,
+      assignedAt: null,
+      deliveredAt: null,
+    },
+    create: {
       orderId,
       status: "PENDING",
       fee: order.shippingFee,
-      deliveryAddress: order.deliveryAddress,
+      deliveryAddress,
       distance: order.distanceInMiles,
       otpHash,
       otpExpiresAt: expiresAt,
@@ -44,7 +71,7 @@ export async function generateDeliveryOtpAndCreateDelivery(orderId: string) {
 
   const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-otp`, {
     method: "POST",
-    body: JSON.stringify({ phone: order.phone }),
+    body: JSON.stringify({ phone: order.deliveryPhone }),
   });
 
   if (!res.ok) {

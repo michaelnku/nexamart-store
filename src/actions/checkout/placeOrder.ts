@@ -6,16 +6,17 @@ import { DeliveryType, PaymentMethod } from "@/generated/prisma/client";
 import { generateTrackingNumber } from "@/components/helper/generateTrackingNumber";
 import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
 import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
+import { generateDeliveryOtpAndCreateDelivery } from "@/lib/delivery/generateDeliveryOtp";
 
 export async function placeOrderAction({
-  deliveryAddress,
+  addressId,
   paymentMethod,
   deliveryType,
   distanceInMiles,
   couponId,
   idempotencyKey,
 }: {
-  deliveryAddress: string;
+  addressId: string;
   paymentMethod: PaymentMethod;
   deliveryType: DeliveryType;
   distanceInMiles?: number;
@@ -78,14 +79,29 @@ export async function placeOrderAction({
     return { error: "Food orders cannot be mixed with non-food items" };
   }
 
+  const itemsByStore = new Map<string, typeof cart.items>();
+
+  for (const item of cart.items) {
+    const storeId = item.product.store.id;
+    if (!itemsByStore.has(storeId)) itemsByStore.set(storeId, []);
+    itemsByStore.get(storeId)!.push(item);
+  }
+
   const subtotal = cart.items.reduce(
     (s, i) => s + i.quantity * (i.variant?.priceUSD ?? i.product.basePriceUSD),
     0,
   );
 
-  const shippingFee = cart.items.reduce((s, i) => {
-    return s + (i.product.store.shippingRatePerMile ?? 0) * miles;
-  }, 0);
+  const shippingByStore = new Map<string, number>();
+  for (const [storeId, items] of itemsByStore.entries()) {
+    const storeRate = items[0].product.store.shippingRatePerMile ?? 0;
+    shippingByStore.set(storeId, storeRate * miles);
+  }
+
+  const shippingFee = Array.from(shippingByStore.values()).reduce(
+    (sum, fee) => sum + fee,
+    0,
+  );
 
   const couponResult = await resolveCouponForOrder({
     userId,
@@ -98,14 +114,6 @@ export async function placeOrderAction({
 
   const discountAmount = couponResult.discountAmount ?? 0;
   const totalAmount = Math.max(0, subtotal + shippingFee - discountAmount);
-
-  const itemsByStore = new Map<string, typeof cart.items>();
-
-  for (const item of cart.items) {
-    const storeId = item.product.store.id;
-    if (!itemsByStore.has(storeId)) itemsByStore.set(storeId, []);
-    itemsByStore.get(storeId)!.push(item);
-  }
 
   const trackingNumber = generateTrackingNumber();
 
@@ -137,10 +145,29 @@ export async function placeOrderAction({
       });
     }
 
+    const address = await tx.address.findFirst({
+      where: {
+        id: addressId,
+        userId,
+      },
+    });
+
+    if (!address) {
+      throw new Error("Invalid address");
+    }
+
     const createdOrder = await tx.order.create({
       data: {
         userId,
-        deliveryAddress,
+
+        deliveryFullName: address.fullName,
+        deliveryPhone: address.phone,
+        deliveryStreet: address.street,
+        deliveryCity: address.city,
+        deliveryState: address.state ?? "",
+        deliveryCountry: address.country,
+        deliveryPostal: address.postalCode ?? "",
+
         paymentMethod,
         deliveryType,
         distanceInMiles: miles,
@@ -173,10 +200,7 @@ export async function placeOrderAction({
         0,
       );
 
-      const groupShipping = items.reduce(
-        (s) => s + (items[0].product.store.shippingRatePerMile ?? 0) * miles,
-        0,
-      );
+      const groupShipping = shippingByStore.get(storeId) ?? 0;
 
       const group = await tx.orderSellerGroup.create({
         data: {

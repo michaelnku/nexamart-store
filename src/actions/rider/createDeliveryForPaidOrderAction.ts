@@ -16,7 +16,11 @@ export async function createDeliveryForPaidOrderAction(orderId: string) {
       isPaid: true,
       delivery: { select: { id: true } },
       shippingFee: true,
-      deliveryAddress: true,
+      deliveryStreet: true,
+      deliveryCity: true,
+      deliveryState: true,
+      deliveryCountry: true,
+      deliveryPostal: true,
       distanceInMiles: true,
     },
   });
@@ -25,12 +29,22 @@ export async function createDeliveryForPaidOrderAction(orderId: string) {
   if (!order.isPaid) return { error: "Order not paid" };
   if (order.delivery) return { error: "Delivery already exists" };
 
+  const deliveryAddress = [
+    order.deliveryStreet,
+    order.deliveryCity,
+    order.deliveryState,
+    order.deliveryCountry,
+    order.deliveryPostal,
+  ]
+    .filter((part) => Boolean(part && part.trim()))
+    .join(", ");
+
   await prisma.delivery.create({
     data: {
       orderId,
       status: "PENDING",
       fee: order.shippingFee,
-      deliveryAddress: order.deliveryAddress,
+      deliveryAddress,
       distance: order.distanceInMiles,
     },
   });

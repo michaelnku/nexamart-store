@@ -48,6 +48,16 @@ export default async function SellerOrderDetails({
   const group = order.sellerGroups[0];
   if (!group) return "Seller group not found";
 
+  const deliveryAddress = [
+    order.deliveryStreet,
+    order.deliveryCity,
+    order.deliveryState,
+    order.deliveryCountry,
+    order.deliveryPostal,
+  ]
+    .filter((part) => Boolean(part && part.trim()))
+    .join(", ");
+
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-10">
       <div className="flex justify-between items-start gap-4 flex-wrap">
@@ -75,7 +85,7 @@ export default async function SellerOrderDetails({
         <p className="text-sm">{order.customer?.name}</p>
         <p className="text-sm">{order.customer?.email}</p>
         <p className="text-sm font-medium mt-2">Delivery Address</p>
-        <p className="text-sm text-gray-700">{order.deliveryAddress}</p>
+        <p className="text-sm text-gray-700">{deliveryAddress}</p>
       </div>
 
       <div className="rounded-xl border bg-white p-5 shadow-sm space-y-6">

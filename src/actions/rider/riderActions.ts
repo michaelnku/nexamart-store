@@ -3,7 +3,6 @@
 import { prisma } from "@/lib/prisma";
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { autoAssignRider } from "@/lib/rider/logistics";
-import { verifyDeliveryOtp } from "@/services/verifyDeliveryOtp";
 import { completeDeliveryAndPayRider } from "@/lib/rider/completeDeliveryPayout";
 import { DeliveryStatus } from "@/generated/prisma/client";
 
@@ -103,7 +102,7 @@ export async function riderVerifyDeliveryOtpAction(
   const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/verify-otp`, {
     method: "POST",
     body: JSON.stringify({
-      phone: delivery.order.phone,
+      phone: delivery.order.deliveryPhone,
       code: otp,
     }),
   });
@@ -209,7 +208,11 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
         select: {
           id: true,
           trackingNumber: true,
-          deliveryAddress: true,
+          deliveryStreet: true,
+          deliveryCity: true,
+          deliveryState: true,
+          deliveryCountry: true,
+          deliveryPostal: true,
           totalAmount: true,
           shippingFee: true,
           status: true,
@@ -220,5 +223,26 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
     },
   });
 
-  return { deliveries, counts, activeKey };
+  const deliveriesWithAddress = deliveries.map((delivery) => {
+    const order = delivery.order;
+    const deliveryAddress = [
+      order.deliveryStreet,
+      order.deliveryCity,
+      order.deliveryState,
+      order.deliveryCountry,
+      order.deliveryPostal,
+    ]
+      .filter((part) => Boolean(part && part.trim()))
+      .join(", ");
+
+    return {
+      ...delivery,
+      order: {
+        ...order,
+        deliveryAddress,
+      },
+    };
+  });
+
+  return { deliveries: deliveriesWithAddress, counts, activeKey };
 }

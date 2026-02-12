@@ -67,6 +67,10 @@ type CheckoutCartItem = {
     name: string;
     basePriceUSD: number;
     images: { imageUrl: string }[];
+    store: {
+      id: string;
+      shippingRatePerMile: number;
+    };
   };
 };
 
@@ -75,6 +79,7 @@ type CheckoutCart = {
 };
 
 type CheckoutAddress = {
+  id: string;
   fullName: string;
   phone: string;
   street: string;
@@ -152,16 +157,21 @@ export default function CheckoutSummary({ cart, address }: Props) {
   const shippingUSD = useMemo(() => {
     if (!address) return null;
 
-    switch (deliveryType) {
-      case "STORE_PICKUP":
-      case "STATION_PICKUP":
-        return 0;
-      case "EXPRESS":
-        return Math.round((address.distanceInMiles ?? 0) * 1200);
-      default:
-        return Math.round((address.distanceInMiles ?? 0) * 700);
+    const miles = address.distanceInMiles ?? 0;
+    const perStoreRate = new Map<string, number>();
+
+    for (const item of cart.items) {
+      perStoreRate.set(
+        item.product.store.id,
+        item.product.store.shippingRatePerMile ?? 0,
+      );
     }
-  }, [deliveryType, address]);
+
+    return Array.from(perStoreRate.values()).reduce(
+      (sum, rate) => sum + rate * miles,
+      0,
+    );
+  }, [address, cart.items]);
 
   const totalUSD = Math.max(0, subtotalUSD + (shippingUSD ?? 0) - discountUSD);
 
@@ -171,17 +181,17 @@ export default function CheckoutSummary({ cart, address }: Props) {
     wallet && wallet.balance > 0 && wallet.balance >= totalUSD;
 
   const handlePlaceOrder = (paymentMethod: PaymentMethod) => {
-    if (!address && deliveryType !== "STORE_PICKUP") {
+    if (!address) {
       toast.error("Add a delivery address first");
       return;
     }
 
     startTransition(async () => {
       const res = await placeOrderAction({
-        deliveryAddress: `${address?.street}, ${address?.city}, ${address?.state}`,
+        addressId: address.id,
         paymentMethod,
         deliveryType,
-        distanceInMiles: address?.distanceInMiles ?? 0,
+        distanceInMiles: address.distanceInMiles ?? 0,
         couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
         idempotencyKey: crypto.randomUUID(),
       });
@@ -199,6 +209,16 @@ export default function CheckoutSummary({ cart, address }: Props) {
 
 
   const onCheckout = async () => {
+    if (!user?.id) {
+      toast.error("You must be logged in to checkout.");
+      return;
+    }
+
+    if (!address) {
+      toast.error("Add a delivery address first");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await ky
@@ -209,22 +229,15 @@ export default function CheckoutSummary({ cart, address }: Props) {
               variantId: item.variantId ?? null,
               quantity: item.quantity,
             })),
-            userId: user?.id,
+            userId: user.id,
+            addressId: address.id,
             deliveryType,
-            distanceInMiles: address?.distanceInMiles ?? 0,
-            deliveryAddress: address
-              ? `${address.street}, ${address.city}, ${address.state}, ${address.country}`
-              : null,
+            distanceInMiles: address.distanceInMiles ?? 0,
             paymentMethod: "CARD",
             couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
           },
         })
         .json<{ url: string }>();
-
-      if (!user?.id) {
-        toast.error("You must be logged in to checkout.");
-        return;
-      }
 
       window.location.href = response.url;
     } catch (error) {

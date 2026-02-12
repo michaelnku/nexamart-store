@@ -12,7 +12,17 @@ export default async function CheckoutPage() {
     include: {
       items: {
         include: {
-          product: { include: { images: true } },
+          product: {
+            include: {
+              images: true,
+              store: {
+                select: {
+                  id: true,
+                  shippingRatePerMile: true,
+                },
+              },
+            },
+          },
           variant: true,
         },
       },

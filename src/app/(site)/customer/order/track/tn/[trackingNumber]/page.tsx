@@ -36,12 +36,22 @@ export default async function PublicTrackPage({
     );
   }
 
+  const deliveryAddress = [
+    order.deliveryStreet,
+    order.deliveryCity,
+    order.deliveryState,
+    order.deliveryCountry,
+    order.deliveryPostal,
+  ]
+    .filter((part) => Boolean(part && part.trim()))
+    .join(", ");
+
   const orderDTO: OrderTrackDTO = {
     id: order.id,
     trackingNumber: order.trackingNumber,
     status: order.status,
     deliveryType: order.deliveryType,
-    deliveryAddress: order.deliveryAddress,
+    deliveryAddress,
     paymentMethod: order.paymentMethod,
     shippingFee: order.shippingFee,
     totalAmount: order.totalAmount,

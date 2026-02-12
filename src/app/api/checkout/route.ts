@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { CheckoutCartItem, CheckoutPayload } from "@/lib/types";
 import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
+import { generateTrackingNumber } from "@/components/helper/generateTrackingNumber";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,13 +25,33 @@ export async function POST(req: Request) {
       cartItems,
       deliveryType,
       userId,
+      addressId,
       distanceInMiles,
-      deliveryAddress,
       couponId,
     } = body;
 
     if (!cartItems || cartItems.length === 0) {
       return new NextResponse("Cart is empty", { status: 400 });
+    }
+    if (!addressId) {
+      return new NextResponse("Address is required", { status: 400 });
+    }
+
+    const address = await prisma.address.findFirst({
+      where: { id: addressId, userId },
+      select: {
+        fullName: true,
+        phone: true,
+        street: true,
+        city: true,
+        state: true,
+        country: true,
+        postalCode: true,
+      },
+    });
+
+    if (!address) {
+      return new NextResponse("Invalid address", { status: 400 });
     }
 
     const products = await prisma.product.findMany({
@@ -73,9 +94,18 @@ export async function POST(req: Request) {
       });
     }
 
-    // Calculate shipping
-    const rate = 700;
-    const shippingFee = Math.round((distanceInMiles ?? 0) * rate);
+    const miles = distanceInMiles ?? 0;
+    const shippingByStore = new Map<string, number>();
+    for (const product of products) {
+      shippingByStore.set(
+        product.storeId,
+        (product.store.shippingRatePerMile ?? 0) * miles,
+      );
+    }
+    const shippingFee = Array.from(shippingByStore.values()).reduce(
+      (sum, fee) => sum + fee,
+      0,
+    );
 
     if (shippingFee > 0) {
       line_items.push({
@@ -101,16 +131,25 @@ export async function POST(req: Request) {
 
     const discountAmount = couponResult.discountAmount ?? 0;
     const totalAmount = Math.max(0, subtotal + shippingFee - discountAmount);
+    const trackingNumber = generateTrackingNumber();
 
     // Create order with items but do NOT assign sellerGroups yet
     const order = await prisma.order.create({
       data: {
         userId,
+        trackingNumber,
         totalAmount,
         shippingFee,
         deliveryType,
-        deliveryAddress,
-        distanceInMiles,
+        distanceInMiles: miles,
+        paymentMethod: "CARD",
+        deliveryFullName: address.fullName,
+        deliveryPhone: address.phone,
+        deliveryStreet: address.street,
+        deliveryCity: address.city,
+        deliveryState: address.state ?? "",
+        deliveryCountry: address.country,
+        deliveryPostal: address.postalCode ?? "",
         isPaid: false,
         isFoodOrder,
         couponId: couponResult.coupon?.id ?? null,

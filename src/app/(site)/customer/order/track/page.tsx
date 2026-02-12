@@ -22,11 +22,19 @@ export default async function TrackAllActiveOrdersPage() {
   });
 
   const orderDTOs = orders.map((order) => ({
+    deliveryAddress: [
+      order.deliveryStreet,
+      order.deliveryCity,
+      order.deliveryState,
+      order.deliveryCountry,
+      order.deliveryPostal,
+    ]
+      .filter((part) => Boolean(part && part.trim()))
+      .join(", "),
     id: order.id,
     trackingNumber: order.trackingNumber,
     status: order.status,
     deliveryType: order.deliveryType,
-    deliveryAddress: order.deliveryAddress,
     paymentMethod: order.paymentMethod,
     shippingFee: order.shippingFee,
     totalAmount: order.totalAmount,
