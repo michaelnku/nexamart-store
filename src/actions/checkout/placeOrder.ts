@@ -253,6 +253,10 @@ export async function placeOrderAction({
     await applyReferralRewardsForPaidOrder(order.id);
   }
 
+  if (order.isPaid && paymentMethod === "WALLET") {
+    await generateDeliveryOtpAndCreateDelivery(order.id);
+  }
+
   await prisma.cartItem.deleteMany({
     where: { cartId: cart.id },
   });

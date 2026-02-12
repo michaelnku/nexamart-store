@@ -148,7 +148,13 @@ export default function SiteNavbar({
                         setOpen(false);
                       }}
                     >
-                      <User className="w-4 h-4" /> My Account
+                      <Avatar size="sm">
+                        {avatarUrl ? (
+                          <AvatarImage src={avatarUrl} alt="Profile" />
+                        ) : null}
+                        <AvatarFallback>{initials}</AvatarFallback>
+                      </Avatar>
+                      My Account
                     </Link>
                   </DropdownMenuItem>
                 )}

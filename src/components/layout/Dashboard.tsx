@@ -31,7 +31,7 @@ const accountLinks = [
     href: "/customer/reviewsratings",
     icon: MessageSquareOffIcon,
   },
-  { name: "My Wallet", href: "/customer/wallet", icon: Wallet },
+  { name: "Wallet", href: "/customer/wallet", icon: Wallet },
   { name: "Coupons", href: "/customer/coupons", icon: Tag },
   {
     name: "Referrals",
@@ -83,9 +83,7 @@ export default function Dashboard() {
       <div className="px-4 pb-3">
         <div className="flex items-center gap-3">
           <Avatar size="lg">
-            {avatarUrl ? (
-              <AvatarImage src={avatarUrl} alt="Profile" />
-            ) : null}
+            {avatarUrl ? <AvatarImage src={avatarUrl} alt="Profile" /> : null}
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
           <div>

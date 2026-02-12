@@ -87,13 +87,63 @@ export async function riderVerifyDeliveryOtpAction(
 
   const delivery = await prisma.delivery.findUnique({
     where: { id: deliveryId },
-    select: { id: true, riderId: true, orderId: true },
+    include: {
+      order: true,
+    },
   });
 
   if (!delivery) return { error: "Delivery not found" };
   if (delivery.riderId !== userId) return { error: "Not assigned to rider" };
 
-  await verifyDeliveryOtp(deliveryId, otp);
+  if (!delivery.otpHash || !delivery.otpExpiresAt)
+    return { error: "OTP not generated" };
+
+  if (delivery.otpExpiresAt < new Date()) return { error: "OTP expired" };
+
+  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/verify-otp`, {
+    method: "POST",
+    body: JSON.stringify({
+      phone: delivery.order.phone,
+      code: otp,
+    }),
+  });
+
+  const result = await res.json();
+
+  if (!result.success) {
+    return { error: "Invalid OTP" };
+  }
+
+  await prisma.$transaction([
+    prisma.delivery.update({
+      where: { id: deliveryId },
+      data: {
+        status: "DELIVERED",
+        deliveredAt: new Date(),
+      },
+    }),
+    prisma.order.update({
+      where: { id: delivery.orderId },
+      data: {
+        status: "DELIVERED",
+        customerConfirmedAt: new Date(),
+      },
+    }),
+    prisma.orderTimeline.create({
+      data: {
+        orderId: delivery.orderId,
+        status: "DELIVERED",
+        message: "Delivery confirmed via OTP",
+      },
+    }),
+  ]);
+
+  await prisma.job.create({
+    data: {
+      type: "RELEASE_PAYOUT",
+      payload: { orderId: delivery.orderId },
+    },
+  });
 
   return { success: true };
 }
@@ -130,9 +180,9 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
   if (role !== "RIDER") return { error: "Forbidden" };
 
   const key = (statusKey ?? "assigned").toLowerCase();
-  const activeKey = (Object.keys(STATUS_KEY_MAP).includes(key)
-    ? key
-    : "assigned") as RiderDeliveryStatusKey;
+  const activeKey = (
+    Object.keys(STATUS_KEY_MAP).includes(key) ? key : "assigned"
+  ) as RiderDeliveryStatusKey;
 
   const countsRaw = await prisma.delivery.groupBy({
     by: ["status"],
@@ -141,12 +191,9 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
   });
 
   const counts = {
-    pending:
-      countsRaw.find((c) => c.status === "PENDING")?._count._all ?? 0,
-    assigned:
-      countsRaw.find((c) => c.status === "ASSIGNED")?._count._all ?? 0,
-    ongoing:
-      countsRaw.find((c) => c.status === "IN_TRANSIT")?._count._all ?? 0,
+    pending: countsRaw.find((c) => c.status === "PENDING")?._count._all ?? 0,
+    assigned: countsRaw.find((c) => c.status === "ASSIGNED")?._count._all ?? 0,
+    ongoing: countsRaw.find((c) => c.status === "IN_TRANSIT")?._count._all ?? 0,
     cancelled:
       countsRaw.find((c) => c.status === "CANCELLED")?._count._all ?? 0,
   };

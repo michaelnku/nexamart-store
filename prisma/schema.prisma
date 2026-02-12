@@ -366,9 +366,7 @@ model Order {
   phone           String?
   trackingNumber  String?        @unique
 
-  deliveryOtpHash      String?
-  deliveryOtpExpiresAt DateTime?
-  customerConfirmedAt  DateTime?
+  customerConfirmedAt DateTime?
 
   shippingFee     Float   @default(0)
   totalAmount     Float
@@ -466,6 +464,7 @@ enum OrderStatus {
   PENDING
   ACCEPTED
   SHIPPED
+  OUT_FOR_DELIVERY
   DELIVERED
   COMPLETED
   CANCELLED
@@ -523,7 +522,9 @@ model Delivery {
   orderId String  @unique
   riderId String?
 
-  otpAttempts Int @default(0)
+  otpHash      String?
+  otpExpiresAt DateTime?
+  otpAttempts  Int       @default(0)
 
   status          DeliveryStatus @default(PENDING)
   deliveryAddress String?
