@@ -46,6 +46,7 @@ export default function SellerOrdersTable({
     PENDING: "bg-yellow-200 text-yellow-800",
     ACCEPTED: "bg-[#e0efff] text-[#3c9ee0]",
     SHIPPED: "bg-purple-100 text-purple-700",
+    OUT_FOR_DELIVERY: "bg-indigo-100 text-indigo-700",
     DELIVERED: "bg-green-100 text-green-700",
     COMPLETED: "bg-green-200 text-green-800",
     CANCELLED: "bg-red-100 text-red-700",

@@ -73,5 +73,16 @@ export default async function OrderSuccessPage({
     })),
   };
 
-  return <OrderSummaryCard order={orderDTO} />;
+  const trackingNumber = order.trackingNumber ?? "NEX-ORD-XXXXX";
+
+  return (
+    <div className="">
+      <div className="mx-auto max-w-4xl rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        A one-time delivery code will be sent to your phone number. Please call
+        it out to the rider at the delivery point for order{" "}
+        <span className="font-semibold">{trackingNumber}</span>.
+      </div>
+      <OrderSummaryCard order={orderDTO} />
+    </div>
+  );
 }

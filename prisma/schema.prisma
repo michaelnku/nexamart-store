@@ -532,6 +532,9 @@ model Delivery {
   otpExpiresAt DateTime?
   otpAttempts  Int       @default(0)
 
+  isLocked Boolean   @default(false)
+  lockedAt DateTime?
+
   status          DeliveryStatus @default(PENDING)
   deliveryAddress String?
   distance        Float?

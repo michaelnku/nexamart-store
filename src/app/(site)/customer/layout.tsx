@@ -13,12 +13,12 @@ export default async function CustomerLayout({
   if (user.role !== "USER") redirect("/marketplace/dashboard");
 
   return (
-    <div className="h-screen overflow-hidden flex bg-background">
-      <aside className="hidden md:flex h-full w-64 shrink-0 bg-white dark:bg-neutral-950 border-r">
+    <div className="flex h-full min-h-0 overflow-hidden bg-background">
+      <aside className="hidden md:flex h-full w-64 shrink-0 border-r bg-white dark:bg-neutral-950">
         <Dashboard />
       </aside>
 
-      <main className="flex-1 h-full overflow-y-auto px-4 md:px-8 py-4">
+      <main className="h-full min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-8">
         {children}
       </main>
     </div>

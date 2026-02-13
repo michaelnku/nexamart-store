@@ -27,17 +27,6 @@ export async function POST(req: Request) {
 
   const session = event.data.object as Stripe.Checkout.Session;
 
-  const address = session?.customer_details?.address;
-  const addressComponents = [
-    address?.line1,
-    address?.line2,
-    address?.city,
-    address?.state,
-    address?.postal_code,
-    address?.country,
-  ];
-  const addressString = addressComponents.filter(Boolean).join(", ");
-
   if (event.type === "checkout.session.completed") {
     const orderId = session?.metadata?.orderId;
 
@@ -50,8 +39,7 @@ export async function POST(req: Request) {
       where: { id: orderId },
       data: {
         isPaid: true,
-        deliveryAddress: addressString,
-        phone: session?.customer_details?.phone ?? null,
+        deliveryPhone: session?.customer_details?.phone ?? undefined,
         status: "ACCEPTED",
       },
       include: {
@@ -129,6 +117,9 @@ export async function POST(req: Request) {
         (sum, i) => sum + i.price * i.quantity,
         0,
       );
+      const shippingFee =
+        (group.items[0]?.product.store.shippingRatePerMile ?? 0) *
+        order.distanceInMiles;
 
       const sg = await prisma.orderSellerGroup.create({
         data: {
@@ -136,7 +127,7 @@ export async function POST(req: Request) {
           storeId: group.storeId,
           sellerId: group.sellerId,
           subtotal,
-          shippingFee: 0,
+          shippingFee,
         },
       });
 

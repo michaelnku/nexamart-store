@@ -32,8 +32,9 @@ export async function advanceOrderStatusAction({
 
   const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
     PENDING: ["ACCEPTED", "CANCELLED"],
-    ACCEPTED: ["SHIPPED", "CANCELLED"],
-    SHIPPED: ["DELIVERED", "CANCELLED"],
+    ACCEPTED: ["SHIPPED", "OUT_FOR_DELIVERY", "CANCELLED"],
+    SHIPPED: ["OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"],
+    OUT_FOR_DELIVERY: ["DELIVERED", "CANCELLED"],
     DELIVERED: ["COMPLETED", "RETURN_REQUESTED"],
     COMPLETED: ["COMPLETED"],
     RETURN_REQUESTED: ["RETURNED"],
@@ -90,6 +91,8 @@ function defaultTimelineMessage(status: OrderStatus) {
       return "Seller accepted your order";
     case "SHIPPED":
       return "Order has been shipped";
+    case "OUT_FOR_DELIVERY":
+      return "Order is out for delivery";
     case "DELIVERED":
       return "Order delivered successfully";
     case "COMPLETED":

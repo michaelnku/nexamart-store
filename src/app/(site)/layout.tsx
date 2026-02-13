@@ -21,7 +21,7 @@ export default async function SiteLayout({
         user?.role === "MODERATOR") && <MarketPlaceNavbar initialUser={user} />}
 
       {/* PAGE CONTENT */}
-      <main className="flex-1 pt-16">{children}</main>
+      <main className="flex-1 min-h-0 pt-16">{children}</main>
 
       {/* FOOTER */}
       <Footer />
