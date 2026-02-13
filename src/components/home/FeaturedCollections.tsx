@@ -7,13 +7,13 @@ const COLLECTIONS = [
   {
     title: "Trending Now",
     icon: Flame,
-    href: "/products?sort=trending",
+    href: "/products?sort=Trending",
     description: "Popular this week",
   },
   {
     title: "New Arrivals",
     icon: Sparkles,
-    href: "/products?sort=new",
+    href: "/products?sort=New",
     description: "Just added",
   },
   {
@@ -25,17 +25,17 @@ const COLLECTIONS = [
   {
     title: "Top Rated",
     icon: Star,
-    href: "/products?sort=rating",
+    href: "/products?sort=Top_Rated",
     description: "Loved by buyers",
   },
 ];
 
 export default function FeaturedCollections() {
   return (
-    <section className="space-y-3">
+    <section className="h-full min-h-0 space-y-3">
       <h2 className="text-lg font-semibold">Featured Collections</h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid min-h-0 grid-cols-2 gap-4 md:grid-cols-4 items-stretch">
         {COLLECTIONS.map((item) => {
           const Icon = item.icon;
 
@@ -44,7 +44,7 @@ export default function FeaturedCollections() {
               key={item.title}
               href={item.href}
               className="
-                group flex flex-col gap-2
+                group flex h-full min-h-0 flex-col gap-2
                 rounded-xl border bg-card
                 p-4
                 hover:bg-muted transition-colors

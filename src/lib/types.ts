@@ -475,6 +475,10 @@ export type SellerOrder = {
   status: OrderStatus;
   deliveryType: DeliveryType;
   totalAmount: number;
+  sellerGroups: {
+    id: string;
+    status: string;
+  }[];
   customer?: {
     name?: string | null;
   } | null;

@@ -25,17 +25,27 @@ export default async function ProductsPage({
 }) {
   const { sort, minPrice, maxPrice } = await searchParams;
   const hasBudgetFilter = Boolean(minPrice || maxPrice);
+  const normalizedSort = (sort ?? "").trim();
 
   const orderBy: Prisma.ProductOrderByWithRelationInput =
     sort === "discount"
       ? { createdAt: "desc" }
-      : sort === "new"
+      : sort === "New"
         ? { createdAt: "desc" }
         : sort === "Top_Rated"
           ? { sold: "desc" }
-          : sort === "trending"
+          : sort === "Trending"
             ? { sold: "desc" }
             : { createdAt: "desc" };
+
+  const sortTitle =
+    normalizedSort === "discount"
+      ? "Discounted"
+      : normalizedSort === "Top_Rated"
+        ? "Top Rated"
+        : normalizedSort
+          ? normalizedSort.replaceAll("-", " ")
+          : "Shop";
 
   const products = await prisma.product.findMany({
     where: {
@@ -71,9 +81,7 @@ export default async function ProductsPage({
 
   return (
     <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-      <h1 className="text-xl font-semibold capitalize">
-        {sort ? sort.replaceAll("-", " ") : "Shop"} Products
-      </h1>
+      <h1 className="text-xl font-semibold">{sortTitle} Products</h1>
 
       {products.length === 0 ? (
         <div className="rounded-xl border bg-card p-8 text-center">

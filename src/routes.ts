@@ -24,6 +24,7 @@ export const authRoutes = [
   "/auth/seller/register",
   "/auth/rider/register",
   "/auth/admin/register",
+  "/auth/redirecting",
 ];
 
 export const apiAuthPrefix = "/api/auth";

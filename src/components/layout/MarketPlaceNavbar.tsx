@@ -57,17 +57,18 @@ export default function MarketPlaceNavbar({
 }) {
   const pathname = usePathname();
   const { data: user, isLoading, isError } = useCurrentUserQuery(initialUser);
+  const currentUser = user ?? initialUser;
   const [hasNewAlert, setHasNewAlert] = useState(false);
 
   const [open, setOpen] = useState(false);
 
-  useDashboardEvents(user?.id, user?.role, setHasNewAlert);
+  useDashboardEvents(currentUser?.id, currentUser?.role, setHasNewAlert);
   const logout = useLogout();
 
-  if (isLoading) return <DashboardPageSkeleton />;
-  if (isError) return null;
+  if (isLoading && !currentUser) return <DashboardPageSkeleton />;
+  if (isError && !currentUser) return null;
 
-  const role = user?.role;
+  const role = currentUser?.role;
   const dashboardTitle =
     role === "SELLER"
       ? "Seller Center"
@@ -149,14 +150,14 @@ export default function MarketPlaceNavbar({
     }
   };
 
-  const avatarUrl = user?.image || user?.profileAvatar?.url;
+  const avatarUrl = currentUser?.image || currentUser?.profileAvatar?.url;
 
   return (
     <header className="sticky top-0 z-50 light:bg-white/90 backdrop-blur border-b shadow-sm">
       <div className="flex items-center justify-between h-16 px-4 md:px-8">
         <div className="flex items-center gap-3 cursor-pointer">
           <Link
-            href={getHomePath(user?.role)}
+            href={getHomePath(currentUser?.role)}
             className="flex items-center gap-2"
           >
             <Image
@@ -187,7 +188,7 @@ export default function MarketPlaceNavbar({
         <div className="hidden md:flex items-center gap-7">
           {quickNav.map((item) => {
             const active = item.onClick
-              ? item.isActive?.() ?? false
+              ? (item.isActive?.() ?? false)
               : item.href
                 ? isActive(item.href)
                 : false;
@@ -238,9 +239,9 @@ export default function MarketPlaceNavbar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 hover:text-[var(--brand-blue)] transition">
-                {user?.image ? (
+                {currentUser?.image ? (
                   <Image
-                    src={user.image}
+                    src={currentUser.image}
                     alt="User"
                     width={32}
                     height={32}
@@ -249,20 +250,22 @@ export default function MarketPlaceNavbar({
                 ) : (
                   <div className="w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center">
                     <span className="text-xs font-semibold text-gray-700">
-                      {getUserInitials(user)}
+                      {getUserInitials(currentUser)}
                     </span>
                   </div>
                 )}
                 <span className="hidden lg:block font-semibold">
-                  {user
-                    ? `Hi, ${user?.name?.split(" ")[0] || user.username}`
+                  {currentUser
+                    ? `Hi, ${currentUser?.name?.split(" ")[0] || currentUser.username}`
                     : "Account"}
                 </span>
               </button>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end" className="w-64 py-2">
-              <p className="px-4 pb-2 text-xs text-gray-500">{user?.email}</p>
+              <p className="px-4 pb-2 text-xs text-gray-500">
+                {currentUser?.email}
+              </p>
               <DropdownMenuSeparator />
 
               <DropdownMenuItem asChild>
@@ -351,7 +354,7 @@ export default function MarketPlaceNavbar({
                   ) : (
                     <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center border shadow-sm shrink-0">
                       <span className="text-sm font-semibold text-gray-700">
-                        {getUserInitials(user)}
+                        {getUserInitials(currentUser)}
                       </span>
                     </div>
                   )}
@@ -359,8 +362,8 @@ export default function MarketPlaceNavbar({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-[15px] truncate">
-                        {user
-                          ? `Hi, ${user.name?.split(" ")[0] || user.username}`
+                        {currentUser
+                          ? `Hi, ${currentUser?.name?.split(" ")[0] || currentUser?.username}`
                           : "Welcome"}
                       </p>
 
@@ -368,12 +371,12 @@ export default function MarketPlaceNavbar({
                     </div>
 
                     <p className="text-sm text-gray-500 truncate">
-                      {user?.email}
+                      {currentUser?.email}
                     </p>
 
-                    {user?.role && (
+                    {currentUser?.role && (
                       <span className="inline-block mt-1 text-[10px] bg-[var(--brand-blue-light)] text-[var(--brand-blue)] px-2 py-[2px] rounded uppercase font-semibold">
-                        {user.role}
+                        {currentUser.role}
                       </span>
                     )}
                   </div>
@@ -383,7 +386,7 @@ export default function MarketPlaceNavbar({
               {/* Drawer Side Nav */}
               <div className="py-2 px-2">
                 <MobileSideNav
-                  initialUser={user ?? null}
+                  initialUser={currentUser ?? null}
                   onNavigate={() => setOpen(false)}
                 />
               </div>
@@ -455,7 +458,6 @@ export default function MarketPlaceNavbar({
           })()}
         </div>
       </div>
-
     </header>
   );
 }

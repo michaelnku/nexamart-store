@@ -76,7 +76,7 @@ export default async function SellerOrderDetails({
         <Badge className="px-4 py-1 text-sm capitalize">
           {group.status === "CANCELLED"
             ? "Cancelled"
-            : group.status.replace("_", " ")}
+            : group.status.replaceAll("_", " ")}
         </Badge>
       </div>
 

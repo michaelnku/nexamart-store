@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   acceptOrderAction,
@@ -32,13 +32,30 @@ export default function SellerOrdersTable({
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
 
   const [isPending, startTransition] = useTransition();
+  const [optimisticShipped, setOptimisticShipped] = useState<Set<string>>(
+    () => new Set(),
+  );
 
-  const handleAction = (actionFn: SellerOrderAction, id: string) => {
+  const handleAction = (
+    actionFn: SellerOrderAction,
+    sellerGroupId?: string,
+    onSuccess?: () => void,
+  ) => {
     if (isPending) return;
+    if (!sellerGroupId) {
+      toast.error("Seller group not found for this order");
+      return;
+    }
 
     startTransition(async () => {
-      const res = await actionFn(id);
-      res?.error ? toast.error(res.error) : toast.success(res.success);
+      const res = await actionFn(sellerGroupId);
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
+
+      toast.success(res.success);
+      onSuccess?.();
     });
   };
 
@@ -87,6 +104,13 @@ export default function SellerOrdersTable({
                 key={o.id}
                 className="border-t hover:bg-gray-50 transition-colors"
               >
+                {(() => {
+                  const sellerGroupId = o.sellerGroups?.[0]?.id;
+                  const isShipped =
+                    o.status === "SHIPPED" ||
+                    (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
+                  return (
+                    <>
                 <td className="p-4 font-medium">
                   <Link
                     href={`/marketplace/dashboard/seller/orders/${o.id}`}
@@ -130,8 +154,10 @@ export default function SellerOrdersTable({
                       <>
                         <Button
                           size="sm"
-                          disabled={isPending}
-                          onClick={() => handleAction(acceptOrderAction, o.id)}
+                          disabled={isPending || !sellerGroupId}
+                          onClick={() =>
+                            handleAction(acceptOrderAction, sellerGroupId)
+                          }
                           className="flex gap-1 bg-[#3c9ee0] hover:bg-[#318bc4] text-white"
                         >
                           {isPending ? (
@@ -144,9 +170,11 @@ export default function SellerOrdersTable({
 
                         <Button
                           size="sm"
-                          disabled={isPending}
+                          disabled={isPending || !sellerGroupId}
                           variant="destructive"
-                          onClick={() => handleAction(cancelOrderAction, o.id)}
+                          onClick={() =>
+                            handleAction(cancelOrderAction, sellerGroupId)
+                          }
                           className="flex gap-1"
                         >
                           <XCircle className="w-4 h-4" />
@@ -155,19 +183,29 @@ export default function SellerOrdersTable({
                       </>
                     )}
 
-                    {o.status === "ACCEPTED" && (
+                    {(o.status === "ACCEPTED" || isShipped) && (
                       <Button
                         size="sm"
-                        disabled={isPending}
-                        onClick={() => handleAction(shipOrderAction, o.id)}
+                        disabled={isPending || !sellerGroupId || isShipped}
+                        onClick={() =>
+                          handleAction(shipOrderAction, sellerGroupId, () => {
+                            if (!sellerGroupId) return;
+                            setOptimisticShipped((prev) =>
+                              new Set(prev).add(sellerGroupId),
+                            );
+                          })
+                        }
                         className="flex gap-1 bg-[#3c9ee0] hover:bg-[#318bc4] text-white"
                       >
                         <Truck className="w-4 h-4" />
-                        Mark as Shipped
+                        {isShipped ? "Shipped" : "Mark as Shipped"}
                       </Button>
                     )}
                   </div>
                 </td>
+                    </>
+                  );
+                })()}
               </tr>
             ))}
           </tbody>
@@ -187,6 +225,13 @@ export default function SellerOrdersTable({
             key={o.id}
             className="border rounded-xl bg-white p-4 shadow-sm flex flex-col gap-3"
           >
+            {(() => {
+              const sellerGroupId = o.sellerGroups?.[0]?.id;
+              const isShipped =
+                o.status === "SHIPPED" ||
+                (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
+              return (
+                <>
             <div className="flex justify-between items-center">
               <p className="font-semibold">#{o.id.slice(-6)}</p>
               <span
@@ -225,8 +270,10 @@ export default function SellerOrdersTable({
                 <>
                   <Button
                     size="sm"
-                    disabled={isPending}
-                    onClick={() => handleAction(acceptOrderAction, o.id)}
+                    disabled={isPending || !sellerGroupId}
+                    onClick={() =>
+                      handleAction(acceptOrderAction, sellerGroupId)
+                    }
                     className="flex-1 bg-[#3c9ee0] hover:bg-[#318bc4] text-white"
                   >
                     {isPending ? (
@@ -238,9 +285,11 @@ export default function SellerOrdersTable({
 
                   <Button
                     size="sm"
-                    disabled={isPending}
+                    disabled={isPending || !sellerGroupId}
                     variant="destructive"
-                    onClick={() => handleAction(cancelOrderAction, o.id)}
+                    onClick={() =>
+                      handleAction(cancelOrderAction, sellerGroupId)
+                    }
                     className="flex-1"
                   >
                     Cancel
@@ -248,17 +297,27 @@ export default function SellerOrdersTable({
                 </>
               )}
 
-              {o.status === "ACCEPTED" && (
+              {(o.status === "ACCEPTED" || isShipped) && (
                 <Button
                   size="sm"
-                  disabled={isPending}
-                  onClick={() => handleAction(shipOrderAction, o.id)}
+                  disabled={isPending || !sellerGroupId || isShipped}
+                  onClick={() =>
+                    handleAction(shipOrderAction, sellerGroupId, () => {
+                      if (!sellerGroupId) return;
+                      setOptimisticShipped((prev) =>
+                        new Set(prev).add(sellerGroupId),
+                      );
+                    })
+                  }
                   className="flex-1 bg-[#3c9ee0] hover:bg-[#318bc4] text-white"
                 >
-                  Mark as Shipped
+                  {isShipped ? "Shipped" : "Mark as Shipped"}
                 </Button>
               )}
             </div>
+                </>
+              );
+            })()}
           </div>
         ))}
       </div>

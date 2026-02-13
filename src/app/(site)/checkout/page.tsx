@@ -1,6 +1,8 @@
-﻿import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
 import CheckoutSummary from "@/components/checkout/CheckoutSummary";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default async function CheckoutPage() {
   const userId = await CurrentUserId();
@@ -35,8 +37,14 @@ export default async function CheckoutPage() {
   });
 
   if (!cart)
-    return <p className="text-center p-10 min-h-full">Your cart is empty.</p>;
+    return (
+      <div className="min-h-full px-4 py-24 text-center space-y-4">
+        <p className="text-gray-500">Your cart is empty.</p>
+        <Button asChild variant="outline">
+          <Link href="/customer/order/history">View Orders</Link>
+        </Button>
+      </div>
+    );
 
   return <CheckoutSummary cart={cart} address={address} />;
 }
-
