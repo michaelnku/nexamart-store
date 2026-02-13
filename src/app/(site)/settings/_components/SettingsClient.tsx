@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -27,7 +27,7 @@ export default function SettingsClient({ addresses, preferences }: Props) {
   const [active, setActive] = useState("account");
 
   return (
-    <div className="min-h-screen bg-background py-4">
+    <div className="min-h-full bg-background py-4">
       <SettingsMobileNav active={active} onChange={setActive} />
 
       <div className="max-w-6xl mx-auto flex gap-8 px-4 py-12">
@@ -60,3 +60,4 @@ export default function SettingsClient({ addresses, preferences }: Props) {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { registerSchema, registerSchemaType } from "@/lib/zodValidation";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,7 @@ const SellerRegisterForm = () => {
 
   return (
     <main
-      className="min-h-screen flex items-center justify-center px-4 py-10
+      className="min-h-full flex items-center justify-center px-4 py-10
       bg-gradient-to-br from-[var(--brand-blue-light)]/40 via-white to-gray-50
       dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950"
     >
@@ -268,3 +268,4 @@ const SellerRegisterForm = () => {
 };
 
 export default SellerRegisterForm;
+

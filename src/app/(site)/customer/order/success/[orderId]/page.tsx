@@ -31,14 +31,14 @@ export default async function OrderSuccessPage({
 
   if (!order)
     return (
-      <p className="text-center text-red-500 py-40 min-h-screen">
+      <p className="text-center text-red-500 py-40 min-h-full">
         Order not found.
       </p>
     );
 
   if (order.userId !== userId)
     return (
-      <p className="text-center text-red-500 py-40 min-h-screen">
+      <p className="text-center text-red-500 py-40 min-h-full">
         Unauthorized access.
       </p>
     );

@@ -1,4 +1,3 @@
-//my homecontent
 import ProductRow from "@/components/home/ProductRow";
 import { CurrentUser } from "@/lib/currentUser";
 import { Suspense } from "react";

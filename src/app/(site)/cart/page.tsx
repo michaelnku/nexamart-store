@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
 import CartPage from "@/components/product/CartPage";
 
@@ -42,7 +42,7 @@ export default async function page() {
 
   if (!cart || cart.items.length === 0) {
     return (
-      <div className="p-6 max-w-7xl mx-auto min-h-screen py-16 text-center">
+      <div className="p-6 max-w-7xl mx-auto min-h-full py-16 text-center">
         <p>Your cart is empty</p>
       </div>
     );
@@ -54,3 +54,4 @@ export default async function page() {
 
   return <CartPage cart={cart} mixedCart={mixedCart} />;
 }
+

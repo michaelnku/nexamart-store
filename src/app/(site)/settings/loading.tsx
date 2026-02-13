@@ -1,8 +1,8 @@
-import { Skeleton } from "@/components/ui/skeleton";
+﻿import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SettingsSkeleton() {
   return (
-    <div className="min-h-screen bg-background py-4">
+    <div className="min-h-full bg-background py-4">
       {/* MOBILE NAV SKELETON */}
       <div className="md:hidden px-4">
         <div className="flex gap-2 overflow-x-auto pb-2">
@@ -41,3 +41,4 @@ export default function SettingsSkeleton() {
     </div>
   );
 }
+

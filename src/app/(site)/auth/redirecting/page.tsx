@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -47,7 +47,7 @@ export default function RedirectingPage() {
   }, [user, router]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+    <div className="min-h-full flex flex-col items-center justify-center gap-4">
       <Image
         src="https://ijucjait38.ufs.sh/f/rO7LkXAj4RVlnNw2KuOByscQRmqV3jX4rStz8G2Mv0IpxKJA"
         alt="logo"
@@ -59,3 +59,4 @@ export default function RedirectingPage() {
     </div>
   );
 }
+

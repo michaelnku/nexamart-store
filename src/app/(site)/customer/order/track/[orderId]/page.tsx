@@ -15,7 +15,7 @@ export default async function TrackOrderPage({
 
   if (!userId) {
     return (
-      <main className="min-h-screen flex items-center justify-center px-4">
+      <main className="min-h-full flex items-center justify-center px-4">
         <p className="text-gray-600">
           Please{" "}
           <Link href="/login" className="text-blue-600 underline">
@@ -49,7 +49,7 @@ export default async function TrackOrderPage({
 
   if (!order) {
     return (
-      <main className="min-h-screen flex items-center justify-center px-4">
+      <main className="min-h-full flex items-center justify-center px-4">
         <p className="text-red-500">Order not found or unauthorized.</p>
       </main>
     );

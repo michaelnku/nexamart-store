@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { registerSchema, registerSchemaType } from "@/lib/zodValidation";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ export default function RegisterForm() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-neutral-950 px-4 py-10">
+    <main className="min-h-full flex items-center justify-center bg-gray-50 dark:bg-neutral-950 px-4 py-10">
       <div className="w-full max-w-md bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-lg p-8 space-y-6">
         <div className="text-center space-y-1">
           <h1
@@ -266,3 +266,4 @@ export default function RegisterForm() {
     </main>
   );
 }
+

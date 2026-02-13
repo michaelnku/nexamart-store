@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   loggedInUserSchema,
@@ -51,7 +51,7 @@ export default function RiderLoginForm() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-orange-100 dark:bg-neutral-950 px-4 py-10">
+    <main className="min-h-full flex items-center justify-center bg-orange-100 dark:bg-neutral-950 px-4 py-10">
       <div className="w-full max-w-md bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-lg p-8 space-y-7">
         {/* Error */}
         {error && (
@@ -159,7 +159,7 @@ export default function RiderLoginForm() {
               {isPending ? (
                 <span className="inline-flex gap-2 items-center">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Signing in…
+                  Signing inâ€¦
                 </span>
               ) : (
                 "Sign in as Rider"
@@ -195,3 +195,4 @@ export default function RiderLoginForm() {
     </main>
   );
 }
+

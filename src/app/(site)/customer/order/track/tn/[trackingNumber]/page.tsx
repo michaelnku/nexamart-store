@@ -30,7 +30,7 @@ export default async function PublicTrackPage({
 
   if (!order) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <p className="text-red-500">Tracking number not found.</p>
       </div>
     );

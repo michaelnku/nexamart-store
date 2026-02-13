@@ -24,6 +24,7 @@ export default async function ProductsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const { sort, minPrice, maxPrice } = await searchParams;
+  const hasBudgetFilter = Boolean(minPrice || maxPrice);
 
   const orderBy: Prisma.ProductOrderByWithRelationInput =
     sort === "discount"
@@ -74,11 +75,21 @@ export default async function ProductsPage({
         {sort ? sort.replaceAll("-", " ") : "Shop"} Products
       </h1>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {products.map((product) => (
-          <PublicProductCard key={product.id} product={product} />
-        ))}
-      </div>
+      {products.length === 0 ? (
+        <div className="rounded-xl border bg-card p-8 text-center">
+          <p className="text-base font-medium">
+            {hasBudgetFilter
+              ? "No products found for this budget. Try another budget-friendly range."
+              : "No products found."}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {products.map((product) => (
+            <PublicProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      )}
     </main>
   );
 }

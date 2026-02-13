@@ -1,4 +1,3 @@
-//sellerOrderActions.ts
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -35,13 +34,27 @@ export const acceptOrderAction = async (sellerGroupId: string) => {
 
 export const shipOrderAction = async (sellerGroupId: string) => {
   try {
-    await prisma.orderSellerGroup.update({
+    const group = await prisma.orderSellerGroup.update({
       where: { id: sellerGroupId },
       data: { status: "ARRIVED_AT_HUB" },
+      select: { orderId: true },
     });
+
+    const remaining = await prisma.orderSellerGroup.count({
+      where: {
+        orderId: group.orderId,
+        status: { not: "ARRIVED_AT_HUB" },
+      },
+    });
+
+    if (remaining === 0) {
+      await autoAssignRider(group.orderId);
+    }
+
     revalidatePath("/marketplace/dashboard/seller/orders");
     return { success: "Order marked as shipped" };
-  } catch {
+  } catch (error) {
+    console.error(error);
     return { error: "Failed to update order" };
   }
 };

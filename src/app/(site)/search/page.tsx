@@ -1,4 +1,4 @@
-import {
+﻿import {
   getTrendingSearches,
   getUserRecentSearches,
   globalSearchAction,
@@ -25,7 +25,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   if (!query) {
     return (
-      <main className="max-w-7xl min-h-screen mx-auto px-4 py-10 space-y-8">
+      <main className="max-w-7xl min-h-full mx-auto px-4 py-10 space-y-8">
         <section>
           <h2 className="font-semibold mb-3">Trending searches</h2>
           <div className="flex flex-wrap gap-2">
@@ -51,7 +51,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   if (query.length < 2) {
     return (
-      <div className="max-w-7xl min-h-screen text-center mx-auto py-10">
+      <div className="max-w-7xl min-h-full text-center mx-auto py-10">
         <p className="text-gray-500 text-sm">
           Please enter at least 2 characters to search.
         </p>
@@ -69,12 +69,12 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const categories = results.categories ?? [];
 
   return (
-    <main className="max-w-7xl min-h-screen mx-auto px-4 py-10 space-y-6">
+    <main className="max-w-7xl min-h-full mx-auto px-4 py-10 space-y-6">
       {/* HEADER */}
       <div>
         <h1 className="text-xl font-semibold">
           Search results for{" "}
-          <span className="text-[var(--brand-blue)]">“{query}”</span>
+          <span className="text-[var(--brand-blue)]">â€œ{query}â€</span>
         </h1>
 
         <p className="text-sm text-gray-500 mt-1">
@@ -115,3 +115,4 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     </main>
   );
 }
+

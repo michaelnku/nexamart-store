@@ -72,8 +72,8 @@ const Footer = () => {
         <FooterColumn
           title="Earn With Us"
           links={[
-            { label: "Sell on Nexa-Mart", href: "/become-seller" },
-            { label: "Become a Rider", href: "/become-rider" },
+            { label: "Sell on NexaMart", href: "/auth/seller/register" },
+            { label: "Become a Rider", href: "/auth/rider/register" },
             { label: "Affiliate Program", href: "/affiliate" },
           ]}
         />

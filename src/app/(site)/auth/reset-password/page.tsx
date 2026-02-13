@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -17,7 +17,7 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <p className="text-center mt-24 text-red-500 min-h-screen py-62">
+      <p className="text-center mt-24 text-red-500 min-h-full py-62">
         Invalid reset link
       </p>
     );
@@ -37,7 +37,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-neutral-950 px-4 ">
+    <main className="min-h-full flex items-center justify-center bg-gray-50 dark:bg-neutral-950 px-4 ">
       <div className="w-full max-w-md bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-lg p-8 space-y-7">
         <h1
           className="text-2xl font-semibold mb-4"
@@ -77,3 +77,4 @@ export default function ResetPasswordPage() {
     </main>
   );
 }
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ export function NoActiveOrdersState({
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-6 px-4 text-center">
+    <main className="min-h-full flex flex-col items-center justify-center gap-6 px-4 text-center">
       <PackageSearch className="w-12 h-12 text-gray-400" />
 
       <div>
@@ -106,3 +106,4 @@ export function NoActiveOrdersState({
     </main>
   );
 }
+

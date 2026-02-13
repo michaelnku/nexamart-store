@@ -11,6 +11,7 @@ export const publicRoutes = [
   "/privacy-policy",
   "/terms-of-service",
   "/cookies",
+  "/help",
 ];
 
 export const authRoutes = [

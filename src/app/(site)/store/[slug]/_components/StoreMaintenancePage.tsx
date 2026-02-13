@@ -9,7 +9,7 @@ export default function StoreMaintenancePage({ slug }: { slug: string }) {
 
   return (
     <section>
-      <main className="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-4">
+      <main className="flex flex-col items-center justify-center min-h-full gap-4 text-center px-4">
         <Image
           src="https://ijucjait38.ufs.sh/f/rO7LkXAj4RVlnNw2KuOByscQRmqV3jX4rStz8G2Mv0IpxKJA"
           alt="Maintenance"

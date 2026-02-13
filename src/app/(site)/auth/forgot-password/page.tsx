@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition } from "react";
 import { forgotPassword } from "@/actions/password";
@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-neutral-950 px-4 py-10 sm:px-6 lg:px-8">
+    <main className="min-h-full flex items-center justify-center bg-gray-50 dark:bg-neutral-950 px-4 py-10 sm:px-6 lg:px-8">
       <div className="w-full max-w-md bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-lg p-6 sm:p-8 space-y-6">
         <h1
           className="text-xl sm:text-2xl font-semibold"
@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
           Forgot password
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground">
-          Enter your email and we’ll send you a reset link.
+          Enter your email and weâ€™ll send you a reset link.
         </p>
 
         <form onSubmit={onSubmit} className="space-y-5">
@@ -65,3 +65,4 @@ export default function ForgotPasswordPage() {
     </main>
   );
 }
+

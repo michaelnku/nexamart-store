@@ -114,7 +114,7 @@ const page = async ({ params }: StoreFrontProps) => {
   const isOwner = user?.id === store.userId;
 
   return (
-    <section className="min-h-screen py-4 p-6 bg-zinc-50 dark:bg-zinc-900">
+    <section className="min-h-full py-4 p-6 bg-zinc-50 dark:bg-zinc-900">
       <main className="max-w-6xl mx-auto space-y-12 shadow-md rounded-md ">
         {/* ░░░ Banner / Cover Photo ░░░ */}
         <div>

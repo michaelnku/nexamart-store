@@ -39,7 +39,7 @@ export default async function OrderDetailsPage({
 
   if (!order) {
     return (
-      <p className="text-center text-red-500 py-40 min-h-screen">
+      <p className="text-center text-red-500 py-40 min-h-full">
         Order not found
       </p>
     );
