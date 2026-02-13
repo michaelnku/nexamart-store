@@ -45,6 +45,7 @@ export default async function middleware(req: NextRequest) {
   const role = token?.role as string | undefined;
 
   const isApiAuthRoute = pathname.startsWith(apiAuthPrefix);
+  const isApiRoute = pathname.startsWith("/api");
   const isAuthRoute = authRoutes.includes(pathname);
   const isPublicRoute = publicRoutes.some(
     (route) => pathname === route || pathname.startsWith(route + "/"),
@@ -58,45 +59,36 @@ export default async function middleware(req: NextRequest) {
   if (pathname.startsWith("/api/currency-rates")) {
     return;
   }
+
   if (isApiAuthRoute) {
-    console.log("⏭ Skipping API Auth route\n");
     return;
   }
+
+  // Let API handlers manage their own auth/authorization responses.
+  if (isApiRoute) {
+    return;
+  }
+
   if (isPublicRoute) {
-    console.log("🌍 Public route → access allowed\n");
     return;
   }
 
-  console.log("Middleware isLoggedIn:", isLoggedIn);
-
-  // --- DEBUG LOGGING ---
-  if (process.env.NODE_ENV === "development") {
-    console.log("\n🔍 Middleware Debug Info:");
-    console.log("➡️ Path:", pathname);
-    console.log("👤 Logged In:", isLoggedIn);
-    console.log("🌐 isPublicRoute:", isPublicRoute);
-    console.log("🔐 isAuthRoute:", isAuthRoute);
-    console.log("🧩 isApiAuthRoute:", isApiAuthRoute);
-    console.log("---------------------------");
-  }
-
-  //shared routes
+  // shared routes
   if (isLoggedIn && sharedRoutes.some((route) => pathname.startsWith(route))) {
     return;
   }
 
-  //  If user is logged in and visits /login or /register → redirect to dashboard
+  // If user is logged in and visits auth pages -> redirect to dashboard
   if (isAuthRoute && isLoggedIn && role) {
     return NextResponse.redirect(new URL(ROLE_DASHBOARD[role], nextUrl));
   }
 
-  //  If user is not logged in and visits a protected page → redirect to /login
+  // If user is not logged in and visits a protected page -> redirect to login
   if (!isLoggedIn && !isPublicRoute && !isAuthRoute) {
-    console.log("🚫 Not logged in → redirecting to /login\n");
     return NextResponse.redirect(new URL("/auth/login", nextUrl));
   }
 
-  //  ROLE-BASED AUTHORIZATION (STRICT)
+  // Role-based authorization
   if (isLoggedIn && role) {
     // USER cannot access marketplace dashboards
     if (role === "USER" && pathname.startsWith("/marketplace")) {
@@ -116,7 +108,6 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
-  console.log("✅ Access allowed\n");
   return;
 }
 
