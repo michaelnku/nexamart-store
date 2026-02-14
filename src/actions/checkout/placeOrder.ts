@@ -125,7 +125,7 @@ export async function placeOrderAction({
       });
 
       if (!wallet || wallet.balance < totalAmount) {
-        throw new Error("Insufficient wallet balance");
+        return { error: "Insufficient wallet balance" };
       }
 
       await tx.wallet.update({
@@ -153,7 +153,7 @@ export async function placeOrderAction({
     });
 
     if (!address) {
-      throw new Error("Invalid address");
+      return { error: "Invalid address" };
     }
 
     const createdOrder = await tx.order.create({
