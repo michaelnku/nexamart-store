@@ -34,12 +34,13 @@ const ROLE_PREFIX: Record<string, string> = {
 const STAFF_ROLES = new Set(["ADMIN", "SELLER", "RIDER", "MODERATOR"]);
 
 export default async function middleware(req: NextRequest) {
-  const token = await getToken({
-    req,
-    secret: process.env.AUTH_SECRET,
-  });
   const { nextUrl } = req;
   const pathname = nextUrl.pathname;
+
+  const token = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  });
 
   const isLoggedIn = !!token;
   const role = token?.role as string | undefined;
