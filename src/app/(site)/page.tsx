@@ -4,24 +4,18 @@ import HomeContent from "./HomeContent";
 import { CurrentUser } from "@/lib/currentUser";
 import { redirect } from "next/navigation";
 import {
-  ADMIN_LOGIN_REDIRECT,
-  MODERATOR_LOGIN_REDIRECT,
-  RIDER_LOGIN_REDIRECT,
-  SELLER_LOGIN_REDIRECT,
-} from "@/routes";
-
-const STAFF_DASHBOARD: Record<string, string> = {
-  ADMIN: ADMIN_LOGIN_REDIRECT,
-  SELLER: SELLER_LOGIN_REDIRECT,
-  RIDER: RIDER_LOGIN_REDIRECT,
-  MODERATOR: MODERATOR_LOGIN_REDIRECT,
-};
+  getDashboardRedirectForRole,
+  isStaffRole,
+} from "@/lib/auth/roleRedirect";
 
 export default async function Home() {
   const user = await CurrentUser();
 
-  if (user?.role && STAFF_DASHBOARD[user.role]) {
-    redirect(STAFF_DASHBOARD[user.role]);
+  if (isStaffRole(user?.role)) {
+    const redirectTo = getDashboardRedirectForRole(user.role);
+    if (redirectTo) {
+      redirect(redirectTo);
+    }
   }
 
   return (

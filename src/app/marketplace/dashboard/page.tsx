@@ -1,4 +1,5 @@
 import { CurrentUser } from "@/lib/currentUser";
+import { getDashboardRedirectForRole, isStaffRole } from "@/lib/auth/roleRedirect";
 import { redirect } from "next/navigation";
 
 const page = async () => {
@@ -8,23 +9,14 @@ const page = async () => {
     redirect("/auth/login");
   }
 
-  switch (user.role) {
-    case "ADMIN":
-      redirect("/marketplace/dashboard/admin");
-      return;
-    case "SELLER":
-      redirect("/marketplace/dashboard/seller");
-      return;
-    case "RIDER":
-      redirect("/marketplace/dashboard/rider");
-      return;
-    case "MODERATOR":
-      redirect("/marketplace/dashboard/moderator");
-      return;
-    default:
-      redirect("/403");
-      return;
+  if (isStaffRole(user.role)) {
+    const redirectTo = getDashboardRedirectForRole(user.role);
+    if (redirectTo) {
+      redirect(redirectTo);
+    }
   }
+
+  redirect("/403");
 };
 
 export default page;

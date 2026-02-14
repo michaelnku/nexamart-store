@@ -1,29 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import authConfig from "./auth.config";
 import NextAuth from "next-auth";
 import {
+  getDashboardRedirectForRole,
+  isStaffRole,
+} from "@/lib/auth/roleRedirect";
+import {
   publicRoutes,
-  DEFAULT_LOGIN_REDIRECT,
   apiAuthPrefix,
   authRoutes,
   adminRoutePrefix,
   sellerRoutePrefix,
   riderRoutePrefix,
-  ADMIN_LOGIN_REDIRECT,
-  RIDER_LOGIN_REDIRECT,
-  SELLER_LOGIN_REDIRECT,
   moderatorRoutePrefix,
   sharedRoutes,
-  MODERATOR_LOGIN_REDIRECT,
 } from "@/routes";
-
-const ROLE_DASHBOARD: Record<string, string> = {
-  ADMIN: ADMIN_LOGIN_REDIRECT,
-  SELLER: SELLER_LOGIN_REDIRECT,
-  RIDER: RIDER_LOGIN_REDIRECT,
-  MODERATOR: MODERATOR_LOGIN_REDIRECT,
-  USER: DEFAULT_LOGIN_REDIRECT,
-};
 
 const ROLE_PREFIX: Record<string, string> = {
   ADMIN: adminRoutePrefix,
@@ -31,8 +22,6 @@ const ROLE_PREFIX: Record<string, string> = {
   RIDER: riderRoutePrefix,
   MODERATOR: moderatorRoutePrefix,
 };
-
-const STAFF_ROLES = new Set(["ADMIN", "SELLER", "RIDER", "MODERATOR"]);
 
 const { auth: Middleware } = NextAuth(authConfig);
 
@@ -50,8 +39,11 @@ export default Middleware((req) => {
     (route) => pathname === route || pathname.startsWith(route + "/"),
   );
 
-  if (pathname === "/" && isLoggedIn && role && STAFF_ROLES.has(role)) {
-    return NextResponse.redirect(new URL(ROLE_DASHBOARD[role], nextUrl));
+  if (pathname === "/" && isLoggedIn && isStaffRole(role)) {
+    const redirectTo = getDashboardRedirectForRole(role);
+    if (redirectTo) {
+      return NextResponse.redirect(new URL(redirectTo, nextUrl));
+    }
   }
 
   if (pathname.startsWith("/api/currency-rates")) {
@@ -75,7 +67,10 @@ export default Middleware((req) => {
   }
 
   if (isAuthRoute && isLoggedIn && role) {
-    return NextResponse.redirect(new URL(ROLE_DASHBOARD[role], nextUrl));
+    const redirectTo = getDashboardRedirectForRole(role);
+    if (redirectTo) {
+      return NextResponse.redirect(new URL(redirectTo, nextUrl));
+    }
   }
 
   if (!isLoggedIn && !isPublicRoute && !isAuthRoute) {
