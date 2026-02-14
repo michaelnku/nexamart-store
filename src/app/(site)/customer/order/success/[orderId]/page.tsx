@@ -45,6 +45,7 @@ export default async function OrderSuccessPage({
 
   const orderDTO: OrderSummaryDTO = {
     id: order.id,
+    createdAt: order.createdAt.toISOString(),
     deliveryType: order.deliveryType,
     trackingNumber: order.trackingNumber,
     totalAmount: order.totalAmount,

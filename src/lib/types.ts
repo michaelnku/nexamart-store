@@ -138,6 +138,7 @@ export type OrderItemDTO = {
 
 export type OrderSummaryDTO = {
   id: string;
+  createdAt: string;
   deliveryType: string;
   trackingNumber: string | null;
   totalAmount: number;

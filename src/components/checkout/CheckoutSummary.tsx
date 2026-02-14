@@ -188,24 +188,29 @@ export default function CheckoutSummary({ cart, address }: Props) {
     }
 
     startTransition(async () => {
-      const res = await placeOrderAction({
-        addressId: address.id,
-        paymentMethod,
-        deliveryType,
-        distanceInMiles: address.distanceInMiles ?? 0,
-        couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
-        idempotencyKey: idempotencyKeyRef.current,
-      });
+      try {
+        const res = await placeOrderAction({
+          addressId: address.id,
+          paymentMethod,
+          deliveryType,
+          distanceInMiles: address.distanceInMiles ?? 0,
+          couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
+          idempotencyKey: idempotencyKeyRef.current,
+        });
 
-      if ("error" in res) {
-        toast.error(res.error);
-        return;
+        if ("error" in res) {
+          toast.error(res.error);
+          return;
+        }
+
+        useCartStore.getState().clearCart();
+        idempotencyKeyRef.current = crypto.randomUUID();
+        toast.success("Order placed successfully!");
+        router.push(`/customer/order/success/${res.orderId}`);
+      } catch (error) {
+        console.error("Failed to place wallet order:", error);
+        toast.error("Checkout failed. Please try again.");
       }
-
-      useCartStore.getState().clearCart();
-      idempotencyKeyRef.current = crypto.randomUUID();
-      toast.success("Order placed successfully!");
-      router.push(`/customer/order/success/${res.orderId}`);
     });
   };
 

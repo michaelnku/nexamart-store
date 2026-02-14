@@ -14,21 +14,27 @@ type Props = {
 };
 
 const OrderSummaryCard = ({ order }: Props) => {
-  /* ETA between 4 – 7 days */
-  const min = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000);
-  const max = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+  const trackingNumber = order.trackingNumber ?? "NEX-ORD-XXXXX";
+  const deliveryTypeLabel = order.deliveryType
+    ? order.deliveryType.replaceAll("_", " ")
+    : "N/A";
+
+  // ETA window between 4 and 10 days from order creation
+  const orderCreatedAt = new Date(order.createdAt);
+  const min = new Date(orderCreatedAt.getTime() + 4 * 24 * 60 * 60 * 1000);
+  const max = new Date(orderCreatedAt.getTime() + 10 * 24 * 60 * 60 * 1000);
   const eta = `${min.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-  })} – ${max.toLocaleDateString("en-US", {
+  })} - ${max.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   })}`;
 
   const trackingUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/customer/order/track/tn/${order.trackingNumber}`
-      : `/customer/order/track/tn/${order.trackingNumber}`;
+      ? `${window.location.origin}/customer/order/track/tn/${trackingNumber}`
+      : `/customer/order/track/tn/${trackingNumber}`;
 
   const copyTrackingLink = async () => {
     try {
@@ -42,7 +48,7 @@ const OrderSummaryCard = ({ order }: Props) => {
   return (
     <main className="max-w-4xl mx-auto py-16 space-y-10">
       <ClearCartOnSuccess />
-      {/* ---------------- SUCCESS BANNER ---------------- */}
+
       <div className="bg-[#3c9ee0]/10 border border-[#3c9ee0]/30 py-8 rounded-xl shadow-sm text-center space-y-4">
         <CheckCircle className="w-14 h-14 text-[#3c9ee0] mx-auto" />
 
@@ -68,7 +74,7 @@ const OrderSummaryCard = ({ order }: Props) => {
 
           <span className="inline-flex gap-2 items-center">
             <p className="font-mono text-sm font-semibold text-[var(--brand-blue)]">
-              {order.trackingNumber}
+              {trackingNumber}
             </p>
             <Button
               variant="ghost"
@@ -81,9 +87,7 @@ const OrderSummaryCard = ({ order }: Props) => {
         </div>
       </div>
 
-      {/* ---------------- ORDER SUMMARY CARD ---------------- */}
       <div className="bg-white border rounded-xl p-5 shadow-sm space-y-8">
-        {/* ETA */}
         <p className="text-lg font-semibold">
           Estimated Arrival:{" "}
           <span className="text-[#3c9ee0] font-bold">{eta}</span>
@@ -92,11 +96,10 @@ const OrderSummaryCard = ({ order }: Props) => {
         <p className="text-sm text-gray-700">
           Delivery Method:{" "}
           <span className="font-semibold text-[#3c9ee0]">
-            {order.deliveryType.replace("_", " ")}
+            {deliveryTypeLabel}
           </span>
         </p>
 
-        {/* ITEMS */}
         <div className="space-y-4">
           {order.items.map((item) => (
             <div
@@ -126,7 +129,7 @@ const OrderSummaryCard = ({ order }: Props) => {
                 <p className="font-semibold mt-1 text-lg text-[#3c9ee0]">
                   {formatBaseUSD(item.price)}
                   <span className="text-gray-600 font-normal">
-                    × {item.quantity}
+                    x {item.quantity}
                   </span>
                 </p>
               </div>
@@ -134,17 +137,12 @@ const OrderSummaryCard = ({ order }: Props) => {
           ))}
         </div>
 
-        {/* TOTAL */}
         <div className="text-right text-xl font-bold text-[#3c9ee0]">
           Total Paid: {formatBaseUSD(order.totalAmount)}
         </div>
 
-        {/* ACTION BUTTONS */}
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
-          <Link
-            href={`/customer/order/track/tn/${order.trackingNumber}`}
-            className="w-full"
-          >
+          <Link href={`/customer/order/track/tn/${trackingNumber}`} className="w-full">
             <Button
               size="lg"
               className="w-full bg-[#3c9ee0] hover:bg-[#318bc4] text-white font-semibold rounded-lg shadow"
