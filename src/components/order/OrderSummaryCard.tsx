@@ -27,8 +27,8 @@ const OrderSummaryCard = ({ order }: Props) => {
 
   const trackingUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/track/tn/${order.trackingNumber}`
-      : `/track/tn/${order.trackingNumber}`;
+      ? `${window.location.origin}/customer/order/track/tn/${order.trackingNumber}`
+      : `/customer/order/track/tn/${order.trackingNumber}`;
 
   const copyTrackingLink = async () => {
     try {

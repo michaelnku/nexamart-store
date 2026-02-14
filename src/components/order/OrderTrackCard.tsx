@@ -40,8 +40,8 @@ export default function OrderTrackCard({ order }: Props) {
 
   const trackingUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/track/tn/${order.trackingNumber}`
-      : `/track/tn/${order.trackingNumber}`;
+      ? `${window.location.origin}/customer/order/track/tn/${order.trackingNumber}`
+      : `/customer/order/track/tn/${order.trackingNumber}`;
 
   const copyTrackingLink = async () => {
     try {
@@ -54,7 +54,6 @@ export default function OrderTrackCard({ order }: Props) {
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-10">
-      {/* ================= HEADER ================= */}
       <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
