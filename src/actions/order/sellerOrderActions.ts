@@ -63,30 +63,55 @@ export const cancelOrderAction = async (sellerGroupId: string) => {
   try {
     const group = await prisma.orderSellerGroup.findUnique({
       where: { id: sellerGroupId },
-      include: { order: true },
+      include: {
+        order: {
+          include: {
+            delivery: {
+              select: { id: true, riderId: true, status: true },
+            },
+          },
+        },
+      },
     });
 
     if (!group) return { error: "Order group not found" };
 
-    await prisma.$transaction([
-      prisma.orderSellerGroup.update({
+    await prisma.$transaction(async (tx) => {
+      await tx.orderSellerGroup.update({
         where: { id: sellerGroupId },
         data: { status: "CANCELLED" },
-      }),
-      prisma.order.update({
+      });
+
+      await tx.order.update({
         where: { id: group.orderId },
         data: { status: "CANCELLED" },
-      }),
-      prisma.orderTimeline.create({
+      });
+
+      await tx.orderTimeline.create({
         data: {
           orderId: group.orderId,
           status: "CANCELLED",
           message: "Order cancelled by seller",
         },
-      }),
-      prisma.wallet.update({
+      });
+
+      if (group.order.delivery) {
+        await tx.delivery.update({
+          where: { id: group.order.delivery.id },
+          data: { status: "CANCELLED" },
+        });
+
+        if (group.order.delivery.riderId) {
+          await tx.riderProfile.updateMany({
+            where: { userId: group.order.delivery.riderId },
+            data: { isAvailable: true },
+          });
+        }
+      }
+
+      await tx.wallet.upsert({
         where: { userId: group.order.userId },
-        data: {
+        update: {
           balance: { increment: group.subtotal + group.shippingFee },
           transactions: {
             create: {
@@ -96,11 +121,34 @@ export const cancelOrderAction = async (sellerGroupId: string) => {
             },
           },
         },
-      }),
-    ]);
+        create: {
+          userId: group.order.userId,
+          balance: group.subtotal + group.shippingFee,
+          totalEarnings: 0,
+          pending: 0,
+          currency: "USD",
+          transactions: {
+            create: {
+              type: "REFUND",
+              amount: group.subtotal + group.shippingFee,
+              description: `Refund for cancelled order #${group.order.id}`,
+            },
+          },
+        },
+      });
+    });
 
     revalidatePath("/marketplace/dashboard/seller/orders");
     revalidatePath(`/marketplace/dashboard/seller/orders/${group.orderId}`);
+    revalidatePath("/marketplace/dashboard/rider/deliveries");
+    revalidatePath("/customer/order/history");
+    revalidatePath(`/customer/order/${group.orderId}`);
+    revalidatePath(`/customer/order/track/${group.orderId}`);
+    if (group.order.trackingNumber) {
+      revalidatePath(`/customer/order/track/tn/${group.order.trackingNumber}`);
+    }
+    revalidatePath("/");
+
     return { success: "Order cancelled & refund issued" };
   } catch {
     return { error: "Failed to cancel order" };

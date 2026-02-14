@@ -8,12 +8,17 @@ export async function autoAssignRider(orderId: string) {
       id: true,
       userId: true,
       shippingFee: true,
-      delivery: true,
+      delivery: {
+        select: { id: true, riderId: true },
+      },
       sellerGroups: { select: { status: true } },
     },
   });
 
-  if (!order || order.delivery) return;
+  if (!order) return;
+
+  if (order.delivery?.riderId) return;
+
   if (order.sellerGroups.some((g) => g.status !== "ARRIVED_AT_HUB")) {
     return;
   }
@@ -28,32 +33,46 @@ export async function autoAssignRider(orderId: string) {
 
   if (!rider) return;
 
-  await prisma.$transaction([
-    prisma.delivery.create({
-      data: {
-        orderId,
-        riderId: rider.id,
-        fee: order.shippingFee,
-        status: "PENDING",
-        assignedAt: new Date(),
-      },
-    }),
-    prisma.riderProfile.update({
+  await prisma.$transaction(async (tx) => {
+    if (order.delivery?.id) {
+      await tx.delivery.update({
+        where: { id: order.delivery.id },
+        data: {
+          riderId: rider.id,
+          status: "ASSIGNED",
+          assignedAt: new Date(),
+        },
+      });
+    } else {
+      await tx.delivery.create({
+        data: {
+          orderId,
+          riderId: rider.id,
+          fee: order.shippingFee,
+          status: "ASSIGNED",
+          assignedAt: new Date(),
+        },
+      });
+    }
+
+    await tx.riderProfile.update({
       where: { userId: rider.id },
       data: { isAvailable: false },
-    }),
-    prisma.order.update({
+    });
+
+    await tx.order.update({
       where: { id: orderId },
       data: { status: "SHIPPED" },
-    }),
-    prisma.orderTimeline.create({
+    });
+
+    await tx.orderTimeline.create({
       data: {
         orderId,
         status: "SHIPPED",
         message: "Rider assigned automatically",
       },
-    }),
-  ]);
+    });
+  });
 
   await pusherServer.trigger(`user-${order.userId}`, "rider-assigned", {
     orderId,
