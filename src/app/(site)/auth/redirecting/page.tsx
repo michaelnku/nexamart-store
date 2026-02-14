@@ -3,15 +3,13 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { useSession } from "next-auth/react";
+import { DEFAULT_LOGIN_REDIRECT, MARKET_PLACE_LOGIN_REDIRECT } from "@/routes";
 import { useAuthStore } from "@/stores/useAuthstore";
 import Image from "next/image";
-import { DEFAULT_LOGIN_REDIRECT, MARKET_PLACE_LOGIN_REDIRECT } from "@/routes";
 
 export default function RedirectingPage() {
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
-  const { data: session, status } = useSession();
 
   const { data: user } = useQuery({
     queryKey: ["currentUser"],
@@ -35,31 +33,16 @@ export default function RedirectingPage() {
   }, [user, setUser]);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.replace("/auth/login");
-      return;
-    }
-    if (status !== "authenticated") return;
+    if (!user) return;
 
-    const role = session.user?.role;
-    if (!role) {
-      router.replace(DEFAULT_LOGIN_REDIRECT);
-      return;
-    }
-
-    const isMarketplaceRole = [
-      "ADMIN",
-      "SELLER",
-      "RIDER",
-      "MODERATOR",
-    ].includes(role);
-    router.replace(
-      isMarketplaceRole ? MARKET_PLACE_LOGIN_REDIRECT : DEFAULT_LOGIN_REDIRECT
+    const isMarketplaceRole = ["ADMIN", "SELLER", "RIDER"].includes(user.role);
+    router.push(
+      isMarketplaceRole ? MARKET_PLACE_LOGIN_REDIRECT : DEFAULT_LOGIN_REDIRECT,
     );
-  }, [status, session, router]);
+  }, [user, router]);
 
   return (
-    <div className="min-h-full flex flex-col items-center justify-center gap-4">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
       <Image
         src="https://ijucjait38.ufs.sh/f/rO7LkXAj4RVlnNw2KuOByscQRmqV3jX4rStz8G2Mv0IpxKJA"
         alt="logo"
@@ -71,4 +54,3 @@ export default function RedirectingPage() {
     </div>
   );
 }
-
