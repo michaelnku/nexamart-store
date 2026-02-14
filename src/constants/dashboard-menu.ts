@@ -90,7 +90,7 @@ export const DashboardMenu = {
         },
         {
           name: "Settings",
-          href: "/settings",
+          href: "/marketplace/dashboard/settings",
           icon: Settings,
         },
       ],
@@ -139,7 +139,7 @@ export const DashboardMenu = {
         },
         {
           name: "Settings",
-          href: "/settings",
+          href: "/marketplace/dashboard/settings",
           icon: Settings,
         },
       ],
@@ -202,7 +202,7 @@ export const DashboardMenu = {
         },
         {
           name: "Settings",
-          href: "/settings",
+          href: "/marketplace/dashboard/settings",
           icon: Settings,
         },
       ],
@@ -269,7 +269,7 @@ export const DashboardMenu = {
         },
         {
           name: "Settings",
-          href: "/settings",
+          href: "/marketplace/dashboard/settings",
           icon: Settings,
         },
       ],

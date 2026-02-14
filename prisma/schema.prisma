@@ -558,13 +558,13 @@ enum DeliveryStatus {
 }
 
 model RiderProfile {
-  id            String  @id @default(cuid())
-  userId        String  @unique
+  id            String @id @default(cuid())
+  userId        String @unique
   vehicleType   String
   plateNumber   String
-  licenseNumber String?
-  vehicleColor  String?
-  vehicleModel  String?
+  licenseNumber String
+  vehicleColor  String
+  vehicleModel  String
 
   isVerified         Boolean   @default(false)
   verifiedAt         DateTime?

@@ -106,7 +106,12 @@ export default function SellerOrdersTable({
               >
                 {(() => {
                   const sellerGroupId = o.sellerGroups?.[0]?.id;
+                  const sellerGroupStatus = o.sellerGroups?.[0]?.status;
+                  const isPendingPickup = sellerGroupStatus === "PENDING_PICKUP";
+                  const canMarkAsShipped =
+                    sellerGroupStatus === "IN_TRANSIT_TO_HUB";
                   const isShipped =
+                    sellerGroupStatus === "ARRIVED_AT_HUB" ||
                     o.status === "SHIPPED" ||
                     (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
                   return (
@@ -150,7 +155,7 @@ export default function SellerOrdersTable({
                       </Button>
                     </Link>
 
-                    {o.status === "PENDING" && (
+                    {isPendingPickup && (
                       <>
                         <Button
                           size="sm"
@@ -183,18 +188,19 @@ export default function SellerOrdersTable({
                       </>
                     )}
 
-                    {(o.status === "ACCEPTED" || isShipped) && (
+                    {(canMarkAsShipped || isShipped) && (
                       <Button
                         size="sm"
-                        disabled={isPending || !sellerGroupId || isShipped}
-                        onClick={() =>
+                        disabled={isPending || !sellerGroupId || !canMarkAsShipped}
+                        onClick={() => {
+                          if (!canMarkAsShipped) return;
                           handleAction(shipOrderAction, sellerGroupId, () => {
                             if (!sellerGroupId) return;
                             setOptimisticShipped((prev) =>
                               new Set(prev).add(sellerGroupId),
                             );
-                          })
-                        }
+                          });
+                        }}
                         className="flex gap-1 bg-[#3c9ee0] hover:bg-[#318bc4] text-white"
                       >
                         <Truck className="w-4 h-4" />
@@ -227,7 +233,12 @@ export default function SellerOrdersTable({
           >
             {(() => {
               const sellerGroupId = o.sellerGroups?.[0]?.id;
+              const sellerGroupStatus = o.sellerGroups?.[0]?.status;
+              const isPendingPickup = sellerGroupStatus === "PENDING_PICKUP";
+              const canMarkAsShipped =
+                sellerGroupStatus === "IN_TRANSIT_TO_HUB";
               const isShipped =
+                sellerGroupStatus === "ARRIVED_AT_HUB" ||
                 o.status === "SHIPPED" ||
                 (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
               return (
@@ -266,7 +277,7 @@ export default function SellerOrdersTable({
                 </Button>
               </Link>
 
-              {o.status === "PENDING" && (
+              {isPendingPickup && (
                 <>
                   <Button
                     size="sm"
@@ -297,18 +308,19 @@ export default function SellerOrdersTable({
                 </>
               )}
 
-              {(o.status === "ACCEPTED" || isShipped) && (
+              {(canMarkAsShipped || isShipped) && (
                 <Button
                   size="sm"
-                  disabled={isPending || !sellerGroupId || isShipped}
-                  onClick={() =>
+                  disabled={isPending || !sellerGroupId || !canMarkAsShipped}
+                  onClick={() => {
+                    if (!canMarkAsShipped) return;
                     handleAction(shipOrderAction, sellerGroupId, () => {
                       if (!sellerGroupId) return;
                       setOptimisticShipped((prev) =>
                         new Set(prev).add(sellerGroupId),
                       );
-                    })
-                  }
+                    });
+                  }}
                   className="flex-1 bg-[#3c9ee0] hover:bg-[#318bc4] text-white"
                 >
                   {isShipped ? "Shipped" : "Mark as Shipped"}

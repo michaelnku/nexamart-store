@@ -14,7 +14,7 @@ export async function autoAssignRider(orderId: string) {
   });
 
   if (!order || order.delivery) return;
-  if (order.sellerGroups.some((g) => g.status !== "IN_TRANSIT_TO_HUB")) {
+  if (order.sellerGroups.some((g) => g.status !== "ARRIVED_AT_HUB")) {
     return;
   }
 
@@ -34,7 +34,7 @@ export async function autoAssignRider(orderId: string) {
         orderId,
         riderId: rider.id,
         fee: order.shippingFee,
-        status: "ASSIGNED",
+        status: "PENDING",
         assignedAt: new Date(),
       },
     }),
@@ -60,3 +60,4 @@ export async function autoAssignRider(orderId: string) {
     riderId: rider.id,
   });
 }
+

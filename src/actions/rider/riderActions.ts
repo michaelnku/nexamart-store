@@ -189,8 +189,32 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
     _count: { _all: true },
   });
 
+  const [pendingUnassignedDeliveriesCount, pendingReadyOrdersCount] =
+    await Promise.all([
+      prisma.delivery.count({
+        where: {
+          status: "PENDING",
+          riderId: null,
+        },
+      }),
+      prisma.order.count({
+        where: {
+          isPaid: true,
+          status: { in: ["ACCEPTED", "SHIPPED"] },
+          delivery: null,
+          sellerGroups: {
+            some: {},
+            every: { status: "ARRIVED_AT_HUB" },
+          },
+        },
+      }),
+    ]);
+
   const counts = {
-    pending: countsRaw.find((c) => c.status === "PENDING")?._count._all ?? 0,
+    pending:
+      (countsRaw.find((c) => c.status === "PENDING")?._count._all ?? 0) +
+      pendingUnassignedDeliveriesCount +
+      pendingReadyOrdersCount,
     assigned: countsRaw.find((c) => c.status === "ASSIGNED")?._count._all ?? 0,
     ongoing: countsRaw.find((c) => c.status === "IN_TRANSIT")?._count._all ?? 0,
     cancelled:
@@ -198,10 +222,16 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
   };
 
   const deliveries = await prisma.delivery.findMany({
-    where: {
-      riderId: userId,
-      status: { in: STATUS_KEY_MAP[activeKey] },
-    },
+    where:
+      activeKey === "pending"
+        ? {
+            status: { in: STATUS_KEY_MAP[activeKey] },
+            OR: [{ riderId: userId }, { riderId: null }],
+          }
+        : {
+            riderId: userId,
+            status: { in: STATUS_KEY_MAP[activeKey] },
+          },
     orderBy: { assignedAt: "desc" },
     include: {
       order: {
@@ -244,5 +274,78 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
     };
   });
 
-  return { deliveries: deliveriesWithAddress, counts, activeKey };
+  const pendingOrdersWithoutDelivery =
+    activeKey === "pending"
+      ? await prisma.order.findMany({
+          where: {
+            isPaid: true,
+            status: { in: ["ACCEPTED", "SHIPPED"] },
+            delivery: null,
+            sellerGroups: {
+              some: {},
+              every: { status: "ARRIVED_AT_HUB" },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            trackingNumber: true,
+            deliveryStreet: true,
+            deliveryCity: true,
+            deliveryState: true,
+            deliveryCountry: true,
+            deliveryPostal: true,
+            totalAmount: true,
+            shippingFee: true,
+            status: true,
+            createdAt: true,
+            customer: { select: { name: true, email: true } },
+          },
+        })
+      : [];
+
+  const pendingOrderRows = pendingOrdersWithoutDelivery.map((order) => {
+    const deliveryAddress = [
+      order.deliveryStreet,
+      order.deliveryCity,
+      order.deliveryState,
+      order.deliveryCountry,
+      order.deliveryPostal,
+    ]
+      .filter((part) => Boolean(part && part.trim()))
+      .join(", ");
+
+    return {
+      id: `pending-order-${order.id}`,
+      orderId: order.id,
+      riderId: null,
+      otpHash: null,
+      otpExpiresAt: null,
+      otpAttempts: 0,
+      isLocked: false,
+      lockedAt: null,
+      status: "PENDING" as DeliveryStatus,
+      deliveryAddress: null,
+      distance: null,
+      fee: order.shippingFee,
+      assignedAt: null,
+      deliveredAt: null,
+      order: {
+        ...order,
+        deliveryAddress,
+      },
+      isPendingAssignment: true,
+    };
+  });
+
+  const mergedDeliveries =
+    activeKey === "pending"
+      ? [...deliveriesWithAddress, ...pendingOrderRows].sort((a, b) => {
+          const aTime = new Date(a.assignedAt ?? a.order.createdAt).getTime();
+          const bTime = new Date(b.assignedAt ?? b.order.createdAt).getTime();
+          return bTime - aTime;
+        })
+      : deliveriesWithAddress;
+
+  return { deliveries: mergedDeliveries, counts, activeKey };
 }

@@ -42,45 +42,6 @@ type StoreState =
   | { status: "active"; store: StoreDTO }
   | { status: "deleted" };
 
-const BuyerSettingsPage = () => {
-  return (
-    <main className="p-4 md:ml-62 py-12 space-y-6">
-      <h1 className="text-2xl font-semibold">Account Settings</h1>
-
-      {/* Account Security */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Account Security</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Input placeholder="Current Password" type="password" />
-          <Input placeholder="New Password" type="password" />
-          <Input placeholder="Confirm New Password" type="password" />
-        </CardContent>
-      </Card>
-
-      {/* Preferences */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Preferences</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label>Receive Order Updates</Label>
-            <Switch defaultChecked />
-          </div>
-          <div className="flex items-center justify-between">
-            <Label>Enable Wishlist Sync</Label>
-            <Switch />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Button size="lg">Save Changes</Button>
-    </main>
-  );
-};
-
 const SellerSettingsPage = () => {
   const user = useCurrentUser();
   const router = useRouter();
@@ -681,45 +642,6 @@ const SellerSettingsPage = () => {
   );
 };
 
-const RiderSettingsPage = () => {
-  return (
-    <main className="p-4 md:ml-62 py-12 space-y-6">
-      <h1 className="text-2xl font-semibold">Settings</h1>
-
-      {/* Vehicle / Schedule */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Vehicle Information & Schedule</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Input placeholder="Vehicle Type (e.g. Bike, Car)" />
-          <Input placeholder="License Plate" />
-          <Input placeholder="Available Hours" />
-        </CardContent>
-      </Card>
-
-      {/* Preferences */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Preferences</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label>Receive Delivery Notifications</Label>
-            <Switch defaultChecked />
-          </div>
-          <div className="flex items-center justify-between">
-            <Label>Auto-Accept Nearby Orders</Label>
-            <Switch />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Button size="lg">Save Changes</Button>
-    </main>
-  );
-};
-
 const AdminSettingsPage = () => {
   // General site settings
   const [siteName, setSiteName] = useState("Nexamart");
@@ -1056,9 +978,35 @@ const AdminSettingsPage = () => {
   );
 };
 
-export {
-  AdminSettingsPage,
-  BuyerSettingsPage,
-  RiderSettingsPage,
-  SellerSettingsPage,
+const ModeratorSettingsPage = () => {
+  return (
+    <main className="p-4 md:ml-62 py-12 space-y-6">
+      <h1 className="text-2xl font-semibold">Moderator Settings</h1>
+      <Card>
+        <CardHeader>
+          <CardTitle>Content Moderation</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label>Receive Content Flag Notifications</Label>
+            <Switch defaultChecked />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Moderator Permissions</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label>Receive Content Flag Notifications</Label>
+            <Switch defaultChecked />
+          </div>
+        </CardContent>
+      </Card>
+    </main>
+  );
 };
+
+export { AdminSettingsPage, SellerSettingsPage, ModeratorSettingsPage };

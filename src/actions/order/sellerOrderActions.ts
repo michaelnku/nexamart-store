@@ -61,27 +61,46 @@ export const shipOrderAction = async (sellerGroupId: string) => {
 
 export const cancelOrderAction = async (sellerGroupId: string) => {
   try {
-    const group = await prisma.orderSellerGroup.update({
+    const group = await prisma.orderSellerGroup.findUnique({
       where: { id: sellerGroupId },
-      data: { status: "CANCELLED" },
       include: { order: true },
     });
 
-    await prisma.wallet.update({
-      where: { userId: group.order.userId },
-      data: {
-        balance: { increment: group.subtotal + group.shippingFee },
-        transactions: {
-          create: {
-            type: "REFUND",
-            amount: group.subtotal + group.shippingFee,
-            description: `Refund for cancelled order #${group.order.id}`,
+    if (!group) return { error: "Order group not found" };
+
+    await prisma.$transaction([
+      prisma.orderSellerGroup.update({
+        where: { id: sellerGroupId },
+        data: { status: "CANCELLED" },
+      }),
+      prisma.order.update({
+        where: { id: group.orderId },
+        data: { status: "CANCELLED" },
+      }),
+      prisma.orderTimeline.create({
+        data: {
+          orderId: group.orderId,
+          status: "CANCELLED",
+          message: "Order cancelled by seller",
+        },
+      }),
+      prisma.wallet.update({
+        where: { userId: group.order.userId },
+        data: {
+          balance: { increment: group.subtotal + group.shippingFee },
+          transactions: {
+            create: {
+              type: "REFUND",
+              amount: group.subtotal + group.shippingFee,
+              description: `Refund for cancelled order #${group.order.id}`,
+            },
           },
         },
-      },
-    });
+      }),
+    ]);
 
     revalidatePath("/marketplace/dashboard/seller/orders");
+    revalidatePath(`/marketplace/dashboard/seller/orders/${group.orderId}`);
     return { success: "Order cancelled & refund issued" };
   } catch {
     return { error: "Failed to cancel order" };

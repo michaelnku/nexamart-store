@@ -3,6 +3,7 @@ import {
   PaymentMethod,
   Product,
   ProductImage,
+  RiderProfile,
   ProductVariant,
   Review,
   SenderType,
@@ -578,3 +579,14 @@ export type NotificationDTO = {
   read: boolean;
   createdAt: string;
 };
+
+export type RiderProfileDTO = Pick<
+  RiderProfile,
+  | "vehicleType"
+  | "plateNumber"
+  | "licenseNumber"
+  | "vehicleColor"
+  | "vehicleModel"
+  | "isVerified"
+  | "isAvailable"
+>;
