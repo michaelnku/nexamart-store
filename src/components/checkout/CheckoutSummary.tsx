@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useTransition, useState, useMemo, useEffect } from "react";
+import { useTransition, useState, useMemo, useEffect, useRef } from "react";
 import { placeOrderAction } from "@/actions/checkout/placeOrder";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -132,6 +132,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
     }[]
   >([]);
   const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   const items = useCartStore((state) => state.items);
 
@@ -193,7 +194,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
         deliveryType,
         distanceInMiles: address.distanceInMiles ?? 0,
         couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: idempotencyKeyRef.current,
       });
 
       if ("error" in res) {
@@ -202,6 +203,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
       }
 
       useCartStore.getState().clearCart();
+      idempotencyKeyRef.current = crypto.randomUUID();
       toast.success("Order placed successfully!");
       router.push(`/customer/order/success/${res.orderId}`);
     });
