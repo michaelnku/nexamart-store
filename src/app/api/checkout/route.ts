@@ -78,9 +78,18 @@ export async function POST(req: Request) {
       const product = products.find((p) => p.id === item.productId);
       if (!product) continue;
 
-      const variant = product.variants.find((v) => v.id === item.variantId);
+      if (!item.variantId) {
+        return new NextResponse("Variant is required for all items", {
+          status: 400,
+        });
+      }
 
-      const price = variant?.priceUSD ?? product.basePriceUSD;
+      const variant = product.variants.find((v) => v.id === item.variantId);
+      if (!variant) {
+        return new NextResponse("Invalid variant selected", { status: 400 });
+      }
+
+      const price = variant.priceUSD;
 
       subtotal += price * item.quantity;
 
@@ -160,12 +169,18 @@ export async function POST(req: Request) {
             if (!product) {
               throw new Error("Invalid product");
             }
+            if (!item.variantId) {
+              throw new Error("Variant is required for all items");
+            }
 
             const variant = product.variants.find(
               (v) => v.id === item.variantId,
             );
+            if (!variant) {
+              throw new Error("Invalid variant selected");
+            }
 
-            const price = variant?.priceUSD ?? product.basePriceUSD;
+            const price = variant.priceUSD;
 
             if (price == null) {
               throw new Error("Invalid product price");
@@ -232,8 +247,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(error);
-    return new NextResponse(error.message, { status: 500 });
+    const message = error instanceof Error ? error.message : "Checkout failed";
+    return new NextResponse(message, { status: 500 });
   }
 }

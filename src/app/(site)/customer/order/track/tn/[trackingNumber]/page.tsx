@@ -19,7 +19,7 @@ export default async function PublicTrackPage({
       },
       delivery: {
         include: {
-          rider: { select: { name: true, email: true } },
+          rider: { select: { name: true, username: true, email: true } },
         },
       },
       orderTimelines: {
@@ -73,7 +73,10 @@ export default async function PublicTrackPage({
           status: order.delivery.status,
           rider: order.delivery.rider
             ? {
-                name: order.delivery.rider.name,
+                name:
+                  order.delivery.rider.name ??
+                  order.delivery.rider.username ??
+                  "Assigned Rider",
                 email: order.delivery.rider.email,
               }
             : null,

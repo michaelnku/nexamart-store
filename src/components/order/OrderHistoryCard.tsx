@@ -134,14 +134,24 @@ const OrderHistoryCard = ({ orders }: Props) => {
 
                 {(order.status === "DELIVERED" ||
                   order.status === "COMPLETED") && (
-                  <Link href={`/customer/order/${order.id}#review`}>
-                    <Button
-                      variant="outline"
-                      className="rounded-md border-gray-400"
+                  <>
+                    <Link href={`/customer/order/${order.id}#review`}>
+                      <Button
+                        variant="outline"
+                        className="rounded-md border-gray-400"
+                      >
+                        Write a Product Review
+                      </Button>
+                    </Link>
+
+                    <Link
+                      href={`/inbox?subject=${encodeURIComponent(`Order Dispute - ${order.id}`)}`}
                     >
-                      Write a Product Review
-                    </Button>
-                  </Link>
+                      <Button variant="destructive" className="rounded-md">
+                        Open Dispute
+                      </Button>
+                    </Link>
+                  </>
                 )}
               </div>
             </div>

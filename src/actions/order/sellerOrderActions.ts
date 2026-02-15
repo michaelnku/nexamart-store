@@ -34,17 +34,59 @@ export const acceptOrderAction = async (sellerGroupId: string) => {
 
 export const shipOrderAction = async (sellerGroupId: string) => {
   try {
-    const group = await prisma.orderSellerGroup.update({
+    const group = await prisma.orderSellerGroup.findUnique({
       where: { id: sellerGroupId },
-      data: { status: "ARRIVED_AT_HUB" },
-      select: { orderId: true },
+      select: {
+        id: true,
+        orderId: true,
+        status: true,
+        items: {
+          select: {
+            variantId: true,
+            quantity: true,
+          },
+        },
+      },
     });
 
-    const remaining = await prisma.orderSellerGroup.count({
-      where: {
-        orderId: group.orderId,
-        status: { not: "ARRIVED_AT_HUB" },
-      },
+    if (!group) return { error: "Order group not found" };
+    if (group.status !== "IN_TRANSIT_TO_HUB") {
+      return { error: "Only in-transit orders can be marked as shipped" };
+    }
+
+    const variantQuantities = new Map<string, number>();
+    for (const item of group.items) {
+      if (!item.variantId) {
+        throw new Error("Order item is missing variant information");
+      }
+
+      const current = variantQuantities.get(item.variantId) ?? 0;
+      variantQuantities.set(item.variantId, current + item.quantity);
+    }
+
+    const remaining = await prisma.$transaction(async (tx) => {
+      await tx.orderSellerGroup.update({
+        where: { id: sellerGroupId },
+        data: { status: "ARRIVED_AT_HUB" },
+      });
+
+      for (const [variantId, quantity] of variantQuantities.entries()) {
+        const updated = await tx.productVariant.updateMany({
+          where: { id: variantId, stock: { gte: quantity } },
+          data: { stock: { decrement: quantity } },
+        });
+
+        if (updated.count !== 1) {
+          throw new Error("One or more items are out of stock");
+        }
+      }
+
+      return tx.orderSellerGroup.count({
+        where: {
+          orderId: group.orderId,
+          status: { not: "ARRIVED_AT_HUB" },
+        },
+      });
     });
 
     if (remaining === 0) {
@@ -55,7 +97,9 @@ export const shipOrderAction = async (sellerGroupId: string) => {
     return { success: "Order marked as shipped" };
   } catch (error) {
     console.error(error);
-    return { error: "Failed to update order" };
+    return {
+      error: error instanceof Error ? error.message : "Failed to update order",
+    };
   }
 };
 

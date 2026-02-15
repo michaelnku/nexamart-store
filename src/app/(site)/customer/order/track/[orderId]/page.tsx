@@ -38,7 +38,7 @@ export default async function TrackOrderPage({
       },
       delivery: {
         include: {
-          rider: { select: { id: true, name: true, email: true } },
+          rider: { select: { id: true, name: true, username: true, email: true } },
         },
       },
       orderTimelines: {
@@ -92,7 +92,10 @@ export default async function TrackOrderPage({
           status: order.delivery.status,
           rider: order.delivery.rider
             ? {
-                name: order.delivery.rider.name,
+                name:
+                  order.delivery.rider.name ??
+                  order.delivery.rider.username ??
+                  "Assigned Rider",
                 email: order.delivery.rider.email,
               }
             : null,

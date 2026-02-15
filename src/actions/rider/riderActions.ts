@@ -5,6 +5,7 @@ import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { autoAssignRider } from "@/lib/rider/logistics";
 import { completeDeliveryAndPayRider } from "@/lib/rider/completeDeliveryPayout";
 import { DeliveryStatus } from "@/generated/prisma/client";
+import { hashOtp } from "@/lib/otp";
 
 export async function autoAssignRiderForPaidOrderAction(orderId: string) {
   const userId = await CurrentUserId();
@@ -78,6 +79,8 @@ export async function riderVerifyDeliveryOtpAction(
   deliveryId: string,
   otp: string,
 ) {
+  const MAX_OTP_ATTEMPTS = 3;
+
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
 
@@ -93,24 +96,54 @@ export async function riderVerifyDeliveryOtpAction(
 
   if (!delivery) return { error: "Delivery not found" };
   if (delivery.riderId !== userId) return { error: "Not assigned to rider" };
+  if (delivery.status !== "IN_TRANSIT") {
+    return { error: `Delivery status ${delivery.status} cannot be verified` };
+  }
+  if (delivery.isLocked) {
+    return {
+      error:
+        "Delivery is locked after too many invalid OTP attempts. Contact admin support.",
+    };
+  }
 
   if (!delivery.otpHash || !delivery.otpExpiresAt)
     return { error: "OTP not generated" };
 
   if (delivery.otpExpiresAt < new Date()) return { error: "OTP expired" };
+  const normalizedOtp = otp.trim();
+  const otpMatches = hashOtp(normalizedOtp) === delivery.otpHash;
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/verify-otp`, {
-    method: "POST",
-    body: JSON.stringify({
-      phone: delivery.order.deliveryPhone,
-      code: otp,
-    }),
-  });
+  if (!otpMatches) {
+    const nextAttempts = (delivery.otpAttempts ?? 0) + 1;
 
-  const result = await res.json();
+    if (nextAttempts >= MAX_OTP_ATTEMPTS) {
+      await prisma.delivery.update({
+        where: { id: deliveryId },
+        data: {
+          otpAttempts: nextAttempts,
+          isLocked: true,
+          lockedAt: new Date(),
+        },
+      });
 
-  if (!result.success) {
-    return { error: "Invalid OTP" };
+      return {
+        error:
+          "Invalid OTP. Attempt limit exceeded and delivery has been locked.",
+      };
+    }
+
+    const attemptsLeft = MAX_OTP_ATTEMPTS - nextAttempts;
+
+    await prisma.delivery.update({
+      where: { id: deliveryId },
+      data: {
+        otpAttempts: nextAttempts,
+      },
+    });
+
+    return {
+      error: `Invalid OTP. ${attemptsLeft} attempt${attemptsLeft === 1 ? "" : "s"} left.`,
+    };
   }
 
   await prisma.$transaction([
@@ -119,6 +152,9 @@ export async function riderVerifyDeliveryOtpAction(
       data: {
         status: "DELIVERED",
         deliveredAt: new Date(),
+        otpAttempts: 0,
+        isLocked: false,
+        lockedAt: null,
       },
     }),
     prisma.order.update({
@@ -162,12 +198,18 @@ export async function completeDeliveryAndPayRiderAction(orderId: string) {
   }
 }
 
-type RiderDeliveryStatusKey = "pending" | "assigned" | "ongoing" | "cancelled";
+type RiderDeliveryStatusKey =
+  | "pending"
+  | "assigned"
+  | "ongoing"
+  | "delivered"
+  | "cancelled";
 
 const STATUS_KEY_MAP: Record<RiderDeliveryStatusKey, DeliveryStatus[]> = {
   pending: ["PENDING"],
   assigned: ["ASSIGNED"],
   ongoing: ["IN_TRANSIT"],
+  delivered: ["DELIVERED"],
   cancelled: ["CANCELLED"],
 };
 
@@ -217,6 +259,8 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
       pendingReadyOrdersCount,
     assigned: countsRaw.find((c) => c.status === "ASSIGNED")?._count._all ?? 0,
     ongoing: countsRaw.find((c) => c.status === "IN_TRANSIT")?._count._all ?? 0,
+    delivered:
+      countsRaw.find((c) => c.status === "DELIVERED")?._count._all ?? 0,
     cancelled:
       countsRaw.find((c) => c.status === "CANCELLED")?._count._all ?? 0,
   };

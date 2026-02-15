@@ -93,11 +93,10 @@ export async function placeOrderAction({
     return { error: "Cart is empty" };
   }
 
-  const variantQuantities = new Map<string, number>();
   for (const item of cart.items) {
-    if (!item.variantId) continue;
-    const current = variantQuantities.get(item.variantId) ?? 0;
-    variantQuantities.set(item.variantId, current + item.quantity);
+    if (!item.variantId || !item.variant) {
+      return { error: "Invalid cart item. Please reselect product variant." };
+    }
   }
 
   const miles = distanceInMiles ?? 0;
@@ -117,7 +116,7 @@ export async function placeOrderAction({
   }
 
   const subtotal = cart.items.reduce(
-    (s, i) => s + i.quantity * (i.variant?.priceUSD ?? i.product.basePriceUSD),
+    (s, i) => s + i.quantity * i.variant!.priceUSD,
     0,
   );
 
@@ -214,28 +213,11 @@ export async function placeOrderAction({
         },
       });
 
-      if (paymentMethod === "WALLET" && variantQuantities.size > 0) {
-        for (const [variantId, quantity] of variantQuantities.entries()) {
-          const updated = await tx.productVariant.updateMany({
-            where: {
-              id: variantId,
-              stock: { gte: quantity },
-            },
-            data: { stock: { decrement: quantity } },
-          });
-
-          if (updated.count !== 1) {
-            throw new PlaceOrderError("One or more items are out of stock");
-          }
-        }
-      }
-
       for (const [storeId, items] of itemsByStore) {
         const sellerId = items[0].product.store.userId;
 
         const groupSubtotal = items.reduce(
-          (s, i) =>
-            s + i.quantity * (i.variant?.priceUSD ?? i.product.basePriceUSD),
+          (s, i) => s + i.quantity * i.variant!.priceUSD,
           0,
         );
 
@@ -258,7 +240,7 @@ export async function placeOrderAction({
             productId: i.productId,
             variantId: i.variantId,
             quantity: i.quantity,
-            price: i.variant?.priceUSD ?? i.product.basePriceUSD,
+            price: i.variant!.priceUSD,
           })),
         });
       }

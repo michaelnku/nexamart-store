@@ -18,9 +18,11 @@ export async function POST(req: Request) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!,
     );
-  } catch (error: any) {
-    console.error("❌ Webhook signature verification failed:", error.message);
-    return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Unknown webhook error";
+    console.error("Webhook signature verification failed:", message);
+    return new NextResponse(`Webhook Error: ${message}`, { status: 400 });
   }
 
   console.log("🔥 Webhook received:", event.type);
@@ -46,20 +48,6 @@ export async function POST(req: Request) {
         items: { include: { product: { include: { store: true } } } },
       },
     });
-
-    const variantQuantities = new Map<string, number>();
-    for (const item of order.items) {
-      if (!item.variantId) continue;
-      const current = variantQuantities.get(item.variantId) ?? 0;
-      variantQuantities.set(item.variantId, current + item.quantity);
-    }
-
-    for (const [variantId, quantity] of variantQuantities.entries()) {
-      await prisma.productVariant.updateMany({
-        where: { id: variantId },
-        data: { stock: { decrement: quantity } },
-      });
-    }
 
     const productIds = order.items.map((i) => i.productId);
     await prisma.product.updateMany({
@@ -150,3 +138,4 @@ export async function POST(req: Request) {
 
   return new NextResponse(null, { status: 200 });
 }
+

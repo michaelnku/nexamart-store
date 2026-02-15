@@ -62,7 +62,13 @@ export async function advanceOrderStatusAction({
     }),
   ];
 
-  if (nextStatus === "CANCELLED" && order.isPaid) {
+  if (
+    nextStatus === "CANCELLED" &&
+    order.isPaid &&
+    ["SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "COMPLETED"].includes(
+      order.status,
+    )
+  ) {
     const variantQuantities = new Map<string, number>();
     for (const item of order.items) {
       if (!item.variantId) continue;

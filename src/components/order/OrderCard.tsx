@@ -14,6 +14,9 @@ type Props = {
 };
 
 const OrderCard = ({ order }: Props) => {
+  const canReviewOrDispute =
+    order.status === "DELIVERED" || order.status === "COMPLETED";
+
   const statusColor: Record<string, string> = {
     PENDING: "bg-yellow-500",
     ACCEPTED: "bg-blue-500",
@@ -208,6 +211,25 @@ const OrderCard = ({ order }: Props) => {
       </div>
 
       <section className="flex flex-col sm:flex-row gap-4">
+        {canReviewOrDispute && (
+          <>
+            <Link href={`/customer/order/${order.id}#review`} className="w-full">
+              <Button variant="outline" className="w-full font-semibold">
+                Write Review
+              </Button>
+            </Link>
+
+            <Link
+              href={`/inbox?subject=${encodeURIComponent(`Order Dispute - ${order.id}`)}`}
+              className="w-full"
+            >
+              <Button variant="destructive" className="w-full font-semibold">
+                Open Dispute
+              </Button>
+            </Link>
+          </>
+        )}
+
         <Link href="/" className="w-full">
           <Button className="w-full bg-[#3c9ee0] hover:bg-[#318bc4] text-white font-semibold">
             Continue Shopping
