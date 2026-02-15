@@ -25,6 +25,7 @@ import {
   ShoppingCartIcon,
   StoreIcon,
   Ticket,
+  MessageSquareOffIcon,
 } from "lucide-react";
 
 export const DashboardMenu = {
@@ -305,6 +306,12 @@ export const DashboardMenuItems = {
       icon: Ticket,
       label: "Coupons",
     },
+    {
+      label: "Pending Reviews",
+      href: "/customer/reviewsratings",
+      icon: MessageSquareOffIcon,
+    },
+    { label: "Wallet", href: "/customer/wallet", icon: Wallet },
     {
       href: "/customer/referrals",
       icon: Users,

@@ -1,0 +1,11 @@
+﻿{
+  "name": "NexaMart",
+  "short_name": "NexaMart",
+  "description": "NexaMart is a modern multi-vendor e-commerce marketplace where you can shop, sell, and manage deliveries seamlessly.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "en-US"
+}

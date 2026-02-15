@@ -125,8 +125,6 @@ export const productSchema = z.object({
   oldPriceUSD: z.number().optional(),
   discount: z.number().optional(),
 
-  nonVariantStock: z.number().optional(),
-
   images: z.array(productImageSchema).min(1),
 
   variants: z.array(productVariantSchema).optional(),

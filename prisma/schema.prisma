@@ -184,7 +184,6 @@ model Product {
 
   specifications   String[] @default([])
   technicalDetails Json     @default("[]")
-  nonVariantStock  Int?
 
   sold Int @default(0)
 

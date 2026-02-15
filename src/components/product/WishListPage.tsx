@@ -20,7 +20,7 @@ interface Props {
 }
 
 const WishListPage = ({ initialData }: Props) => {
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [hydrated, setHydrated] = useState(false);
 
   const router = useRouter();
@@ -31,7 +31,8 @@ const WishListPage = ({ initialData }: Props) => {
 
   useEffect(() => {
     sync(initialData.map((p) => ({ productId: p.id })));
-    setHydrated(true);
+    const id = requestAnimationFrame(() => setHydrated(true));
+    return () => cancelAnimationFrame(id);
   }, [initialData, sync]);
 
   const wishlistProducts = initialData.filter((p) =>
@@ -106,6 +107,10 @@ const WishListPage = ({ initialData }: Props) => {
             const discount = product.discount ?? 0;
             const oldPrice =
               discount > 0 ? product.basePriceUSD / (1 - discount / 100) : null;
+            const cheapestVariant =
+              product.variants && product.variants.length > 0
+                ? [...product.variants].sort((a, b) => a.priceUSD - b.priceUSD)[0]
+                : null;
 
             return (
               <Card
@@ -170,7 +175,10 @@ const WishListPage = ({ initialData }: Props) => {
                 </div>
 
                 <div className="mt-auto pt-3">
-                  <AddToCartControl productId={product.id} variantId={null} />
+                  <AddToCartControl
+                    productId={product.id}
+                    variantId={cheapestVariant?.id ?? null}
+                  />
                 </div>
               </Card>
             );

@@ -28,7 +28,6 @@ export const createProductAction = async (values: productSchemaType) => {
     brand,
     description,
     categoryId,
-    nonVariantStock,
     oldPriceUSD,
     discount,
     images,
@@ -59,7 +58,6 @@ export const createProductAction = async (values: productSchemaType) => {
       description,
       specifications: specsArray,
       technicalDetails: values.technicalDetails ?? [],
-      nonVariantStock,
       categoryId,
       storeId: store.id,
       brand,
@@ -155,7 +153,6 @@ export const updateProductAction = async (
         oldPriceUSD,
         discount,
         basePriceUSD,
-        nonVariantStock: null,
       },
     });
 

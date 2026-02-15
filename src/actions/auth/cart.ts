@@ -30,6 +30,7 @@ export const addToCartAction = async (
 ) => {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
+  if (!variantId) return { error: "Please select a product variant." };
 
   try {
     const product = await prisma.product.findUnique({
@@ -38,6 +39,13 @@ export const addToCartAction = async (
     });
 
     if (!product) return { error: "Product not found" };
+
+    const variant = await prisma.productVariant.findFirst({
+      where: { id: variantId, productId },
+      select: { id: true },
+    });
+
+    if (!variant) return { error: "Invalid product variant." };
 
     const cart = await prisma.cart.upsert({
       where: { userId },
@@ -63,7 +71,7 @@ export const addToCartAction = async (
     }
 
     const existingItem = await prisma.cartItem.findFirst({
-      where: { cartId: cart.id, productId, variantId: variantId ?? null },
+      where: { cartId: cart.id, productId, variantId },
     });
 
     if (existingItem) {
@@ -76,7 +84,7 @@ export const addToCartAction = async (
         data: {
           cartId: cart.id,
           productId,
-          variantId: variantId ?? null,
+          variantId,
           quantity,
         },
       });

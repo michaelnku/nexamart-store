@@ -93,7 +93,7 @@ export default function PublicProductCard({
           )}
         </div>
 
-        <AddToCartControl productId={product.id} variantId={null} />
+        <AddToCartControl productId={product.id} variantId={cheapestVariant?.id ?? null} />
       </div>
     </div>
   );

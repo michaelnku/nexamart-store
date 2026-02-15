@@ -17,26 +17,11 @@ const ProductCard = ({ productData }: ProductCardProps) => {
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const { data: user } = useCurrentUserQuery();
 
-  if (!productData) {
-    return (
-      <div className="p-4 border rounded-xl bg-white">
-        <p className="text-sm text-gray-500">Product unavailable</p>
-      </div>
-    );
-  }
-
   const imageUrl = productData.images?.[0]?.imageUrl || "/placeholder.png";
 
   const totalStock = useMemo(() => {
-    const variantStock =
-      productData.variants?.reduce((sum, v) => sum + (v.stock ?? 0), 0) ?? 0;
-
-    if (variantStock === 0 && typeof productData.nonVariantStock === "number") {
-      return productData.nonVariantStock;
-    }
-
-    return variantStock;
-  }, [productData.variants, productData.nonVariantStock]);
+    return productData.variants?.reduce((sum, v) => sum + (v.stock ?? 0), 0) ?? 0;
+  }, [productData.variants]);
 
   const inStock = totalStock > 0;
 

@@ -517,11 +517,11 @@ export default function CheckoutSummary({ cart, address }: Props) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Button
                 onClick={onCheckout}
                 disabled={isLoading}
-                className="py-6 bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white font-semibold rounded-lg"
+                className="h-auto min-w-0 whitespace-normal break-words px-3 py-4 text-center leading-tight bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white font-semibold rounded-lg"
               >
                 {isLoading ? (
                   <Loader2 className="animate-spin" />
@@ -533,7 +533,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
                 onClick={() => handlePlaceOrder("WALLET")}
                 variant={"outline"}
                 disabled={!canPayWithWallet || pending}
-                className={`py-6 font-semibold rounded-lg ${
+                className={`h-auto min-w-0 whitespace-normal break-words px-3 py-4 text-center leading-tight font-semibold rounded-lg ${
                   canPayWithWallet
                     ? ""
                     : "bg-gray-200 text-gray-500 cursor-not-allowed"
