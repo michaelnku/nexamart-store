@@ -63,7 +63,7 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
       const res = await deleteProductAction(data.id);
       if (!res?.error) {
         toast.success("Product deleted");
-        router.push("/market-place/dashboard/seller/products");
+        router.push("/marketplace/dashboard/seller/products");
       }
       setIsDeleting(false);
     });
@@ -181,7 +181,7 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
                 <Button
                   onClick={() => {
                     router.push(
-                      `/market-place/dashboard/seller/products/${data.id}/update`,
+                      `/marketplace/dashboard/seller/products/${data.id}/update`,
                     );
                   }}
                   className="w-full bg-[#3c9ee0] hover:bg-[#318bc4] py-4 text-lg rounded-xl shadow flex items-center gap-2 justify-center"
@@ -318,3 +318,4 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
     </main>
   );
 }
+

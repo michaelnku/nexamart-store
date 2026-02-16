@@ -29,7 +29,7 @@ import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "../ui/separator";
 import { useLogout } from "@/hooks/useLogout";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
-import { VerifiedBadge } from "../market-place/BadgeCounts";
+import { VerifiedBadge } from "../marketplace/BadgeCounts";
 import { useDashboardEvents } from "@/hooks/useDashboardEvents";
 import { UserDTO } from "@/lib/types";
 import { ModeToggle } from "./ModeToggle";
@@ -55,7 +55,7 @@ export default function MarketPlaceNavbar({
 }: {
   initialUser: UserDTO | null;
 }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const { data: user, isLoading, isError } = useCurrentUserQuery(initialUser);
   const currentUser = user ?? initialUser;
   const [hasNewAlert, setHasNewAlert] = useState(false);
@@ -414,9 +414,13 @@ export default function MarketPlaceNavbar({
         <div className="px-4 md:px-8 py-2 flex items-center gap-2 text-sm overflow-x-auto whitespace-nowrap">
           {(() => {
             const segments = pathname.split("/").filter(Boolean);
-            const dynamicParts = segments.slice(2);
+            if (!pathname.startsWith("/marketplace/dashboard")) return null;
 
-            if (!pathname.startsWith("/market-place/dashboard")) return null;
+            const roleSegment = segments[2];
+            if (!roleSegment) return null;
+
+            const dynamicParts = segments.slice(3);
+            const basePath = `/marketplace/dashboard/${roleSegment}`;
 
             const readable = dynamicParts.map((seg) =>
               seg.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
@@ -425,7 +429,7 @@ export default function MarketPlaceNavbar({
             const crumbs = [dashboardTitle, ...readable];
 
             // Build URLs progressively -> each crumb points to its parent level
-            let linkPath = "/market-place/dashboard";
+            let linkPath = basePath;
             const paths = crumbs.map((_, i) => {
               if (i === 0) return linkPath;
               linkPath += "/" + dynamicParts[i - 1];

@@ -45,7 +45,7 @@ export default function SellerWalletPage() {
           </p>
         </div>
 
-        <Link href="/market-place/dashboard/seller/wallet/withdraw">
+        <Link href="/marketplace/dashboard/seller/wallet/withdraw">
           <Button className="bg-[#3c9ee0] hover:bg-[#318bc4] shadow px-6">
             Withdraw Funds
           </Button>
@@ -158,3 +158,4 @@ export default function SellerWalletPage() {
     </main>
   );
 }
+

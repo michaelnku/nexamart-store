@@ -3,16 +3,12 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { auth } from "@/auth/auth";
-import { SessionProvider } from "next-auth/react";
-import { Toaster } from "@/components/ui/sonner";
-import { ThemeProvider } from "@/theme/theme-provider";
 import QueryProvider from "@/providers/queryProvider";
 
 import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
 import { ourFileRouter } from "./api/uploadthing/core";
-import { CurrencyProvider } from "@/providers/currencyProvider";
-import { CartHydrator } from "@/components/market-place/CartHydrator";
+import { CartHydrator } from "@/components/marketplace/CartHydrator";
 import {
   APP_DESCRIPTION,
   APP_LOGO,
@@ -20,6 +16,7 @@ import {
   APP_TWITTER,
   APP_URL,
 } from "@/lib/seo";
+import Providers from "./providers";
 
 /* ===========================
    Fonts
@@ -144,24 +141,14 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
+        <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
+
         <QueryProvider>
-          <SessionProvider session={session}>
-            <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
+          <Providers session={session}>
+            <CartHydrator />
 
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {/* App Content */}
-              <CartHydrator />
-              <CurrencyProvider>{children}</CurrencyProvider>
-
-              {/* Global Toasts */}
-              <Toaster richColors closeButton />
-            </ThemeProvider>
-          </SessionProvider>
+            {children}
+          </Providers>
         </QueryProvider>
       </body>
     </html>

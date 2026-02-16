@@ -46,7 +46,7 @@ export const adminAddProductCategoriesAction = async (
       },
     });
 
-    revalidatePath("/market-place/dashboard/admin/products");
+    revalidatePath("/marketplace/dashboard/admin/products");
     return { success: "Category created successfully", category };
   } catch (err) {
     console.error(err);
@@ -139,3 +139,4 @@ export const getHierarchicalCategories = async () => {
     orderBy: { name: "asc" },
   });
 };
+

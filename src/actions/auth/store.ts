@@ -79,7 +79,7 @@ export const createStoreAction = async (values: storeFormType) => {
       },
     });
 
-    revalidatePath("/market-place/dashboard/seller/store");
+    revalidatePath("/marketplace/dashboard/seller/store");
 
     return { success: "Store created successfully!" };
   } catch (error) {
@@ -146,7 +146,7 @@ export const UpdateStoreAction = async (values: updateStoreFormType) => {
       },
     });
 
-    revalidatePath("/market-place/dashboard/seller/store");
+    revalidatePath("/marketplace/dashboard/seller/store");
     revalidatePath(`/store/${store.slug}`);
 
     return { success: "Store updated successfully!" };
@@ -249,8 +249,8 @@ export const deleteStoreAction = async (storeId: string) => {
     ]);
 
     // ♻ Revalidate affected routes
-    revalidatePath("/market-place/dashboard/seller/store");
-    revalidatePath("/market-place/dashboard/seller/products");
+    revalidatePath("/marketplace/dashboard/seller/store");
+    revalidatePath("/marketplace/dashboard/seller/products");
     revalidatePath(`/store/${store.slug}`);
 
     return { success: "Store deleted successfully" };
@@ -259,3 +259,4 @@ export const deleteStoreAction = async (storeId: string) => {
     return { error: "Something went wrong while deleting the store" };
   }
 };
+

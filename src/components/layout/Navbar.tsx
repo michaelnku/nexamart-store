@@ -28,7 +28,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { DialogHeader } from "../ui/dialog";
 import { useLogout } from "@/hooks/useLogout";
 import { Separator } from "../ui/separator";
-import { CartBadge } from "../market-place/BadgeCounts";
+import { CartBadge } from "../marketplace/BadgeCounts";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import CurrencySelector from "../currency/CurrencySelector";
 import { UserDTO } from "@/lib/types";
@@ -48,7 +48,7 @@ export default function SiteNavbar({
 
   const router = useRouter();
 
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const { data: user } = useCurrentUserQuery(initialUser);
 
   const logout = useLogout();

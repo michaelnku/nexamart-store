@@ -77,7 +77,7 @@ export const deleteLogoAction = async (fileKey: string) => {
       data: { logo: null, logoKey: null },
     });
 
-    revalidatePath("/market-place/dashboard/seller/store");
+    revalidatePath("/marketplace/dashboard/seller/store");
 
     return { success: "Logo removed successfully" };
   } catch (error) {
@@ -96,3 +96,4 @@ export const deleteBannerAction = async (key: string) => {
     return { error: "Unable to delete banner" };
   }
 };
+

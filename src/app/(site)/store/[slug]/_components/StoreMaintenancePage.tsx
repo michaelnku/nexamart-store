@@ -29,7 +29,7 @@ export default function StoreMaintenancePage({ slug }: { slug: string }) {
 
         <Button
           className="mt-3  bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)]"
-          onClick={() => router.push(`/market-place/dashboard/seller/settings`)}
+          onClick={() => router.push(`/marketplace/dashboard/seller/settings`)}
         >
           Go to Store Settings
         </Button>
@@ -58,3 +58,4 @@ export default function StoreMaintenancePage({ slug }: { slug: string }) {
     </section>
   );
 }
+

@@ -35,7 +35,7 @@ export default async function Page({
   });
 
   if (!product) {
-    return redirect("/market-place/dashboard/seller/products");
+    return redirect("/marketplace/dashboard/seller/products");
   }
 
   return (
@@ -44,3 +44,4 @@ export default async function Page({
     </div>
   );
 }
+

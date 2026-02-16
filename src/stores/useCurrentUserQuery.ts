@@ -14,8 +14,8 @@ export function useCurrentUserQuery(initialUser?: UserDTO | null) {
     },
     initialData: initialUser,
     staleTime: 1000 * 60 * 5,
-    refetchOnMount: true,
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
+    refetchOnReconnect: false,
   });
 }

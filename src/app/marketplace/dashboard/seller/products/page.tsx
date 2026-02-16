@@ -17,7 +17,7 @@ const page = async () => {
   });
 
   if (!store) {
-    redirect("/market-place/dashboard/seller/store/create-store");
+    redirect("/marketplace/dashboard/seller/store/create-store");
   }
 
   const products = await prisma.product.findMany({
@@ -52,3 +52,4 @@ const page = async () => {
 };
 
 export default page;
+

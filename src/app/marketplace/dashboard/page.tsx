@@ -1,5 +1,8 @@
 import { CurrentUser } from "@/lib/currentUser";
-import { getDashboardRedirectForRole, isStaffRole } from "@/lib/auth/roleRedirect";
+import {
+  getDashboardRedirectForRole,
+  isStaffRole,
+} from "@/lib/auth/roleRedirect";
 import { redirect } from "next/navigation";
 
 const page = async () => {

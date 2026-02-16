@@ -12,7 +12,7 @@ import { DashboardMenu } from "@/constants/dashboard-menu";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import { UserDTO } from "@/lib/types";
 import { useLogout } from "@/hooks/useLogout";
-import { VerifiedBadge } from "@/components/market-place/BadgeCounts";
+import { VerifiedBadge } from "@/components/marketplace/BadgeCounts";
 import { getUserInitials } from "@/lib/user";
 
 function SidebarContent({

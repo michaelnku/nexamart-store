@@ -73,7 +73,7 @@ export default function CreateStoreForm() {
         return;
       }
       toast.success("Store created successfully!");
-      router.push("/market-place/dashboard/seller/store");
+      router.push("/marketplace/dashboard/seller/store");
     });
   };
 
@@ -362,3 +362,4 @@ export default function CreateStoreForm() {
     </main>
   );
 }
+

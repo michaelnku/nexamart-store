@@ -91,7 +91,7 @@ export const createProductAction = async (values: productSchemaType) => {
     },
   });
 
-  revalidatePath("/market-place/dashboard/seller/products");
+  revalidatePath("/marketplace/dashboard/seller/products");
   return { success: "Product created successfully!" };
 };
 
@@ -215,7 +215,7 @@ export const updateProductAction = async (
     }
   });
 
-  revalidatePath("/market-place/dashboard/seller/products");
+  revalidatePath("/marketplace/dashboard/seller/products");
   return { success: "Product updated successfully" };
 };
 
@@ -252,7 +252,7 @@ export const deleteProductAction = async (productId: string) => {
       where: { id: productId },
     });
 
-    revalidatePath("/market-place/dashboard/seller/products");
+    revalidatePath("/marketplace/dashboard/seller/products");
 
     return { success: "Product deleted successfully!" };
   } catch (error) {
@@ -260,3 +260,4 @@ export const deleteProductAction = async (productId: string) => {
     return { error: "Something went wrong while deleting product" };
   }
 };
+

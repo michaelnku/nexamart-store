@@ -61,7 +61,7 @@ export default async function Page({
     },
   });
 
-  if (!product) redirect("/market-place/dashboard/seller/products");
+  if (!product) redirect("/marketplace/dashboard/seller/products");
 
   return (
     <div>
@@ -69,3 +69,4 @@ export default async function Page({
     </div>
   );
 }
+

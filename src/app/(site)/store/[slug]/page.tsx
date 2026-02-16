@@ -137,7 +137,7 @@ const page = async ({ params }: StoreFrontProps) => {
             <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 p-3 rounded-br-md rounded-bl-md">
               You're viewing your public storefront.
               <Link
-                href="/market-place/dashboard"
+                href="/marketplace/dashboard"
                 className="underline font-medium ml-1 text-blue-500"
               >
                 Dashboard
@@ -199,7 +199,7 @@ const page = async ({ params }: StoreFrontProps) => {
               <p>No products from this store yet! </p>
               {isOwner && (
                 <Link
-                  href={"/market-place/dashboard/seller/products/new"}
+                  href={"/marketplace/dashboard/seller/products/new"}
                   className="underline text-blue-500"
                 >
                   Add Your First Product!
@@ -240,3 +240,4 @@ const page = async ({ params }: StoreFrontProps) => {
 };
 
 export default page;
+

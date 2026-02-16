@@ -149,7 +149,7 @@ const SellerSettingsPage = () => {
   // SELLER WITHOUT A STORE
   const handleCreateStore = () => {
     startTransition(() => {
-      router.push("/market-place/dashboard/seller/store/create-store");
+      router.push("/marketplace/dashboard/seller/store/create-store");
     });
   };
 
@@ -261,7 +261,7 @@ const SellerSettingsPage = () => {
 
         toast.success("Store deleted successfully");
         setDeleteOpen(false);
-        router.replace("/market-place/dashboard");
+        router.replace("/marketplace/dashboard");
       } catch {
         toast.error("Failed to delete store");
         setDeletingStore(false);
@@ -1010,3 +1010,4 @@ const ModeratorSettingsPage = () => {
 };
 
 export { AdminSettingsPage, SellerSettingsPage, ModeratorSettingsPage };
+
