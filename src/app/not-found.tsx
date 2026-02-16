@@ -1,4 +1,4 @@
-﻿import RoleHomeButton from "@/components/layout/RoleHomeButton";
+﻿import RoleHomeLink from "@/components/layout/RoleHomeLink";
 
 const NotFoundError = () => {
   return (
@@ -7,7 +7,7 @@ const NotFoundError = () => {
       <p className="text-lg mb-6">
         Sorry, the page you are looking for does not exist.
       </p>
-      <RoleHomeButton
+      <RoleHomeLink
         className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
       />
     </div>

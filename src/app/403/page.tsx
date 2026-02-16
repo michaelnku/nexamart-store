@@ -1,4 +1,4 @@
-﻿import RoleHomeButton from "@/components/layout/RoleHomeButton";
+﻿import RoleHomeLink from "@/components/layout/RoleHomeLink";
 
 export default function ForbiddenPage() {
   return (
@@ -7,7 +7,7 @@ export default function ForbiddenPage() {
       <p className="text-muted-foreground">
         You don't have the permission to access this page.
       </p>
-      <RoleHomeButton variant="link" className="underline p-0 h-auto" />
+      <RoleHomeLink variant="link" className="underline p-0 h-auto" />
     </div>
   );
 }
