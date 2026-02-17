@@ -142,11 +142,11 @@ const OrderCard = ({ order }: Props) => {
             key={group.id}
             className="border rounded-xl bg-white shadow-sm p-6 space-y-5"
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <Store className="w-5 h-5 text-green-600" />
-                  {group.store.name}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <h3 className="text-lg font-semibold flex items-center gap-2 min-w-0">
+                  <Store className="w-5 h-5 text-green-600 shrink-0" />
+                  <span className="truncate">{group.store.name}</span>
                 </h3>
 
                 {group.store.slug && (
@@ -159,7 +159,7 @@ const OrderCard = ({ order }: Props) => {
                 )}
               </div>
 
-              <Badge className="bg-gray-700 text-white">
+              <Badge className="bg-gray-700 text-white self-start sm:self-auto">
                 {group.status.replaceAll("_", " ")}
               </Badge>
             </div>
@@ -170,7 +170,7 @@ const OrderCard = ({ order }: Props) => {
                   key={item.id}
                   className="flex gap-5 border-b pb-4 last:border-0"
                 >
-                  <div className="relative w-24 h-24 rounded-md overflow-hidden bg-gray-100">
+                  <div className="relative w-24 h-24 rounded-md overflow-hidden bg-gray-100 shrink-0">
                     <Image
                       src={
                         item.product.images[0]?.imageUrl ?? "/placeholder.png"
@@ -181,8 +181,10 @@ const OrderCard = ({ order }: Props) => {
                     />
                   </div>
 
-                  <div className="flex-1 space-y-1">
-                    <p className="font-medium text-sm">{item.product.name}</p>
+                  <div className="flex-1 space-y-1 min-w-0">
+                    <p className="font-medium text-sm line-clamp-2">
+                      {item.product.name}
+                    </p>
 
                     {item.variant && (
                       <p className="text-xs text-gray-500">

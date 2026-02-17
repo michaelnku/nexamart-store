@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { toast } from "sonner";
 
 export type VariantId = string | null;
 
@@ -36,8 +35,6 @@ export const useCartStore = create<CartState>()(
           );
 
           if (existing) {
-            toast.success("Increased quantity");
-
             return {
               items: state.items.map((i) =>
                 i.productId === productId && i.variantId === variantId
@@ -46,8 +43,6 @@ export const useCartStore = create<CartState>()(
               ),
             };
           }
-
-          toast.success("Added to cart");
 
           return {
             items: [...state.items, { productId, variantId, quantity: 1 }],
@@ -63,8 +58,6 @@ export const useCartStore = create<CartState>()(
                 : i,
             )
             .filter((i) => i.quantity > 0);
-
-          toast.info("Cart updated");
 
           return { items: updated };
         }),
