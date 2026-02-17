@@ -155,8 +155,8 @@ const SellerSettingsPage = () => {
 
   if (storeState.status === "deleted") {
     return (
-      <main className="max-w-xl mx-auto space-y-6 text-center py-12">
-        <h1 className="text-2xl font-semibold">Store Closed</h1>
+      <main className="max-w-xl mx-auto px-4 sm:px-6 space-y-6 text-center py-10 sm:py-12">
+        <h1 className="text-xl sm:text-2xl font-semibold">Store Closed</h1>
 
         <div>
           <p className="text-muted-foreground">
@@ -183,10 +183,10 @@ const SellerSettingsPage = () => {
 
   if (store === null) {
     return (
-      <main className="space-y-8 max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold">Create Your Store</h1>
+      <main className="space-y-8 max-w-2xl mx-auto px-4 sm:px-6">
+        <h1 className="text-2xl sm:text-3xl font-bold">Create Your Store</h1>
         <p className="text-gray-500">
-          You don't have a store yet. Set up your store to start selling on
+          You don&apos;t have a store yet. Set up your store to start selling on
           NexaMart.
         </p>
         <Button
@@ -284,8 +284,8 @@ const SellerSettingsPage = () => {
   };
 
   return (
-    <main className="space-y-8 max-w-3xl mx-auto">
-      <h1 className="text-3xl font-semibold">Store Settings</h1>
+    <main className="space-y-6 sm:space-y-8 max-w-4xl mx-auto px-4 sm:px-6 pb-8">
+      <h1 className="text-2xl sm:text-3xl font-semibold">Store Settings</h1>
 
       {/* BUSINESS PROFILE */}
       <Card>
@@ -294,17 +294,19 @@ const SellerSettingsPage = () => {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label>Store Name</Label>
-            <Input
-              value={store.name}
-              onChange={(e) => setStore({ ...store, name: e.target.value })}
-            />
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <div className="space-y-2">
+              <Label>Store Name</Label>
+              <Input
+                value={store.name}
+                onChange={(e) => setStore({ ...store, name: e.target.value })}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input value={user?.email ?? ""} disabled />
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input value={user?.email ?? ""} disabled />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -315,7 +317,7 @@ const SellerSettingsPage = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <div className="space-y-2">
               <Label>Store Type</Label>
               <Select
@@ -376,36 +378,76 @@ const SellerSettingsPage = () => {
           </div>
 
           {/* LOGO */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>Store Logo</Label>
 
-            <div className="relative w-32 h-32 group">
-              <div className="w-32 h-32 rounded-full overflow-hidden border shadow-sm flex items-center justify-center bg-gray-100">
-                {logoUrl ? (
-                  <Image
-                    src={logoUrl}
-                    alt="logo"
-                    width={128}
-                    height={128}
-                    className="object-cover w-full h-full"
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start sm:gap-4">
+              <div className="relative w-28 h-28 sm:w-32 sm:h-32 group">
+                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border shadow-sm flex items-center justify-center bg-gray-100">
+                  {logoUrl ? (
+                    <Image
+                      src={logoUrl}
+                      alt="logo"
+                      width={128}
+                      height={128}
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <Camera className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
+                  )}
+                </div>
+
+                {/* Desktop hover overlay */}
+                <div className="hidden sm:flex absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition flex-col items-center justify-center cursor-pointer gap-1 text-white text-sm">
+                  {logoUrl && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteLogo}
+                      className="text-red-300"
+                    >
+                      {deleting ? "Deleting..." : "Remove"}
+                    </button>
+                  )}
+
+                  <UploadButton
+                    endpoint="storeLogo"
+                    onUploadBegin={() => setUploading(true)}
+                    onClientUploadComplete={(res) => {
+                      setUploading(false);
+                      const file = res[0];
+                      setLogoUrl(file.url);
+                      setLogoKey(file.key);
+                      toast.success("Logo updated!");
+                    }}
+                    appearance={{
+                      button: "bg-transparent text-white",
+                      container: "flex items-center justify-center w-full h-full",
+                    }}
+                    content={{
+                      button() {
+                        return uploading
+                          ? "Uploading..."
+                          : logoUrl
+                            ? "Edit"
+                            : "Add Photo";
+                      },
+                    }}
                   />
-                ) : (
-                  <Camera className="w-10 h-10 text-gray-400" />
-                )}
+                </div>
               </div>
 
-              {/* Overlay */}
-              <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center cursor-pointer gap-1 text-white text-sm">
+              {/* Mobile-visible controls */}
+              <div className="flex items-center gap-2 sm:hidden">
                 {logoUrl && (
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={handleDeleteLogo}
-                    className="text-red-300"
                   >
                     {deleting ? "Deleting..." : "Remove"}
-                  </button>
+                  </Button>
                 )}
-
                 <UploadButton
                   endpoint="storeLogo"
                   onUploadBegin={() => setUploading(true)}
@@ -417,17 +459,12 @@ const SellerSettingsPage = () => {
                     toast.success("Logo updated!");
                   }}
                   appearance={{
-                    button: "bg-transparent text-white",
-                    container: "flex items-center justify-center w-full h-full",
+                    button: "text-xs font-medium",
+                    container: "flex items-center justify-center",
                   }}
                   content={{
-                    button() {
-                      return uploading
-                        ? "Uploading..."
-                        : logoUrl
-                          ? "Edit"
-                          : "Add Photo";
-                    },
+                    button: () =>
+                      uploading ? "Uploading..." : logoUrl ? "Change" : "Add",
                   }}
                 />
               </div>
@@ -445,10 +482,10 @@ const SellerSettingsPage = () => {
         <CardContent className="space-y-6">
           {/* Banner Image Upload */}
           {/* Banner Upload */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>Banner Image</Label>
 
-            <div className="relative w-full h-48 bg-gray-100 border rounded-xl overflow-hidden group">
+            <div className="relative w-full h-40 sm:h-48 bg-gray-100 border rounded-xl overflow-hidden group">
               {bannerUrl ? (
                 <Image
                   src={bannerUrl}
@@ -472,7 +509,7 @@ const SellerSettingsPage = () => {
 
               {/* Hover panel */}
               {!uploading && (
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-xl transition flex flex-col items-center justify-center gap-3 text-white text-sm cursor-pointer z-10">
+                <div className="hidden sm:flex absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-xl transition flex-col items-center justify-center gap-3 text-white text-sm cursor-pointer z-10">
                   {bannerUrl && (
                     <button
                       type="button"
@@ -506,6 +543,40 @@ const SellerSettingsPage = () => {
                 </div>
               )}
             </div>
+
+            {/* Mobile-visible banner controls */}
+            {!uploading && (
+              <div className="flex sm:hidden items-center gap-2">
+                {bannerUrl && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDeleteBanner}
+                  >
+                    {deleting ? "Deleting..." : "Remove"}
+                  </Button>
+                )}
+                <UploadButton
+                  endpoint="storeBanner"
+                  onUploadBegin={() => setUploading(true)}
+                  onClientUploadComplete={(res) => {
+                    setUploading(false);
+                    const file = res[0];
+                    setBannerUrl(file.url);
+                    setBannerKey(file.key);
+                    toast.success("Banner updated!");
+                  }}
+                  appearance={{
+                    button: "text-xs font-medium",
+                    container: "flex items-center",
+                  }}
+                  content={{
+                    button: () => (bannerUrl ? "Change Banner" : "Add Banner"),
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Storefront Tagline */}
@@ -535,7 +606,7 @@ const SellerSettingsPage = () => {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <Label>Enable Storefront</Label>
             <Switch
               checked={store.isActive}
@@ -545,7 +616,7 @@ const SellerSettingsPage = () => {
             />
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <Label>Email Notifications</Label>
             <Switch
               checked={store.emailNotificationsEnabled}
@@ -603,7 +674,7 @@ const SellerSettingsPage = () => {
             </AlertDialogHeader>
 
             <div className="space-y-2">
-              <Label>Type "DELETE MY STORE" to confirm</Label>
+              <Label>Type &quot;DELETE MY STORE&quot; to confirm</Label>
 
               <Input
                 value={confirmText}

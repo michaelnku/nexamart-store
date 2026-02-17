@@ -152,6 +152,21 @@ export default function MarketPlaceNavbar({
   };
 
   const avatarUrl = currentUser?.image || currentUser?.profileAvatar?.url;
+  const accountSettingsHref = "/marketplace/dashboard/settings";
+  const walletHref =
+    role === "SELLER"
+      ? "/marketplace/dashboard/seller/wallet"
+      : role === "RIDER"
+        ? "/marketplace/dashboard/rider/wallet"
+        : null;
+  const supportHref =
+    role === "SELLER"
+      ? "/marketplace/dashboard/seller/support"
+      : role === "RIDER"
+        ? "/marketplace/dashboard/rider/support"
+        : role === "ADMIN"
+          ? "/marketplace/dashboard/admin/support"
+          : null;
 
   return (
     <header className="sticky top-0 z-50 light:bg-white/90 backdrop-blur border-b shadow-sm">
@@ -271,7 +286,7 @@ export default function MarketPlaceNavbar({
 
               <DropdownMenuItem asChild>
                 <Link
-                  href="/dashboard/account"
+                  href={accountSettingsHref}
                   className="flex gap-2"
                   onClick={() => {
                     setOpen(false);
@@ -281,29 +296,33 @@ export default function MarketPlaceNavbar({
                 </Link>
               </DropdownMenuItem>
 
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/dashboard/wallet"
-                  className="flex gap-2"
-                  onClick={() => {
-                    setOpen(false);
-                  }}
-                >
-                  <Wallet className="w-4 h-4" /> Wallet
-                </Link>
-              </DropdownMenuItem>
+              {walletHref && (
+                <DropdownMenuItem asChild>
+                  <Link
+                    href={walletHref}
+                    className="flex gap-2"
+                    onClick={() => {
+                      setOpen(false);
+                    }}
+                  >
+                    <Wallet className="w-4 h-4" /> Wallet
+                  </Link>
+                </DropdownMenuItem>
+              )}
 
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/dashboard/support"
-                  className="flex gap-2"
-                  onClick={() => {
-                    setOpen(false);
-                  }}
-                >
-                  <HelpCircle className="w-4 h-4" /> Support Center
-                </Link>
-              </DropdownMenuItem>
+              {supportHref && (
+                <DropdownMenuItem asChild>
+                  <Link
+                    href={supportHref}
+                    className="flex gap-2"
+                    onClick={() => {
+                      setOpen(false);
+                    }}
+                  >
+                    <HelpCircle className="w-4 h-4" /> Support Center
+                  </Link>
+                </DropdownMenuItem>
+              )}
 
               <DropdownMenuSeparator />
 

@@ -26,6 +26,7 @@ import {
   StoreIcon,
   Ticket,
   MessageSquareOffIcon,
+  User,
 } from "lucide-react";
 
 export const DashboardMenu = {
@@ -90,6 +91,12 @@ export const DashboardMenu = {
           icon: HelpCircle,
         },
         {
+          name: "Profile",
+          href: "/marketplace/dashboard/profile",
+          icon: User,
+        },
+
+        {
           name: "Settings",
           href: "/marketplace/dashboard/settings",
           icon: Settings,
@@ -137,6 +144,11 @@ export const DashboardMenu = {
           name: "Support",
           href: "/marketplace/dashboard/rider/support",
           icon: HelpCircle,
+        },
+        {
+          name: "Profile",
+          href: "/marketplace/dashboard/profile",
+          icon: User,
         },
         {
           name: "Settings",
@@ -200,6 +212,11 @@ export const DashboardMenu = {
           name: "Support Tickets",
           href: "/marketplace/dashboard/admin/support",
           icon: HelpCircle,
+        },
+        {
+          name: "Profile",
+          href: "/marketplace/dashboard/profile",
+          icon: User,
         },
         {
           name: "Settings",
@@ -267,6 +284,11 @@ export const DashboardMenu = {
           name: "Support",
           href: "/marketplace/dashboard/moderator/support",
           icon: HelpCircle,
+        },
+        {
+          name: "Profile",
+          href: "/marketplace/dashboard/profile",
+          icon: User,
         },
         {
           name: "Settings",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -78,18 +78,20 @@ export default function CreateStoreForm() {
   };
 
   return (
-    <main className="px-4 py-10 flex justify-center">
-      <div className="w-full max-w-3xl bg-white dark:bg-neutral-900 border rounded-2xl shadow p-10 space-y-10">
+    <main className="px-4 py-6 sm:py-10 flex justify-center">
+      <div className="w-full max-w-3xl bg-white dark:bg-neutral-900 border rounded-2xl shadow p-4 sm:p-6 md:p-10 space-y-8 sm:space-y-10">
         {/* HEADER */}
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold">Create Your Storefront</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">
+            Create Your Storefront
+          </h1>
           <p className="text-sm text-muted-foreground">
             Add your brand details customers will see before ordering.
           </p>
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
             {/* STORE DETAILS */}
             <section className="space-y-6">
               <h2 className="text-xl font-semibold border-b pb-2">
@@ -137,7 +139,7 @@ export default function CreateStoreForm() {
                         <RadioGroup
                           value={field.value}
                           onValueChange={field.onChange}
-                          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                          className="grid grid-cols-1 sm:grid-cols-2 gap-4"
                         >
                           {/* GENERAL */}
                           <label className="border rounded-xl p-4 cursor-pointer hover:border-[#146EB4] transition">
@@ -194,7 +196,7 @@ export default function CreateStoreForm() {
                         <RadioGroup
                           value={field.value}
                           onValueChange={field.onChange}
-                          className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                         >
                           {/* PHYSICAL */}
                           <label className="border rounded-xl p-4 cursor-pointer hover:border-[#146EB4]">
@@ -278,9 +280,9 @@ export default function CreateStoreForm() {
             <section className="space-y-4">
               <FormLabel>Store Logo</FormLabel>
 
-              <div className="relative w-32 h-32 group mx-auto">
+              <div className="relative w-28 h-28 sm:w-32 sm:h-32 group mx-auto">
                 {/* Logo Preview */}
-                <div className="w-32 h-32 rounded-full overflow-hidden border shadow flex items-center justify-center bg-gray-100">
+                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border shadow flex items-center justify-center bg-gray-100">
                   {logoUrl ? (
                     <Image
                       src={logoUrl}
@@ -290,7 +292,7 @@ export default function CreateStoreForm() {
                       className="object-cover"
                     />
                   ) : (
-                    <Camera className="text-gray-400 w-10 h-10" />
+                    <Camera className="text-gray-400 w-8 h-8 sm:w-10 sm:h-10" />
                   )}
                 </div>
 
@@ -304,7 +306,7 @@ export default function CreateStoreForm() {
 
                 {/* Hover Action Panel */}
                 {!uploading && (
-                  <div className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-2 text-white text-sm cursor-pointer z-10">
+                  <div className="hidden sm:flex absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition flex-col items-center justify-center gap-2 text-white text-sm cursor-pointer z-10">
                     {logoUrl && (
                       <button
                         type="button"
@@ -338,6 +340,40 @@ export default function CreateStoreForm() {
                   </div>
                 )}
               </div>
+
+              {!uploading && (
+                <div className="flex items-center justify-center gap-2 sm:hidden">
+                  {logoUrl && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDeleteLogo}
+                    >
+                      {deleting ? "Deleting..." : "Remove"}
+                    </Button>
+                  )}
+                  <UploadButton
+                    endpoint="storeLogo"
+                    onUploadBegin={() => setUploading(true)}
+                    onClientUploadComplete={(res) => {
+                      setUploading(false);
+                      const file = res[0];
+                      setLogoUrl(file.url);
+                      setLogoKey(file.key);
+                      form.setValue("logo", file.url);
+                      toast.success("Logo uploaded!");
+                    }}
+                    appearance={{
+                      button: "text-xs font-medium",
+                      container: "flex items-center",
+                    }}
+                    content={{
+                      button: () => (logoUrl ? "Change" : "Add Logo"),
+                    }}
+                  />
+                </div>
+              )}
 
               <FormMessage>{form.formState.errors.logo?.message}</FormMessage>
             </section>
