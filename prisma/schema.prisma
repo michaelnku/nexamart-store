@@ -159,7 +159,8 @@ model Product {
   storeId     String
   categoryId  String
 
-  isPublished Boolean @default(true)
+  isPublished   Boolean @default(true)
+  isFoodProduct Boolean @default(false)
 
   basePriceUSD Float
 
@@ -188,11 +189,14 @@ model Product {
   specifications   String[] @default([])
   technicalDetails Json     @default("[]")
 
+  foodDetails Json?
+
   sold Int @default(0)
 
   @@index([storeId])
   @@index([categoryId])
   @@index([isPublished])
+  @@index([isFoodProduct])
 }
 
 model ProductVariant {

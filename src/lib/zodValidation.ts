@@ -84,6 +84,27 @@ export const changePasswordSchema = z
 
 export type ChangePasswordSchemaType = z.infer<typeof changePasswordSchema>;
 
+// FOOD DETAILS SCHEMA
+export const foodDetailsSchema = z.object({
+  ingredients: z
+    .array(z.string().min(1))
+    .min(1, "At least one ingredient is required"),
+
+  preparationTimeMinutes: z
+    .number()
+    .min(1, "Preparation time must be at least 1 minute"),
+
+  portionSize: z.string().min(1, "Portion size is required"),
+
+  spiceLevel: z.enum(["MILD", "MEDIUM", "HOT"]).optional(),
+
+  dietaryTags: z.array(z.string()).optional(),
+
+  isPerishable: z.boolean().optional(),
+
+  expiresAt: z.date().optional(),
+}).strict();
+
 // Product Variant Schema
 export const productVariantSchema = z.object({
   sku: z.string().min(1, "SKU is required"),
@@ -109,7 +130,7 @@ export const productImageSchema = z.object({
 });
 
 // Product Schema
-export const productSchema = z.object({
+const baseProductSchema = z.object({
   name: z
     .string()
     .min(3, "Product name is too short")
@@ -127,15 +148,62 @@ export const productSchema = z.object({
 
   images: z.array(productImageSchema).min(1),
 
-  variants: z.array(productVariantSchema).optional(),
+  variants: z.array(productVariantSchema).min(1, "At least one variant is required"),
+  isFoodProduct: z.boolean().optional(),
+  foodDetails: foodDetailsSchema.nullable().optional(),
 });
+
+export const productSchema = baseProductSchema
+  .refine(
+    (data) => !data.isFoodProduct || Boolean(data.foodDetails),
+    {
+      message: "foodDetails is required for FOOD products",
+      path: ["foodDetails"],
+    },
+  )
+  .refine(
+    (data) => !data.isFoodProduct || data.variants.length === 1,
+    {
+      message: "FOOD products must have exactly one variant",
+      path: ["variants"],
+    },
+  )
+  .refine(
+    (data) => data.isFoodProduct || data.foodDetails == null,
+    {
+      message: "foodDetails is only allowed for FOOD products",
+      path: ["foodDetails"],
+    },
+  );
 
 export type productSchemaType = z.infer<typeof productSchema>;
 
 // Updating Product
-export const updateProductSchema = productSchema.extend({
-  variants: z.array(productVariantSchema).min(1),
-});
+export const updateProductSchema = baseProductSchema
+  .extend({
+    variants: z.array(productVariantSchema).min(1, "At least one variant is required"),
+  })
+  .refine(
+    (data) => !data.isFoodProduct || Boolean(data.foodDetails),
+    {
+      message: "foodDetails is required for FOOD products",
+      path: ["foodDetails"],
+    },
+  )
+  .refine(
+    (data) => !data.isFoodProduct || data.variants.length === 1,
+    {
+      message: "FOOD products must have exactly one variant",
+      path: ["variants"],
+    },
+  )
+  .refine(
+    (data) => data.isFoodProduct || data.foodDetails == null,
+    {
+      message: "foodDetails is only allowed for FOOD products",
+      path: ["foodDetails"],
+    },
+  );
 
 export type updateProductSchemaType = z.infer<typeof updateProductSchema>;
 

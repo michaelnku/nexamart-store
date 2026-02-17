@@ -2,6 +2,7 @@
 
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import {
   productSchema,
   productSchemaType,
@@ -20,7 +21,39 @@ export const createProductAction = async (values: productSchemaType) => {
   const user = await CurrentUser();
   if (!user || user.role !== "SELLER") return { error: "Unauthorized access" };
 
-  const parsed = productSchema.safeParse(values);
+  const store = await prisma.store.findUnique({
+    where: { userId: user.id },
+    select: { id: true, type: true },
+  });
+
+  if (!store) return { error: "Create a store first" };
+
+  const isFoodStore = store.type === "FOOD";
+  const buildSimpleSku = (productName: string) => {
+    const cleaned = (productName || "PRD")
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .slice(0, 3)
+      .toUpperCase();
+    const prefix = cleaned.length > 0 ? cleaned : "PRD";
+    return `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
+  };
+
+  const normalizedVariants =
+    values.variants?.map((variant) => ({
+      ...variant,
+      sku: variant.sku?.trim() || buildSimpleSku(values.name),
+      color: isFoodStore ? undefined : variant.color,
+      size: isFoodStore ? undefined : variant.size,
+    })) ?? [];
+
+  const normalizedValues: productSchemaType = {
+    ...values,
+    isFoodProduct: isFoodStore,
+    foodDetails: isFoodStore ? values.foodDetails : null,
+    variants: normalizedVariants,
+  };
+
+  const parsed = productSchema.safeParse(normalizedValues);
   if (!parsed.success) return { error: "Invalid product data" };
 
   const {
@@ -31,17 +64,15 @@ export const createProductAction = async (values: productSchemaType) => {
     oldPriceUSD,
     discount,
     images,
-    variants = [],
+    variants,
+    foodDetails,
   } = parsed.data;
 
-  const store = await prisma.store.findUnique({
-    where: { userId: user.id },
-  });
-
-  if (!store) return { error: "Create a store first" };
-
-  if (!variants.length) {
+  if (!variants?.length) {
     return { error: "At least one variant is required" };
+  }
+  if (isFoodStore && variants.length !== 1) {
+    return { error: "FOOD products must have exactly one variant" };
   }
 
   const basePriceUSD = Math.min(...variants.map((v) => v.priceUSD));
@@ -52,43 +83,52 @@ export const createProductAction = async (values: productSchemaType) => {
       .map((s) => s.trim())
       .filter(Boolean) ?? [];
 
-  await prisma.product.create({
-    data: {
-      name,
-      description,
-      specifications: specsArray,
-      technicalDetails: values.technicalDetails ?? [],
-      categoryId,
-      storeId: store.id,
-      brand,
+  const serializedFoodDetails =
+    isFoodStore && foodDetails
+      ? {
+          ...foodDetails,
+          expiresAt: foodDetails.expiresAt?.toISOString(),
+        }
+      : Prisma.JsonNull;
 
-      basePriceUSD,
-      oldPriceUSD,
-      discount,
-
-      images: {
-        createMany: {
-          data: images.map((i) => ({
-            imageUrl: i.url,
-            imageKey: i.key,
-          })),
+  await prisma.$transaction(async (tx) => {
+    await tx.product.create({
+      data: {
+        name,
+        description,
+        specifications: specsArray,
+        technicalDetails: values.technicalDetails ?? [],
+        categoryId,
+        storeId: store.id,
+        brand,
+        isFoodProduct: isFoodStore,
+        foodDetails: serializedFoodDetails,
+        basePriceUSD,
+        oldPriceUSD,
+        discount,
+        images: {
+          createMany: {
+            data: images.map((i) => ({
+              imageUrl: i.url,
+              imageKey: i.key,
+            })),
+          },
+        },
+        variants: {
+          createMany: {
+            data: variants.map((v) => ({
+              sku: v.sku,
+              priceUSD: v.priceUSD,
+              stock: v.stock,
+              color: isFoodStore ? null : v.color,
+              size: isFoodStore ? null : v.size,
+              oldPriceUSD: v.oldPriceUSD,
+              discount: v.discount,
+            })),
+          },
         },
       },
-
-      variants: {
-        createMany: {
-          data: variants.map((v) => ({
-            sku: v.sku,
-            priceUSD: v.priceUSD,
-            stock: v.stock,
-            color: v.color,
-            size: v.size,
-            oldPriceUSD: v.oldPriceUSD,
-            discount: v.discount,
-          })),
-        },
-      },
-    },
+    });
   });
 
   revalidatePath("/marketplace/dashboard/seller/products");

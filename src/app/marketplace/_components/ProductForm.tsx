@@ -29,13 +29,16 @@ import { toast } from "sonner";
 import type { Category } from "@/lib/types";
 import { deleteFileAction } from "@/actions/actions";
 import { PriceConverter } from "@/components/currency/PriceConverter";
+import FoodProductSection from "@/components/product/FoodProductSection";
 
 type ProductFormProps = {
   categories: Category[];
+  storeType: "GENERAL" | "FOOD";
 };
 
-const ProductForm = ({ categories }: ProductFormProps) => {
+const ProductForm = ({ categories, storeType }: ProductFormProps) => {
   const router = useRouter();
+  const isFoodStore = storeType === "FOOD";
 
   const [level1, setLevel1] = useState<string | null>(null);
   const [level2, setLevel2] = useState<string | null>(null);
@@ -60,10 +63,22 @@ const ProductForm = ({ categories }: ProductFormProps) => {
       technicalDetails: [],
       categoryId: "",
       images: [],
+      isFoodProduct: isFoodStore,
+      foodDetails: isFoodStore
+        ? {
+            ingredients: [""],
+            preparationTimeMinutes: 1,
+            portionSize: "",
+            spiceLevel: undefined,
+            dietaryTags: [],
+            isPerishable: false,
+            expiresAt: undefined,
+          }
+        : undefined,
       variants: [
         {
-          color: "",
-          size: "",
+          color: isFoodStore ? undefined : "",
+          size: isFoodStore ? undefined : "",
           priceUSD: 0,
           stock: 0,
           sku: "",
@@ -88,7 +103,7 @@ const ProductForm = ({ categories }: ProductFormProps) => {
     return `${name.slice(0, 3).toUpperCase()}-${rand}`;
   };
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: "variants",
   });
@@ -108,12 +123,49 @@ const ProductForm = ({ categories }: ProductFormProps) => {
   }, [level1, level2, level3, setValue]);
 
   useEffect(() => {
+    setValue("isFoodProduct", isFoodStore);
+    if (!isFoodStore) {
+      setValue("foodDetails", undefined);
+      return;
+    }
+
+    const variants = getValues("variants");
+    const firstVariant = variants?.[0] ?? {
+      sku: "",
+      priceUSD: 0,
+      stock: 0,
+      oldPriceUSD: 0,
+      discount: 0,
+    };
+    replace([
+      {
+        ...firstVariant,
+        color: undefined,
+        size: undefined,
+      },
+    ]);
+
+    const currentFoodDetails = getValues("foodDetails");
+    if (!currentFoodDetails) {
+      setValue("foodDetails", {
+        ingredients: [""],
+        preparationTimeMinutes: 1,
+        portionSize: "",
+        spiceLevel: undefined,
+        dietaryTags: [],
+        isPerishable: false,
+        expiresAt: undefined,
+      });
+    }
+  }, [getValues, isFoodStore, replace, setValue]);
+
+  useEffect(() => {
     const variants = getValues("variants");
     const productName = getValues("name");
 
     variants?.forEach((v, index) => {
       if (!v.sku) {
-        const hasOptions = Boolean(v.color || v.size);
+        const hasOptions = !isFoodStore && Boolean(v.color || v.size);
 
         setValue(
           `variants.${index}.sku`,
@@ -123,7 +175,7 @@ const ProductForm = ({ categories }: ProductFormProps) => {
         );
       }
     });
-  }, [getValues, setValue]);
+  }, [getValues, isFoodStore, setValue]);
 
   const hasDuplicateSkus = (variants: { sku: string }[]) => {
     const skus = variants.map((v) => v.sku.trim());
@@ -131,7 +183,21 @@ const ProductForm = ({ categories }: ProductFormProps) => {
   };
 
   const onSubmit = (values: productSchemaType) => {
-    const variants = values.variants;
+    const normalizedValues: productSchemaType = {
+      ...values,
+      isFoodProduct: isFoodStore,
+      foodDetails: isFoodStore ? values.foodDetails : undefined,
+      variants: values.variants.map((variant) => ({
+        ...variant,
+        color: isFoodStore ? undefined : variant.color,
+        size: isFoodStore ? undefined : variant.size,
+        sku:
+          variant.sku?.trim() ||
+          generateSimpleSku(values.name || "PRD"),
+      })),
+    };
+
+    const variants = normalizedValues.variants;
     if (!values.categoryId) {
       toast.error("Please select a category");
       return;
@@ -159,9 +225,14 @@ const ProductForm = ({ categories }: ProductFormProps) => {
       return;
     }
 
+    if (isFoodStore && variants.length !== 1) {
+      toast.error("FOOD products must have exactly one variant");
+      return;
+    }
+
     startTransition(async () => {
       try {
-        const res = await createProductAction(values);
+        const res = await createProductAction(normalizedValues);
         if (res?.error) {
           setError(res.error);
           toast.error(res.error);
@@ -265,120 +336,124 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                 )}
               />
 
-              <FormField
-                control={control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        rows={4}
-                        {...field}
-                        placeholder="product detail..."
-                        className="focus-visible:ring-[var(--brand-blue)]"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              {!isFoodStore && (
+                <FormField
+                  control={control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={4}
+                          {...field}
+                          placeholder="product detail..."
+                          className="focus-visible:ring-[var(--brand-blue)]"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              )}
 
-              {/* Specifications (bullet style) */}
-              <FormField
-                control={control}
-                name="specifications"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Specifications (one per line)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        rows={4}
-                        placeholder={`5000mAh battery
+              {!isFoodStore && (
+                <FormField
+                  control={control}
+                  name="specifications"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Specifications (one per line)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={4}
+                          placeholder={`5000mAh battery
 6.5-inch AMOLED display
 Snapdragon processor
 Dual SIM`}
-                        {...field}
-                        className="focus-visible:ring-[var(--brand-blue)] whitespace-pre-wrap"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                          {...field}
+                          className="focus-visible:ring-[var(--brand-blue)] whitespace-pre-wrap"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
-              {/* Technical details (key/value) */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-[var(--brand-black)]">
-                    Technical Details
-                  </h3>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => appendTech({ key: "", value: "" })}
-                  >
-                    <Plus className="w-4 h-4 mr-1" /> Add Detail
-                  </Button>
-                </div>
-
-                {techFields.length === 0 && (
-                  <p className="text-sm text-gray-500">
-                    No technical details added yet.
-                  </p>
-                )}
-
+              {!isFoodStore && (
                 <div className="space-y-3">
-                  {techFields.map((item, index) => (
-                    <div
-                      key={item.id}
-                      className="grid grid-cols-1 md:grid-cols-[2fr,3fr,auto] gap-3 items-center"
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-[var(--brand-black)]">
+                      Technical Details
+                    </h3>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => appendTech({ key: "", value: "" })}
                     >
-                      <FormField
-                        control={control}
-                        name={`technicalDetails.${index}.key`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Label</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="Processor / Material / Model number..."
-                                className="focus-visible:ring-[var(--brand-blue)]"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
+                      <Plus className="w-4 h-4 mr-1" /> Add Detail
+                    </Button>
+                  </div>
 
-                      <FormField
-                        control={control}
-                        name={`technicalDetails.${index}.value`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Value</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="Snapdragon 720 / Stainless steel..."
-                                className="focus-visible:ring-[var(--brand-blue)]"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
+                  {techFields.length === 0 && (
+                    <p className="text-sm text-gray-500">
+                      No technical details added yet.
+                    </p>
+                  )}
 
-                      <button
-                        type="button"
-                        onClick={() => removeTech(index)}
-                        className="mt-5 text-red-500 hover:text-red-600"
+                  <div className="space-y-3">
+                    {techFields.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="grid grid-cols-1 md:grid-cols-[2fr,3fr,auto] gap-3 items-center"
                       >
-                        <Trash className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+                        <FormField
+                          control={control}
+                          name={`technicalDetails.${index}.key`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Label</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  placeholder="Processor / Material / Model number..."
+                                  className="focus-visible:ring-[var(--brand-blue)]"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={control}
+                          name={`technicalDetails.${index}.value`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Value</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  placeholder="Snapdragon 720 / Stainless steel..."
+                                  className="focus-visible:ring-[var(--brand-blue)]"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => removeTech(index)}
+                          className="mt-5 text-red-500 hover:text-red-600"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* CATEGORY */}
               <div className="space-y-4">
@@ -439,7 +514,7 @@ Dual SIM`}
               <h2 className="font-semibold text-xl">Variants Section</h2>
               {fields.map((_, index) => (
                 <div key={index} className="border rounded-lg p-5 space-y-5">
-                  {fields.length > 1 && (
+                  {!isFoodStore && fields.length > 1 && (
                     <button
                       type="button"
                       onClick={() => remove(index)}
@@ -449,61 +524,63 @@ Dual SIM`}
                     </button>
                   )}
 
-                  <div className="grid md:grid-cols-2 gap-5">
-                    <FormField
-                      control={control}
-                      name={`variants.${index}.color`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Color</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="Black"
-                              className="focus-visible:ring-[var(--brand-blue)]"
-                              onChange={(e) => {
-                                field.onChange(e);
-                                setValue(
-                                  `variants.${index}.sku`,
-                                  generateVariantSku(
-                                    e.target.value,
-                                    getValues(`variants.${index}.size`),
-                                  ),
-                                );
-                              }}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                  {!isFoodStore && (
+                    <div className="grid md:grid-cols-2 gap-5">
+                      <FormField
+                        control={control}
+                        name={`variants.${index}.color`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Color</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="Black"
+                                className="focus-visible:ring-[var(--brand-blue)]"
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  setValue(
+                                    `variants.${index}.sku`,
+                                    generateVariantSku(
+                                      e.target.value,
+                                      getValues(`variants.${index}.size`),
+                                    ),
+                                  );
+                                }}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
 
-                    <FormField
-                      control={control}
-                      name={`variants.${index}.size`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Size</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              className="focus-visible:ring-[var(--brand-blue)]"
-                              placeholder="M / L / XL"
-                              onChange={(e) => {
-                                field.onChange(e);
-                                setValue(
-                                  `variants.${index}.sku`,
-                                  generateVariantSku(
-                                    e.target.value,
-                                    getValues(`variants.${index}.size`),
-                                  ),
-                                );
-                              }}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                      <FormField
+                        control={control}
+                        name={`variants.${index}.size`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Size</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                className="focus-visible:ring-[var(--brand-blue)]"
+                                placeholder="M / L / XL"
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  setValue(
+                                    `variants.${index}.sku`,
+                                    generateVariantSku(
+                                      e.target.value,
+                                      getValues(`variants.${index}.size`),
+                                    ),
+                                  );
+                                }}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
 
                   <PriceConverter
                     onUSDChange={(usd) =>
@@ -677,22 +754,26 @@ Dual SIM`}
                 </div>
               ))}
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  append({
-                    color: "",
-                    size: "",
-                    priceUSD: 0,
-                    stock: 0,
-                    sku: "",
-                  })
-                }
-              >
-                <Plus className="mr-2 h-4 w-4" /> Add Variant
-              </Button>
+              {!isFoodStore && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    append({
+                      color: "",
+                      size: "",
+                      priceUSD: 0,
+                      stock: 0,
+                      sku: "",
+                    })
+                  }
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Add Variant
+                </Button>
+              )}
             </section>
+
+            {isFoodStore && <FoodProductSection control={control} />}
 
             {/* IMAGES */}
             <section className="space-y-5">

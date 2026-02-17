@@ -1,20 +1,29 @@
 import { prisma } from "@/lib/prisma";
 
-export async function getRecommendedProducts(userId: string) {
+type GetRecommendedProductsOptions = {
+  recentIds?: string[];
+  limit?: number;
+};
+
+export async function getRecommendedProducts(
+  userId: string,
+  options: GetRecommendedProductsOptions = {},
+) {
   if (!userId) return [];
 
-  const LIMIT = 12;
+  const LIMIT = options.limit ?? 12;
+  const recentIds = (options.recentIds ?? []).slice(0, 20);
 
   const purchasedItems = await prisma.orderItem.findMany({
     where: {
       order: {
         userId,
-        status: { in: ["DELIVERED", "COMPLETED"] },
-        isPaid: true,
+        status: "COMPLETED",
       },
     },
     select: {
       productId: true,
+      quantity: true,
       product: {
         select: {
           categoryId: true,
@@ -23,82 +32,103 @@ export async function getRecommendedProducts(userId: string) {
     },
   });
 
-  const purchasedProductIds = [
-    ...new Set(purchasedItems.map((p) => p.productId)),
-  ];
+  const purchasedProductIds = Array.from(
+    new Set(purchasedItems.map((item) => item.productId)),
+  );
 
-  const purchasedCategoryIds = [
-    ...new Set(purchasedItems.map((p) => p.product.categoryId)),
-  ];
-
-  if (purchasedCategoryIds.length > 0) {
-    const recommended = await prisma.product.findMany({
-      where: {
-        isPublished: true,
-        categoryId: { in: purchasedCategoryIds },
-        NOT: {
-          id: { in: purchasedProductIds },
-        },
-      },
-      include: {
-        images: true,
-        variants: true,
-        store: true,
-      },
-      orderBy: {
-        sold: "desc",
-      },
-      take: LIMIT,
-    });
-
-    if (recommended.length > 0) return recommended;
+  const categoryCount = new Map<string, number>();
+  for (const item of purchasedItems) {
+    const current = categoryCount.get(item.product.categoryId) ?? 0;
+    categoryCount.set(item.product.categoryId, current + item.quantity);
   }
 
-  const recentViews = await prisma.searchHistory.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-  });
+  const purchasedTopCategories = [...categoryCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([categoryId]) => categoryId);
 
-  if (recentViews.length > 0) {
-    const recentKeywords = recentViews.map((r) => r.query);
-
-    const recommendedFromSearch = await prisma.product.findMany({
+  if (purchasedTopCategories.length > 0) {
+    const productsFromPurchasedCategories = await prisma.product.findMany({
       where: {
         isPublished: true,
-        name: {
-          contains: recentKeywords[0],
-          mode: "insensitive",
-        },
+        categoryId: { in: purchasedTopCategories },
+        id: { notIn: purchasedProductIds },
       },
       include: {
         images: true,
         variants: true,
         store: true,
       },
-      orderBy: {
-        sold: "desc",
-      },
+      orderBy: [{ sold: "desc" }, { createdAt: "desc" }],
       take: LIMIT,
     });
 
-    if (recommendedFromSearch.length > 0) return recommendedFromSearch;
+    if (productsFromPurchasedCategories.length > 0) {
+      return productsFromPurchasedCategories;
+    }
+  }
+
+  if (recentIds.length > 0) {
+    const recentProducts = await prisma.product.findMany({
+      where: { id: { in: recentIds } },
+      select: { categoryId: true },
+    });
+
+    const recentCategoryIds = Array.from(
+      new Set(recentProducts.map((product) => product.categoryId)),
+    );
+
+    if (recentCategoryIds.length > 0) {
+      const productsFromViewedCategories = await prisma.product.findMany({
+        where: {
+          isPublished: true,
+          categoryId: { in: recentCategoryIds },
+          id: { notIn: purchasedProductIds },
+        },
+        include: {
+          images: true,
+          variants: true,
+          store: true,
+        },
+        orderBy: [{ sold: "desc" }, { createdAt: "desc" }],
+        take: LIMIT,
+      });
+
+      if (productsFromViewedCategories.length > 0) {
+        return productsFromViewedCategories;
+      }
+    }
   }
 
   const topSellers = await prisma.product.findMany({
     where: {
       isPublished: true,
+      id: { notIn: purchasedProductIds },
     },
     include: {
       images: true,
       variants: true,
       store: true,
     },
-    orderBy: {
-      sold: "desc",
-    },
-    take: LIMIT,
+    orderBy: { sold: "desc" },
+    take: Math.ceil(LIMIT / 2),
   });
 
-  return topSellers;
+  const topSellerIds = topSellers.map((product) => product.id);
+
+  const trendingProducts = await prisma.product.findMany({
+    where: {
+      isPublished: true,
+      id: { notIn: [...purchasedProductIds, ...topSellerIds] },
+    },
+    include: {
+      images: true,
+      variants: true,
+      store: true,
+    },
+    orderBy: [{ createdAt: "desc" }, { sold: "desc" }],
+    take: LIMIT - topSellers.length,
+  });
+
+  return [...topSellers, ...trendingProducts];
 }

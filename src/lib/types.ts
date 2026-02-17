@@ -591,3 +591,13 @@ export type RiderProfileDTO = Pick<
   | "isVerified"
   | "isAvailable"
 >;
+
+export type FoodDetails = {
+  ingredients?: string[];
+  preparationTimeMinutes?: number;
+  portionSize?: string;
+  spiceLevel?: "MILD" | "MEDIUM" | "HOT";
+  dietaryTags?: string[];
+  isPerishable?: boolean;
+  expiresAt?: string;
+};
