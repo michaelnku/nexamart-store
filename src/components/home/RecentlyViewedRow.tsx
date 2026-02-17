@@ -2,24 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { getRecentlyViewed } from "@/hooks/useRecentlyViewed";
-import PublicProductCard from "../product/PublicProductCard";
 import { ProductCardType } from "@/lib/types";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import RecentlyViewedPaginationSwiper from "./RecentlyViewedPaginationSwiper";
 
 export default function RecentlyViewedRow() {
   const [products, setProducts] = useState<ProductCardType[]>([]);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia("(max-width: 640px)");
-    setIsMobile(media.matches);
-
-    const listener = () => setIsMobile(media.matches);
-    media.addEventListener("change", listener);
-
-    return () => media.removeEventListener("change", listener);
-  }, []);
 
   useEffect(() => {
     const load = () => {
@@ -32,40 +21,37 @@ export default function RecentlyViewedRow() {
       fetch(`/api/products/recent?ids=${ids.join(",")}`)
         .then((res) => res.json())
         .then((data: ProductCardType[]) => {
-          const viewedProducts = ids
+          const ordered = ids
             .map((id) => data.find((p) => p.id === id))
             .filter(Boolean) as ProductCardType[];
 
-          setProducts(isMobile ? viewedProducts.slice(0, 4) : viewedProducts);
+          setProducts(ordered);
         })
         .catch(() => {});
     };
 
     load();
-
     window.addEventListener("storage", load);
     return () => window.removeEventListener("storage", load);
-  }, [isMobile]);
+  }, []);
 
   if (!products.length) return null;
 
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Recently Viewed</h2>
+    <section className="py-6">
+      <div className="mx-auto w-full max-w-7xl space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Recently Viewed</h2>
 
-        <Link
-          href="/history"
-          className="text-sm font-medium text-[var(--brand-blue)] hover:underline"
-        >
-          <ChevronRight />
-        </Link>
-      </div>
+          <Link
+            href="/customer/history"
+            className="flex items-center text-sm font-medium text-[var(--brand-blue)] hover:underline"
+          >
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Link>
+        </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {products.map((product) => (
-          <PublicProductCard key={product.id} product={product} />
-        ))}
+        <RecentlyViewedPaginationSwiper products={products} />
       </div>
     </section>
   );

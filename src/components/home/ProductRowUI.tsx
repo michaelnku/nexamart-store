@@ -80,23 +80,29 @@ export default function ProductRowUI({
           modules={[Navigation, Autoplay]}
           onSwiper={(swiper) => (swiperRef.current = swiper)}
           autoplay={
-            autoplay ? { delay: 5000, disableOnInteraction: false } : false
+            autoplay ? { delay: 4000, disableOnInteraction: false } : false
           }
-          loop={true}
+          loop={products.length > 6}
+          slidesPerView="auto"
+          slidesPerGroup={1}
           spaceBetween={18}
-          breakpoints={{
-            320: { slidesPerView: 2 },
-            540: { slidesPerView: 3 },
-            768: { slidesPerView: 4 },
-            1024: { slidesPerView: 5 },
-            1280: { slidesPerView: 6 },
-          }}
-          className="pb-8"
+          speed={600}
+          grabCursor
+          className="pb-10 px-1"
         >
           {products.map((p, i) => (
-            <SwiperSlide key={p.id}>
+            <SwiperSlide key={p.id} className="!w-auto">
               <FadeIn delay={i * 0.04}>
-                <PublicProductCard product={p} isWishlisted={false} />
+                <div
+                  className="
+            w-[160px]
+            sm:w-[180px]
+            md:w-[200px]
+            lg:w-[220px]
+          "
+                >
+                  <PublicProductCard product={p} isWishlisted={false} />
+                </div>
               </FadeIn>
             </SwiperSlide>
           ))}

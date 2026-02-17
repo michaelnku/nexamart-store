@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { X, ShieldCheck, Truck } from "lucide-react";
@@ -201,7 +201,9 @@ export default function ProductPublicDetail({
             </Link>
             <div className="flex items-center gap-2">
               <StarRating value={data.averageRating} readonly size="sm" />
-              <span className="text-sm text-gray-500">({data.reviewCount})</span>
+              <span className="text-sm text-gray-500">
+                ({data.reviewCount})
+              </span>
             </div>
           </div>
 
@@ -408,6 +410,3 @@ export default function ProductPublicDetail({
     </main>
   );
 }
-
-
-
