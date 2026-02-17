@@ -43,6 +43,7 @@ export default async function Page({
       reviews: {
         select: {
           id: true,
+          orderId: true,
           rating: true,
           comment: true,
           createdAt: true,
