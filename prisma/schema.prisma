@@ -173,6 +173,9 @@ model Product {
   wishlistItems WishlistItem[]
   cartItems     CartItem[]
 
+  averageRating Float @default(0)
+  reviewCount   Int   @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -262,6 +265,7 @@ model Review {
   id        String  @id @default(cuid())
   productId String
   userId    String
+  orderId   String
   rating    Int
   comment   String?
 
@@ -271,7 +275,7 @@ model Review {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([productId, userId])
+  @@unique([productId, userId, orderId])
 }
 
 model SearchHistory {

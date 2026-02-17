@@ -7,6 +7,7 @@ import AddToCartControl from "./AddtoCartButton";
 import { ProductCardType } from "@/lib/types";
 import { useMemo } from "react";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
+import StarRating from "@/components/reviews/StarRating";
 
 export default function PublicProductCard({
   product,
@@ -81,6 +82,11 @@ export default function PublicProductCard({
           </p>
         </Link>
 
+        <div className="flex items-center gap-2">
+          <StarRating value={product.averageRating} readonly size="sm" />
+          <span className="text-sm text-gray-500">({product.reviewCount})</span>
+        </div>
+
         <div className="flex items-baseline gap-2">
           <p className="font-semibold text-gray-900 dark:text-gray-500 text-sm">
             {formatMoneyFromUSD(displayPriceUSD)}
@@ -93,7 +99,10 @@ export default function PublicProductCard({
           )}
         </div>
 
-        <AddToCartControl productId={product.id} variantId={cheapestVariant?.id ?? null} />
+        <AddToCartControl
+          productId={product.id}
+          variantId={cheapestVariant?.id ?? null}
+        />
       </div>
     </div>
   );

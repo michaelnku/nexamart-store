@@ -1,4 +1,5 @@
 import ProductPublicDetail from "@/components/product/PublicProductDetail";
+import ReviewList from "@/components/reviews/ReviewList";
 import { CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { createProductSlug } from "@/lib/search/productSlug";
@@ -128,12 +129,21 @@ export default async function Page({ params }: PageProps) {
   const defaultVariant = product.variants[0];
 
   return (
-    <ProductPublicDetail
-      data={product}
-      defaultVariant={defaultVariant}
-      isWishlisted={isWishlisted}
-      cartItems={cart?.items ?? []}
-      userId={userId}
-    />
+    <>
+      <ProductPublicDetail
+        data={product}
+        defaultVariant={defaultVariant}
+        isWishlisted={isWishlisted}
+        cartItems={cart?.items ?? []}
+        userId={userId}
+      />
+
+      <section className="max-w-[1200px] mx-auto px-3 sm:px-6 lg:px-4 pb-10">
+        <div className="bg-white border rounded-xl shadow-sm p-6 space-y-4">
+          <h2 className="text-xl font-semibold">Customer Reviews</h2>
+          <ReviewList productId={product.id} />
+        </div>
+      </section>
+    </>
   );
 }

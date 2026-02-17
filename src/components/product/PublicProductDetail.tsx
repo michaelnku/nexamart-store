@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { X, Star, ShieldCheck, Truck } from "lucide-react";
+import { X, ShieldCheck, Truck } from "lucide-react";
 import {
   Dialog,
   DialogClose,
@@ -27,6 +27,7 @@ import { useCartStore } from "@/stores/useCartstore";
 import { useWishlistStore } from "@/stores/useWishlistStore";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { addRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import StarRating from "@/components/reviews/StarRating";
 
 type ProductVariant = FullProduct["variants"][number];
 
@@ -198,10 +199,10 @@ export default function ProductPublicDetail({
             >
               Visit Store — {data.store.name}
             </Link>
-            <p className="flex items-center gap-1 text-sm text-yellow-600">
-              <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" /> 4.7 •
-              3,841 ratings
-            </p>
+            <div className="flex items-center gap-2">
+              <StarRating value={data.averageRating} readonly size="sm" />
+              <span className="text-sm text-gray-500">({data.reviewCount})</span>
+            </div>
           </div>
 
           <p
@@ -407,3 +408,6 @@ export default function ProductPublicDetail({
     </main>
   );
 }
+
+
+
