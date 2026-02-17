@@ -357,7 +357,7 @@ export async function getRiderStats() {
     })),
     ...riderTransactions.map((transaction) => ({
       id: `tx-${transaction.id}`,
-      type: transaction.type,
+      type: transaction.type as "EARNING" | "WITHDRAWAL",
       title:
         transaction.type === "EARNING" ? "Earnings Update" : "Withdrawal Event",
       description: transaction.description ?? "Wallet transaction update",
