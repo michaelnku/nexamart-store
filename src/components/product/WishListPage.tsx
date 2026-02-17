@@ -8,7 +8,10 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FullProduct } from "@/lib/types";
-import { toggleWishlistAction } from "@/actions/auth/wishlist";
+import {
+  moveAllWishlistToCartAction,
+  toggleWishlistAction,
+} from "@/actions/auth/wishlist";
 import WishlistCardSkeleton from "../skeletons/WishlistCardSkeleton";
 import { Separator } from "../ui/separator";
 import AddToCartControl from "./AddtoCartButton";
@@ -25,7 +28,7 @@ const WishListPage = ({ initialData }: Props) => {
 
   const router = useRouter();
 
-  const { items, remove, sync } = useWishlistStore();
+  const { items, remove, sync, clear } = useWishlistStore();
 
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
 
@@ -55,6 +58,29 @@ const WishListPage = ({ initialData }: Props) => {
     });
   };
 
+  const moveAllToCart = () => {
+    startTransition(async () => {
+      const res = await moveAllWishlistToCartAction();
+
+      if (!res || res.error) {
+        toast.error(res?.error ?? "Failed to move items to cart");
+        return;
+      }
+
+      const movedCount =
+        typeof res.movedCount === "number" ? res.movedCount : 0;
+
+      clear();
+      toast.success(
+        movedCount > 0
+          ? `${movedCount} item${movedCount > 1 ? "s" : ""} moved to cart`
+          : "Wishlist is empty",
+      );
+      router.push("/cart");
+      router.refresh();
+    });
+  };
+
   if (!hydrated) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 pt-6">
@@ -79,12 +105,21 @@ const WishListPage = ({ initialData }: Props) => {
         </div>
 
         {wishlistProducts.length > 0 && (
-          <Button
-            onClick={() => router.push("/")}
-            className="bg-[#3c9ee0] hover:bg-[#318bc4] text-white font-medium rounded-lg"
-          >
-            Browse More
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={moveAllToCart}
+              className="bg-[#3c9ee0] hover:bg-[#318bc4] text-white font-medium rounded-lg"
+            >
+              Move All To Cart
+            </Button>
+            <Button
+              onClick={() => router.push("/")}
+              variant="outline"
+              className="font-medium rounded-lg"
+            >
+              Browse More
+            </Button>
+          </div>
         )}
       </div>
 
@@ -109,7 +144,9 @@ const WishListPage = ({ initialData }: Props) => {
               discount > 0 ? product.basePriceUSD / (1 - discount / 100) : null;
             const cheapestVariant =
               product.variants && product.variants.length > 0
-                ? [...product.variants].sort((a, b) => a.priceUSD - b.priceUSD)[0]
+                ? [...product.variants].sort(
+                    (a, b) => a.priceUSD - b.priceUSD,
+                  )[0]
                 : null;
 
             return (

@@ -36,7 +36,8 @@ export default function InboxLayout({ conversations, currentUserId }: Props) {
 
       const current = prev[index];
       const nextUnread =
-        payload.senderType !== "USER" && activeId !== payload.conversationId
+        payload.senderType === "SUPPORT" &&
+        activeId !== payload.conversationId
           ? current.unreadCount + 1
           : activeId === payload.conversationId
             ? 0

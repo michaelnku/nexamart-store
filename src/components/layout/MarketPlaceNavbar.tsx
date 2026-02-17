@@ -39,6 +39,7 @@ import { MarketplaceSearch } from "../search/MarketplaceSearch";
 import { MobileSearchSheet } from "../search/MobileSearchSheet";
 import { getUserInitials } from "@/lib/user";
 import RiderTripsDropdown from "@/components/layout/RiderTripsDropdown";
+import CurrencySelector from "@/components/currency/CurrencySelector";
 
 type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -321,6 +322,7 @@ export default function MarketPlaceNavbar({
             </DropdownMenuContent>
           </DropdownMenu>
 
+          <CurrencySelector />
           <ModeToggle />
         </div>
 
@@ -389,6 +391,12 @@ export default function MarketPlaceNavbar({
                   initialUser={currentUser ?? null}
                   onNavigate={() => setOpen(false)}
                 />
+              </div>
+
+              <Separator />
+              <div className="p-5 flex items-center justify-between gap-3">
+                <span className="text-sm text-gray-600">Currency</span>
+                <CurrencySelector />
               </div>
 
               <Separator />

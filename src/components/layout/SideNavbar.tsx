@@ -164,8 +164,10 @@ export const DashboardSidebar = ({
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex fixed top-20 left-0 min-h-screen w-64 dark:bg-neutral-950 bg-white border-r shadow-sm z-20">
-      <SidebarContent user={user} pathname={pathname} />
+    <aside className="hidden md:block md:sticky md:top-0 md:h-full md:w-64 md:shrink-0 md:py-4">
+      <div className="h-full rounded-xl border bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+        <SidebarContent user={user} pathname={pathname} />
+      </div>
     </aside>
   );
 };

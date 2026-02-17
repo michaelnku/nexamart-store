@@ -45,7 +45,7 @@ export default async function InboxPage() {
         where: {
           conversationId: c.id,
           readAt: null,
-          senderType: { not: "USER" },
+          senderType: "SUPPORT",
         },
       });
 

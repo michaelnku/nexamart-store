@@ -204,7 +204,7 @@ const ProductForm = ({ categories }: ProductFormProps) => {
   const watchedImages = form.watch("images");
 
   return (
-    <main className="flex justify-center p-4 md:p-8 lg:p-12 dark:bg-neutral-950">
+    <main className="flex justify-center dark:bg-neutral-950">
       <div className="w-full max-w-4xl border px-8 py-4 rounded-2xl shadow space-y-10">
         <h1 className="text-3xl font-bold text-center text-[var(--brand-blue)]">
           New Product
@@ -240,10 +240,10 @@ const ProductForm = ({ categories }: ProductFormProps) => {
                         maxLength={120}
                         className="focus-visible:ring-[var(--brand-blue)]"
                       />
-                      <p className="text-xs text-gray-400 mt-1">
-                        {field.value.length}/120 characters
-                      </p>
                     </FormControl>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {field.value.length}/120 characters
+                    </p>
                   </FormItem>
                 )}
               />

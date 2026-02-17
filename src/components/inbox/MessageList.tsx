@@ -19,8 +19,9 @@ export default function MessageList({
 }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const prevCountRef = useRef(messages.length);
+  const knownIdsRef = useRef(new Set(messages.map((m) => m.id)));
   const [newCount, setNewCount] = useState(0);
+  const selfType = viewerSenderType ?? "USER";
 
   const isAtBottom = () => {
     const el = listRef.current;
@@ -70,13 +71,23 @@ export default function MessageList({
   useEffect(() => {
     if (isAtBottom()) {
       scrollToBottom("smooth");
-      setNewCount(0);
+      queueMicrotask(() => setNewCount(0));
     } else {
-      const diff = messages.length - prevCountRef.current;
-      if (diff > 0) setNewCount((c) => c + diff);
+      const knownIds = knownIdsRef.current;
+      const incomingCount = messages.reduce((count, message) => {
+        if (knownIds.has(message.id)) return count;
+        return message.senderType !== selfType ? count + 1 : count;
+      }, 0);
+
+      if (incomingCount > 0) {
+        queueMicrotask(() =>
+          setNewCount((count) => count + incomingCount),
+        );
+      }
     }
-    prevCountRef.current = messages.length;
-  }, [messages]);
+
+    knownIdsRef.current = new Set(messages.map((message) => message.id));
+  }, [messages, selfType]);
 
   useEffect(() => {
     const el = listRef.current;

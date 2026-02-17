@@ -7,6 +7,7 @@ import {
   BarChart3,
   AlertTriangle,
 } from "lucide-react";
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 
 type SellerStats = {
   totalProducts: number;
@@ -16,9 +17,36 @@ type SellerStats = {
   pendingPayouts: number;
   isStoreVerified: boolean;
   isStoreSuspended?: boolean;
+  latestEvents: {
+    id: string;
+    type: "ORDER" | "REVIEW" | "PAYOUT";
+    title: string;
+    description: string;
+    status: string;
+    amount: number | null;
+    createdAt: string;
+  }[];
 };
 
 export default function SellerPage({ stats }: { stats: SellerStats }) {
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
+  const formatStatus = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  const formatDateTime = (value: string) =>
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "UTC",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    }).format(new Date(value));
+
   const dashboardStats = [
     {
       title: "Active Products",
@@ -32,7 +60,7 @@ export default function SellerPage({ stats }: { stats: SellerStats }) {
     },
     {
       title: "Total Revenue",
-      value: `$${stats.totalRevenue.toFixed(2)}`,
+      value: formatMoneyFromUSD(stats.totalRevenue),
       icon: DollarSign,
     },
     {
@@ -96,6 +124,55 @@ export default function SellerPage({ stats }: { stats: SellerStats }) {
             </div>
           );
         })}
+      </section>
+
+      <section className="rounded-xl border bg-white p-5 shadow-sm dark:bg-neutral-950">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold">Latest Events</h2>
+        </div>
+
+        {!stats.latestEvents.length ? (
+          <p className="text-sm text-gray-500">No recent events yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {stats.latestEvents.map((event, index) => (
+              <div
+                key={event.id}
+                className={`flex flex-col gap-2 rounded-lg py-2 sm:flex-row sm:items-center sm:justify-between ${
+                  index !== stats.latestEvents.length - 1
+                    ? "border-b border-zinc-200 dark:border-zinc-800"
+                    : ""
+                }`}
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    {event.title}
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-zinc-400">
+                    {event.description}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {formatDateTime(event.createdAt)} UTC
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                  <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                    {event.type}
+                  </span>
+                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    {formatStatus(event.status)}
+                  </span>
+                  {typeof event.amount === "number" && (
+                    <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                      {formatMoneyFromUSD(event.amount)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );

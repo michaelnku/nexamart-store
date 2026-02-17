@@ -1,12 +1,12 @@
-import { CurrentUser } from "@/lib/currentUser";
+import { getRiderStats } from "@/actions/dashboardState";
 import RiderPage from "../../_components/RiderPage";
 
 const page = async () => {
-  const user = await CurrentUser();
-  if (!user || user.role !== "RIDER") return;
+  const stats = await getRiderStats();
+
   return (
     <div>
-      <RiderPage />
+      <RiderPage stats={stats} />
     </div>
   );
 };

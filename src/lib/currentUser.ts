@@ -1,11 +1,12 @@
 import { auth } from "@/auth/auth";
 import { normalizeUser } from "@/lib/normalizeUser";
 import { SessionUser } from "./types";
+import { cache } from "react";
 
-export const CurrentUser = async () => {
+export const CurrentUser = cache(async () => {
   const session = await auth();
   return normalizeUser(session?.user as SessionUser);
-};
+});
 
 export const CurrentUserId = async () => {
   const user = await CurrentUser();
