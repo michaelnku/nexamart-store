@@ -11,11 +11,9 @@ import { generateTrackingNumber } from "@/components/helper/generateTrackingNumb
 import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
 import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
 import { generateDeliveryOtpAndCreateDelivery } from "@/lib/delivery/generateDeliveryOtp";
-import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
-import {
-  createEscrowEntryIdempotent,
-} from "@/lib/ledger/idempotentEntries";
-import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { completeOrderPayment } from "@/lib/payments/completeOrderPayment";
+import { calculateDrivingDistance } from "@/lib/shipping/mapboxDistance";
+import { calculateShippingFee } from "@/lib/shipping/shippingCalculator";
 
 class PlaceOrderError extends Error {
   constructor(message: string) {
@@ -24,13 +22,11 @@ class PlaceOrderError extends Error {
   }
 }
 
-const PLATFORM_COMMISSION_PERCENT = 12;
-
 export async function placeOrderAction({
   addressId,
   paymentMethod,
   deliveryType,
-  distanceInMiles,
+  distanceInMiles: _distanceInMiles,
   couponId,
   idempotencyKey,
 }: {
@@ -43,6 +39,7 @@ export async function placeOrderAction({
 }) {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
+  void _distanceInMiles;
 
   if (!idempotencyKey || typeof idempotencyKey !== "string") {
     return { error: "Invalid checkout request. Please refresh and try again." };
@@ -85,6 +82,8 @@ export async function placeOrderAction({
                   id: true,
                   userId: true,
                   shippingRatePerMile: true,
+                  latitude: true,
+                  longitude: true,
                   type: true,
                 },
               },
@@ -106,8 +105,6 @@ export async function placeOrderAction({
     }
   }
 
-  const miles = distanceInMiles ?? 0;
-
   const storeTypes = new Set(cart.items.map((i) => i.product.store.type));
   const isFoodOrder = storeTypes.has("FOOD");
   if (isFoodOrder && storeTypes.size > 1) {
@@ -127,38 +124,12 @@ export async function placeOrderAction({
     0,
   );
 
-  const shippingByStore = new Map<string, number>();
-  for (const [storeId, items] of itemsByStore.entries()) {
-    const storeRate = items[0].product.store.shippingRatePerMile ?? 0;
-    shippingByStore.set(storeId, storeRate * miles);
-  }
-
-  const shippingFee = Array.from(shippingByStore.values()).reduce(
-    (sum, fee) => sum + fee,
-    0,
-  );
-
-  const couponResult = await resolveCouponForOrder({
-    userId,
-    couponId,
-    subtotalUSD: subtotal,
-    shippingUSD: shippingFee,
-  });
-
-  if ("error" in couponResult) return { error: couponResult.error };
-
-  const discountAmount = couponResult.discountAmount ?? 0;
-  const totalAmount = Math.max(0, subtotal + shippingFee - discountAmount);
-
   const trackingNumber = generateTrackingNumber();
-  const systemEscrowWalletId = await getOrCreateSystemEscrowWallet();
 
   let order: Order;
 
   try {
     order = await prisma.$transaction(async (tx) => {
-      let buyerWalletId: string | undefined;
-
       const address = await tx.address.findFirst({
         where: {
           id: addressId,
@@ -169,6 +140,89 @@ export async function placeOrderAction({
       if (!address) {
         throw new PlaceOrderError("Invalid address");
       }
+      if (address.latitude == null || address.longitude == null) {
+        throw new PlaceOrderError(
+          "Selected address is missing coordinates. Please update address.",
+        );
+      }
+
+      const siteConfig = await tx.siteConfiguration.findFirst({
+        orderBy: { updatedAt: "desc" },
+        select: {
+          baseDeliveryRate: true,
+          expressMultiplier: true,
+        },
+      });
+
+      const baseFee = siteConfig?.baseDeliveryRate ?? 0;
+      const expressMultiplier =
+        deliveryType === "EXPRESS" ? (siteConfig?.expressMultiplier ?? 1) : 1;
+
+      const storeMetricsEntries = await Promise.all(
+        Array.from(itemsByStore.entries()).map(async ([storeId, items]) => {
+          const store = items[0].product.store;
+          if (store.latitude == null || store.longitude == null) {
+            throw new PlaceOrderError(
+              `Store coordinates are missing for store ${storeId}.`,
+            );
+          }
+
+          const distance = await calculateDrivingDistance(
+            {
+              latitude: store.latitude,
+              longitude: store.longitude,
+            },
+            {
+              latitude: address.latitude!,
+              longitude: address.longitude!,
+            },
+          );
+
+          const groupShippingFee = calculateShippingFee({
+            distanceInMiles: distance.distanceInMiles,
+            ratePerMile: store.shippingRatePerMile ?? 0,
+            baseFee,
+            expressMultiplier,
+          });
+
+          return [
+            storeId,
+            {
+              shippingFee: groupShippingFee,
+              distanceInMiles: distance.distanceInMiles,
+            },
+          ] as const;
+        }),
+      );
+
+      const storeMetrics = new Map(storeMetricsEntries);
+      const shippingFee = Array.from(storeMetrics.values()).reduce(
+        (sum, item) => sum + item.shippingFee,
+        0,
+      );
+
+      // Order-level distance is stored as average route distance across seller groups.
+      const avgDistanceInMiles =
+        storeMetrics.size > 0
+          ? Array.from(storeMetrics.values()).reduce(
+              (sum, item) => sum + item.distanceInMiles,
+              0,
+            ) / storeMetrics.size
+          : 0;
+
+      const couponResult = await resolveCouponForOrder({
+        userId,
+        couponId,
+        subtotalUSD: subtotal,
+        shippingUSD: shippingFee,
+      });
+
+      if ("error" in couponResult) {
+        throw new PlaceOrderError(couponResult.error);
+      }
+
+      const discountAmount = couponResult.discountAmount ?? 0;
+      const totalAmount = Math.max(0, subtotal + shippingFee - discountAmount);
 
       if (paymentMethod === "WALLET") {
         const wallet = await tx.wallet.upsert({
@@ -177,7 +231,6 @@ export async function placeOrderAction({
           create: { userId },
           select: { id: true },
         });
-        buyerWalletId = wallet.id;
 
         const ledgerTotals = await tx.ledgerEntry.groupBy({
           by: ["direction"],
@@ -196,16 +249,6 @@ export async function placeOrderAction({
           throw new PlaceOrderError("Insufficient wallet balance");
         }
 
-        await tx.transaction.create({
-          data: {
-            walletId: wallet.id,
-            userId,
-            amount: totalAmount,
-            type: "ORDER_PAYMENT",
-            status: "SUCCESS",
-            description: "Order payment",
-          },
-        });
       }
 
       const createdOrder = await tx.order.create({
@@ -222,10 +265,10 @@ export async function placeOrderAction({
 
           paymentMethod,
           deliveryType,
-          distanceInMiles: miles,
+          distanceInMiles: avgDistanceInMiles,
           shippingFee,
           totalAmount,
-          isPaid: paymentMethod === "WALLET",
+          isPaid: false,
           isFoodOrder,
           couponId: couponResult.coupon?.id ?? null,
           discountAmount: discountAmount || null,
@@ -233,30 +276,6 @@ export async function placeOrderAction({
           status: "PENDING",
         },
       });
-
-      if (createdOrder.isPaid) {
-        const escrowFundRef = `escrow-fund-${createdOrder.id}`;
-
-        await createEscrowEntryIdempotent(tx, {
-          orderId: createdOrder.id,
-          userId,
-          role: "BUYER",
-          entryType: "FUND",
-          amount: createdOrder.totalAmount,
-          status: "HELD",
-          reference: escrowFundRef,
-        });
-
-        await createDoubleEntryLedger(tx, {
-          orderId: createdOrder.id,
-          fromUserId: userId,
-          fromWalletId: paymentMethod === "WALLET" ? buyerWalletId : undefined,
-          toWalletId: systemEscrowWalletId,
-          entryType: "ESCROW_DEPOSIT",
-          amount: createdOrder.totalAmount,
-          reference: escrowFundRef,
-        });
-      }
 
       for (const [storeId, items] of itemsByStore) {
         const sellerId = items[0].product.store.userId;
@@ -266,7 +285,12 @@ export async function placeOrderAction({
           0,
         );
 
-        const groupShipping = shippingByStore.get(storeId) ?? 0;
+        const groupMetrics = storeMetrics.get(storeId);
+        if (!groupMetrics) {
+          throw new PlaceOrderError(
+            `Shipping metrics missing for store ${storeId}.`,
+          );
+        }
 
         const group = await tx.orderSellerGroup.create({
           data: {
@@ -274,51 +298,9 @@ export async function placeOrderAction({
             storeId,
             sellerId,
             subtotal: groupSubtotal,
-            shippingFee: groupShipping,
+            shippingFee: groupMetrics.shippingFee,
           },
         });
-
-        if (createdOrder.isPaid) {
-          // Migration note:
-          // Escrow is now tracked at seller-group granularity so payout release can
-          // happen independently per group without relying on order-level flags.
-          const platformCommission =
-            (groupSubtotal * PLATFORM_COMMISSION_PERCENT) / 100;
-
-          await createEscrowEntryIdempotent(tx, {
-            orderId: createdOrder.id,
-            userId: sellerId,
-            role: "SELLER",
-            entryType: "SELLER_EARNING",
-            amount: groupSubtotal,
-            status: "HELD",
-            reference: `seller-held-${group.id}`,
-            metadata: { sellerGroupId: group.id, subtotal: groupSubtotal },
-          });
-
-          await createEscrowEntryIdempotent(tx, {
-            orderId: createdOrder.id,
-            role: "PLATFORM",
-            entryType: "PLATFORM_COMMISSION",
-            amount: platformCommission,
-            status: "HELD",
-            reference: `platform-held-${group.id}`,
-            metadata: {
-              sellerGroupId: group.id,
-              commissionPercent: PLATFORM_COMMISSION_PERCENT,
-            },
-          });
-
-          await createEscrowEntryIdempotent(tx, {
-            orderId: createdOrder.id,
-            role: "RIDER",
-            entryType: "RIDER_EARNING",
-            amount: groupShipping,
-            status: "HELD",
-            reference: `rider-held-group-${group.id}`,
-            metadata: { sellerGroupId: group.id, shippingFee: groupShipping },
-          });
-        }
 
         await tx.orderItem.createMany({
           data: items.map((i) => ({
@@ -415,19 +397,21 @@ export async function placeOrderAction({
     console.error("Post-order side effects failed:", error);
   }
 
-  if (order.isPaid) {
+  if (paymentMethod === "WALLET") {
     try {
-      await applyReferralRewardsForPaidOrder(order.id);
-    } catch (error) {
-      console.error("Failed to apply referral rewards:", error);
-    }
-  }
+      const paymentResult = await completeOrderPayment({
+        orderId: order.id,
+        paymentReference: `wallet-order-${order.id}`,
+        method: "WALLET",
+      });
 
-  if (order.isPaid && paymentMethod === "WALLET") {
-    try {
-      await generateDeliveryOtpAndCreateDelivery(order.id);
+      if (paymentResult.justPaid) {
+        await applyReferralRewardsForPaidOrder(order.id);
+        await generateDeliveryOtpAndCreateDelivery(order.id);
+      }
     } catch (error) {
-      console.error("Failed to create delivery OTP:", error);
+      console.error("Failed to complete wallet order payment:", error);
+      return { error: "Wallet payment failed. Please try again." };
     }
   }
 

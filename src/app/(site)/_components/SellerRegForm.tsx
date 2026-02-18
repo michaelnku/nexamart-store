@@ -15,10 +15,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createRoleUserAction } from "@/actions/auth/auth";
 import { Store, Loader2, Eye, EyeOff } from "lucide-react";
 
 const SellerRegisterForm = () => {
+  const router = useRouter();
   const [error, setError] = useState<string | undefined>();
   const [success, setSuccess] = useState<string | undefined>();
   const [isPending, startTransition] = useTransition();
@@ -47,7 +49,15 @@ const SellerRegisterForm = () => {
         } else if (res?.success) {
           setSuccess(res.success);
           setError(undefined);
-          form.reset({ ...form.getValues(), role: "SELLER" });
+          form.reset({
+            name: "",
+            username: "",
+            email: "",
+            password: "",
+            confirmPassword: "",
+            role: "SELLER",
+          });
+          router.push("/auth/seller/login");
         }
       });
     });

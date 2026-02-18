@@ -4,6 +4,18 @@ import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
 import { revalidatePath } from "next/cache";
 import { addressSchema, addressSchemaType } from "@/lib/zodValidation";
+import { geocodeAddress } from "@/lib/shipping/mapboxGeocode";
+
+function normalizePhone(phone: string): string {
+  const trimmed = phone.trim();
+  const digitsOnly = trimmed.replace(/\D/g, "");
+
+  if (!digitsOnly) {
+    throw new Error("Invalid phone number");
+  }
+
+  return `+${digitsOnly}`;
+}
 
 export async function createAddressAction(values: addressSchemaType) {
   const userId = await CurrentUserId();
@@ -15,6 +27,15 @@ export async function createAddressAction(values: addressSchemaType) {
   }
 
   try {
+    const normalizedPhone = normalizePhone(values.phone);
+
+    const coordinates = await geocodeAddress({
+      street: values.street,
+      city: values.city,
+      state: values.state ?? undefined,
+      country: values.country ?? "",
+    });
+
     if (values.isDefault) {
       await prisma.address.updateMany({
         where: { userId },
@@ -28,12 +49,14 @@ export async function createAddressAction(values: addressSchemaType) {
         label: values.label,
 
         fullName: values.fullName,
-        phone: values.phone,
+        phone: normalizedPhone,
         street: values.street,
         city: values.city,
         state: values.state,
         country: values.country ?? "",
         postalCode: values.postalCode ?? "",
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
         isDefault: values.isDefault ?? false,
       },
     });
@@ -44,6 +67,13 @@ export async function createAddressAction(values: addressSchemaType) {
     return { success: true, address };
   } catch (error) {
     console.error("CREATE ADDRESS ERROR:", error);
+    if (
+      error instanceof Error &&
+      (error.message.toLowerCase().includes("invalid") ||
+        error.message.toLowerCase().includes("geocode"))
+    ) {
+      return { error: "Please select a valid address from suggestions." };
+    }
     return { error: "Failed to create address" };
   }
 }
@@ -61,6 +91,15 @@ export async function updateAddressAction(
   }
 
   try {
+    const normalizedPhone = normalizePhone(values.phone);
+
+    const coordinates = await geocodeAddress({
+      street: values.street,
+      city: values.city,
+      state: values.state ?? undefined,
+      country: values.country ?? "",
+    });
+
     if (values.isDefault) {
       await prisma.address.updateMany({
         where: { userId },
@@ -77,12 +116,14 @@ export async function updateAddressAction(
         label: values.label,
 
         fullName: values.fullName,
-        phone: values.phone,
+        phone: normalizedPhone,
         street: values.street,
         city: values.city,
         state: values.state,
         country: values.country ?? "",
         postalCode: values.postalCode ?? "",
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
         isDefault: values.isDefault ?? false,
       },
     });
@@ -91,7 +132,14 @@ export async function updateAddressAction(
     revalidatePath("/checkout");
 
     return { success: true, address };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message.toLowerCase().includes("invalid") ||
+        error.message.toLowerCase().includes("geocode"))
+    ) {
+      return { error: "Please select a valid address from suggestions." };
+    }
     return { error: "Failed to update address" };
   }
 }

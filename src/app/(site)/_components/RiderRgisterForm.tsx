@@ -15,10 +15,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bike, Eye, EyeOff, Loader2 } from "lucide-react";
 import { createRoleUserAction } from "@/actions/auth/auth";
 
 const RiderRgisterForm = () => {
+  const router = useRouter();
   const [error, setError] = useState<string | undefined>();
   const [success, setSuccess] = useState<string | undefined>();
 
@@ -54,6 +56,7 @@ const RiderRgisterForm = () => {
             confirmPassword: "",
             role: "RIDER",
           });
+          router.push("/auth/rider/login");
         }
       });
     });

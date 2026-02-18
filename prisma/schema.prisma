@@ -588,7 +588,8 @@ model RiderProfile {
   verifiedAt         DateTime?
   verificationMethod String?
 
-  isAvailable Boolean @default(false)
+  isAvailable     Boolean @default(false)
+  stripeAccountId String? @unique
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -706,7 +707,8 @@ model EscrowLedger {
   amount    Float
   currency  String          @default("USD")
 
-  status EscrowStatus @default(PENDING)
+  status          EscrowStatus @default(PENDING)
+  withdrawnAmount Float        @default(0)
 
   reference String? @unique
   metadata  Json?
@@ -739,6 +741,7 @@ enum EscrowStatus {
   PENDING
   HELD
   RELEASED
+  WITHDRAWN
   CANCELLED
 }
 

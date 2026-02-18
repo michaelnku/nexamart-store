@@ -3,9 +3,9 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
-import { autoAssignRider } from "@/lib/rider/logistics";
 import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
 import { stripe } from "@/lib/stripe";
+import { completeOrderPayment } from "@/lib/payments/completeOrderPayment";
 
 async function handleWalletTopUp(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.userId;
@@ -81,96 +81,58 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
 
 async function handleOrderCheckout(session: Stripe.Checkout.Session) {
   const orderId = session.metadata?.orderId;
+  const paymentIntentRaw = session.payment_intent;
+  const paymentIntentId =
+    typeof paymentIntentRaw === "string"
+      ? paymentIntentRaw
+      : paymentIntentRaw?.id ?? null;
 
-  if (!orderId) {
-    console.error("Missing orderId in Stripe metadata");
-    return new NextResponse("Invalid orderId", { status: 400 });
+  if (!orderId || !paymentIntentId) {
+    console.error("Missing orderId or payment_intent in Stripe metadata");
+    return new NextResponse("Invalid checkout metadata", { status: 400 });
   }
 
-  const order = await prisma.order.update({
-    where: { id: orderId },
-    data: {
-      isPaid: true,
-      deliveryPhone: session.customer_details?.phone ?? undefined,
-      status: "ACCEPTED",
-    },
-    include: {
-      items: { include: { product: { include: { store: true } } } },
-    },
+  const paymentResult = await completeOrderPayment({
+    orderId,
+    paymentReference: paymentIntentId,
+    method: "CARD",
   });
 
-  const productIds = order.items.map((i) => i.productId);
+  if (!paymentResult.justPaid) {
+    return new NextResponse(null, { status: 200 });
+  }
+
+  const paidOrder = paymentResult.order;
+
   await prisma.product.updateMany({
-    where: { id: { in: productIds } },
+    where: {
+      id: {
+        in: await prisma.orderItem
+          .findMany({
+            where: { orderId: paidOrder.id },
+            select: { productId: true },
+          })
+          .then((items) => items.map((item) => item.productId)),
+      },
+    },
     data: { isPublished: true },
   });
 
-  await pusherServer.trigger(`user-${order.userId}`, "payment-success", {
+  await pusherServer.trigger(`user-${paidOrder.userId}`, "payment-success", {
     orderId,
     message: "Payment received! Your order is now processing.",
   });
 
-  await applyReferralRewardsForPaidOrder(orderId);
-
-  const grouped = new Map<
-    string,
-    { sellerId: string; storeId: string; items: typeof order.items }
-  >();
-
-  let isFoodOrder = false;
-
-  for (const item of order.items) {
-    const store = item.product.store;
-
-    if (!grouped.has(store.id)) {
-      grouped.set(store.id, {
-        sellerId: store.userId,
-        storeId: store.id,
-        items: [],
-      });
-    }
-
-    grouped.get(store.id)!.items.push(item);
-
-    if (store.type === "FOOD") {
-      isFoodOrder = true;
-    }
-  }
-
-  await prisma.order.update({
-    where: { id: orderId },
-    data: { isFoodOrder },
-  });
-
-  for (const [, group] of grouped.entries()) {
-    const subtotal = group.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-    const shippingFee =
-      (group.items[0]?.product.store.shippingRatePerMile ?? 0) *
-      order.distanceInMiles;
-
-    const sg = await prisma.orderSellerGroup.create({
-      data: {
-        orderId,
-        storeId: group.storeId,
-        sellerId: group.sellerId,
-        subtotal,
-        shippingFee,
-      },
-    });
-
-    await prisma.orderItem.updateMany({
-      where: { id: { in: group.items.map((i) => i.id) } },
-      data: { sellerGroupId: sg.id },
-    });
-
+  for (const group of paidOrder.sellerGroups) {
     await pusherServer.trigger(`seller-${group.sellerId}`, "new-order", {
       orderId,
       storeId: group.storeId,
-      subtotal,
+      subtotal: group.subtotal,
     });
   }
 
-  await autoAssignRider(orderId);
+  await applyReferralRewardsForPaidOrder(orderId);
+
   return new NextResponse(null, { status: 200 });
 }
 

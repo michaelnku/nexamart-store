@@ -229,7 +229,6 @@ export type CheckoutPayload = {
   userId: string;
   addressId: string;
   deliveryType: "HOME_DELIVERY" | "STATION_PICKUP" | "EXPRESS" | "STORE_PICKUP";
-  distanceInMiles?: number;
   couponId?: string | null;
 };
 
@@ -515,6 +514,9 @@ export type Address = {
   city: string;
   state?: string | null;
   country?: string | null;
+  postalCode?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   isDefault: boolean;
   label: string;
 };

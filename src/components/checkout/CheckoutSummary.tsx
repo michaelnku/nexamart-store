@@ -134,8 +134,6 @@ export default function CheckoutSummary({ cart, address }: Props) {
   const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
-  const items = useCartStore((state) => state.items);
-
   const { data: wallet } = useQuery({
     queryKey: ["wallet"],
     queryFn: async () => {
@@ -231,21 +229,15 @@ export default function CheckoutSummary({ cart, address }: Props) {
       const response = await ky
         .post("/api/checkout", {
           json: {
-            cartItems: items.map((item) => ({
-              productId: item.productId,
-              variantId: item.variantId ?? null,
-              quantity: item.quantity,
-            })),
-            userId: user.id,
             addressId: address.id,
             deliveryType,
-            distanceInMiles: address.distanceInMiles ?? 0,
-            paymentMethod: "CARD",
             couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
+            idempotencyKey: idempotencyKeyRef.current,
           },
         })
         .json<{ url: string }>();
 
+      idempotencyKeyRef.current = crypto.randomUUID();
       window.location.href = response.url;
     } catch (error) {
       console.error(error);

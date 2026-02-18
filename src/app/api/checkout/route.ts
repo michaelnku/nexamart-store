@@ -1,16 +1,21 @@
-import Stripe from "stripe";
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
-
+import { DeliveryType } from "@/generated/prisma/client";
+import { placeOrderAction } from "@/actions/checkout/placeOrder";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
-import { CheckoutCartItem, CheckoutPayload } from "@/lib/types";
-import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
-import { generateTrackingNumber } from "@/components/helper/generateTrackingNumber";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+type CheckoutRequestBody = {
+  addressId?: string;
+  deliveryType?: DeliveryType;
+  couponId?: string | null;
+  idempotencyKey?: string;
 };
 
 export async function OPTIONS() {
@@ -19,234 +24,77 @@ export async function OPTIONS() {
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as CheckoutPayload;
+    const body = (await req.json()) as CheckoutRequestBody;
 
-    const {
-      cartItems,
-      deliveryType,
-      userId,
-      addressId,
-      distanceInMiles,
-      couponId,
-    } = body;
-
-    if (!cartItems || cartItems.length === 0) {
-      return new NextResponse("Cart is empty", { status: 400 });
-    }
-    if (!addressId) {
+    if (!body.addressId) {
       return new NextResponse("Address is required", { status: 400 });
     }
 
-    const address = await prisma.address.findFirst({
-      where: { id: addressId, userId },
+    if (!body.deliveryType) {
+      return new NextResponse("Delivery type is required", { status: 400 });
+    }
+
+    const idempotencyKey = body.idempotencyKey ?? randomUUID();
+
+    // Pricing engine authority:
+    // placeOrderAction is the only source of truth for shipping, subtotal, discount, and totals.
+    const placeOrder = await placeOrderAction({
+      addressId: body.addressId,
+      paymentMethod: "CARD",
+      deliveryType: body.deliveryType,
+      couponId: body.couponId ?? null,
+      idempotencyKey,
+    });
+
+    if ("error" in placeOrder) {
+      const status = placeOrder.error === "Unauthorized" ? 401 : 400;
+      return new NextResponse(placeOrder.error, { status });
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: placeOrder.orderId },
       select: {
-        fullName: true,
-        phone: true,
-        street: true,
-        city: true,
-        state: true,
-        country: true,
-        postalCode: true,
-      },
-    });
-
-    if (!address) {
-      return new NextResponse("Invalid address", { status: 400 });
-    }
-
-    const products = await prisma.product.findMany({
-      where: {
-        id: { in: cartItems.map((i: CheckoutCartItem) => i.productId) },
-      },
-      include: { variants: true, store: true },
-    });
-
-    const storeTypes = new Set(products.map((p) => p.store.type));
-    const isFoodOrder = storeTypes.has("FOOD");
-    if (isFoodOrder && storeTypes.size > 1) {
-      return new NextResponse(
-        "Food orders cannot be mixed with non-food items",
-        { status: 400 },
-      );
-    }
-
-    const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
-
-    let subtotal = 0;
-
-    for (const item of cartItems) {
-      const product = products.find((p) => p.id === item.productId);
-      if (!product) continue;
-
-      if (!item.variantId) {
-        return new NextResponse("Variant is required for all items", {
-          status: 400,
-        });
-      }
-
-      const variant = product.variants.find((v) => v.id === item.variantId);
-      if (!variant) {
-        return new NextResponse("Invalid variant selected", { status: 400 });
-      }
-
-      const price = variant.priceUSD;
-
-      subtotal += price * item.quantity;
-
-      line_items.push({
-        quantity: item.quantity,
-        price_data: {
-          currency: "usd",
-          product_data: { name: product.name },
-          unit_amount: Math.round(price * 100),
-        },
-      });
-    }
-
-    const miles = distanceInMiles ?? 0;
-    const shippingByStore = new Map<string, number>();
-    for (const product of products) {
-      shippingByStore.set(
-        product.storeId,
-        (product.store.shippingRatePerMile ?? 0) * miles,
-      );
-    }
-    const shippingFee = Array.from(shippingByStore.values()).reduce(
-      (sum, fee) => sum + fee,
-      0,
-    );
-
-    if (shippingFee > 0) {
-      line_items.push({
-        quantity: 1,
-        price_data: {
-          currency: "usd",
-          product_data: { name: "Shipping" },
-          unit_amount: Math.round(shippingFee * 100),
-        },
-      });
-    }
-
-    const couponResult = await resolveCouponForOrder({
-      userId,
-      couponId,
-      subtotalUSD: subtotal,
-      shippingUSD: shippingFee,
-    });
-
-    if ("error" in couponResult) {
-      return new NextResponse(couponResult.error, { status: 400 });
-    }
-
-    const discountAmount = couponResult.discountAmount ?? 0;
-    const totalAmount = Math.max(0, subtotal + shippingFee - discountAmount);
-    const trackingNumber = generateTrackingNumber();
-
-    // Create order with items but do NOT assign sellerGroups yet
-    const order = await prisma.order.create({
-      data: {
-        userId,
-        trackingNumber,
-        totalAmount,
-        shippingFee,
-        deliveryType,
-        distanceInMiles: miles,
-        paymentMethod: "CARD",
-        deliveryFullName: address.fullName,
-        deliveryPhone: address.phone,
-        deliveryStreet: address.street,
-        deliveryCity: address.city,
-        deliveryState: address.state ?? "",
-        deliveryCountry: address.country,
-        deliveryPostal: address.postalCode ?? "",
-        isPaid: false,
-        isFoodOrder,
-        couponId: couponResult.coupon?.id ?? null,
-        discountAmount: discountAmount > 0 ? discountAmount : null,
-        items: {
-          create: cartItems.map((item: CheckoutCartItem) => {
-            const product = products.find((p) => p.id === item.productId);
-            if (!product) {
-              throw new Error("Invalid product");
-            }
-            if (!item.variantId) {
-              throw new Error("Variant is required for all items");
-            }
-
-            const variant = product.variants.find(
-              (v) => v.id === item.variantId,
-            );
-            if (!variant) {
-              throw new Error("Invalid variant selected");
-            }
-
-            const price = variant.priceUSD;
-
-            if (price == null) {
-              throw new Error("Invalid product price");
-            }
-
-            return {
-              productId: item.productId,
-              variantId: item.variantId,
-              quantity: item.quantity,
-              price,
-            };
-          }),
+        id: true,
+        totalAmount: true,
+        shippingFee: true,
+        sellerGroups: {
+          select: { id: true },
         },
       },
     });
 
-    if (couponResult.coupon?.id) {
-      await prisma.couponUsage.create({
-        data: {
-          couponId: couponResult.coupon.id,
-          userId,
-          orderId: order.id,
-        },
-      });
-
-      await prisma.coupon.update({
-        where: { id: couponResult.coupon.id },
-        data: { usedCount: { increment: 1 } },
+    if (
+      !order ||
+      order.shippingFee == null ||
+      order.totalAmount <= 0 ||
+      order.sellerGroups.length === 0
+    ) {
+      return new NextResponse("Order not properly initialized via placeOrderAction", {
+        status: 400,
       });
     }
 
-    // Create Stripe coupon (if discount applies)
-    let stripeCouponId: string | undefined;
-    if (discountAmount > 0 && couponResult.coupon?.id) {
-      const isPercent = couponResult.coupon.type === "PERCENTAGE";
-      const clampedPercent = Math.min(
-        Math.max(couponResult.coupon.value, 1),
-        100,
-      );
-
-      const coupon = await stripe.coupons.create({
-        duration: "once",
-        ...(isPercent
-          ? { percent_off: clampedPercent }
-          : {
-              amount_off: Math.round(discountAmount * 100),
-              currency: "usd",
-            }),
-        name: `coupon-${couponResult.coupon.id}`,
-      });
-      stripeCouponId = coupon.id;
-    }
-
-    // Create Stripe session
     const session = await stripe.checkout.sessions.create({
-      line_items,
       mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: `NexaMart Order ${order.id.slice(-8)}`,
+            },
+            unit_amount: Math.round(order.totalAmount * 100),
+          },
+        },
+      ],
       success_url: `${process.env.FRONTEND_STORE_URL}/customer/order/success/${order.id}`,
       cancel_url: `${process.env.FRONTEND_STORE_URL}/cart?canceled=1`,
       metadata: { orderId: order.id },
-      ...(stripeCouponId
-        ? { discounts: [{ coupon: stripeCouponId }] }
-        : undefined),
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url }, { headers: corsHeaders });
   } catch (error: unknown) {
     console.error(error);
     const message = error instanceof Error ? error.message : "Checkout failed";

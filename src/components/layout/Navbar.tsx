@@ -44,7 +44,8 @@ export default function SiteNavbar({
 }: {
   initialUser?: UserDTO | null;
 }) {
-  const [open, setOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   const router = useRouter();
 
@@ -91,7 +92,10 @@ export default function SiteNavbar({
           </div>
 
           <div className="hidden md:flex items-center gap-8">
-            <DropdownMenu>
+            <DropdownMenu
+              open={accountMenuOpen}
+              onOpenChange={setAccountMenuOpen}
+            >
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 text-left hover:text-[#3c9ee0]">
                   <Avatar size="sm">
@@ -123,7 +127,8 @@ export default function SiteNavbar({
                         size="lg"
                         className="w-full mb-4"
                         onClick={() => {
-                          (router.push("/auth/login"), setOpen(false));
+                          router.push("/auth/login");
+                          setAccountMenuOpen(false);
                         }}
                       >
                         Sign in / Create Account
@@ -144,8 +149,8 @@ export default function SiteNavbar({
             : "hover:bg-muted hover:text-foreground"
         }
       `}
-                      onClick={() => {
-                        setOpen(false);
+                    onClick={() => {
+                        setAccountMenuOpen(false);
                       }}
                     >
                       <Avatar size="sm">
@@ -170,7 +175,7 @@ export default function SiteNavbar({
       }
     `}
                     onClick={() => {
-                      setOpen(false);
+                      setAccountMenuOpen(false);
                     }}
                   >
                     <Package className="w-4 h-4" /> Track Orders
@@ -188,7 +193,7 @@ export default function SiteNavbar({
       }
     `}
                     onClick={() => {
-                      setOpen(false);
+                      setAccountMenuOpen(false);
                     }}
                   >
                     <Mail className="w-4 h-4" /> Inbox
@@ -206,7 +211,7 @@ export default function SiteNavbar({
       }
     `}
                     onClick={() => {
-                      setOpen(false);
+                      setAccountMenuOpen(false);
                     }}
                   >
                     <Heart className="w-4 h-4" /> Wishlist
@@ -224,7 +229,7 @@ export default function SiteNavbar({
       }
     `}
                     onClick={() => {
-                      setOpen(false);
+                      setAccountMenuOpen(false);
                     }}
                   >
                     <Tag className="w-4 h-4" /> Coupons
@@ -240,7 +245,7 @@ export default function SiteNavbar({
                         className="flex gap-2 bg-red-50/50 w-full"
                         onClick={() => {
                           logout();
-                          setOpen(false);
+                          setAccountMenuOpen(false);
                         }}
                       >
                         <LogOut className="w-4 h-4" /> Logout
@@ -281,13 +286,12 @@ export default function SiteNavbar({
 
             <ModeToggle />
 
-            <Sheet open={open} onOpenChange={setOpen}>
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="rounded-full hover:bg-muted transition"
-                  onClick={() => setOpen(false)}
                 >
                   <Menu className="w-5 h-5" />
                 </Button>
@@ -345,7 +349,7 @@ export default function SiteNavbar({
                     : "hover:bg-muted text-muted-foreground hover:text-foreground"
                 }
               `}
-                      onClick={() => setOpen(false)}
+                      onClick={() => setSheetOpen(false)}
                     >
                       <User className="w-4 h-4" /> My Account
                     </Link>
@@ -365,7 +369,7 @@ export default function SiteNavbar({
                     : "hover:bg-muted text-muted-foreground hover:text-foreground"
                 }
               `}
-                        onClick={() => setOpen(false)}
+                        onClick={() => setSheetOpen(false)}
                       >
                         <Icon className="w-5 h-5" />
                         {label}
@@ -381,10 +385,10 @@ export default function SiteNavbar({
                     <Button
                       variant={"secondary"}
                       className="w-full flex gap-2 text-red-500 "
-                      onClick={() => {
-                        logout();
-                        setOpen(false);
-                      }}
+                        onClick={() => {
+                          logout();
+                          setSheetOpen(false);
+                        }}
                     >
                       <LogOut className="w-4 h-4" /> Logout
                     </Button>
@@ -393,7 +397,7 @@ export default function SiteNavbar({
                       asChild
                       className="w-full"
                       onClick={() => {
-                        setOpen(false);
+                        setSheetOpen(false);
                       }}
                     >
                       <Link href="/auth/login">Sign In / Create Account</Link>
