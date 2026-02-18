@@ -3,7 +3,7 @@
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
-import { createLedgerEntryIdempotent } from "@/lib/ledger/idempotentEntries";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { approveSellerWithdrawalCore } from "@/actions/admin/approveSellerWithdrawal";
 
 const MIN_WITHDRAWAL_USD = 10;
@@ -113,13 +113,14 @@ export async function requestSellerWithdrawalAction(
       },
     });
 
-    await createLedgerEntryIdempotent(tx, {
-      walletId: wallet.id,
-      userId,
+    await createDoubleEntryLedger(tx, {
+      fromUserId: userId,
+      fromWalletId: wallet.id,
       entryType: "SELLER_PAYOUT",
-      direction: "DEBIT",
       amount,
       reference: `withdrawal-debit-${created.id}`,
+      resolveFromWallet: false,
+      resolveToWallet: false,
     });
 
     return created;

@@ -3,6 +3,7 @@
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { approveRiderWithdrawalCore } from "@/actions/admin/approveRiderWithdrawal";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 
 const MIN_RIDER_WITHDRAWAL_USD = 5;
 
@@ -107,15 +108,14 @@ export async function requestRiderWithdrawalAction(
       },
     });
 
-    await tx.ledgerEntry.create({
-      data: {
-        walletId: wallet.id,
-        userId,
-        entryType: "RIDER_PAYOUT",
-        direction: "DEBIT",
-        amount,
-        reference: `rider-withdrawal-${created.id}`,
-      },
+    await createDoubleEntryLedger(tx, {
+      fromUserId: userId,
+      fromWalletId: wallet.id,
+      entryType: "RIDER_PAYOUT",
+      amount,
+      reference: `rider-withdrawal-${created.id}`,
+      resolveFromWallet: false,
+      resolveToWallet: false,
     });
 
     return created;

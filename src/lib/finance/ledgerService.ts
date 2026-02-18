@@ -46,6 +46,10 @@ export async function createDoubleEntryLedger(
   tx: Tx,
   input: CreateDoubleEntryLedgerInput,
 ) {
+  if (!input.reference || !input.reference.trim()) {
+    throw new Error("Reference is required for ledger idempotency");
+  }
+
   const amount = Number(input.amount);
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("Invalid amount for double-entry ledger");
@@ -63,7 +67,31 @@ export async function createDoubleEntryLedger(
   const debitRef = `${input.reference}-debit`;
   const creditRef = `${input.reference}-credit`;
 
-  await createLedgerEntryIdempotent(tx, {
+  const [existingDebit, existingCredit] = await Promise.all([
+    tx.ledgerEntry.findUnique({
+      where: { reference: debitRef },
+      select: { id: true },
+    }),
+    tx.ledgerEntry.findUnique({
+      where: { reference: creditRef },
+      select: { id: true },
+    }),
+  ]);
+
+  if (!existingDebit && fromWalletId) {
+    const sourceWallet = await tx.wallet.findUnique({
+      where: { id: fromWalletId },
+      select: { id: true, balance: true },
+    });
+    if (!sourceWallet) {
+      throw new Error("Source wallet not found");
+    }
+    if (sourceWallet.balance < amount) {
+      throw new Error("Insufficient wallet balance for debit ledger entry");
+    }
+  }
+
+  const debitCreate = await createLedgerEntryIdempotent(tx, {
     orderId: input.orderId,
     userId: input.fromUserId,
     walletId: fromWalletId,
@@ -73,7 +101,7 @@ export async function createDoubleEntryLedger(
     reference: debitRef,
   });
 
-  await createLedgerEntryIdempotent(tx, {
+  const creditCreate = await createLedgerEntryIdempotent(tx, {
     orderId: input.orderId,
     userId: input.toUserId,
     walletId: toWalletId,
@@ -82,6 +110,22 @@ export async function createDoubleEntryLedger(
     amount,
     reference: creditRef,
   });
+
+  // wallet.balance is a cached projection of LedgerEntry.
+  // We only mutate cached balance when an entry is newly created in this tx.
+  if (debitCreate.created && fromWalletId) {
+    await tx.wallet.update({
+      where: { id: fromWalletId },
+      data: { balance: { decrement: amount } },
+    });
+  }
+
+  if (creditCreate.created && toWalletId) {
+    await tx.wallet.update({
+      where: { id: toWalletId },
+      data: { balance: { increment: amount } },
+    });
+  }
 
   const pair = await tx.ledgerEntry.findMany({
     where: { reference: { in: [debitRef, creditRef] } },

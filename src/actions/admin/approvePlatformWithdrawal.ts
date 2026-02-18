@@ -4,6 +4,7 @@ import { CurrentRole } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { Prisma } from "@/generated/prisma";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 
 type ApprovePlatformWithdrawalResult =
   | {
@@ -205,19 +206,15 @@ export async function approvePlatformWithdrawalAction(
       });
 
       if (!existingTx) {
-        const walletUpdated = await tx.wallet.updateMany({
-          where: {
-            id: fresh.wallet.id,
-            balance: { gte: fresh.amount },
-          },
-          data: {
-            balance: { decrement: fresh.amount },
-          },
+        await createDoubleEntryLedger(tx, {
+          fromUserId: fresh.wallet.userId,
+          fromWalletId: fresh.wallet.id,
+          entryType: "PLATFORM_FEE",
+          amount: fresh.amount,
+          reference: `platform-withdrawal-settlement-${withdrawalId}`,
+          resolveFromWallet: false,
+          resolveToWallet: false,
         });
-
-        if (walletUpdated.count !== 1) {
-          throw new Error("Insufficient platform wallet balance.");
-        }
 
         await allocateCommissionRows(tx, fresh.amount, withdrawalId);
 
@@ -230,17 +227,6 @@ export async function approvePlatformWithdrawalAction(
             status: "SUCCESS",
             reference: `platform-withdrawal-${withdrawalId}`,
             description: "Platform treasury withdrawal payout.",
-          },
-        });
-
-        await tx.ledgerEntry.create({
-          data: {
-            walletId: fresh.wallet.id,
-            userId: fresh.wallet.userId,
-            entryType: "PLATFORM_FEE",
-            direction: "CREDIT",
-            amount: fresh.amount,
-            reference: `platform-withdrawal-credit-${withdrawalId}`,
           },
         });
       }

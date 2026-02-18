@@ -98,19 +98,11 @@ export async function completeOrderPayment({
         : null;
 
     if (method === "WALLET" && buyerWallet) {
-      const ledgerTotals = await tx.ledgerEntry.groupBy({
-        by: ["direction"],
-        where: { walletId: buyerWallet.id },
-        _sum: { amount: true },
+      const buyerWalletSnapshot = await tx.wallet.findUnique({
+        where: { id: buyerWallet.id },
+        select: { balance: true },
       });
-
-      const credit =
-        ledgerTotals.find((item) => item.direction === "CREDIT")?._sum.amount ??
-        0;
-      const debit =
-        ledgerTotals.find((item) => item.direction === "DEBIT")?._sum.amount ?? 0;
-      const walletBalance = credit - debit;
-      if (walletBalance < order.totalAmount) {
+      if ((buyerWalletSnapshot?.balance ?? 0) < order.totalAmount) {
         throw new Error("Insufficient wallet balance");
       }
     }

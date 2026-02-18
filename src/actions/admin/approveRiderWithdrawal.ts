@@ -3,6 +3,7 @@
 import { CurrentRole } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 
 type ApproveOptions = {
   skipRoleCheck?: boolean;
@@ -183,19 +184,15 @@ export async function approveRiderWithdrawalCore(
       });
 
       if (!existing) {
-        const updated = await tx.wallet.updateMany({
-          where: {
-            id: fresh.wallet.id,
-            balance: { gte: fresh.amount },
-          },
-          data: {
-            balance: { decrement: fresh.amount },
-          },
+        await createDoubleEntryLedger(tx, {
+          fromUserId: fresh.wallet.userId,
+          fromWalletId: fresh.wallet.id,
+          entryType: "RIDER_PAYOUT",
+          amount: fresh.amount,
+          reference: `rider-withdrawal-settlement-${withdrawalId}`,
+          resolveFromWallet: false,
+          resolveToWallet: false,
         });
-
-        if (updated.count !== 1) {
-          throw new Error("Insufficient rider balance for withdrawal.");
-        }
 
         await tx.transaction.create({
           data: {
@@ -206,17 +203,6 @@ export async function approveRiderWithdrawalCore(
             status: "SUCCESS",
             reference: `rider-withdrawal-${withdrawalId}`,
             description: "Rider withdrawal sent to Stripe Connect account.",
-          },
-        });
-
-        await tx.ledgerEntry.create({
-          data: {
-            walletId: fresh.wallet.id,
-            userId: fresh.wallet.userId,
-            entryType: "RIDER_PAYOUT",
-            direction: "CREDIT",
-            amount: fresh.amount,
-            reference: `rider-withdrawal-credit-${withdrawalId}`,
           },
         });
       }

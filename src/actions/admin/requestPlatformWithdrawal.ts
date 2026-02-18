@@ -3,6 +3,7 @@
 import { CurrentRole } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 
 type PlatformWithdrawalRequestResult =
   | {
@@ -91,15 +92,14 @@ export async function requestPlatformWithdrawalAction(
       },
     });
 
-    await tx.ledgerEntry.create({
-      data: {
-        walletId: wallet.id,
-        userId: systemAccount.userId,
-        entryType: "PLATFORM_FEE",
-        direction: "DEBIT",
-        amount,
-        reference: `platform-withdrawal-debit-${created.id}`,
-      },
+    await createDoubleEntryLedger(tx, {
+      fromUserId: systemAccount.userId,
+      fromWalletId: wallet.id,
+      entryType: "PLATFORM_FEE",
+      amount,
+      reference: `platform-withdrawal-debit-${created.id}`,
+      resolveFromWallet: false,
+      resolveToWallet: false,
     });
 
     return created;

@@ -1,6 +1,15 @@
 import { prisma } from "@/lib/prisma";
 
 export async function calculateWalletBalance(walletId: string) {
+  const wallet = await prisma.wallet.findUnique({
+    where: { id: walletId },
+    select: { balance: true },
+  });
+
+  return wallet?.balance ?? 0;
+}
+
+export async function recalculateWalletFromLedger(walletId: string) {
   const entries = await prisma.ledgerEntry.groupBy({
     by: ["direction"],
     where: { walletId },
@@ -12,7 +21,14 @@ export async function calculateWalletBalance(walletId: string) {
   const debit =
     entries.find((item) => item.direction === "DEBIT")?._sum.amount ?? 0;
 
-  return credit - debit;
+  const calculatedBalance = credit - debit;
+
+  await prisma.wallet.update({
+    where: { id: walletId },
+    data: { balance: calculatedBalance },
+  });
+
+  return calculatedBalance;
 }
 
 export async function calculateWalletPending(userId: string) {

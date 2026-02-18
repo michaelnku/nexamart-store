@@ -1,31 +1,46 @@
 "use server";
 
-import { CurrentUserId } from "@/lib/currentUser";
+import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { stripe } from "@/lib/stripe";
 
-const MAX_TOP_UP_USD = 5000;
+const MIN_TOP_UP_USD = 1;
+const MAX_TOP_UP_USD = 10000;
 
-export async function createWalletTopUpSession(amount: number) {
-  const userId = await CurrentUserId();
+export async function createWalletTopUpSession(amount: number): Promise<string> {
+  const [userId, role] = await Promise.all([CurrentUserId(), CurrentRole()]);
+
   if (!userId) {
     throw new Error("Unauthorized");
   }
 
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new Error("Invalid amount");
+  if (role !== "USER") {
+    throw new Error("Only users can fund wallet");
   }
 
-  if (amount > MAX_TOP_UP_USD) {
+  if (!Number.isFinite(amount)) {
+    throw new Error("Amount must be a valid number");
+  }
+
+  const normalizedAmount = Math.floor(amount);
+  if (normalizedAmount < MIN_TOP_UP_USD) {
+    throw new Error(`Minimum top-up is $${MIN_TOP_UP_USD}`);
+  }
+
+  if (normalizedAmount > MAX_TOP_UP_USD) {
     throw new Error(`Amount exceeds limit of ${MAX_TOP_UP_USD} USD`);
   }
 
-  const unitAmount = Math.round(amount * 100);
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    throw new Error("Stripe is not configured");
+  }
+
+  const unitAmount = normalizedAmount * 100;
   if (unitAmount <= 0) {
     throw new Error("Invalid amount");
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-  if (!appUrl) {
+  const frontendUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!frontendUrl) {
     throw new Error("NEXT_PUBLIC_APP_URL is not configured");
   }
 
@@ -48,13 +63,13 @@ export async function createWalletTopUpSession(amount: number) {
       type: "WALLET_TOPUP",
       userId,
     },
-    success_url: `${appUrl}/wallet/topup/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${appUrl}/wallet/topup/cancel`,
+    success_url: `${frontendUrl}/customer/wallet?topup=success`,
+    cancel_url: `${frontendUrl}/customer/wallet?topup=cancel`,
   });
 
   if (!session.url) {
     throw new Error("Failed to create checkout session");
   }
 
-  return { url: session.url };
+  return session.url;
 }

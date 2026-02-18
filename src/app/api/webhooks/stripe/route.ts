@@ -6,6 +6,7 @@ import { pusherServer } from "@/lib/pusher";
 import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
 import { stripe } from "@/lib/stripe";
 import { completeOrderPayment } from "@/lib/payments/completeOrderPayment";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 
 async function handleWalletTopUp(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.userId;
@@ -37,12 +38,9 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
 
       const wallet = await tx.wallet.upsert({
         where: { userId },
-        update: {
-          balance: { increment: amount },
-        },
+        update: {},
         create: {
           userId,
-          balance: amount,
           currency: "USD",
         },
         select: { id: true },
@@ -60,15 +58,14 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
         },
       });
 
-      await tx.ledgerEntry.create({
-        data: {
-          walletId: wallet.id,
-          userId,
-          entryType: "ESCROW_DEPOSIT",
-          direction: "CREDIT",
-          amount,
-          reference: paymentIntentId,
-        },
+      await createDoubleEntryLedger(tx, {
+        toUserId: userId,
+        toWalletId: wallet.id,
+        entryType: "ESCROW_DEPOSIT",
+        amount,
+        reference: `wallet-topup-${paymentIntentId}`,
+        resolveFromWallet: false,
+        resolveToWallet: false,
       });
     });
   } catch (error) {

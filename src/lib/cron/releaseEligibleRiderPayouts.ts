@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron/cronLock";
-import { createLedgerEntryIdempotent } from "@/lib/ledger/idempotentEntries";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { Prisma } from "@/generated/prisma";
 
 const LOCK_NAME = "RELEASE_ELIGIBLE_RIDER_PAYOUTS";
@@ -81,7 +81,6 @@ async function processRiderDeliveryPayout(
       where: { id: riderWallet.id },
       data: {
         pending: { decrement: delivery.fee },
-        balance: { increment: delivery.fee },
         totalEarnings: { increment: delivery.fee },
       },
     });
@@ -99,14 +98,15 @@ async function processRiderDeliveryPayout(
       },
     });
 
-    await createLedgerEntryIdempotent(tx, {
+    await createDoubleEntryLedger(tx, {
       orderId: delivery.orderId,
-      userId: delivery.riderId,
-      walletId: riderWallet.id,
+      toUserId: delivery.riderId,
+      toWalletId: riderWallet.id,
       entryType: "RIDER_PAYOUT",
-      direction: "CREDIT",
       amount: delivery.fee,
       reference: `ledger-rider-payout-${delivery.id}`,
+      resolveFromWallet: false,
+      resolveToWallet: false,
     });
   }
 

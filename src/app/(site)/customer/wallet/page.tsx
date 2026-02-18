@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { CustomerWalletSkeleton } from "@/components/skeletons/WalletSkeleton";
 import { Button } from "@/components/ui/button";
 import { useBuyerWallet } from "@/hooks/useWallet";
@@ -9,6 +12,16 @@ import { WalletTransactionType } from "@/lib/types";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import { WalletBalanceConverter } from "@/components/currency/WalletBalanceConverter";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
+import { createWalletTopUpSession } from "@/actions/wallet/createWalletTopUpSession";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 const CREDIT_TYPES: WalletTransactionType[] = ["DEPOSIT", "REFUND", "EARNING"];
 
@@ -19,9 +32,46 @@ const DEBIT_TYPES: WalletTransactionType[] = [
 ];
 
 export default function CustomerWalletPage() {
+  const searchParams = useSearchParams();
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
-  const { data: wallet, isPending, error } = useBuyerWallet();
+  const { data: wallet, isPending, error, refetch } = useBuyerWallet();
   const { data: user } = useCurrentUserQuery();
+  const [isFunding, setIsFunding] = useState(false);
+  const [amount, setAmount] = useState<number>(0);
+  const [fundDialogOpen, setFundDialogOpen] = useState(false);
+
+  useEffect(() => {
+    const topup = searchParams.get("topup");
+    if (topup === "success") {
+      void refetch();
+      toast.success("Wallet funded successfully");
+      setIsFunding(false);
+      return;
+    }
+
+    if (topup === "cancel") {
+      toast.error("Wallet funding was canceled");
+      setIsFunding(false);
+    }
+  }, [refetch, searchParams]);
+
+  async function handleFundWallet() {
+    if (!Number.isFinite(amount) || amount < 1) {
+      toast.error("Enter a valid top-up amount (minimum $1).");
+      return;
+    }
+
+    try {
+      setIsFunding(true);
+      const checkoutUrl = await createWalletTopUpSession(amount);
+      window.location.href = checkoutUrl;
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "Failed to start wallet funding.";
+      toast.error(message);
+      setIsFunding(false);
+    }
+  }
 
   if (isPending) return <CustomerWalletSkeleton />;
 
@@ -55,7 +105,10 @@ export default function CustomerWalletPage() {
         </div>
 
         <div className="flex gap-2">
-          <Button className="bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white px-6">
+          <Button
+            className="bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white px-6"
+            onClick={() => setFundDialogOpen(true)}
+          >
             Fund Wallet
           </Button>
           <Button variant="outline" className="px-6">
@@ -63,6 +116,56 @@ export default function CustomerWalletPage() {
           </Button>
         </div>
       </header>
+
+      <Dialog open={fundDialogOpen} onOpenChange={setFundDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Fund Wallet</DialogTitle>
+            <DialogDescription>
+              Enter the amount you want to add. You will be redirected to Stripe
+              Checkout to complete payment.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <label
+              className="text-sm font-medium "
+              htmlFor="wallet-topup-amount"
+            >
+              Amount (USD)
+            </label>
+            <Input
+              id="wallet-topup-amount"
+              type="number"
+              min={1}
+              step={1}
+              value={amount || ""}
+              onChange={(e) => setAmount(Number(e.target.value))}
+              placeholder="Enter amount"
+            />
+            <p className="text-xs text-muted-foreground">
+              Minimum $1, maximum $10,000.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={isFunding}
+              onClick={() => setFundDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white"
+              disabled={isFunding || amount <= 0}
+              onClick={handleFundWallet}
+            >
+              {isFunding ? "Redirecting..." : "Top Up"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* BALANCE SUMMARY */}
       <section className="bg-white dark:bg-neutral-950 border shadow-sm rounded-xl p-6 space-y-4">

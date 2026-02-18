@@ -3,7 +3,7 @@
 import { CurrentRole } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
-import { createLedgerEntryIdempotent } from "@/lib/ledger/idempotentEntries";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 
 const STRIPE_CURRENCY = "usd";
 
@@ -190,19 +190,15 @@ export async function approveSellerWithdrawalCore(
       });
 
       if (!existingTransaction) {
-        const updated = await tx.wallet.updateMany({
-          where: {
-            id: fresh.wallet.id,
-            balance: { gte: fresh.amount },
-          },
-          data: {
-            balance: { decrement: fresh.amount },
-          },
+        await createDoubleEntryLedger(tx, {
+          fromUserId: fresh.wallet.userId,
+          fromWalletId: fresh.wallet.id,
+          entryType: "SELLER_PAYOUT",
+          amount: fresh.amount,
+          reference: `withdrawal-settlement-${withdrawalId}`,
+          resolveFromWallet: false,
+          resolveToWallet: false,
         });
-
-        if (updated.count !== 1) {
-          throw new Error("Insufficient available wallet balance.");
-        }
 
         await tx.transaction.create({
           data: {
@@ -214,15 +210,6 @@ export async function approveSellerWithdrawalCore(
             reference: `withdrawal-${withdrawalId}`,
             description: "Seller withdrawal approved and transferred to Stripe.",
           },
-        });
-
-        await createLedgerEntryIdempotent(tx, {
-          walletId: fresh.wallet.id,
-          userId: fresh.wallet.userId,
-          entryType: "SELLER_PAYOUT",
-          direction: "CREDIT",
-          amount: fresh.amount,
-          reference: `withdrawal-credit-${withdrawalId}`,
         });
       }
 
