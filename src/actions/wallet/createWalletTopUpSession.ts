@@ -2,6 +2,7 @@
 
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { stripe } from "@/lib/stripe";
+import { getAppBaseUrl } from "@/lib/config/appUrl";
 
 const MIN_TOP_UP_USD = 1;
 const MAX_TOP_UP_USD = 10000;
@@ -39,10 +40,7 @@ export async function createWalletTopUpSession(amount: number): Promise<string> 
     throw new Error("Invalid amount");
   }
 
-  const frontendUrl = process.env.NEXT_PUBLIC_APP_URL;
-  if (!frontendUrl) {
-    throw new Error("NEXT_PUBLIC_APP_URL is not configured");
-  }
+  const baseUrl = getAppBaseUrl();
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
@@ -63,8 +61,8 @@ export async function createWalletTopUpSession(amount: number): Promise<string> 
       type: "WALLET_TOPUP",
       userId,
     },
-    success_url: `${frontendUrl}/customer/wallet?topup=success`,
-    cancel_url: `${frontendUrl}/customer/wallet?topup=cancel`,
+    success_url: `${baseUrl}/customer/wallet?topup=success`,
+    cancel_url: `${baseUrl}/customer/wallet?topup=cancel`,
   });
 
   if (!session.url) {

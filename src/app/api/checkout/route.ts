@@ -4,6 +4,7 @@ import { DeliveryType } from "@/generated/prisma/client";
 import { placeOrderAction } from "@/actions/checkout/placeOrder";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
+import { getAppBaseUrl } from "@/lib/config/appUrl";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,8 +37,6 @@ export async function POST(req: Request) {
 
     const idempotencyKey = body.idempotencyKey ?? randomUUID();
 
-    // Pricing engine authority:
-    // placeOrderAction is the only source of truth for shipping, subtotal, discount, and totals.
     const placeOrder = await placeOrderAction({
       addressId: body.addressId,
       paymentMethod: "CARD",
@@ -69,10 +68,15 @@ export async function POST(req: Request) {
       order.totalAmount <= 0 ||
       order.sellerGroups.length === 0
     ) {
-      return new NextResponse("Order not properly initialized via placeOrderAction", {
-        status: 400,
-      });
+      return new NextResponse(
+        "Order not properly initialized via place Order Action",
+        {
+          status: 400,
+        },
+      );
     }
+
+    const baseUrl = getAppBaseUrl();
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -89,8 +93,8 @@ export async function POST(req: Request) {
           },
         },
       ],
-      success_url: `${process.env.FRONTEND_STORE_URL}/customer/order/success/${order.id}`,
-      cancel_url: `${process.env.FRONTEND_STORE_URL}/cart?canceled=1`,
+      success_url: `${baseUrl}/customer/order/success/${order.id}`,
+      cancel_url: `${baseUrl}/cart?canceled=1`,
       metadata: { orderId: order.id },
     });
 

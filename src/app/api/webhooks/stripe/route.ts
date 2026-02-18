@@ -15,7 +15,7 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
   const paymentIntentId =
     typeof paymentIntentRaw === "string"
       ? paymentIntentRaw
-      : paymentIntentRaw?.id ?? null;
+      : (paymentIntentRaw?.id ?? null);
 
   if (!userId || !paymentIntentId || typeof amountTotal !== "number") {
     console.error("Invalid wallet top-up webhook payload", {
@@ -23,7 +23,10 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
       paymentIntentId,
       amountTotal,
     });
-    return NextResponse.json({ error: "Invalid webhook payload" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid webhook payload" },
+      { status: 400 },
+    );
   }
 
   const amount = amountTotal / 100;
@@ -70,7 +73,10 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
     });
   } catch (error) {
     console.error("Failed to process wallet top-up webhook:", error);
-    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Webhook processing failed" },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ received: true }, { status: 200 });
@@ -82,7 +88,7 @@ async function handleOrderCheckout(session: Stripe.Checkout.Session) {
   const paymentIntentId =
     typeof paymentIntentRaw === "string"
       ? paymentIntentRaw
-      : paymentIntentRaw?.id ?? null;
+      : (paymentIntentRaw?.id ?? null);
 
   if (!orderId || !paymentIntentId) {
     console.error("Missing orderId or payment_intent in Stripe metadata");
@@ -138,7 +144,10 @@ export async function POST(req: Request) {
   const signature = (await headers()).get("stripe-signature");
 
   if (!signature) {
-    return NextResponse.json({ error: "Missing Stripe signature" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing Stripe signature" },
+      { status: 400 },
+    );
   }
 
   let event: Stripe.Event;
