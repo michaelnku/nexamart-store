@@ -2,21 +2,24 @@
 
 import { CurrentUser, CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
+import {
+  calculateWalletBalance,
+  calculateWalletPending,
+} from "@/lib/ledger/calculateWalletBalance";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 
-//buyer wallet action
 export async function getBuyerWalletAction() {
   const userId = await CurrentUserId();
   const user = await CurrentUser();
 
-  if (!userId) {
-    throw new Error("Unauthorized");
-  }
-
-  // Ensure user is a buyer if you differentiate roles
+  if (!userId) throw new Error("Unauthorized");
   if (user?.role !== "USER") throw new Error("Not a buyer");
 
-  const wallet = await prisma.wallet.findUnique({
+  const wallet = await prisma.wallet.upsert({
     where: { userId },
+    update: {},
+    create: { userId },
     include: {
       transactions: {
         orderBy: { createdAt: "desc" },
@@ -25,139 +28,183 @@ export async function getBuyerWalletAction() {
     },
   });
 
-  if (!wallet) {
-    // auto-create wallet for buyer if missing
-    const newWallet = await prisma.wallet.create({
-      data: { userId },
-    });
+  const [balance, pending] = await Promise.all([
+    calculateWalletBalance(wallet.id),
+    calculateWalletPending(userId),
+  ]);
 
-    return { ...newWallet, transactions: [] };
-  }
+  const totalEarnings = wallet.transactions
+    .filter((tx) => tx.type === "EARNING" || tx.type === "SELLER_PAYOUT")
+    .reduce((sum, tx) => sum + tx.amount, 0);
 
-  return wallet;
+  return {
+    ...wallet,
+    balance,
+    pending,
+    totalEarnings,
+  };
 }
 
-// Credit wallet (for refunds, manual topups etc)
 export async function creditBuyerWalletAction(
   userId: string,
   amount: number,
   description?: string,
-  reference?: string
+  reference?: string,
 ) {
   if (amount <= 0) throw new Error("Amount must be greater than zero");
 
-  const wallet = await prisma.wallet.update({
+  const wallet = await prisma.wallet.upsert({
     where: { userId },
-    data: { balance: { increment: amount } },
+    update: {},
+    create: { userId },
   });
 
-  await prisma.transaction.create({
-    data: {
-      walletId: wallet.id,
-      userId,
-      type: "DEPOSIT",
+  await prisma.$transaction(async (tx) => {
+    const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
+
+    await createDoubleEntryLedger(tx, {
+      fromWalletId: systemEscrowAccount.walletId,
+      toUserId: userId,
+      toWalletId: wallet.id,
+      entryType: "REFUND",
       amount,
-      description,
-      reference,
-      status: "SUCCESS",
-    },
+      reference: reference ?? `buyer-credit-${userId}-${Date.now()}`,
+    });
+
+    await tx.transaction.create({
+      data: {
+        walletId: wallet.id,
+        userId,
+        type: "DEPOSIT",
+        amount,
+        description,
+        reference,
+        status: "SUCCESS",
+      },
+    });
   });
 
   return wallet;
 }
 
-// Debit wallet (for paying orders with wallet later)
 export async function debitBuyerWalletAction(
   userId: string,
   amount: number,
   description?: string,
-  reference?: string
+  reference?: string,
 ) {
   if (amount <= 0) throw new Error("Amount must be greater than zero");
 
-  const wallet = await prisma.wallet.findUnique({
+  const wallet = await prisma.wallet.upsert({
     where: { userId },
+    update: {},
+    create: { userId },
   });
 
-  if (!wallet || wallet.balance < amount) {
+  const availableBalance = await calculateWalletBalance(wallet.id);
+  if (availableBalance < amount) {
     throw new Error("Insufficient wallet balance");
   }
 
-  const updated = await prisma.wallet.update({
-    where: { userId },
-    data: { balance: { decrement: amount } },
-  });
+  await prisma.$transaction(async (tx) => {
+    const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
 
-  await prisma.transaction.create({
-    data: {
-      walletId: updated.id,
-      userId,
-      type: "ORDER_PAYMENT",
+    await createDoubleEntryLedger(tx, {
+      fromUserId: userId,
+      fromWalletId: wallet.id,
+      toWalletId: systemEscrowAccount.walletId,
+      entryType: "ESCROW_DEPOSIT",
       amount,
-      description,
-      reference,
-      status: "SUCCESS",
-    },
+      reference: reference ?? `buyer-debit-${userId}-${Date.now()}`,
+    });
+
+    await tx.transaction.create({
+      data: {
+        walletId: wallet.id,
+        userId,
+        type: "ORDER_PAYMENT",
+        amount,
+        description,
+        reference,
+        status: "SUCCESS",
+      },
+    });
   });
 
-  return updated;
+  return wallet;
 }
 
-//seller wallet action
 export const getSellerWalletAction = async () => {
   const userId = await CurrentUserId();
   const user = await CurrentUser();
 
-  if (!userId) {
-    throw new Error("Unauthorized");
-  }
-
+  if (!userId) throw new Error("Unauthorized");
   if (user?.role !== "SELLER") return { error: "Forbidden" };
 
-  const wallet = await prisma.wallet.findFirst({
+  const wallet = await prisma.wallet.findUnique({
     where: { userId: user.id },
-    include: {
-      withdrawals: true,
-    },
+    include: { withdrawals: true },
   });
 
-  if (!wallet)
+  if (!wallet) {
     return { balance: 0, pending: 0, totalEarnings: 0, withdrawals: [] };
+  }
+
+  const [balance, pending, total] = await Promise.all([
+    calculateWalletBalance(wallet.id),
+    calculateWalletPending(user.id),
+    prisma.ledgerEntry.aggregate({
+      _sum: { amount: true },
+      where: {
+        walletId: wallet.id,
+        entryType: "SELLER_PAYOUT",
+        direction: "CREDIT",
+      },
+    }),
+  ]);
 
   return {
-    balance: wallet.balance,
-    pending: wallet.pending,
-    totalEarnings: wallet.totalEarnings,
+    balance,
+    pending,
+    totalEarnings: total._sum.amount ?? 0,
     currency: wallet.currency,
     withdrawals: wallet.withdrawals,
   };
 };
 
-// rider wallet action
 export const getRiderWalletAction = async () => {
   const userId = await CurrentUserId();
   const user = await CurrentUser();
 
-  if (!userId) {
-    throw new Error("Unauthorized");
-  }
-
+  if (!userId) throw new Error("Unauthorized");
   if (user?.role !== "RIDER") return { error: "Forbidden" };
 
-  const wallet = await prisma.wallet.findFirst({
+  const wallet = await prisma.wallet.findUnique({
     where: { userId: user.id },
-    include: {
-      withdrawals: true,
-    },
+    include: { withdrawals: true },
   });
 
-  if (!wallet)
+  if (!wallet) {
     return { balance: 0, pending: 0, totalEarnings: 0, withdrawals: [] };
+  }
+
+  const [balance, pending, total] = await Promise.all([
+    calculateWalletBalance(wallet.id),
+    calculateWalletPending(user.id),
+    prisma.ledgerEntry.aggregate({
+      _sum: { amount: true },
+      where: {
+        walletId: wallet.id,
+        entryType: "RIDER_PAYOUT",
+        direction: "CREDIT",
+      },
+    }),
+  ]);
 
   return {
-    balance: wallet.balance,
-    pending: wallet.pending,
-    totalEarnings: wallet.totalEarnings,
+    balance,
+    pending,
+    totalEarnings: total._sum.amount ?? 0,
     currency: wallet.currency,
     withdrawals: wallet.withdrawals,
   };

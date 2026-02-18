@@ -2,6 +2,9 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { autoAssignRider } from "@/lib/rider/logistics";
+import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 
 export const acceptOrderAction = async (sellerGroupId: string) => {
   try {
@@ -105,6 +108,8 @@ export const shipOrderAction = async (sellerGroupId: string) => {
 
 export const cancelOrderAction = async (sellerGroupId: string) => {
   try {
+    const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
+
     const group = await prisma.orderSellerGroup.findUnique({
       where: { id: sellerGroupId },
       include: {
@@ -153,31 +158,47 @@ export const cancelOrderAction = async (sellerGroupId: string) => {
         }
       }
 
-      await tx.wallet.upsert({
+      const refundAmount = group.subtotal + group.shippingFee;
+      const buyerWallet = await tx.wallet.upsert({
         where: { userId: group.order.userId },
-        update: {
-          balance: { increment: group.subtotal + group.shippingFee },
-          transactions: {
-            create: {
-              type: "REFUND",
-              amount: group.subtotal + group.shippingFee,
-              description: `Refund for cancelled order #${group.order.id}`,
-            },
-          },
-        },
+        update: {},
         create: {
           userId: group.order.userId,
-          balance: group.subtotal + group.shippingFee,
-          totalEarnings: 0,
-          pending: 0,
           currency: "USD",
-          transactions: {
-            create: {
-              type: "REFUND",
-              amount: group.subtotal + group.shippingFee,
-              description: `Refund for cancelled order #${group.order.id}`,
-            },
-          },
+        },
+        select: { id: true },
+      });
+
+      await createEscrowEntryIdempotent(tx, {
+        orderId: group.orderId,
+        userId: group.order.userId,
+        role: "BUYER",
+        entryType: "REFUND",
+        amount: refundAmount,
+        status: "RELEASED",
+        reference: `seller-cancel-refund-${group.id}`,
+      });
+
+      await createDoubleEntryLedger(tx, {
+        orderId: group.orderId,
+        fromWalletId: systemEscrowAccount.walletId,
+        toUserId: group.order.userId,
+        toWalletId: buyerWallet.id,
+        entryType: "REFUND",
+        amount: refundAmount,
+        reference: `seller-cancel-refund-ledger-${group.id}`,
+      });
+
+      await tx.transaction.create({
+        data: {
+          walletId: buyerWallet.id,
+          orderId: group.orderId,
+          userId: group.order.userId,
+          type: "REFUND",
+          amount: refundAmount,
+          status: "SUCCESS",
+          reference: `tx-seller-cancel-refund-${group.id}`,
+          description: `Refund for cancelled order #${group.order.id}`,
         },
       });
     });

@@ -448,12 +448,15 @@ model OrderSellerGroup {
   subtotal    Float
   shippingFee Float
 
-  payoutStatus  PayoutStatus      @default(PENDING)
-  status        SellerGroupStatus @default(PENDING_PICKUP)
-  createdAt     DateTime          @default(now())
-  expectedAtHub DateTime?
-  arrivedAtHub  DateTime?
-  verified      Boolean           @default(false)
+  payoutStatus     PayoutStatus      @default(PENDING)
+  payoutEligibleAt DateTime?
+  payoutReleasedAt DateTime?
+  payoutLocked     Boolean           @default(false)
+  status           SellerGroupStatus @default(PENDING_PICKUP)
+  createdAt        DateTime          @default(now())
+  expectedAtHub    DateTime?
+  arrivedAtHub     DateTime?
+  verified         Boolean           @default(false)
 
   order  Order @relation(fields: [orderId], references: [id])
   store  Store @relation(fields: [storeId], references: [id])
@@ -552,8 +555,11 @@ model Delivery {
   distance        Float?
   fee             Float
 
-  assignedAt  DateTime?
-  deliveredAt DateTime?
+  assignedAt       DateTime?
+  deliveredAt      DateTime?
+  payoutEligibleAt DateTime?
+  payoutReleasedAt DateTime?
+  payoutLocked     Boolean   @default(false)
 
   order Order @relation("OrderDelivery", fields: [orderId], references: [id], onDelete: Cascade)
   rider User? @relation("RiderDeliveries", fields: [riderId], references: [id])
@@ -736,18 +742,18 @@ enum EscrowStatus {
 }
 
 model LedgerEntry {
-  id        String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  orderId   String?
-  userId    String?
-  walletId  String?
+  orderId  String?
+  userId   String?
+  walletId String?
 
   entryType LedgerEntryType
   direction LedgerDirection
 
-  amount    Float
+  amount Float
 
-  reference String?  @unique
+  reference String? @unique
 
   createdAt DateTime @default(now())
 
@@ -770,6 +776,11 @@ enum LedgerDirection {
   DEBIT
 }
 
+model EscrowSnapshot {
+  id        String   @id @default(cuid())
+  totalHeld Float
+  createdAt DateTime @default(now())
+}
 
 /**
  * ===========================

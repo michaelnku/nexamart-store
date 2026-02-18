@@ -1,25 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { buildSellerNetByUser } from "@/lib/payout/escrowBreakdown";
+import {
+  createEscrowEntryIdempotent,
+} from "@/lib/ledger/idempotentEntries";
 
 const ESCROW_DELAY_MS = 24 * 60 * 60 * 1000;
 
 type PendingMoveResult =
   | { success: true }
   | { skipped: true; reason: string };
-
-type EscrowPayload = {
-  orderId: string;
-  releaseAt: string;
-};
-
-function isEscrowPayload(payload: unknown): payload is EscrowPayload {
-  if (typeof payload !== "object" || payload === null) return false;
-  const candidate = payload as Record<string, unknown>;
-  return (
-    typeof candidate.orderId === "string" &&
-    typeof candidate.releaseAt === "string"
-  );
-}
 
 export async function moveOrderEarningsToPending(
   orderId: string,
@@ -40,11 +28,6 @@ export async function moveOrderEarningsToPending(
             id: true,
             sellerId: true,
             subtotal: true,
-            store: {
-              select: {
-                type: true,
-              },
-            },
           },
         },
       },
@@ -54,9 +37,6 @@ export async function moveOrderEarningsToPending(
     if (!order.isPaid) return { skipped: true, reason: "ORDER_NOT_PAID" };
     if (order.status !== "DELIVERED") {
       return { skipped: true, reason: "ORDER_NOT_DELIVERED" };
-    }
-    if (order.payoutReleased) {
-      return { skipped: true, reason: "PAYOUT_ALREADY_RELEASED" };
     }
     if (!order.customerConfirmedAt) {
       return { skipped: true, reason: "MISSING_CONFIRMATION_TIME" };
@@ -68,72 +48,65 @@ export async function moveOrderEarningsToPending(
       return { skipped: true, reason: "DELIVERY_NOT_CONFIRMED" };
     }
 
-    const existingEscrowJobs = await tx.job.findMany({
-      where: {
-        type: "RELEASE_ESCROW_PAYOUT",
-        status: {
-          in: ["PENDING", "DONE"],
-        },
-      },
-      select: {
-        payload: true,
-      },
-    });
-
-    const hasEscrowJob = existingEscrowJobs.some((job) => {
-      if (!isEscrowPayload(job.payload)) return false;
-      return job.payload.orderId === orderId;
-    });
-
-    if (hasEscrowJob) {
-      return { skipped: true, reason: "ESCROW_ALREADY_QUEUED" };
-    }
-
-    const sellerNetByUserId = buildSellerNetByUser(order.sellerGroups);
-
-    for (const [sellerId, sellerNet] of sellerNetByUserId) {
-      const sellerWallet = await tx.wallet.upsert({
-        where: { userId: sellerId },
-        update: {},
-        create: { userId: sellerId },
-        select: { id: true },
-      });
-
-      await tx.wallet.update({
-        where: { id: sellerWallet.id },
-        data: {
-          pending: { increment: sellerNet },
+    for (const group of order.sellerGroups) {
+      await createEscrowEntryIdempotent(tx, {
+        orderId,
+        userId: group.sellerId,
+        role: "SELLER",
+        entryType: "SELLER_EARNING",
+        amount: group.subtotal,
+        status: "HELD",
+        reference: `seller-held-${group.id}`,
+        metadata: {
+          sellerGroupId: group.id,
+          subtotal: group.subtotal,
         },
       });
     }
 
-    const riderWallet = await tx.wallet.upsert({
-      where: { userId: order.delivery.riderId },
-      update: {},
-      create: { userId: order.delivery.riderId },
-      select: { id: true },
-    });
-
-    await tx.wallet.update({
-      where: { id: riderWallet.id },
-      data: {
-        pending: { increment: order.delivery.fee },
-      },
+    await createEscrowEntryIdempotent(tx, {
+      orderId,
+      userId: order.delivery.riderId,
+      role: "RIDER",
+      entryType: "RIDER_EARNING",
+      amount: order.delivery.fee,
+      status: "HELD",
+      reference: `rider-held-${orderId}`,
     });
 
     const releaseAt = new Date(
       order.customerConfirmedAt.getTime() + ESCROW_DELAY_MS,
     );
 
-    await tx.job.create({
+    await tx.delivery.updateMany({
+      where: {
+        orderId,
+        status: "DELIVERED",
+        payoutEligibleAt: null,
+      },
       data: {
-        type: "RELEASE_ESCROW_PAYOUT",
-        payload: {
-          orderId,
-          releaseAt: releaseAt.toISOString(),
-        },
+        payoutEligibleAt: releaseAt,
+        payoutLocked: false,
       },
     });
+
+    // Migration note:
+    // Group-level payouts are now released independently. We stamp each
+    // seller group with payout eligibility instead of scheduling an order-level
+    // release job, while retaining idempotency on repeated delivery callbacks.
+    for (const group of order.sellerGroups) {
+      await tx.orderSellerGroup.updateMany({
+        where: {
+          id: group.id,
+          payoutStatus: "PENDING",
+          payoutEligibleAt: null,
+        },
+        data: {
+          payoutEligibleAt: releaseAt,
+          payoutLocked: false,
+        },
+      });
+    }
 
     return { success: true };
   });

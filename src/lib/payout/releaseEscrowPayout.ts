@@ -1,6 +1,12 @@
-import { prisma } from "@/lib/prisma";
-import { buildSellerNetByUser } from "@/lib/payout/escrowBreakdown";
 import { Prisma } from "@/generated/prisma";
+import { prisma } from "@/lib/prisma";
+import {
+  createEscrowEntryIdempotent,
+} from "@/lib/ledger/idempotentEntries";
+import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+
+const PLATFORM_COMMISSION_PERCENT = 12;
 
 type ReleaseResult =
   | { success: true }
@@ -10,35 +16,37 @@ type ReleaseEscrowOptions = {
   allowDisputedOrder?: boolean;
 };
 
+function toCommissionAmount(subtotal: number) {
+  return (subtotal * PLATFORM_COMMISSION_PERCENT) / 100;
+}
+
+function toSellerAmount(subtotal: number) {
+  return subtotal - toCommissionAmount(subtotal);
+}
+
 async function releaseEscrowPayoutWithTx(
   tx: Prisma.TransactionClient,
   orderId: string,
+  systemEscrowAccount: { userId: string; walletId: string },
   options: ReleaseEscrowOptions = {},
 ): Promise<ReleaseResult> {
   const order = await tx.order.findUnique({
-      where: { id: orderId },
-      include: {
-        delivery: {
-          select: {
-            riderId: true,
-            fee: true,
-            status: true,
-          },
-        },
-        sellerGroups: {
-          select: {
-            id: true,
-            sellerId: true,
-            subtotal: true,
-            store: {
-              select: {
-                type: true,
-              },
-            },
-          },
+    where: { id: orderId },
+    include: {
+      sellerGroups: {
+        select: {
+          id: true,
+          sellerId: true,
+          subtotal: true,
         },
       },
-    });
+      delivery: {
+        select: {
+          status: true,
+        },
+      },
+    },
+  });
 
   if (!order) return { skipped: true, reason: "ORDER_NOT_FOUND" };
   if (!order.isPaid) return { skipped: true, reason: "ORDER_NOT_PAID" };
@@ -51,87 +59,121 @@ async function releaseEscrowPayoutWithTx(
   if (order.disputeRaised && !options.allowDisputedOrder) {
     return { skipped: true, reason: "PAYOUT_SKIPPED_ACTIVE_DISPUTE" };
   }
-  if (!order.delivery || !order.delivery.riderId) {
-    return { skipped: true, reason: "MISSING_DELIVERY_OR_RIDER" };
-  }
-  if (order.delivery.status !== "DELIVERED") {
-    return { skipped: true, reason: "DELIVERY_NOT_CONFIRMED" };
-  }
 
-  const existingPayoutTx = await tx.transaction.findFirst({
+  const existingRelease = await tx.ledgerEntry.findFirst({
     where: {
       orderId,
-      type: {
-        in: ["SELLER_PAYOUT", "EARNING"],
-      },
+      entryType: "SELLER_PAYOUT",
+      direction: "CREDIT",
     },
     select: { id: true },
   });
-
-  if (existingPayoutTx) {
+  if (existingRelease) {
     return { skipped: true, reason: "PAYOUT_TRANSACTION_EXISTS" };
   }
 
-  const sellerNetByUserId = buildSellerNetByUser(order.sellerGroups);
+  for (const group of order.sellerGroups) {
+    const sellerAmount = toSellerAmount(group.subtotal);
+    const platformFee = toCommissionAmount(group.subtotal);
 
-  for (const [sellerId, sellerNet] of sellerNetByUserId) {
     const sellerWallet = await tx.wallet.upsert({
-      where: { userId: sellerId },
+      where: { userId: group.sellerId },
       update: {},
-      create: { userId: sellerId },
+      create: { userId: group.sellerId },
       select: { id: true },
     });
 
-    await tx.wallet.update({
-      where: { id: sellerWallet.id },
-      data: {
-        balance: { increment: sellerNet },
-        pending: { decrement: sellerNet },
-        totalEarnings: { increment: sellerNet },
-      },
+    const heldRef = `seller-held-${group.id}`;
+    const heldEntry = await tx.escrowLedger.findUnique({
+      where: { reference: heldRef },
+      select: { id: true },
+    });
+    if (heldEntry) {
+      await tx.escrowLedger.update({
+        where: { reference: heldRef },
+        data: { status: "RELEASED" },
+      });
+    } else {
+      await createEscrowEntryIdempotent(tx, {
+        orderId,
+        userId: group.sellerId,
+        role: "SELLER",
+        entryType: "SELLER_EARNING",
+        amount: group.subtotal,
+        status: "RELEASED",
+        reference: heldRef,
+        metadata: { sellerGroupId: group.id, backfilled: true },
+      });
+    }
+
+    await createEscrowEntryIdempotent(tx, {
+      orderId,
+      userId: group.sellerId,
+      role: "SELLER",
+      entryType: "RELEASE",
+      amount: sellerAmount,
+      status: "RELEASED",
+      reference: `seller-release-${group.id}`,
+      metadata: { sellerGroupId: group.id },
+    });
+
+    await createEscrowEntryIdempotent(tx, {
+      orderId,
+      role: "PLATFORM",
+      entryType: "PLATFORM_COMMISSION",
+      amount: platformFee,
+      status: "RELEASED",
+      reference: `platform-fee-${group.id}`,
+      metadata: { sellerGroupId: group.id },
+    });
+
+    await createEscrowEntryIdempotent(tx, {
+      orderId,
+      role: "PLATFORM",
+      entryType: "RELEASE",
+      amount: sellerAmount + platformFee,
+      status: "RELEASED",
+      reference: `escrow-release-${group.id}`,
+      metadata: { sellerGroupId: group.id },
+    });
+
+    await createDoubleEntryLedger(tx, {
+      orderId,
+      fromWalletId: systemEscrowAccount.walletId,
+      toUserId: group.sellerId,
+      toWalletId: sellerWallet.id,
+      entryType: "SELLER_PAYOUT",
+      amount: sellerAmount,
+      reference: `seller-payout-${group.id}`,
+    });
+
+    await createDoubleEntryLedger(tx, {
+      orderId,
+      fromWalletId: systemEscrowAccount.walletId,
+      toUserId: systemEscrowAccount.userId,
+      entryType: "PLATFORM_FEE",
+      amount: platformFee,
+      reference: `platform-ledger-fee-${group.id}`,
+      resolveToWallet: false,
     });
 
     await tx.transaction.create({
       data: {
         walletId: sellerWallet.id,
-        userId: sellerId,
+        userId: group.sellerId,
         orderId,
         type: "SELLER_PAYOUT",
-        amount: sellerNet,
         status: "SUCCESS",
-        description: "Escrow payout release",
+        amount: sellerAmount,
+        reference: `tx-seller-payout-${group.id}`,
+        description: `Escrow release payout for seller group ${group.id}`,
       },
     });
   }
 
-  const riderWallet = await tx.wallet.upsert({
-    where: { userId: order.delivery.riderId },
-    update: {},
-    create: { userId: order.delivery.riderId },
-    select: { id: true },
-  });
-
-  const riderAmount = order.delivery.fee;
-  await tx.wallet.update({
-    where: { id: riderWallet.id },
-    data: {
-      balance: { increment: riderAmount },
-      pending: { decrement: riderAmount },
-      totalEarnings: { increment: riderAmount },
-    },
-  });
-
-  await tx.transaction.create({
-    data: {
-      walletId: riderWallet.id,
-      userId: order.delivery.riderId,
-      orderId,
-      type: "EARNING",
-      amount: riderAmount,
-      status: "SUCCESS",
-      description: "Escrow payout release",
-    },
-  });
+  // Migration safety:
+  // Rider payout release is now managed by delivery-level cron
+  // `releaseEligibleRiderPayouts` with its own hold and idempotency guard.
 
   await tx.orderSellerGroup.updateMany({
     where: { orderId },
@@ -153,7 +195,10 @@ export async function releaseEscrowPayout(
   orderId: string,
   options: ReleaseEscrowOptions = {},
 ): Promise<ReleaseResult> {
-  return prisma.$transaction((tx) => releaseEscrowPayoutWithTx(tx, orderId, options));
+  const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
+  return prisma.$transaction((tx) =>
+    releaseEscrowPayoutWithTx(tx, orderId, systemEscrowAccount, options),
+  );
 }
 
 export async function releaseEscrowPayoutInTx(
@@ -161,5 +206,6 @@ export async function releaseEscrowPayoutInTx(
   orderId: string,
   options: ReleaseEscrowOptions = {},
 ): Promise<ReleaseResult> {
-  return releaseEscrowPayoutWithTx(tx, orderId, options);
+  const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
+  return releaseEscrowPayoutWithTx(tx, orderId, systemEscrowAccount, options);
 }

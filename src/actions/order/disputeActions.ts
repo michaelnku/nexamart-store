@@ -2,23 +2,22 @@
 
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { buildSellerNetByUser } from "@/lib/payout/escrowBreakdown";
 import { releaseEscrowPayoutInTx } from "@/lib/payout/releaseEscrowPayout";
+import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
+import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 
 const DISPUTE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-type DisputeResolution = "REFUND_BUYER" | "RELEASE_SELLER" | "PARTIAL_REFUND";
-
-function normalizeReason(reason: string): string {
-  return reason.trim();
-}
+type Resolution = "REFUND_BUYER" | "RELEASE_SELLER" | "PARTIAL_REFUND";
+type AdminOutcome = "RELEASE" | "REFUND";
 
 export async function raiseOrderDisputeAction(orderId: string, reason: string) {
   const userId = await CurrentUserId();
   if (!userId) throw new Error("Unauthorized");
 
-  const normalizedReason = normalizeReason(reason);
-  if (!normalizedReason) throw new Error("Dispute reason is required");
+  const cleanReason = reason.trim();
+  if (!cleanReason) throw new Error("Dispute reason is required");
 
   return prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
@@ -27,32 +26,27 @@ export async function raiseOrderDisputeAction(orderId: string, reason: string) {
         id: true,
         userId: true,
         status: true,
-        customerConfirmedAt: true,
         disputeRaised: true,
+        customerConfirmedAt: true,
       },
     });
 
     if (!order) throw new Error("Order not found");
     if (order.userId !== userId) throw new Error("Forbidden");
-    if (order.status !== "DELIVERED") {
-      throw new Error("Only delivered orders can be disputed");
-    }
+    if (order.status !== "DELIVERED") throw new Error("Order must be delivered");
     if (order.disputeRaised) throw new Error("Dispute already raised");
-    if (!order.customerConfirmedAt) {
-      throw new Error("Delivery confirmation timestamp is missing");
-    }
+    if (!order.customerConfirmedAt) throw new Error("Missing delivery timestamp");
 
     const now = new Date();
-    const windowEnds = new Date(order.customerConfirmedAt.getTime() + DISPUTE_WINDOW_MS);
-    if (now > windowEnds) {
-      throw new Error("Dispute window has expired");
+    if (now.getTime() > order.customerConfirmedAt.getTime() + DISPUTE_WINDOW_MS) {
+      throw new Error("Dispute window expired");
     }
 
     await tx.order.update({
       where: { id: orderId },
       data: {
         disputeRaised: true,
-        disputeReason: normalizedReason,
+        disputeReason: cleanReason,
         disputeRaisedAt: now,
       },
     });
@@ -74,8 +68,8 @@ export async function raiseOrderDisputeAction(orderId: string, reason: string) {
       await tx.notification.createMany({
         data: admins.map((admin) => ({
           userId: admin.id,
-          title: "Order Dispute Raised",
-          message: `Dispute raised for order ${orderId}`,
+          title: "New Dispute Raised",
+          message: `Customer raised dispute for order ${orderId}`,
         })),
       });
     }
@@ -84,232 +78,41 @@ export async function raiseOrderDisputeAction(orderId: string, reason: string) {
   });
 }
 
-async function processRefundBuyer(orderId: string) {
-  return prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({
-      where: { id: orderId },
-      include: {
-        delivery: {
-          select: {
-            riderId: true,
-            fee: true,
-          },
-        },
-        sellerGroups: {
-          select: {
-            sellerId: true,
-            subtotal: true,
-            store: {
-              select: { type: true },
-            },
-          },
-        },
-      },
-    });
-
-    if (!order) throw new Error("Order not found");
-    if (!order.isPaid) throw new Error("Order is not paid");
-    if (!order.disputeRaised) throw new Error("No active dispute on this order");
-    if (order.payoutReleased) throw new Error("Payout already released");
-
-    const existingRefund = await tx.transaction.findFirst({
-      where: { orderId, type: "REFUND" },
-      select: { id: true },
-    });
-    if (existingRefund) return { success: true };
-
-    const buyerWallet = await tx.wallet.upsert({
-      where: { userId: order.userId },
-      update: {},
-      create: { userId: order.userId },
-      select: { id: true },
-    });
-
-    const sellerNetByUserId = buildSellerNetByUser(order.sellerGroups);
-    for (const [sellerId, sellerNet] of sellerNetByUserId) {
-      const sellerWallet = await tx.wallet.upsert({
-        where: { userId: sellerId },
-        update: {},
-        create: { userId: sellerId },
-        select: { id: true, pending: true },
-      });
-
-      // Roll back seller escrow pending to avoid future payout release.
-      const decrementAmount = Math.min(sellerWallet.pending, sellerNet);
-      if (decrementAmount > 0) {
-        await tx.wallet.update({
-          where: { id: sellerWallet.id },
-          data: { pending: { decrement: decrementAmount } },
-        });
-      }
-    }
-
-    if (order.delivery?.riderId) {
-      const riderWallet = await tx.wallet.upsert({
-        where: { userId: order.delivery.riderId },
-        update: {},
-        create: { userId: order.delivery.riderId },
-        select: { id: true, pending: true },
-      });
-
-      // We block rider release during active dispute to preserve full escrow integrity.
-      const riderDecrement = Math.min(riderWallet.pending, order.delivery.fee);
-      if (riderDecrement > 0) {
-        await tx.wallet.update({
-          where: { id: riderWallet.id },
-          data: { pending: { decrement: riderDecrement } },
-        });
-      }
-    }
-
-    await tx.wallet.update({
-      where: { id: buyerWallet.id },
-      data: { balance: { increment: order.totalAmount } },
-    });
-
-    await tx.transaction.create({
-      data: {
-        walletId: buyerWallet.id,
-        orderId,
-        userId: order.userId,
-        amount: order.totalAmount,
-        type: "REFUND",
-        status: "SUCCESS",
-        description: "Admin dispute resolution refund",
-      },
-    });
-
-    await tx.orderSellerGroup.updateMany({
-      where: { orderId },
-      data: { payoutStatus: "CANCELLED" },
-    });
-
-    await tx.order.update({
-      where: { id: orderId },
-      data: {
-        status: "REFUNDED",
-        payoutReleased: true,
-        disputeRaised: false,
-        disputeReason: null,
-        disputeRaisedAt: null,
-      },
-    });
-
-    await tx.orderTimeline.create({
-      data: {
-        orderId,
-        status: "REFUNDED",
-        message: "Dispute resolved: buyer refunded by admin",
-      },
-    });
-
-    return { success: true };
-  });
-}
-
-async function processPartialRefund(orderId: string, partialAmount: number) {
-  return prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({
-      where: { id: orderId },
-      select: {
-        id: true,
-        userId: true,
-        totalAmount: true,
-        isPaid: true,
-        disputeRaised: true,
-        payoutReleased: true,
-      },
-    });
-
-    if (!order) throw new Error("Order not found");
-    if (!order.isPaid) throw new Error("Order is not paid");
-    if (!order.disputeRaised) throw new Error("No active dispute on this order");
-    if (order.payoutReleased) throw new Error("Payout already released");
-    if (partialAmount <= 0) throw new Error("partialAmount must be greater than 0");
-    if (partialAmount > order.totalAmount) {
-      throw new Error("partialAmount cannot exceed order total amount");
-    }
-
-    const existingRefund = await tx.transaction.findFirst({
-      where: { orderId, type: "REFUND" },
-      select: { id: true },
-    });
-    if (existingRefund) return { success: true };
-
-    const buyerWallet = await tx.wallet.upsert({
-      where: { userId: order.userId },
-      update: {},
-      create: { userId: order.userId },
-      select: { id: true },
-    });
-
-    // First credit buyer partial refund.
-    await tx.wallet.update({
-      where: { id: buyerWallet.id },
-      data: { balance: { increment: partialAmount } },
-    });
-
-    await tx.transaction.create({
-      data: {
-        walletId: buyerWallet.id,
-        orderId,
-        userId: order.userId,
-        amount: partialAmount,
-        type: "REFUND",
-        status: "SUCCESS",
-        description: "Admin dispute resolution partial refund",
-      },
-    });
-
-    // Then release remaining escrow to sellers/rider from the same transaction.
-    const releaseResult = await releaseEscrowPayoutInTx(tx, orderId, {
-      allowDisputedOrder: true,
-    });
-    if ("skipped" in releaseResult && releaseResult.reason !== "PAYOUT_ALREADY_RELEASED") {
-      throw new Error(`Unable to release seller payout: ${releaseResult.reason}`);
-    }
-
-    await tx.order.update({
-      where: { id: orderId },
-      data: {
-        disputeRaised: false,
-        disputeReason: null,
-        disputeRaisedAt: null,
-        status: "COMPLETED",
-      },
-    });
-
-    await tx.orderTimeline.create({
-      data: {
-        orderId,
-        status: "COMPLETED",
-        message: `Dispute resolved: partial refund of ${partialAmount.toFixed(2)} and seller release`,
-      },
-    });
-
-    return { success: true };
-  });
-}
-
 export async function resolveOrderDisputeAction(
   orderId: string,
-  resolution: DisputeResolution,
+  resolution: Resolution,
   partialAmount?: number,
 ) {
   const role = await CurrentRole();
   if (role !== "ADMIN") throw new Error("Forbidden");
 
-  if (resolution === "REFUND_BUYER") {
-    return processRefundBuyer(orderId);
-  }
+  const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
 
-  if (resolution === "RELEASE_SELLER") {
-    await prisma.$transaction(async (tx) => {
-      const result = await releaseEscrowPayoutInTx(tx, orderId, {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: {
+        sellerGroups: {
+          select: {
+            id: true,
+            sellerId: true,
+            payoutStatus: true,
+          },
+        },
+      },
+    });
+
+    if (!order) throw new Error("Order not found");
+    if (!order.isPaid) throw new Error("Order is not paid");
+    if (!order.disputeRaised) throw new Error("No active dispute");
+    if (order.payoutReleased) throw new Error("Payout already released");
+
+    if (resolution === "RELEASE_SELLER") {
+      const released = await releaseEscrowPayoutInTx(tx, orderId, {
         allowDisputedOrder: true,
       });
-      if ("skipped" in result && result.reason !== "PAYOUT_ALREADY_RELEASED") {
-        throw new Error(`Unable to release payout: ${result.reason}`);
+      if ("skipped" in released && released.reason !== "PAYOUT_ALREADY_RELEASED") {
+        throw new Error(`Unable to release payout: ${released.reason}`);
       }
 
       await tx.order.update({
@@ -326,22 +129,156 @@ export async function resolveOrderDisputeAction(
         data: {
           orderId,
           status: "COMPLETED",
-          message: "Dispute resolved: payout released to seller by admin",
+          message: "Dispute resolved: seller payout released by admin",
         },
       });
+
+      return { success: true };
+    }
+
+    const buyerWallet = await tx.wallet.upsert({
+      where: { userId: order.userId },
+      update: {},
+      create: { userId: order.userId },
+      select: { id: true },
     });
 
-    return { success: true };
-  }
+    if (resolution === "REFUND_BUYER") {
+      await createEscrowEntryIdempotent(tx, {
+        orderId,
+        userId: order.userId,
+        role: "BUYER",
+        entryType: "REFUND",
+        amount: order.totalAmount,
+        status: "RELEASED",
+        reference: `refund-buyer-${orderId}`,
+      });
 
-  if (resolution === "PARTIAL_REFUND") {
-    if (typeof partialAmount !== "number") {
-      throw new Error("partialAmount is required for PARTIAL_REFUND");
+      await createDoubleEntryLedger(tx, {
+        orderId,
+        fromWalletId: systemEscrowAccount.walletId,
+        toUserId: order.userId,
+        toWalletId: buyerWallet.id,
+        entryType: "REFUND",
+        amount: order.totalAmount,
+        reference: `ledger-refund-buyer-${orderId}`,
+      });
+
+      await tx.transaction.create({
+        data: {
+          walletId: buyerWallet.id,
+          userId: order.userId,
+          orderId,
+          type: "REFUND",
+          amount: order.totalAmount,
+          status: "SUCCESS",
+          description: "Admin dispute refund",
+        },
+      });
+
+      await tx.orderSellerGroup.updateMany({
+        where: { orderId },
+        data: { payoutStatus: "CANCELLED" },
+      });
+
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: "REFUNDED",
+          payoutReleased: true,
+          disputeRaised: false,
+          disputeReason: null,
+          disputeRaisedAt: null,
+        },
+      });
+
+      await tx.orderTimeline.create({
+        data: {
+          orderId,
+          status: "REFUNDED",
+          message: "Dispute resolved: buyer fully refunded by admin",
+        },
+      });
+
+      return { success: true };
     }
-    return processPartialRefund(orderId, partialAmount);
-  }
 
-  throw new Error("Invalid dispute resolution");
+    if (resolution === "PARTIAL_REFUND") {
+      if (typeof partialAmount !== "number" || partialAmount <= 0) {
+        throw new Error("partialAmount is required and must be > 0");
+      }
+      if (partialAmount > order.totalAmount) {
+        throw new Error("partialAmount cannot exceed totalAmount");
+      }
+
+      await createEscrowEntryIdempotent(tx, {
+        orderId,
+        userId: order.userId,
+        role: "BUYER",
+        entryType: "REFUND",
+        amount: partialAmount,
+        status: "RELEASED",
+        reference: `partial-refund-buyer-${orderId}`,
+      });
+
+      await createDoubleEntryLedger(tx, {
+        orderId,
+        fromWalletId: systemEscrowAccount.walletId,
+        toUserId: order.userId,
+        toWalletId: buyerWallet.id,
+        entryType: "REFUND",
+        amount: partialAmount,
+        reference: `ledger-partial-refund-buyer-${orderId}`,
+      });
+
+      await tx.transaction.create({
+        data: {
+          walletId: buyerWallet.id,
+          userId: order.userId,
+          orderId,
+          type: "REFUND",
+          amount: partialAmount,
+          status: "SUCCESS",
+          description: "Admin dispute partial refund",
+        },
+      });
+
+      const released = await releaseEscrowPayoutInTx(tx, orderId, {
+        allowDisputedOrder: true,
+      });
+      if ("skipped" in released && released.reason !== "PAYOUT_ALREADY_RELEASED") {
+        throw new Error(`Unable to release remaining payout: ${released.reason}`);
+      }
+
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: "COMPLETED",
+          disputeRaised: false,
+          disputeReason: null,
+          disputeRaisedAt: null,
+        },
+      });
+
+      await tx.orderTimeline.create({
+        data: {
+          orderId,
+          status: "COMPLETED",
+          message: `Dispute resolved: partial refund ${partialAmount.toFixed(2)} and seller release`,
+        },
+      });
+
+      return { success: true };
+    }
+
+    throw new Error("Invalid dispute resolution");
+  });
+}
+
+export async function resolveDispute(orderId: string, outcome: AdminOutcome) {
+  const mapped: Resolution =
+    outcome === "RELEASE" ? "RELEASE_SELLER" : "REFUND_BUYER";
+  return resolveOrderDisputeAction(orderId, mapped);
 }
 
 export async function getDisputedOrdersAction() {
@@ -379,7 +316,10 @@ export async function getDisputedOrdersAction() {
   });
 
   return orders.map((order) => {
-    const sellerMap = new Map<string, { id: string; name: string | null; email: string }>();
+    const sellerMap = new Map<
+      string,
+      { id: string; name: string | null; email: string }
+    >();
     for (const group of order.sellerGroups) {
       sellerMap.set(group.seller.id, group.seller);
     }

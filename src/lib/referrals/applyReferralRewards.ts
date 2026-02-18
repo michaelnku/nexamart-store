@@ -1,6 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 
 const REFERRED_BONUS = 5;
 const REFERRER_BONUS = 10;
@@ -27,6 +29,8 @@ export const applyReferralRewardsForPaidOrder = async (orderId: string) => {
 
   if (!referral || referral.status !== "PENDING") return;
 
+  const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
+
   await prisma.$transaction(async (tx) => {
     const now = new Date();
 
@@ -41,32 +45,40 @@ export const applyReferralRewardsForPaidOrder = async (orderId: string) => {
 
     const referrerWallet = await tx.wallet.upsert({
       where: { userId: referral.referrerId },
-      update: {
-        balance: { increment: REFERRER_BONUS },
-        totalEarnings: { increment: REFERRER_BONUS },
-      },
+      update: {},
       create: {
         userId: referral.referrerId,
-        balance: REFERRER_BONUS,
-        totalEarnings: REFERRER_BONUS,
-        pending: 0,
         currency: "USD",
       },
     });
 
     const referredWallet = await tx.wallet.upsert({
       where: { userId: referral.referredId },
-      update: {
-        balance: { increment: REFERRED_BONUS },
-        totalEarnings: { increment: REFERRED_BONUS },
-      },
+      update: {},
       create: {
         userId: referral.referredId,
-        balance: REFERRED_BONUS,
-        totalEarnings: REFERRED_BONUS,
-        pending: 0,
         currency: "USD",
       },
+    });
+
+    await createDoubleEntryLedger(tx, {
+      orderId: order.id,
+      fromWalletId: systemEscrowAccount.walletId,
+      toUserId: referral.referrerId,
+      toWalletId: referrerWallet.id,
+      entryType: "REFUND",
+      amount: REFERRER_BONUS,
+      reference: `referral-referrer-${referral.id}`,
+    });
+
+    await createDoubleEntryLedger(tx, {
+      orderId: order.id,
+      fromWalletId: systemEscrowAccount.walletId,
+      toUserId: referral.referredId,
+      toWalletId: referredWallet.id,
+      entryType: "REFUND",
+      amount: REFERRED_BONUS,
+      reference: `referral-referred-${referral.id}`,
     });
 
     const referrerTx = await tx.transaction.create({

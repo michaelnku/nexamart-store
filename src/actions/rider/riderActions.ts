@@ -81,6 +81,7 @@ export async function riderVerifyDeliveryOtpAction(
   otp: string,
 ) {
   const MAX_OTP_ATTEMPTS = 3;
+  const ESCROW_DELAY_MS = 24 * 60 * 60 * 1000;
 
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
@@ -147,12 +148,17 @@ export async function riderVerifyDeliveryOtpAction(
     };
   }
 
+  const confirmedAt = new Date();
+  const payoutEligibleAt = new Date(confirmedAt.getTime() + ESCROW_DELAY_MS);
+
   await prisma.$transaction([
     prisma.delivery.update({
       where: { id: deliveryId },
       data: {
         status: "DELIVERED",
-        deliveredAt: new Date(),
+        deliveredAt: confirmedAt,
+        payoutEligibleAt,
+        payoutLocked: false,
         otpAttempts: 0,
         isLocked: false,
         lockedAt: null,
@@ -162,7 +168,7 @@ export async function riderVerifyDeliveryOtpAction(
       where: { id: delivery.orderId },
       data: {
         status: "DELIVERED",
-        customerConfirmedAt: new Date(),
+        customerConfirmedAt: confirmedAt,
       },
     }),
     prisma.orderTimeline.create({

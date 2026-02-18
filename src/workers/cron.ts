@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import cron from "node-cron";
-import { processEscrowPayouts } from "@/lib/cron/processEscrowPayouts";
+import { createDailyEscrowSnapshot } from "@/lib/cron/createEscrowSnapshot";
+import { finalizeDeliveredOrders } from "@/lib/cron/finalizeDeliveredOrders";
+import { releaseEligibleRiderPayouts } from "@/lib/cron/releaseEligibleRiderPayouts";
 
 type StuckOrderPayload = {
   orderId: string;
@@ -13,7 +15,8 @@ function isStuckOrderPayload(payload: unknown): payload is StuckOrderPayload {
 }
 
 cron.schedule("*/2 * * * *", async () => {
-  await processEscrowPayouts();
+  await finalizeDeliveredOrders();
+  await releaseEligibleRiderPayouts();
 
   const jobs = await prisma.job.findMany({
     where: { type: "HANDLE_STUCK_ORDER", status: "PENDING" },
@@ -44,4 +47,8 @@ cron.schedule("*/2 * * * *", async () => {
       });
     });
   }
+});
+
+cron.schedule("0 0 * * *", async () => {
+  await createDailyEscrowSnapshot();
 });

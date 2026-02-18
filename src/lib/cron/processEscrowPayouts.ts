@@ -45,7 +45,15 @@ export async function processEscrowPayouts() {
 
       const result = await releaseEscrowPayout(job.payload.orderId);
 
-      if ("success" in result || "skipped" in result) {
+      if ("success" in result) {
+        await prisma.job.update({
+          where: { id: job.id },
+          data: { status: "DONE" },
+        });
+      } else if (
+        "skipped" in result &&
+        result.reason !== "PAYOUT_SKIPPED_ACTIVE_DISPUTE"
+      ) {
         await prisma.job.update({
           where: { id: job.id },
           data: { status: "DONE" },

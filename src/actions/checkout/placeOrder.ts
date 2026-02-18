@@ -11,6 +11,11 @@ import { generateTrackingNumber } from "@/components/helper/generateTrackingNumb
 import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
 import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
 import { generateDeliveryOtpAndCreateDelivery } from "@/lib/delivery/generateDeliveryOtp";
+import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
+import {
+  createEscrowEntryIdempotent,
+} from "@/lib/ledger/idempotentEntries";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 
 class PlaceOrderError extends Error {
   constructor(message: string) {
@@ -18,6 +23,8 @@ class PlaceOrderError extends Error {
     this.name = "PlaceOrderError";
   }
 }
+
+const PLATFORM_COMMISSION_PERCENT = 12;
 
 export async function placeOrderAction({
   addressId,
@@ -144,11 +151,14 @@ export async function placeOrderAction({
   const totalAmount = Math.max(0, subtotal + shippingFee - discountAmount);
 
   const trackingNumber = generateTrackingNumber();
+  const systemEscrowWalletId = await getOrCreateSystemEscrowWallet();
 
   let order: Order;
 
   try {
     order = await prisma.$transaction(async (tx) => {
+      let buyerWalletId: string | undefined;
+
       const address = await tx.address.findFirst({
         where: {
           id: addressId,
@@ -161,19 +171,30 @@ export async function placeOrderAction({
       }
 
       if (paymentMethod === "WALLET") {
-        const wallet = await tx.wallet.findUnique({
+        const wallet = await tx.wallet.upsert({
           where: { userId },
-          select: { id: true, balance: true },
+          update: {},
+          create: { userId },
+          select: { id: true },
+        });
+        buyerWalletId = wallet.id;
+
+        const ledgerTotals = await tx.ledgerEntry.groupBy({
+          by: ["direction"],
+          where: { walletId: wallet.id },
+          _sum: { amount: true },
         });
 
-        if (!wallet || wallet.balance < totalAmount) {
+        const credit =
+          ledgerTotals.find((item) => item.direction === "CREDIT")?._sum
+            .amount ?? 0;
+        const debit =
+          ledgerTotals.find((item) => item.direction === "DEBIT")?._sum.amount ??
+          0;
+        const walletBalance = credit - debit;
+        if (walletBalance < totalAmount) {
           throw new PlaceOrderError("Insufficient wallet balance");
         }
-
-        await tx.wallet.update({
-          where: { id: wallet.id },
-          data: { balance: { decrement: totalAmount } },
-        });
 
         await tx.transaction.create({
           data: {
@@ -213,6 +234,30 @@ export async function placeOrderAction({
         },
       });
 
+      if (createdOrder.isPaid) {
+        const escrowFundRef = `escrow-fund-${createdOrder.id}`;
+
+        await createEscrowEntryIdempotent(tx, {
+          orderId: createdOrder.id,
+          userId,
+          role: "BUYER",
+          entryType: "FUND",
+          amount: createdOrder.totalAmount,
+          status: "HELD",
+          reference: escrowFundRef,
+        });
+
+        await createDoubleEntryLedger(tx, {
+          orderId: createdOrder.id,
+          fromUserId: userId,
+          fromWalletId: paymentMethod === "WALLET" ? buyerWalletId : undefined,
+          toWalletId: systemEscrowWalletId,
+          entryType: "ESCROW_DEPOSIT",
+          amount: createdOrder.totalAmount,
+          reference: escrowFundRef,
+        });
+      }
+
       for (const [storeId, items] of itemsByStore) {
         const sellerId = items[0].product.store.userId;
 
@@ -232,6 +277,48 @@ export async function placeOrderAction({
             shippingFee: groupShipping,
           },
         });
+
+        if (createdOrder.isPaid) {
+          // Migration note:
+          // Escrow is now tracked at seller-group granularity so payout release can
+          // happen independently per group without relying on order-level flags.
+          const platformCommission =
+            (groupSubtotal * PLATFORM_COMMISSION_PERCENT) / 100;
+
+          await createEscrowEntryIdempotent(tx, {
+            orderId: createdOrder.id,
+            userId: sellerId,
+            role: "SELLER",
+            entryType: "SELLER_EARNING",
+            amount: groupSubtotal,
+            status: "HELD",
+            reference: `seller-held-${group.id}`,
+            metadata: { sellerGroupId: group.id, subtotal: groupSubtotal },
+          });
+
+          await createEscrowEntryIdempotent(tx, {
+            orderId: createdOrder.id,
+            role: "PLATFORM",
+            entryType: "PLATFORM_COMMISSION",
+            amount: platformCommission,
+            status: "HELD",
+            reference: `platform-held-${group.id}`,
+            metadata: {
+              sellerGroupId: group.id,
+              commissionPercent: PLATFORM_COMMISSION_PERCENT,
+            },
+          });
+
+          await createEscrowEntryIdempotent(tx, {
+            orderId: createdOrder.id,
+            role: "RIDER",
+            entryType: "RIDER_EARNING",
+            amount: groupShipping,
+            status: "HELD",
+            reference: `rider-held-group-${group.id}`,
+            metadata: { sellerGroupId: group.id, shippingFee: groupShipping },
+          });
+        }
 
         await tx.orderItem.createMany({
           data: items.map((i) => ({
