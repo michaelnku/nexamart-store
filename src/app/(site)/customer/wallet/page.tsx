@@ -204,7 +204,55 @@ export default function CustomerWalletPage() {
           </div>
         ) : (
           <div className="max-h-[420px] overflow-y-auto text-sm">
-            <table className="w-full text-left border-collapse">
+            <div className="md:hidden divide-y">
+              {wallet.transactions.map((tx) => {
+                const isCredit = CREDIT_TYPES.includes(tx.type);
+                const date = new Date(tx.createdAt).toLocaleString("en-US", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+
+                return (
+                  <div key={tx.id} className="p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-medium truncate">
+                        {tx.description ?? tx.type.toLowerCase().replace(/_/g, " ")}
+                      </p>
+                      <span
+                        className={cn(
+                          "inline-flex shrink-0 rounded-full px-2 py-[2px] text-[11px] font-medium",
+                          tx.status === "SUCCESS" && "bg-emerald-50 text-emerald-600",
+                          tx.status === "PENDING" && "bg-amber-50 text-amber-600",
+                          tx.status === "FAILED" && "bg-red-50 text-red-500",
+                        )}
+                      >
+                        {tx.status.toLowerCase()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>{date}</span>
+                      <span className="capitalize">
+                        {tx.type.toLowerCase().replace(/_/g, " ")}
+                      </span>
+                    </div>
+                    <p
+                      className={cn(
+                        "text-sm font-semibold",
+                        isCredit ? "text-emerald-600" : "text-red-500",
+                      )}
+                    >
+                      {isCredit ? "+" : "-"}
+                      {formatMoneyFromUSD(tx.amount)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <table className="hidden md:table w-full text-left border-collapse">
               <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                 <tr>
                   <th className="px-4 py-2">Date</th>
@@ -229,20 +277,20 @@ export default function CustomerWalletPage() {
 
                   return (
                     <tr key={tx.id} className="border-t">
-                      <td className="px-4 py-2">{date}</td>
+                      <td className="px-4 py-2 whitespace-nowrap">{date}</td>
 
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-2 max-w-[260px] truncate">
                         {tx.description ??
                           tx.type.toLowerCase().replace(/_/g, " ")}
                       </td>
 
-                      <td className="px-4 py-2 capitalize">
+                      <td className="px-4 py-2 capitalize whitespace-nowrap">
                         {tx.type.toLowerCase().replace(/_/g, " ")}
                       </td>
 
                       <td
                         className={cn(
-                          "px-4 py-2 text-right font-semibold",
+                          "px-4 py-2 text-right font-semibold whitespace-nowrap",
                           isCredit ? "text-emerald-600" : "text-red-500",
                         )}
                       >

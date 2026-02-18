@@ -108,7 +108,41 @@ export default function SellerWalletPage() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <div className="md:hidden divide-y">
+              {wallet.withdrawals.map((w: any) => (
+                <div key={w.id} className="p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium">
+                      {new Date(w.createdAt).toDateString()}
+                    </p>
+                    <span
+                      className={`text-xs font-semibold ${
+                        w.status === "COMPLETED"
+                          ? "text-green-600"
+                          : w.status === "PENDING"
+                            ? "text-yellow-600"
+                            : w.status === "REJECTED"
+                              ? "text-red-600"
+                              : "text-blue-600"
+                      }`}
+                    >
+                      {w.status
+                        .replace("_", " ")
+                        .toLowerCase()
+                        .replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold text-[var(--brand-blue)]">
+                    {new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: wallet.currency,
+                    }).format(w.amount)}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <table className="hidden md:table w-full text-sm">
               <thead className="bg-gray-50">
                 <tr className="text-left text-gray-600">
                   <th className="p-3">Date</th>
@@ -123,10 +157,10 @@ export default function SellerWalletPage() {
                     key={w.id}
                     className="border-t hover:bg-gray-50 transition"
                   >
-                    <td className="p-3">
+                    <td className="p-3 whitespace-nowrap">
                       {new Date(w.createdAt).toDateString()}
                     </td>
-                    <td className="p-3">
+                    <td className="p-3 whitespace-nowrap">
                       {new Intl.NumberFormat("en-US", {
                         style: "currency",
                         currency: wallet.currency,
