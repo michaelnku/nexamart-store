@@ -6,6 +6,7 @@ import { autoAssignRider } from "@/lib/rider/logistics";
 import { completeDeliveryAndPayRider } from "@/lib/rider/completeDeliveryPayout";
 import { DeliveryStatus } from "@/generated/prisma/client";
 import { hashOtp } from "@/lib/otp";
+import { moveOrderEarningsToPending } from "@/lib/payout/moveToPendingOnDelivery";
 
 export async function autoAssignRiderForPaidOrderAction(orderId: string) {
   const userId = await CurrentUserId();
@@ -173,12 +174,7 @@ export async function riderVerifyDeliveryOtpAction(
     }),
   ]);
 
-  await prisma.job.create({
-    data: {
-      type: "RELEASE_PAYOUT",
-      payload: { orderId: delivery.orderId },
-    },
-  });
+  await moveOrderEarningsToPending(delivery.orderId);
 
   return { success: true };
 }
@@ -193,8 +189,12 @@ export async function completeDeliveryAndPayRiderAction(orderId: string) {
   try {
     const result = await completeDeliveryAndPayRider(orderId);
     return result;
-  } catch (error: any) {
-    return { error: error?.message ?? "Failed to complete delivery payout" };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to complete delivery payout";
+    return { error: message };
   }
 }
 

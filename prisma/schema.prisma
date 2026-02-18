@@ -390,6 +390,10 @@ model Order {
   isPaid         Boolean @default(false)
   payoutReleased Boolean @default(false)
 
+  disputeRaised   Boolean   @default(false)
+  disputeReason   String?
+  disputeRaisedAt DateTime?
+
   isFoodOrder Boolean @default(false)
 
   estimatedDeliveryMin DateTime?
@@ -505,6 +509,7 @@ enum PayoutStatus {
   PENDING
   APPROVED
   REJECTED
+  CANCELLED
   COMPLETED
 }
 
@@ -684,6 +689,87 @@ model IdempotencyKey {
 
   @@index([userId])
 }
+
+model EscrowLedger {
+  id        String          @id @default(uuid())
+  orderId   String
+  userId    String?
+  role      EscrowRole
+  entryType EscrowEntryType
+  amount    Float
+  currency  String          @default("USD")
+
+  status EscrowStatus @default(PENDING)
+
+  reference String? @unique
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+}
+
+enum EscrowRole {
+  BUYER
+  SELLER
+  RIDER
+  PLATFORM
+}
+
+enum EscrowEntryType {
+  FUND
+  SELLER_EARNING
+  RIDER_EARNING
+  PLATFORM_COMMISSION
+  RELEASE
+  REFUND
+}
+
+enum EscrowStatus {
+  PENDING
+  HELD
+  RELEASED
+  CANCELLED
+}
+
+model LedgerEntry {
+  id        String   @id @default(cuid())
+
+  orderId   String?
+  userId    String?
+  walletId  String?
+
+  entryType LedgerEntryType
+  direction LedgerDirection
+
+  amount    Float
+
+  reference String?  @unique
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([walletId])
+}
+
+enum LedgerEntryType {
+  ESCROW_DEPOSIT
+  ESCROW_RELEASE
+  SELLER_PAYOUT
+  RIDER_PAYOUT
+  REFUND
+  PLATFORM_FEE
+}
+
+enum LedgerDirection {
+  CREDIT
+  DEBIT
+}
+
 
 /**
  * ===========================

@@ -21,6 +21,12 @@ export async function completeDeliveryAndPayRider(orderId: string) {
       return { skipped: true };
     }
 
+    // We intentionally block legacy payout release on active disputes
+    // to keep escrow funds frozen until explicit admin resolution.
+    if (order.disputeRaised) {
+      return { skipped: true, reason: "PAYOUT_SKIPPED_ACTIVE_DISPUTE" };
+    }
+
     const riderId = order.delivery.riderId!;
     const amount = order.delivery.fee;
 

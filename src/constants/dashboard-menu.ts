@@ -19,17 +19,26 @@ import {
   ShieldCheck,
   AlertTriangle,
   Eye,
+  Ticket,
+  User,
+  Database,
+  Briefcase,
+  LineChart,
+  Landmark,
+  Scale,
+  Activity,
   Heart,
   HistoryIcon,
   Mail,
+  MessageSquareOffIcon,
   ShoppingCartIcon,
   StoreIcon,
-  Ticket,
-  MessageSquareOffIcon,
-  User,
 } from "lucide-react";
 
 export const DashboardMenu = {
+  /* =========================================================
+     SELLER
+  ========================================================== */
   SELLER: [
     {
       title: "Store Management",
@@ -41,24 +50,24 @@ export const DashboardMenu = {
           icon: Package,
         },
         {
-          name: "Store",
-          href: "/marketplace/dashboard/seller/store",
-          icon: Store,
-        },
-        {
           name: "Orders",
           href: "/marketplace/dashboard/seller/orders",
           icon: ShoppingBag,
         },
         {
-          icon: Bell,
-          name: "Alerts",
-          href: "/marketplace/dashboard/seller/notifications",
+          name: "Store Settings",
+          href: "/marketplace/dashboard/seller/store",
+          icon: Store,
         },
         {
           name: "Wallet",
           href: "/marketplace/dashboard/seller/wallet",
           icon: Wallet,
+        },
+        {
+          name: "Notifications",
+          href: "/marketplace/dashboard/seller/notifications",
+          icon: Bell,
         },
       ],
     },
@@ -68,7 +77,7 @@ export const DashboardMenu = {
         {
           name: "Analytics",
           href: "/marketplace/dashboard/seller/analytics",
-          icon: BarChart2,
+          icon: LineChart,
         },
         {
           name: "Sales Reports",
@@ -95,7 +104,6 @@ export const DashboardMenu = {
           href: "/marketplace/dashboard/profile",
           icon: User,
         },
-
         {
           name: "Settings",
           href: "/marketplace/dashboard/settings",
@@ -105,9 +113,12 @@ export const DashboardMenu = {
     },
   ],
 
+  /* =========================================================
+     RIDER
+  ========================================================== */
   RIDER: [
     {
-      title: "Deliveries",
+      title: "Delivery Management",
       links: [
         { name: "Dashboard", href: "/marketplace/dashboard", icon: Home },
         {
@@ -159,9 +170,12 @@ export const DashboardMenu = {
     },
   ],
 
+  /* =========================================================
+     ADMIN — Business Oversight
+  ========================================================== */
   ADMIN: [
     {
-      title: "Management",
+      title: "Platform Overview",
       links: [
         {
           name: "Dashboard",
@@ -169,15 +183,45 @@ export const DashboardMenu = {
           icon: LayoutDashboard,
         },
         {
-          name: "Manage Users",
+          name: "Platform Analytics",
+          href: "/marketplace/dashboard/admin/analytics",
+          icon: BarChart2,
+        },
+        {
+          name: "Revenue Reports",
+          href: "/marketplace/dashboard/admin/revenue",
+          icon: Landmark,
+        },
+      ],
+    },
+    {
+      title: "User & Store Management",
+      links: [
+        {
+          name: "Users",
           href: "/marketplace/dashboard/admin/users",
           icon: Users,
         },
         {
-          name: "Referrals",
-          href: "/marketplace/dashboard/admin/referrals",
-          icon: Users,
+          name: "Sellers",
+          href: "/marketplace/dashboard/admin/sellers",
+          icon: Store,
         },
+        {
+          name: "Riders",
+          href: "/marketplace/dashboard/admin/riders",
+          icon: Bike,
+        },
+        {
+          name: "Moderators",
+          href: "/marketplace/dashboard/admin/moderators",
+          icon: ShieldCheck,
+        },
+      ],
+    },
+    {
+      title: "Commerce Controls",
+      links: [
         {
           name: "Categories",
           href: "/marketplace/dashboard/admin/categories",
@@ -194,14 +238,29 @@ export const DashboardMenu = {
           icon: Receipt,
         },
         {
-          name: "Reports",
-          href: "/marketplace/dashboard/admin/reports",
-          icon: FileChartColumn,
+          name: "Escrow & Payouts",
+          href: "/marketplace/dashboard/admin/escrow",
+          icon: DollarSign,
         },
         {
-          name: "Platform Analytics",
-          href: "/marketplace/dashboard/admin/analytics",
-          icon: BarChart2,
+          name: "Disputes",
+          href: "/marketplace/dashboard/admin/disputes",
+          icon: Scale,
+        },
+      ],
+    },
+    {
+      title: "System Monitoring",
+      links: [
+        {
+          name: "Background Jobs",
+          href: "/marketplace/dashboard/admin/jobs",
+          icon: Activity,
+        },
+        {
+          name: "Audit Logs",
+          href: "/marketplace/dashboard/admin/audit",
+          icon: FileChartColumn,
         },
       ],
     },
@@ -227,10 +286,9 @@ export const DashboardMenu = {
     },
   ],
 
-  /* -----------------------------------------------------------
-     NEW — MODERATOR MENU
-     This role handles user moderation, reports, AI tools, etc.
-  ------------------------------------------------------------ */
+  /* =========================================================
+     MODERATOR
+  ========================================================== */
   MODERATOR: [
     {
       title: "Moderation Tools",
@@ -251,24 +309,14 @@ export const DashboardMenu = {
           icon: Users,
         },
         {
-          name: "Products",
+          name: "Products Review",
           href: "/marketplace/dashboard/moderator/products",
           icon: Package,
-        },
-        {
-          name: "Content Review",
-          href: "/marketplace/dashboard/moderator/content",
-          icon: Eye,
         },
         {
           name: "AI Moderation Center",
           href: "/marketplace/dashboard/moderator/ai",
           icon: ShieldCheck,
-        },
-        {
-          name: "Warnings Log",
-          href: "/marketplace/dashboard/moderator/warnings",
-          icon: FileChartColumn,
         },
       ],
     },
@@ -281,11 +329,6 @@ export const DashboardMenu = {
           icon: MessageSquare,
         },
         {
-          name: "Support",
-          href: "/marketplace/dashboard/moderator/support",
-          icon: HelpCircle,
-        },
-        {
           name: "Profile",
           href: "/marketplace/dashboard/profile",
           icon: User,
@@ -294,6 +337,52 @@ export const DashboardMenu = {
           name: "Settings",
           href: "/marketplace/dashboard/settings",
           icon: Settings,
+        },
+      ],
+    },
+  ],
+
+  /* =========================================================
+     SYSTEM — Internal Financial Engine
+  ========================================================== */
+  SYSTEM: [
+    {
+      title: "Financial Core",
+      links: [
+        {
+          name: "Platform Wallet",
+          href: "/marketplace/dashboard/system/wallet",
+          icon: Wallet,
+        },
+        {
+          name: "Escrow Ledger",
+          href: "/marketplace/dashboard/system/ledger",
+          icon: Database,
+        },
+        {
+          name: "Commission Engine",
+          href: "/marketplace/dashboard/system/commissions",
+          icon: Briefcase,
+        },
+      ],
+    },
+    {
+      title: "Automation & Jobs",
+      links: [
+        {
+          name: "Release Payouts",
+          href: "/marketplace/dashboard/system/payout-jobs",
+          icon: DollarSign,
+        },
+        {
+          name: "Cron Monitor",
+          href: "/marketplace/dashboard/system/cron",
+          icon: Clock,
+        },
+        {
+          name: "Audit Logs",
+          href: "/marketplace/dashboard/system/audit",
+          icon: FileChartColumn,
         },
       ],
     },
