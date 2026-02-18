@@ -61,6 +61,13 @@ function splitStoredPhone(phone?: string | null) {
   };
 }
 
+function buildNormalizedPhone(country: string, local: string): string {
+  const cleanCountry = country.replace(/\D/g, "");
+  const cleanLocal = local.replace(/\D/g, "");
+  if (!cleanCountry || !cleanLocal) return "";
+  return `+${cleanCountry}${cleanLocal}`;
+}
+
 export default function AddressForm({ onSuccess, initialData }: Props) {
   const { data: user } = useCurrentUserQuery();
   const [pending, startTransition] = useTransition();
@@ -263,10 +270,9 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
   };
 
   const onSubmit = (values: addressSchemaType) => {
-    const cleanCountryCode = countryCode.replace(/\D/g, "");
-    const cleanLocalNumber = localPhoneNumber.replace(/\D/g, "");
+    const normalizedPhone = buildNormalizedPhone(countryCode, localPhoneNumber);
 
-    if (!cleanCountryCode || !cleanLocalNumber) {
+    if (!normalizedPhone) {
       form.setError("phone", {
         type: "manual",
         message: "Enter country code and phone number.",
@@ -274,7 +280,6 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
       return;
     }
 
-    const normalizedPhone = `+${cleanCountryCode}${cleanLocalNumber}`;
     if (normalizedPhone.length < 7) {
       form.setError("phone", {
         type: "manual",
@@ -364,9 +369,10 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
         <FormField
           control={form.control}
           name="phone"
-          render={() => (
+          render={({ field }) => (
             <FormItem>
               <FormLabel>Phone Number</FormLabel>
+              <input type="hidden" {...field} value={field.value ?? ""} />
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-1">
                   <Label htmlFor="country-code" className="sr-only">
@@ -379,9 +385,13 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
                       type="tel"
                       inputMode="numeric"
                       value={countryCode}
-                      onChange={(event) =>
-                        setCountryCode(event.target.value.replace(/\D/g, ""))
-                      }
+                      onChange={(event) => {
+                        const nextCountry = event.target.value.replace(/\D/g, "");
+                        setCountryCode(nextCountry);
+                        field.onChange(
+                          buildNormalizedPhone(nextCountry, localPhoneNumber),
+                        );
+                      }}
                       placeholder="1"
                       className="border-0 shadow-none focus-visible:ring-0"
                     />
@@ -397,9 +407,11 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
                       type="tel"
                       inputMode="numeric"
                       value={localPhoneNumber}
-                      onChange={(event) =>
-                        setLocalPhoneNumber(event.target.value.replace(/\D/g, ""))
-                      }
+                      onChange={(event) => {
+                        const nextLocal = event.target.value.replace(/\D/g, "");
+                        setLocalPhoneNumber(nextLocal);
+                        field.onChange(buildNormalizedPhone(countryCode, nextLocal));
+                      }}
                       placeholder="Phone number"
                     />
                   </FormControl>
