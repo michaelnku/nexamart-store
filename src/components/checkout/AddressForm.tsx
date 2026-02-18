@@ -167,7 +167,18 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
     const getContext = (key: string) =>
       context.find((item) => item.id.startsWith(`${key}.`));
 
-    const place = getContext("place")?.text ?? getContext("locality")?.text ?? "";
+    const fallbackParts = suggestion.place_name
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const fallbackCity = fallbackParts[1] ?? "";
+
+    const place =
+      getContext("place")?.text ??
+      getContext("locality")?.text ??
+      getContext("district")?.text ??
+      getContext("neighborhood")?.text ??
+      fallbackCity;
     const region = getContext("region")?.text ?? "";
     const country = getContext("country")?.text ?? "";
     const postcode = getContext("postcode")?.text ?? "";
@@ -226,14 +237,6 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
     form.setValue("postalCode", parsed.postalCode, { shouldValidate: true });
 
     clear();
-  };
-
-  const handleManualFieldEdit = (value: string) => {
-    if (selectedSuggestion || selectedCoordinates || selectedPlaceName) {
-      resetSelection();
-      setSelectionError("Please select a valid address from suggestions.");
-    }
-    return value;
   };
 
   const onAddressInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -309,7 +312,10 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-5 max-h-[70dvh] overflow-y-auto pr-1 sm:max-h-none sm:overflow-visible sm:pr-0"
+      >
         {/* ADDRESS LABEL */}
         <div className="space-y-2">
           <Label>Address Type</Label>
@@ -487,9 +493,7 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
               <FormControl>
                 <Input
                   {...field}
-                  onChange={(event) =>
-                    field.onChange(handleManualFieldEdit(event.target.value))
-                  }
+                  onChange={(event) => field.onChange(event.target.value)}
                 />
               </FormControl>
               <FormMessage />
@@ -508,9 +512,7 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
                 <FormControl>
                   <Input
                     {...field}
-                    onChange={(event) =>
-                      field.onChange(handleManualFieldEdit(event.target.value))
-                    }
+                    onChange={(event) => field.onChange(event.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -527,9 +529,7 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
                 <FormControl>
                   <Input
                     {...field}
-                    onChange={(event) =>
-                      field.onChange(handleManualFieldEdit(event.target.value))
-                    }
+                    onChange={(event) => field.onChange(event.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -546,9 +546,7 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
                 <FormControl>
                   <Input
                     {...field}
-                    onChange={(event) =>
-                      field.onChange(handleManualFieldEdit(event.target.value))
-                    }
+                    onChange={(event) => field.onChange(event.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -566,9 +564,7 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
               <FormControl>
                 <Input
                   {...field}
-                  onChange={(event) =>
-                    field.onChange(handleManualFieldEdit(event.target.value))
-                  }
+                  onChange={(event) => field.onChange(event.target.value)}
                 />
               </FormControl>
               <FormMessage />
