@@ -11,6 +11,7 @@ import {
   TransactionStatus,
   TransactionType,
   UserRole,
+  WithdrawalStatus,
 } from "@/generated/prisma/client";
 
 export type FullProductVariant = ProductVariant & {
@@ -429,6 +430,7 @@ export type WalletTransaction = {
   type: WalletTransactionType;
   amount: number;
   status: WalletTransactionStatus;
+  reference?: string | null;
   description?: string | null;
   createdAt: string | Date;
 };
@@ -445,6 +447,25 @@ export type TransactionDTO = {
   status: TransactionStatus;
   createdAt: string;
   updatedAt: string;
+};
+
+export type WithdrawalDTO = {
+  id: string;
+  walletId: string;
+  amount: number;
+  method?: string | null;
+  accountInfo?: string | null;
+  status: WithdrawalStatus;
+  processedAt?: string | null;
+  createdAt: string;
+};
+
+export type SellerWalletDTO = {
+  balance: number;
+  pending: number;
+  totalEarnings: number;
+  currency?: string;
+  withdrawals: WithdrawalDTO[];
 };
 
 export type BuyerWallet = {
@@ -539,8 +560,8 @@ export type NewConversation = {
 
 export type Member = {
   id: string;
-  conversationId: String;
-  userId: String;
+  conversationId: string;
+  userId: string;
   conversation: string;
 };
 

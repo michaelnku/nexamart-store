@@ -647,6 +647,7 @@ model Withdrawal {
 
 enum WithdrawalStatus {
   PENDING
+  PROCESSING
   APPROVED
   REJECTED
   COMPLETED
@@ -818,6 +819,7 @@ model Store {
   tagline     String?
 
   emailNotificationsEnabled Boolean @default(true)
+  stripeAccountId           String? @unique
 
   products    Product[]
   storeGroups OrderSellerGroup[]

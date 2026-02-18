@@ -1,19 +1,191 @@
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
 import { autoAssignRider } from "@/lib/rider/logistics";
 import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
+import { stripe } from "@/lib/stripe";
+
+async function handleWalletTopUp(session: Stripe.Checkout.Session) {
+  const userId = session.metadata?.userId;
+  const amountTotal = session.amount_total;
+  const paymentIntentRaw = session.payment_intent;
+  const paymentIntentId =
+    typeof paymentIntentRaw === "string"
+      ? paymentIntentRaw
+      : paymentIntentRaw?.id ?? null;
+
+  if (!userId || !paymentIntentId || typeof amountTotal !== "number") {
+    console.error("Invalid wallet top-up webhook payload", {
+      userId,
+      paymentIntentId,
+      amountTotal,
+    });
+    return NextResponse.json({ error: "Invalid webhook payload" }, { status: 400 });
+  }
+
+  const amount = amountTotal / 100;
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const existingTx = await tx.transaction.findUnique({
+        where: { reference: paymentIntentId },
+        select: { id: true },
+      });
+      if (existingTx) return;
+
+      const wallet = await tx.wallet.upsert({
+        where: { userId },
+        update: {
+          balance: { increment: amount },
+        },
+        create: {
+          userId,
+          balance: amount,
+          currency: "USD",
+        },
+        select: { id: true },
+      });
+
+      await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          userId,
+          type: "DEPOSIT",
+          status: "SUCCESS",
+          amount,
+          reference: paymentIntentId,
+          description: "Stripe wallet top-up",
+        },
+      });
+
+      await tx.ledgerEntry.create({
+        data: {
+          walletId: wallet.id,
+          userId,
+          entryType: "ESCROW_DEPOSIT",
+          direction: "CREDIT",
+          amount,
+          reference: paymentIntentId,
+        },
+      });
+    });
+  } catch (error) {
+    console.error("Failed to process wallet top-up webhook:", error);
+    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
+  }
+
+  return NextResponse.json({ received: true }, { status: 200 });
+}
+
+async function handleOrderCheckout(session: Stripe.Checkout.Session) {
+  const orderId = session.metadata?.orderId;
+
+  if (!orderId) {
+    console.error("Missing orderId in Stripe metadata");
+    return new NextResponse("Invalid orderId", { status: 400 });
+  }
+
+  const order = await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      isPaid: true,
+      deliveryPhone: session.customer_details?.phone ?? undefined,
+      status: "ACCEPTED",
+    },
+    include: {
+      items: { include: { product: { include: { store: true } } } },
+    },
+  });
+
+  const productIds = order.items.map((i) => i.productId);
+  await prisma.product.updateMany({
+    where: { id: { in: productIds } },
+    data: { isPublished: true },
+  });
+
+  await pusherServer.trigger(`user-${order.userId}`, "payment-success", {
+    orderId,
+    message: "Payment received! Your order is now processing.",
+  });
+
+  await applyReferralRewardsForPaidOrder(orderId);
+
+  const grouped = new Map<
+    string,
+    { sellerId: string; storeId: string; items: typeof order.items }
+  >();
+
+  let isFoodOrder = false;
+
+  for (const item of order.items) {
+    const store = item.product.store;
+
+    if (!grouped.has(store.id)) {
+      grouped.set(store.id, {
+        sellerId: store.userId,
+        storeId: store.id,
+        items: [],
+      });
+    }
+
+    grouped.get(store.id)!.items.push(item);
+
+    if (store.type === "FOOD") {
+      isFoodOrder = true;
+    }
+  }
+
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { isFoodOrder },
+  });
+
+  for (const [, group] of grouped.entries()) {
+    const subtotal = group.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const shippingFee =
+      (group.items[0]?.product.store.shippingRatePerMile ?? 0) *
+      order.distanceInMiles;
+
+    const sg = await prisma.orderSellerGroup.create({
+      data: {
+        orderId,
+        storeId: group.storeId,
+        sellerId: group.sellerId,
+        subtotal,
+        shippingFee,
+      },
+    });
+
+    await prisma.orderItem.updateMany({
+      where: { id: { in: group.items.map((i) => i.id) } },
+      data: { sellerGroupId: sg.id },
+    });
+
+    await pusherServer.trigger(`seller-${group.sellerId}`, "new-order", {
+      orderId,
+      storeId: group.storeId,
+      subtotal,
+    });
+  }
+
+  await autoAssignRider(orderId);
+  return new NextResponse(null, { status: 200 });
+}
 
 export async function POST(req: Request) {
   const body = await req.text();
-  const signature = (await headers()).get("Stripe-Signature") as string;
+  const signature = (await headers()).get("stripe-signature");
+
+  if (!signature) {
+    return NextResponse.json({ error: "Missing Stripe signature" }, { status: 400 });
+  }
 
   let event: Stripe.Event;
 
   try {
-    event = Stripe.webhooks.constructEvent(
+    event = stripe.webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!,
@@ -25,117 +197,15 @@ export async function POST(req: Request) {
     return new NextResponse(`Webhook Error: ${message}`, { status: 400 });
   }
 
-  console.log("🔥 Webhook received:", event.type);
+  if (event.type !== "checkout.session.completed") {
+    return new NextResponse(null, { status: 200 });
+  }
 
   const session = event.data.object as Stripe.Checkout.Session;
 
-  if (event.type === "checkout.session.completed") {
-    const orderId = session?.metadata?.orderId;
-
-    if (!orderId) {
-      console.error("Missing orderId in Stripe metadata");
-      return new NextResponse("Invalid orderId", { status: 400 });
-    }
-
-    const order = await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        isPaid: true,
-        deliveryPhone: session?.customer_details?.phone ?? undefined,
-        status: "ACCEPTED",
-      },
-      include: {
-        items: { include: { product: { include: { store: true } } } },
-      },
-    });
-
-    const productIds = order.items.map((i) => i.productId);
-    await prisma.product.updateMany({
-      where: { id: { in: productIds } },
-      data: { isPublished: true },
-    });
-
-    // ============================
-    // NOTIFY CUSTOMER OF PAYMENT
-    // ============================
-    await pusherServer.trigger(`user-${order.userId}`, "payment-success", {
-      orderId,
-      message: "Payment received! Your order is now processing.",
-    });
-
-    await applyReferralRewardsForPaidOrder(orderId);
-
-    // ============================
-    // BUILD SELLER GROUPS
-    // ============================
-    const grouped = new Map<
-      string,
-      { sellerId: string; storeId: string; items: typeof order.items }
-    >();
-
-    let isFoodOrder = false;
-
-    for (const item of order.items) {
-      const store = item.product.store;
-
-      if (!grouped.has(store.id)) {
-        grouped.set(store.id, {
-          sellerId: store.userId,
-          storeId: store.id,
-          items: [],
-        });
-      }
-
-      grouped.get(store.id)!.items.push(item);
-
-      if (store.type === "FOOD") {
-        isFoodOrder = true;
-      }
-    }
-
-    // Save food flag
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { isFoodOrder },
-    });
-
-    // Create seller groups + notify sellers
-    for (const [, group] of grouped.entries()) {
-      const subtotal = group.items.reduce(
-        (sum, i) => sum + i.price * i.quantity,
-        0,
-      );
-      const shippingFee =
-        (group.items[0]?.product.store.shippingRatePerMile ?? 0) *
-        order.distanceInMiles;
-
-      const sg = await prisma.orderSellerGroup.create({
-        data: {
-          orderId,
-          storeId: group.storeId,
-          sellerId: group.sellerId,
-          subtotal,
-          shippingFee,
-        },
-      });
-
-      await prisma.orderItem.updateMany({
-        where: { id: { in: group.items.map((i) => i.id) } },
-        data: { sellerGroupId: sg.id },
-      });
-
-      // Notify each seller
-      await pusherServer.trigger(`seller-${group.sellerId}`, "new-order", {
-        orderId,
-        storeId: group.storeId,
-        subtotal,
-      });
-    }
-
-    // Assign rider after all seller groups are ready
-    await autoAssignRider(orderId);
+  if (session.metadata?.type === "WALLET_TOPUP") {
+    return handleWalletTopUp(session);
   }
 
-  return new NextResponse(null, { status: 200 });
+  return handleOrderCheckout(session);
 }
-
