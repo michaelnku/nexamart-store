@@ -48,9 +48,7 @@ export default function WalletSection() {
       <div className="space-y-5">
         {/* BALANCE */}
         <div className="flex items-center gap-3">
-          <Wallet className="w-5 h-5 text-[#3c9ee0]" />
           <div>
-            <p className="text-sm text-gray-500">Wallet Balance</p>
             <WalletBalanceConverter usdBalance={wallet.balance} />
           </div>
         </div>
