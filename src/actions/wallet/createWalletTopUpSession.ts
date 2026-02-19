@@ -7,7 +7,9 @@ import { getAppBaseUrl } from "@/lib/config/appUrl";
 const MIN_TOP_UP_USD = 1;
 const MAX_TOP_UP_USD = 10000;
 
-export async function createWalletTopUpSession(amount: number): Promise<string> {
+export async function createWalletTopUpSession(
+  amount: number,
+): Promise<string> {
   const [userId, role] = await Promise.all([CurrentUserId(), CurrentRole()]);
 
   if (!userId) {
@@ -31,8 +33,8 @@ export async function createWalletTopUpSession(amount: number): Promise<string> 
     throw new Error(`Amount exceeds limit of ${MAX_TOP_UP_USD} USD`);
   }
 
-  if (!process.env.STRIPE_WEBHOOK_SECRET) {
-    throw new Error("Stripe is not configured");
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error("Stripe secret key is not configured");
   }
 
   const unitAmount = normalizedAmount * 100;

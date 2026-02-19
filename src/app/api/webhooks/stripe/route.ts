@@ -140,6 +140,10 @@ async function handleOrderCheckout(session: Stripe.Checkout.Session) {
 }
 
 export async function POST(req: Request) {
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    throw new Error("Missing STRIPE_WEBHOOK_SECRET");
+  }
+
   const body = await req.text();
   const signature = (await headers()).get("stripe-signature");
 
@@ -164,6 +168,8 @@ export async function POST(req: Request) {
     console.error("Webhook signature verification failed:", message);
     return new NextResponse(`Webhook Error: ${message}`, { status: 400 });
   }
+
+  console.log("Stripe event received:", event.type);
 
   if (event.type !== "checkout.session.completed") {
     return new NextResponse(null, { status: 200 });
