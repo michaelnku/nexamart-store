@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron/cronLock";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { Prisma } from "@/generated/prisma";
+import { createServiceContext, ServiceContext } from "@/lib/system/serviceContext";
 
 const LOCK_NAME = "RELEASE_ELIGIBLE_RIDER_PAYOUTS";
 const BATCH_SIZE = 20;
@@ -10,6 +11,7 @@ async function processRiderDeliveryPayout(
   tx: Prisma.TransactionClient,
   deliveryId: string,
   now: Date,
+  context: ServiceContext,
 ): Promise<boolean> {
   const lockAttempt = await tx.delivery.updateMany({
     where: {
@@ -93,8 +95,8 @@ async function processRiderDeliveryPayout(
         type: "EARNING",
         status: "SUCCESS",
         amount: delivery.fee,
-        reference: `tx-rider-payout-${delivery.id}`,
-        description: `Delayed rider payout release for delivery ${delivery.id}`,
+        reference: `rider-release-${delivery.id}`,
+        description: `Executed by ${context.service}`,
       },
     });
 
@@ -104,9 +106,10 @@ async function processRiderDeliveryPayout(
       toWalletId: riderWallet.id,
       entryType: "RIDER_PAYOUT",
       amount: delivery.fee,
-      reference: `ledger-rider-payout-${delivery.id}`,
+      reference: `rider-release-${delivery.id}`,
       resolveFromWallet: false,
       resolveToWallet: false,
+      context,
     });
   }
 
@@ -152,6 +155,7 @@ export async function releaseEligibleRiderPayouts() {
 
   try {
     const now = new Date();
+    const context = createServiceContext("RIDER_PAYOUT_CRON");
     const deliveries = await prisma.delivery.findMany({
       where: {
         status: "DELIVERED",
@@ -172,7 +176,12 @@ export async function releaseEligibleRiderPayouts() {
 
     for (const candidate of deliveries) {
       await prisma.$transaction(async (tx) => {
-        const released = await processRiderDeliveryPayout(tx, candidate.id, now);
+        const released = await processRiderDeliveryPayout(
+          tx,
+          candidate.id,
+          now,
+          context,
+        );
         if (released) processed += 1;
       });
     }
@@ -185,6 +194,7 @@ export async function releaseEligibleRiderPayouts() {
 
 export async function releaseEligibleRiderPayoutForOrder(orderId: string) {
   const now = new Date();
+  const context = createServiceContext("RIDER_PAYOUT_CRON");
   return prisma.$transaction(async (tx) => {
     const delivery = await tx.delivery.findFirst({
       where: {
@@ -199,7 +209,12 @@ export async function releaseEligibleRiderPayoutForOrder(orderId: string) {
     });
 
     if (!delivery) return { skipped: true };
-    const released = await processRiderDeliveryPayout(tx, delivery.id, now);
+    const released = await processRiderDeliveryPayout(
+      tx,
+      delivery.id,
+      now,
+      context,
+    );
     return { skipped: !released };
   });
 }

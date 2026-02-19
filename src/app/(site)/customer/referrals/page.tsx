@@ -27,11 +27,6 @@ export default async function ReferralsPage() {
     }),
   ]);
 
-  const baseUrl = process.env.FRONTEND_STORE_URL ?? "";
-  const referralLink = referralCode?.code
-    ? `${baseUrl}/auth/register?ref=${referralCode.code}`
-    : "";
-
   const stats = {
     total: referrals.length,
     qualified: referrals.filter((r) => r.status === "QUALIFIED").length,
@@ -49,7 +44,7 @@ export default async function ReferralsPage() {
       </div>
 
       {referralCode?.code && (
-        <ReferralCodeCard code={referralCode.code} link={referralLink} />
+        <ReferralCodeCard code={referralCode.code} />
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

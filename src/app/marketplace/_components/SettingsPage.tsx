@@ -26,6 +26,10 @@ import { deleteStoreAction, UpdateStoreAction } from "@/actions/auth/store";
 import { StoreDTO } from "@/lib/types";
 import { StoreSettingsSkeleton } from "@/components/skeletons/StoreSettingsSkeleton";
 import {
+  AddressSuggestion,
+  useAddressAutocomplete,
+} from "@/hooks/useAddressAutocomplete";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -62,6 +66,10 @@ const SellerSettingsPage = () => {
 
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [addressSelectionValid, setAddressSelectionValid] = useState(true);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const { suggestions, loading, error, search, clear } = useAddressAutocomplete();
 
   useEffect(() => {
     if (!user?.id) return;
@@ -77,6 +85,10 @@ const SellerSettingsPage = () => {
 
         const data = await res.json();
         setStoreState({ status: "active", store: data });
+        const requiresAddress = data.fulfillmentType !== "DIGITAL";
+        const hasAddress = Boolean(data.address?.trim());
+        setAddressSelectionValid(!requiresAddress || hasAddress);
+        setSelectedAddressId(hasAddress ? `existing-${data.id}` : null);
 
         setLogoUrl(data.logo ?? undefined);
         setLogoKey(data.logoKey ?? undefined);
@@ -101,6 +113,12 @@ const SellerSettingsPage = () => {
       }
       const data = await res.json();
       setStoreState({ status: "active", store: data });
+      const requiresAddress = data.fulfillmentType !== "DIGITAL";
+      const hasAddress = Boolean(data.address?.trim());
+      setAddressSelectionValid(!requiresAddress || hasAddress);
+      setSelectedAddressId(hasAddress ? `existing-${data.id}` : null);
+      setShowAddressSuggestions(false);
+      clear();
 
       setLogoUrl(data?.logo ?? undefined);
       setLogoKey(data?.logoKey ?? undefined);
@@ -208,6 +226,12 @@ const SellerSettingsPage = () => {
   }
 
   const handleSave = () => {
+    const requiresAddress = store.fulfillmentType !== "DIGITAL";
+    if (requiresAddress && (!store.address?.trim() || !addressSelectionValid)) {
+      toast.error("Please select a valid address from suggestions.");
+      return;
+    }
+
     startTransition(async () => {
       try {
         const res = await UpdateStoreAction({
@@ -241,6 +265,14 @@ const SellerSettingsPage = () => {
         toast.error("Something went wrong.");
       }
     });
+  };
+
+  const handleSelectStoreAddress = (suggestion: AddressSuggestion) => {
+    setStore({ address: suggestion.place_name });
+    setSelectedAddressId(suggestion.id);
+    setAddressSelectionValid(true);
+    setShowAddressSuggestions(false);
+    clear();
   };
 
   //delete store
@@ -340,12 +372,20 @@ const SellerSettingsPage = () => {
               <Label>Delivery Method</Label>
               <Select
                 value={store.fulfillmentType}
-                onValueChange={(v) =>
+                onValueChange={(v) => {
                   setStore({
                     ...store,
                     fulfillmentType: v as StoreDTO["fulfillmentType"],
-                  })
-                }
+                  });
+                  if (v === "DIGITAL") {
+                    setAddressSelectionValid(true);
+                    setSelectedAddressId(null);
+                    setShowAddressSuggestions(false);
+                    clear();
+                  } else if (!store.address?.trim()) {
+                    setAddressSelectionValid(false);
+                  }
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -359,12 +399,62 @@ const SellerSettingsPage = () => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Store Address (Optional)</Label>
+          <div className="space-y-2 relative">
+            <Label>
+              {store.fulfillmentType === "DIGITAL"
+                ? "Store Address (Optional)"
+                : "Store Address"}
+            </Label>
             <Input
               value={store.address || ""}
-              onChange={(e) => setStore({ ...store, address: e.target.value })}
+              onFocus={() => setShowAddressSuggestions(true)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setStore({ ...store, address: value });
+                if (selectedAddressId) {
+                  setSelectedAddressId(null);
+                }
+                if (store.fulfillmentType !== "DIGITAL") {
+                  setAddressSelectionValid(false);
+                }
+                search(value);
+                setShowAddressSuggestions(true);
+              }}
             />
+            {store.fulfillmentType !== "DIGITAL" && !addressSelectionValid && (
+              <p className="text-sm text-red-500">
+                Please select a valid address from suggestions.
+              </p>
+            )}
+            {showAddressSuggestions &&
+              (loading || suggestions.length > 0 || error) && (
+                <div className="absolute z-20 mt-1 w-full rounded-md border bg-white shadow-sm">
+                  {loading && (
+                    <p className="px-3 py-2 text-sm text-muted-foreground">
+                      Loading suggestions...
+                    </p>
+                  )}
+                  {!loading &&
+                    suggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.id}
+                        type="button"
+                        className="block w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                        onClick={() => handleSelectStoreAddress(suggestion)}
+                      >
+                        {suggestion.place_name}
+                      </button>
+                    ))}
+                  {!loading && !suggestions.length && !error && (
+                    <p className="px-3 py-2 text-sm text-muted-foreground">
+                      No suggestions found.
+                    </p>
+                  )}
+                  {!loading && error && (
+                    <p className="px-3 py-2 text-sm text-red-500">{error}</p>
+                  )}
+                </div>
+              )}
           </div>
 
           <div className="space-y-2">

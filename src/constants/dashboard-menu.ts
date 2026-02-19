@@ -18,11 +18,8 @@ import {
   Bell,
   ShieldCheck,
   AlertTriangle,
-  Eye,
   Ticket,
   User,
-  Database,
-  Briefcase,
   LineChart,
   Landmark,
   Scale,
@@ -55,7 +52,7 @@ export const DashboardMenu = {
           icon: ShoppingBag,
         },
         {
-          name: "Store Settings",
+          name: "Store",
           href: "/marketplace/dashboard/seller/store",
           icon: Store,
         },
@@ -341,100 +338,108 @@ export const DashboardMenu = {
       ],
     },
   ],
-
-  /* =========================================================
-     SYSTEM — Internal Financial Engine
-  ========================================================== */
-  SYSTEM: [
-    {
-      title: "Financial Core",
-      links: [
-        {
-          name: "Platform Wallet",
-          href: "/marketplace/dashboard/system/wallet",
-          icon: Wallet,
-        },
-        {
-          name: "Escrow Ledger",
-          href: "/marketplace/dashboard/system/ledger",
-          icon: Database,
-        },
-        {
-          name: "Commission Engine",
-          href: "/marketplace/dashboard/system/commissions",
-          icon: Briefcase,
-        },
-      ],
-    },
-    {
-      title: "Automation & Jobs",
-      links: [
-        {
-          name: "Release Payouts",
-          href: "/marketplace/dashboard/system/payout-jobs",
-          icon: DollarSign,
-        },
-        {
-          name: "Cron Monitor",
-          href: "/marketplace/dashboard/system/cron",
-          icon: Clock,
-        },
-        {
-          name: "Audit Logs",
-          href: "/marketplace/dashboard/system/audit",
-          icon: FileChartColumn,
-        },
-      ],
-    },
-  ],
 } as const;
 
 export const DashboardMenuItems = {
   USER: [
-    { href: "/help", icon: HelpCircle, label: "Help Center" },
     {
-      href: "/customer/order/history",
-      icon: ShoppingBag,
-      label: "Orders",
+      title: "SHOPPING",
+      links: [
+        {
+          href: "/customer/order/history",
+          icon: ShoppingBag,
+          name: "My Orders",
+        },
+        {
+          href: "/customer/order/track",
+          icon: Package,
+          name: "Track a Package",
+        },
+        {
+          href: "/customer/cart",
+          icon: ShoppingCartIcon,
+          name: "My Cart",
+        },
+        {
+          href: "/customer/wishlist",
+          icon: Heart,
+          name: "Saved Items",
+        },
+      ],
     },
+
     {
-      href: "/customer/order/track",
-      icon: Package,
-      label: "Track Order",
+      title: "FINANCE",
+      links: [
+        {
+          href: "/customer/wallet",
+          icon: Wallet,
+          name: "Wallet & Balance",
+        },
+        {
+          href: "/customer/coupons",
+          icon: Ticket,
+          name: "Promotions & Coupons",
+        },
+        {
+          href: "/customer/referrals",
+          icon: Users,
+          name: "Referral Program",
+        },
+      ],
     },
+
     {
-      href: "/customer/wishlist",
-      icon: Heart,
-      label: "Wishlist",
+      title: "ENGAGEMENT",
+      links: [
+        {
+          href: "/customer/followed-stores",
+          icon: StoreIcon,
+          name: "Followed Stores",
+        },
+        {
+          href: "/customer/reviewsratings",
+          icon: MessageSquareOffIcon,
+          name: "Pending Reviews",
+        },
+        {
+          href: "/customer/history",
+          icon: HistoryIcon,
+          name: "Browsing History",
+        },
+      ],
     },
+
     {
-      href: "/customer/cart",
-      icon: ShoppingCartIcon,
-      label: "Cart",
+      title: "COMMUNICATION",
+      links: [
+        {
+          href: "/inbox",
+          icon: Mail,
+          name: "Messages",
+        },
+        {
+          href: "/help",
+          icon: HelpCircle,
+          name: "Help & Support",
+        },
+      ],
     },
+
     {
-      href: "/customer/coupons",
-      icon: Ticket,
-      label: "Coupons",
+      title: "ACCOUNT",
+      links: [
+        {
+          href: "/profile",
+          icon: User,
+          name: "My Profile ",
+        },
+        {
+          href: "/settings",
+          icon: Settings,
+          name: "Account Settings",
+        },
+      ],
     },
-    {
-      label: "Pending Reviews",
-      href: "/customer/reviewsratings",
-      icon: MessageSquareOffIcon,
-    },
-    { label: "Wallet", href: "/customer/wallet", icon: Wallet },
-    {
-      href: "/customer/referrals",
-      icon: Users,
-      label: "Referrals",
-    },
-    { href: "/inbox", icon: Mail, label: "Inbox" },
-    {
-      href: "/customer/followed-seller",
-      icon: StoreIcon,
-      label: "Followed Sellers",
-    },
-    { href: "/customer/history", icon: HistoryIcon, label: "Recently Viewed" },
-    { href: "/settings", icon: Settings, label: "Settings" },
   ],
 } as const;

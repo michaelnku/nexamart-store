@@ -40,7 +40,7 @@ const deliveryMethod = [
   {
     key: "STORE_PICKUP",
     label: "Store Pickup",
-    desc: "Pick up from sellerâ€™s pickup point",
+    desc: "Pick up from seller's pickup point",
   },
   {
     key: "STATION_PICKUP",
@@ -212,7 +212,6 @@ export default function CheckoutSummary({ cart, address }: Props) {
     });
   };
 
-
   const onCheckout = async () => {
     if (!user?.id) {
       toast.error("You must be logged in to checkout.");
@@ -306,7 +305,9 @@ export default function CheckoutSummary({ cart, address }: Props) {
   if (!cart || cart.items.length === 0)
     return (
       <div className="min-h-full px-4 py-24 text-center space-y-4">
-        <p className="text-gray-500">Cart is empty - add items before checking out</p>
+        <p className="text-gray-500">
+          Cart is empty - add items before checking out
+        </p>
         <Button asChild variant="outline">
           <a href="/customer/order/history">View Orders</a>
         </Button>
@@ -349,7 +350,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
                   <p className="font-semibold text-lg text-black mt-1">
                     {formatMoneyFromUSD(priceUSD * item.quantity)}
                     <span className="text-sm text-gray-500 ml-1">
-                      ({formatMoneyFromUSD(priceUSD)} Ã— {item.quantity})
+                      ({formatMoneyFromUSD(priceUSD)} — {item.quantity})
                     </span>
                   </p>
                 </div>

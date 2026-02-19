@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { Prisma } from "@/generated/prisma";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { createServiceContext } from "@/lib/system/serviceContext";
 
 type ApprovePlatformWithdrawalResult =
   | {
@@ -90,13 +91,14 @@ export async function approvePlatformWithdrawalAction(
   withdrawalId: string,
 ): Promise<ApprovePlatformWithdrawalResult> {
   const role = await CurrentRole();
-  if (role !== "ADMIN" && role !== "SYSTEM") {
+  if (role !== "ADMIN") {
     return {
       success: false,
       code: "UNAUTHORIZED",
-      message: "Only ADMIN or SYSTEM can approve platform withdrawals.",
+      message: "Only ADMIN can approve platform withdrawals.",
     };
   }
+  const context = createServiceContext("PLATFORM_WITHDRAWAL_ENGINE");
 
   const withdrawal = await prisma.withdrawal.findUnique({
     where: { id: withdrawalId },
@@ -214,6 +216,7 @@ export async function approvePlatformWithdrawalAction(
           reference: `platform-withdrawal-settlement-${withdrawalId}`,
           resolveFromWallet: false,
           resolveToWallet: false,
+          context,
         });
 
         await allocateCommissionRows(tx, fresh.amount, withdrawalId);
@@ -226,7 +229,7 @@ export async function approvePlatformWithdrawalAction(
             type: "WITHDRAWAL",
             status: "SUCCESS",
             reference: `platform-withdrawal-${withdrawalId}`,
-            description: "Platform treasury withdrawal payout.",
+            description: `Executed by ${context.service}`,
           },
         });
       }

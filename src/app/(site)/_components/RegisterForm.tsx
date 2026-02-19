@@ -38,6 +38,7 @@ export default function RegisterForm() {
       username: "",
       role: "USER",
       email: "",
+      referralCode: "",
       password: "",
       confirmPassword: "",
     },
@@ -48,6 +49,7 @@ export default function RegisterForm() {
     if (!ref) return;
     const code = ref.toUpperCase();
     document.cookie = `ref_code=${encodeURIComponent(code)}; path=/; max-age=604800`;
+    form.setValue("referralCode", code);
   }, [searchParams, form]);
 
   const handleSubmit = (values: registerSchemaType) => {
@@ -152,6 +154,37 @@ export default function RegisterForm() {
                       placeholder="you@email.com"
                       type="email"
                       {...field}
+                      className="rounded-lg h-11 focus:ring-2 focus:ring-[var(--brand-blue)]"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              disabled={isPending}
+              name="referralCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="font-medium">
+                    Referral Code (Optional)
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter referral code"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.value.toUpperCase();
+                        field.onChange(value);
+                        if (value.trim()) {
+                          document.cookie = `ref_code=${encodeURIComponent(value.trim())}; path=/; max-age=604800`;
+                        } else {
+                          document.cookie = "ref_code=; path=/; max-age=0";
+                        }
+                      }}
                       className="rounded-lg h-11 focus:ring-2 focus:ring-[var(--brand-blue)]"
                     />
                   </FormControl>

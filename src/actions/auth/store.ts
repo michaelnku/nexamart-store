@@ -10,8 +10,25 @@ import {
 } from "@/lib/zodValidation";
 import { revalidatePath } from "next/cache";
 import { UTApi } from "uploadthing/server";
+import { geocodeAddress } from "@/lib/shipping/mapboxGeocode";
 
 const utapi = new UTApi();
+const INVALID_ADDRESS_ERROR = "Please select a valid address from suggestions.";
+
+async function resolveStoreCoordinates(params: {
+  address: string;
+  location: string;
+}) {
+  try {
+    return await geocodeAddress({
+      street: params.address,
+      city: params.location,
+      country: "",
+    });
+  } catch {
+    return null;
+  }
+}
 
 export const createStoreAction = async (values: storeFormType) => {
   const user = await CurrentUser();
@@ -25,15 +42,8 @@ export const createStoreAction = async (values: storeFormType) => {
     const validated = storeSchema.safeParse(values);
     if (!validated.success) return { error: "Invalid store data" };
 
-    const {
-      name,
-      description,
-      location,
-      logo,
-      type,
-      fulfillmentType,
-      address,
-    } = validated.data;
+    const { name, description, location, logo, type, fulfillmentType, address } =
+      validated.data;
 
     if (type === "FOOD" && fulfillmentType === "DIGITAL") {
       return {
@@ -59,9 +69,27 @@ export const createStoreAction = async (values: storeFormType) => {
 
     const requiresAddress =
       fulfillmentType === "PHYSICAL" || fulfillmentType === "HYBRID";
+    const normalizedAddress = address?.trim() ?? "";
 
-    if (requiresAddress && !address) {
+    if (requiresAddress && !normalizedAddress) {
       return { error: "Address is required for physical fulfillment." };
+    }
+
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+
+    if (requiresAddress) {
+      const geocoded = await resolveStoreCoordinates({
+        address: normalizedAddress,
+        location: location.trim(),
+      });
+
+      if (!geocoded) {
+        return { error: INVALID_ADDRESS_ERROR };
+      }
+
+      latitude = geocoded.latitude;
+      longitude = geocoded.longitude;
     }
 
     await prisma.store.create({
@@ -69,12 +97,14 @@ export const createStoreAction = async (values: storeFormType) => {
         name,
         description,
         location: location.trim(),
-        address: requiresAddress ? (address ?? null) : null,
+        address: requiresAddress ? normalizedAddress : null,
+        latitude,
+        longitude,
         logo,
         type,
         fulfillmentType,
         userId: user.id,
-        slug: slug,
+        slug,
         isActive: true,
       },
     });
@@ -100,7 +130,17 @@ export const UpdateStoreAction = async (values: updateStoreFormType) => {
     if (!store) return { error: "Store not found" };
 
     if (store.userId !== user.id) {
-      return { error: "Unauthorized — not your store" };
+      return { error: "Unauthorized - not your store" };
+    }
+
+    const requiresAddress =
+      values.fulfillmentType === "PHYSICAL" ||
+      values.fulfillmentType === "HYBRID";
+    const nextAddress = values.address?.trim() ?? "";
+    const nextLocation = values.location.trim();
+
+    if (requiresAddress && !nextAddress) {
+      return { error: "Address is required for physical fulfillment." };
     }
 
     const newLogoUrl = values.logo;
@@ -110,7 +150,7 @@ export const UpdateStoreAction = async (values: updateStoreFormType) => {
       try {
         await utapi.deleteFiles([store.logoKey]);
       } catch {
-        console.error("⚠ Failed to delete previous logo from UploadThing");
+        console.error("Failed to delete previous logo from UploadThing");
       }
     }
 
@@ -120,27 +160,52 @@ export const UpdateStoreAction = async (values: updateStoreFormType) => {
       try {
         await utapi.deleteFiles([store.bannerKey]);
       } catch {
-        console.warn("⚠ Failed to delete previous banner");
+        console.warn("Failed to delete previous banner");
       }
     }
 
-    // Update DB
+    const addressChanged = (store.address ?? "").trim() !== nextAddress;
+    const fulfillmentChanged = store.fulfillmentType !== values.fulfillmentType;
+    const missingCoordinates = store.latitude === null || store.longitude === null;
+
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+
+    if (requiresAddress) {
+      if (!addressChanged && !fulfillmentChanged && !missingCoordinates) {
+        latitude = store.latitude;
+        longitude = store.longitude;
+      } else {
+        const geocoded = await resolveStoreCoordinates({
+          address: nextAddress,
+          location: nextLocation,
+        });
+
+        if (!geocoded) {
+          return { error: INVALID_ADDRESS_ERROR };
+        }
+
+        latitude = geocoded.latitude;
+        longitude = geocoded.longitude;
+      }
+    }
+
     await prisma.store.update({
       where: { id: values.id },
       data: {
         name: values.name,
         description: values.description,
-        location: values.location.trim(),
-        address: values.address ?? null,
+        location: nextLocation,
+        address: requiresAddress ? nextAddress : null,
+        latitude,
+        longitude,
         type: values.type,
+        fulfillmentType: values.fulfillmentType,
         tagline: values.tagline ?? null,
-
         logo: newLogoUrl ?? null,
         logoKey: values.logoKey ?? null,
-
         bannerImage: values.bannerImage ?? null,
         bannerKey: values.bannerKey ?? null,
-
         isActive: values.isActive,
         emailNotificationsEnabled: values.emailNotificationsEnabled,
       },
@@ -196,10 +261,9 @@ export const deleteStoreAction = async (storeId: string) => {
     }
 
     if (store.userId !== user.id) {
-      return { error: "Unauthorized — not your store" };
+      return { error: "Unauthorized - not your store" };
     }
 
-    // 🚫 Prevent deletion if active orders exist
     if (store.storeGroups.length > 0) {
       return {
         error:
@@ -207,7 +271,6 @@ export const deleteStoreAction = async (storeId: string) => {
       };
     }
 
-    // 🧹 Collect UploadThing files for cleanup
     const filesToDelete: string[] = [];
 
     if (store.logoKey) filesToDelete.push(store.logoKey);
@@ -219,16 +282,14 @@ export const deleteStoreAction = async (storeId: string) => {
       });
     });
 
-    // 🔥 Best-effort cleanup (do NOT fail deletion if this fails)
     if (filesToDelete.length > 0) {
       try {
         await utapi.deleteFiles(filesToDelete);
       } catch (err) {
-        console.warn("⚠ Failed to cleanup some store images", err);
+        console.warn("Failed to cleanup some store images", err);
       }
     }
 
-    // 🧊 Soft delete store + deactivate
     await prisma.$transaction([
       prisma.store.update({
         where: { id: store.id },
@@ -238,8 +299,6 @@ export const deleteStoreAction = async (storeId: string) => {
           isActive: false,
         },
       }),
-
-      // Hide all products
       prisma.product.updateMany({
         where: { storeId: store.id },
         data: {
@@ -248,7 +307,6 @@ export const deleteStoreAction = async (storeId: string) => {
       }),
     ]);
 
-    // ♻ Revalidate affected routes
     revalidatePath("/marketplace/dashboard/seller/store");
     revalidatePath("/marketplace/dashboard/seller/products");
     revalidatePath(`/store/${store.slug}`);
@@ -259,4 +317,3 @@ export const deleteStoreAction = async (storeId: string) => {
     return { error: "Something went wrong while deleting the store" };
   }
 };
-

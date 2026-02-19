@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -23,6 +23,10 @@ import { storeSchema, storeFormType } from "@/lib/zodValidation";
 import { createStoreAction } from "@/actions/auth/store";
 import { deleteLogoAction } from "@/actions/actions";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  AddressSuggestion,
+  useAddressAutocomplete,
+} from "@/hooks/useAddressAutocomplete";
 
 export default function CreateStoreForm() {
   const router = useRouter();
@@ -31,6 +35,9 @@ export default function CreateStoreForm() {
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const { suggestions, loading, error, search, clear } = useAddressAutocomplete();
 
   const form = useForm<storeFormType>({
     resolver: zodResolver(storeSchema),
@@ -47,6 +54,23 @@ export default function CreateStoreForm() {
 
   const fulfillmentType = form.watch("fulfillmentType");
   const storeType = form.watch("type");
+
+  useEffect(() => {
+    if (fulfillmentType === "DIGITAL") {
+      form.clearErrors("address");
+      setSelectedAddressId(null);
+      setShowSuggestions(false);
+      clear();
+    }
+  }, [clear, form, fulfillmentType]);
+
+  const handleSelectAddressSuggestion = (suggestion: AddressSuggestion) => {
+    form.setValue("address", suggestion.place_name, { shouldValidate: true });
+    setSelectedAddressId(suggestion.id);
+    setShowSuggestions(false);
+    form.clearErrors("address");
+    clear();
+  };
 
   const handleDeleteLogo = async () => {
     if (!logoKey) return;
@@ -66,6 +90,15 @@ export default function CreateStoreForm() {
   };
 
   const onSubmit = (values: storeFormType) => {
+    const requiresAddress = values.fulfillmentType !== "DIGITAL";
+    if (requiresAddress && !selectedAddressId) {
+      form.setError("address", {
+        type: "manual",
+        message: "Please select a valid address from suggestions.",
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createStoreAction(values);
       if (res?.error) {
@@ -238,19 +271,63 @@ export default function CreateStoreForm() {
                   control={form.control}
                   name="address"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="relative">
                       <FormLabel>
                         {storeType === "FOOD"
                           ? "Pickup / Kitchen Address"
                           : "Pickup / Warehouse Address"}
                       </FormLabel>
                       <FormControl>
-                        <Textarea
-                          rows={3}
+                        <Input
                           placeholder="Required for physical fulfillment"
                           {...field}
+                          onFocus={() => setShowSuggestions(true)}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.onChange(value);
+                            if (selectedAddressId) {
+                              setSelectedAddressId(null);
+                            }
+                            form.setError("address", {
+                              type: "manual",
+                              message:
+                                "Please select a valid address from suggestions.",
+                            });
+                            search(value);
+                            setShowSuggestions(true);
+                          }}
                         />
                       </FormControl>
+                      {showSuggestions && (loading || suggestions.length > 0 || error) && (
+                        <div className="absolute z-20 mt-1 w-full rounded-md border bg-white shadow-sm">
+                          {loading && (
+                            <p className="px-3 py-2 text-sm text-muted-foreground">
+                              Loading suggestions...
+                            </p>
+                          )}
+                          {!loading &&
+                            suggestions.map((suggestion) => (
+                              <button
+                                key={suggestion.id}
+                                type="button"
+                                className="block w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                                onClick={() =>
+                                  handleSelectAddressSuggestion(suggestion)
+                                }
+                              >
+                                {suggestion.place_name}
+                              </button>
+                            ))}
+                          {!loading && !suggestions.length && !error && (
+                            <p className="px-3 py-2 text-sm text-muted-foreground">
+                              No suggestions found.
+                            </p>
+                          )}
+                          {!loading && error && (
+                            <p className="px-3 py-2 text-sm text-red-500">{error}</p>
+                          )}
+                        </div>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}

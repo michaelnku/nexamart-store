@@ -58,7 +58,7 @@ export async function generateMetadata({
   const title = `${store.name} | ${APP_NAME}`;
   const description = toSeoDescription(
     store.tagline ?? store.description ?? undefined,
-    `Shop ${store.name} on ${APP_NAME}. Discover great products and deals from this seller.`
+    `Shop ${store.name} on ${APP_NAME}. Discover great products and deals from this seller.`,
   );
   const image = store.bannerImage || store.logo || APP_LOGO;
   const url = absoluteUrl(`/store/${store.slug}`);
@@ -114,9 +114,8 @@ const page = async ({ params }: StoreFrontProps) => {
   const isOwner = user?.id === store.userId;
 
   return (
-    <section className="min-h-full py-4 p-6 bg-zinc-50 dark:bg-zinc-900">
+    <section className="min-h-full p-6 dark:bg-zinc-900">
       <main className="max-w-6xl mx-auto space-y-12 shadow-md rounded-md ">
-        {/* ░░░ Banner / Cover Photo ░░░ */}
         <div>
           <div className="relative w-full h-48 md:h-64 rounded-tr-md rounded-tl-md overflow-hidden bg-gray-200 shadow">
             {store.bannerImage ? (
@@ -146,7 +145,6 @@ const page = async ({ params }: StoreFrontProps) => {
           )}
         </div>
 
-        {/* HEADER */}
         <section className="flex flex-col items-center gap-4 text-center">
           {/* Logo */}
           <div className="w-32 h-32 rounded-full overflow-hidden border shadow bg-gray-50 -mt-20">
@@ -190,7 +188,6 @@ const page = async ({ params }: StoreFrontProps) => {
           )}
         </section>
 
-        {/* ░░░ PRODUCTS ░░░ */}
         <section className="space-y-6 px-6 py-6">
           <h2 className="text-2xl font-semibold">Products</h2>
 
@@ -240,4 +237,3 @@ const page = async ({ params }: StoreFrontProps) => {
 };
 
 export default page;
-

@@ -13,6 +13,7 @@ import {
   YoutubeIcon,
   TwitterIcon,
 } from "lucide-react";
+import CurrencySelector from "../currency/CurrencySelector";
 
 const Footer = () => {
   const [currency, setCurrency] = useState("USD");
@@ -63,10 +64,9 @@ const Footer = () => {
         <FooterColumn
           title="Customer Service"
           links={[
-            { label: "Help Center", href: "/help" },
             { label: "Returns & Refunds", href: "/help/refunds" },
             { label: "Shipping Info", href: "/help/shipping" },
-            { label: "Track Order", href: "/customer/order/history" },
+            { label: "Track a Package", href: "/customer/order/track" },
           ]}
         />
         <FooterColumn
@@ -115,22 +115,7 @@ const Footer = () => {
           </div>
 
           {/* CURRENCY SELECTOR */}
-          <div className="hidden flex-col gap-3 w-full lg:w-1/4">
-            <label className="text-sm font-medium">Currency</label>
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="border bg-gray-700 px-3 py-2 rounded text-sm"
-            >
-              <option value="USD">$ USD — US Dollar</option>
-              <option value="NGN">₦ NGN — Nigerian Naira</option>
-              <option value="GBP">£ GBP — British Pound</option>
-              <option value="EUR">€ EUR — Euro</option>
-              <option value="KES">KSh KES — Kenyan Shilling</option>
-              <option value="GHC">GH₵ GHC — Ghanaian Cedi</option>
-              <option value="ZAR">R ZAR — South African Rand</option>
-            </select>
-          </div>
+          <CurrencySelector />
 
           {/* SOCIAL ICONS */}
           <div className="flex flex-col gap-3 w-full lg:w-1/4">

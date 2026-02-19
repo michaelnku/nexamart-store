@@ -29,7 +29,7 @@ export default function WishlistButton({
         toast.error(res.error);
       } else {
         toast.success(
-          res.wishlisted ? "Added to wishlist ❤️" : "Removed from wishlist"
+          res.wishlisted ? "Saved For Later ❤️" : "Removed from wishlist",
         );
       }
     });

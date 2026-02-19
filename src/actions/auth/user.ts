@@ -79,7 +79,7 @@ export const createUser = async (values: registerSchemaType) => {
       };
     }
 
-    const { email, username, password } = validatedFields.data;
+    const { email, username, password, referralCode } = validatedFields.data;
 
     const existingUser = await getUserByEmail(email);
 
@@ -99,7 +99,8 @@ export const createUser = async (values: registerSchemaType) => {
     });
 
     const cookieStore = await cookies();
-    const refCode = cookieStore.get("ref_code")?.value;
+    const refCodeFromCookie = cookieStore.get("ref_code")?.value;
+    const refCode = referralCode?.trim() || refCodeFromCookie;
 
     await createReferralCodeForUser(user.id);
     await createWelcomeCouponForUser(user.id);

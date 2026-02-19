@@ -36,9 +36,9 @@ export const SELLER_LOGIN_REDIRECT = "/marketplace/dashboard/seller";
 
 export const RIDER_LOGIN_REDIRECT = "/marketplace/dashboard/rider";
 
-export const ADMIN_LOGIN_REDIRECT = "/marketplace/dashboard/admin";
-
 export const MODERATOR_LOGIN_REDIRECT = "/marketplace/dashboard/moderator";
+
+export const ADMIN_LOGIN_REDIRECT = "/marketplace/dashboard/admin";
 
 export const MARKET_PLACE_LOGIN_REDIRECT = "/marketplace/dashboard";
 
@@ -48,6 +48,5 @@ export const adminRoutePrefix = "/marketplace/dashboard/admin";
 export const riderRoutePrefix = "/marketplace/dashboard/rider";
 export const sellerRoutePrefix = "/marketplace/dashboard/seller";
 export const moderatorRoutePrefix = "/marketplace/dashboard/moderator";
-export const systemRoutePrefix = "/marketplace/dashboard/system";
 
 export const sharedRoutes = ["/profile", "/settings"];

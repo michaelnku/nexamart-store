@@ -4,6 +4,7 @@ import { autoAssignRider } from "@/lib/rider/logistics";
 import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
 import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { ServiceContext } from "@/lib/system/serviceContext";
 
 const PLATFORM_COMMISSION_PERCENT = 12;
 const PAYOUT_HOLD_MS = 24 * 60 * 60 * 1000;
@@ -14,6 +15,7 @@ export interface CompleteOrderPaymentParams {
   orderId: string;
   paymentReference: string;
   method: PaymentMethodType;
+  context?: ServiceContext;
 }
 
 type CompleteOrderPaymentResult = {
@@ -36,6 +38,7 @@ export async function completeOrderPayment({
   orderId,
   paymentReference,
   method,
+  context,
 }: CompleteOrderPaymentParams): Promise<CompleteOrderPaymentResult> {
   if (!orderId || !paymentReference) {
     throw new Error("orderId and paymentReference are required");
@@ -117,7 +120,11 @@ export async function completeOrderPayment({
         status: "SUCCESS",
         reference: paymentReference,
         description:
-          method === "CARD" ? "Stripe order payment" : "Wallet order payment",
+          context
+            ? `Executed by ${context.service}`
+            : method === "CARD"
+              ? "Stripe order payment"
+              : "Wallet order payment",
       },
     });
 
@@ -138,6 +145,7 @@ export async function completeOrderPayment({
       amount: order.totalAmount,
       status: "HELD",
       reference: `escrow-fund-${order.id}`,
+      context,
     });
 
     await createDoubleEntryLedger(tx, {
@@ -150,6 +158,7 @@ export async function completeOrderPayment({
       reference: `escrow-fund-${order.id}`,
       resolveFromWallet: method === "WALLET",
       resolveToWallet: false,
+      context,
     });
 
     for (const group of order.sellerGroups) {
@@ -165,6 +174,7 @@ export async function completeOrderPayment({
         status: "HELD",
         reference: `seller-held-${group.id}`,
         metadata: { sellerGroupId: group.id, subtotal: group.subtotal },
+        context,
       });
 
       await createEscrowEntryIdempotent(tx, {
@@ -178,6 +188,7 @@ export async function completeOrderPayment({
           sellerGroupId: group.id,
           commissionPercent: PLATFORM_COMMISSION_PERCENT,
         },
+        context,
       });
     }
 
@@ -190,6 +201,7 @@ export async function completeOrderPayment({
         amount: order.delivery.fee,
         status: "HELD",
         reference: `rider-held-${order.id}`,
+        context,
       });
     }
 

@@ -22,10 +22,6 @@ export default async function ProfilePage() {
     where: { userId: user.id },
     select: { code: true },
   });
-  const baseUrl = process.env.FRONTEND_STORE_URL ?? "";
-  const referralLink = referralCode?.code
-    ? `${baseUrl}/auth/register?ref=${referralCode.code}`
-    : "";
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 sm:space-y-10 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -79,7 +75,7 @@ export default async function ProfilePage() {
       </Card>
 
       {referralCode?.code && (
-        <ReferralCodeCard code={referralCode.code} link={referralLink} />
+        <ReferralCodeCard code={referralCode.code} />
       )}
 
       <Card>

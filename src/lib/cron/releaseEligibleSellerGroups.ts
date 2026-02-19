@@ -3,6 +3,7 @@ import { acquireCronLock, releaseCronLock } from "@/lib/cron/cronLock";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
+import { createServiceContext } from "@/lib/system/serviceContext";
 
 const LOCK_NAME = "RELEASE_ELIGIBLE_SELLER_GROUPS";
 const BATCH_SIZE = 20;
@@ -13,6 +14,7 @@ export async function releaseEligibleSellerGroups() {
 
   try {
     const now = new Date();
+    const context = createServiceContext("SELLER_PAYOUT_CRON");
     const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
 
     const groups = await prisma.orderSellerGroup.findMany({
@@ -83,7 +85,7 @@ export async function releaseEligibleSellerGroups() {
           return;
         }
 
-        const payoutTxRef = `tx-seller-payout-${group.id}`;
+        const payoutTxRef = `seller-release-${group.id}`;
         const existingPayoutTx = await tx.transaction.findUnique({
           where: { reference: payoutTxRef },
           select: { id: true },
@@ -104,7 +106,8 @@ export async function releaseEligibleSellerGroups() {
             toWalletId: sellerWallet.id,
             entryType: "SELLER_PAYOUT",
             amount: group.subtotal,
-            reference: `seller-payout-group-${group.id}`,
+            reference: `seller-release-${group.id}`,
+            context,
           });
 
           await tx.transaction.create({
@@ -116,7 +119,7 @@ export async function releaseEligibleSellerGroups() {
               status: "SUCCESS",
               amount: group.subtotal,
               reference: payoutTxRef,
-              description: `Group-level seller payout release for ${group.id}`,
+              description: `Executed by ${context.service}`,
             },
           });
         }
@@ -143,6 +146,7 @@ export async function releaseEligibleSellerGroups() {
           status: "RELEASED",
           reference: `seller-group-release-${group.id}`,
           metadata: { sellerGroupId: group.id },
+          context,
         });
 
         await tx.orderSellerGroup.update({

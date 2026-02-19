@@ -4,6 +4,7 @@ import { CurrentRole } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { createServiceContext } from "@/lib/system/serviceContext";
 
 type PlatformWithdrawalRequestResult =
   | {
@@ -41,13 +42,14 @@ export async function requestPlatformWithdrawalAction(
   amount: number,
 ): Promise<PlatformWithdrawalRequestResult> {
   const role = await CurrentRole();
-  if (role !== "ADMIN" && role !== "SYSTEM") {
+  if (role !== "ADMIN") {
     return {
       success: false,
       code: "UNAUTHORIZED",
-      message: "Only ADMIN or SYSTEM can request platform withdrawals.",
+      message: "Only ADMIN can request platform withdrawals.",
     };
   }
+  const context = createServiceContext("PLATFORM_WITHDRAWAL_ENGINE");
 
   if (!Number.isFinite(amount) || amount <= 0) {
     return {
@@ -100,6 +102,7 @@ export async function requestPlatformWithdrawalAction(
       reference: `platform-withdrawal-debit-${created.id}`,
       resolveFromWallet: false,
       resolveToWallet: false,
+      context,
     });
 
     return created;

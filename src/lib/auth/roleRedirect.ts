@@ -11,17 +11,18 @@ type StaffRole = Exclude<KnownRole, "USER">;
 
 const ROLE_DASHBOARD: Record<KnownRole, string> = {
   ADMIN: ADMIN_LOGIN_REDIRECT,
+  MODERATOR: MODERATOR_LOGIN_REDIRECT,
   SELLER: SELLER_LOGIN_REDIRECT,
   RIDER: RIDER_LOGIN_REDIRECT,
-  MODERATOR: MODERATOR_LOGIN_REDIRECT,
+
   USER: DEFAULT_LOGIN_REDIRECT,
 };
 
 const STAFF_ROLES = new Set<StaffRole>([
   "ADMIN",
+  "MODERATOR",
   "SELLER",
   "RIDER",
-  "MODERATOR",
 ]);
 
 export const getDashboardRedirectForRole = (
@@ -37,4 +38,3 @@ export const isStaffRole = (
   if (!role) return false;
   return STAFF_ROLES.has(role as StaffRole);
 };
-

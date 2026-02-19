@@ -7,8 +7,10 @@ import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralR
 import { stripe } from "@/lib/stripe";
 import { completeOrderPayment } from "@/lib/payments/completeOrderPayment";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { createServiceContext } from "@/lib/system/serviceContext";
 
 async function handleWalletTopUp(session: Stripe.Checkout.Session) {
+  const context = createServiceContext("WALLET_TOPUP_WEBHOOK");
   const userId = session.metadata?.userId;
   const amountTotal = session.amount_total;
   const paymentIntentRaw = session.payment_intent;
@@ -30,11 +32,12 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
   }
 
   const amount = amountTotal / 100;
+  const topupReference = `wallet-topup-${paymentIntentId}`;
 
   try {
     await prisma.$transaction(async (tx) => {
       const existingTx = await tx.transaction.findUnique({
-        where: { reference: paymentIntentId },
+        where: { reference: topupReference },
         select: { id: true },
       });
       if (existingTx) return;
@@ -56,8 +59,8 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
           type: "DEPOSIT",
           status: "SUCCESS",
           amount,
-          reference: paymentIntentId,
-          description: "Stripe wallet top-up",
+          reference: topupReference,
+          description: `Executed by ${context.service}`,
         },
       });
 
@@ -66,9 +69,10 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
         toWalletId: wallet.id,
         entryType: "ESCROW_DEPOSIT",
         amount,
-        reference: `wallet-topup-${paymentIntentId}`,
+        reference: topupReference,
         resolveFromWallet: false,
         resolveToWallet: false,
+        context,
       });
     });
   } catch (error) {
@@ -83,6 +87,7 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
 }
 
 async function handleOrderCheckout(session: Stripe.Checkout.Session) {
+  const context = createServiceContext("ORDER_PAYMENT_WEBHOOK");
   const orderId = session.metadata?.orderId;
   const paymentIntentRaw = session.payment_intent;
   const paymentIntentId =
@@ -97,8 +102,9 @@ async function handleOrderCheckout(session: Stripe.Checkout.Session) {
 
   const paymentResult = await completeOrderPayment({
     orderId,
-    paymentReference: paymentIntentId,
+    paymentReference: `order-payment-${paymentIntentId}`,
     method: "CARD",
+    context,
   });
 
   if (!paymentResult.justPaid) {

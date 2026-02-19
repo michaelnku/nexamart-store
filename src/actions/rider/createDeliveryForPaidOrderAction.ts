@@ -5,7 +5,7 @@ import { CurrentRole } from "@/lib/currentUser";
 
 export async function createDeliveryForPaidOrderAction(orderId: string) {
   const role = await CurrentRole();
-  if (!["ADMIN", "SYSTEM"].includes(role ?? "")) {
+  if (role !== "ADMIN") {
     return { error: "Forbidden" };
   }
 

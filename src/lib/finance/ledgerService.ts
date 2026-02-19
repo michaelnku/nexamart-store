@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import { createLedgerEntryIdempotent } from "@/lib/ledger/idempotentEntries";
+import { ServiceContext } from "@/lib/system/serviceContext";
 
 type Tx = Prisma.TransactionClient;
 
@@ -22,6 +23,7 @@ type CreateDoubleEntryLedgerInput = {
   reference: string;
   resolveFromWallet?: boolean;
   resolveToWallet?: boolean;
+  context?: ServiceContext;
 };
 
 async function ensureWalletId(

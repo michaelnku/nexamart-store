@@ -1,8 +1,32 @@
 import { prisma } from "@/lib/prisma";
 
-const SYSTEM_USER_EMAIL = "system@nexamart.local";
-const SYSTEM_USER_NAME = "NexaMart System";
-const SYSTEM_USERNAME = "nexamart-system";
+async function resolvePlatformUserId(): Promise<string> {
+  const explicitPlatformUserId = process.env.PLATFORM_ESCROW_USER_ID;
+  if (explicitPlatformUserId) {
+    const user = await prisma.user.findUnique({
+      where: { id: explicitPlatformUserId },
+      select: { id: true, role: true },
+    });
+    if (!user || user.role !== "ADMIN") {
+      throw new Error("PLATFORM_ESCROW_USER_ID must reference an ADMIN user.");
+    }
+    return user.id;
+  }
+
+  const admin = await prisma.user.findFirst({
+    where: { role: "ADMIN" },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+
+  if (!admin) {
+    throw new Error(
+      "Platform escrow account requires at least one ADMIN user in the database.",
+    );
+  }
+
+  return admin.id;
+}
 
 export async function getOrCreateSystemEscrowWallet() {
   const account = await getOrCreateSystemEscrowAccount();
@@ -10,32 +34,20 @@ export async function getOrCreateSystemEscrowWallet() {
 }
 
 export async function getOrCreateSystemEscrowAccount() {
-  const systemUser = await prisma.user.upsert({
-    where: { email: SYSTEM_USER_EMAIL },
-    update: {
-      role: "SYSTEM",
-    },
-    create: {
-      email: SYSTEM_USER_EMAIL,
-      name: SYSTEM_USER_NAME,
-      username: SYSTEM_USERNAME,
-      role: "SYSTEM",
-    },
-    select: { id: true },
-  });
+  const userId = await resolvePlatformUserId();
 
   const wallet = await prisma.wallet.upsert({
-    where: { userId: systemUser.id },
+    where: { userId },
     update: {},
     create: {
-      userId: systemUser.id,
+      userId,
       currency: "USD",
     },
     select: { id: true },
   });
 
   return {
-    userId: systemUser.id,
+    userId,
     walletId: wallet.id,
   };
 }

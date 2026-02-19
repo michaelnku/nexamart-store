@@ -19,6 +19,11 @@ export const registerSchema = z
     role: z.enum(["USER", "SELLER", "RIDER", "MODERATOR", "ADMIN"]),
 
     email: z.string().email({ message: "Invalid email address." }),
+    referralCode: z
+      .string()
+      .trim()
+      .max(32, { message: "Referral code is too long." })
+      .optional(),
     password: z
       .string()
       .min(6, { message: "Password must be at least 6 characters" })
@@ -85,25 +90,27 @@ export const changePasswordSchema = z
 export type ChangePasswordSchemaType = z.infer<typeof changePasswordSchema>;
 
 // FOOD DETAILS SCHEMA
-export const foodDetailsSchema = z.object({
-  ingredients: z
-    .array(z.string().min(1))
-    .min(1, "At least one ingredient is required"),
+export const foodDetailsSchema = z
+  .object({
+    ingredients: z
+      .array(z.string().min(1))
+      .min(1, "At least one ingredient is required"),
 
-  preparationTimeMinutes: z
-    .number()
-    .min(1, "Preparation time must be at least 1 minute"),
+    preparationTimeMinutes: z
+      .number()
+      .min(1, "Preparation time must be at least 1 minute"),
 
-  portionSize: z.string().min(1, "Portion size is required"),
+    portionSize: z.string().min(1, "Portion size is required"),
 
-  spiceLevel: z.enum(["MILD", "MEDIUM", "HOT"]).optional(),
+    spiceLevel: z.enum(["MILD", "MEDIUM", "HOT"]).optional(),
 
-  dietaryTags: z.array(z.string()).optional(),
+    dietaryTags: z.array(z.string()).optional(),
 
-  isPerishable: z.boolean().optional(),
+    isPerishable: z.boolean().optional(),
 
-  expiresAt: z.date().optional(),
-}).strict();
+    expiresAt: z.date().optional(),
+  })
+  .strict();
 
 // Product Variant Schema
 export const productVariantSchema = z.object({
@@ -148,62 +155,48 @@ const baseProductSchema = z.object({
 
   images: z.array(productImageSchema).min(1),
 
-  variants: z.array(productVariantSchema).min(1, "At least one variant is required"),
+  variants: z
+    .array(productVariantSchema)
+    .min(1, "At least one variant is required"),
   isFoodProduct: z.boolean().optional(),
   foodDetails: foodDetailsSchema.nullable().optional(),
 });
 
 export const productSchema = baseProductSchema
-  .refine(
-    (data) => !data.isFoodProduct || Boolean(data.foodDetails),
-    {
-      message: "foodDetails is required for FOOD products",
-      path: ["foodDetails"],
-    },
-  )
-  .refine(
-    (data) => !data.isFoodProduct || data.variants.length === 1,
-    {
-      message: "FOOD products must have exactly one variant",
-      path: ["variants"],
-    },
-  )
-  .refine(
-    (data) => data.isFoodProduct || data.foodDetails == null,
-    {
-      message: "foodDetails is only allowed for FOOD products",
-      path: ["foodDetails"],
-    },
-  );
+  .refine((data) => !data.isFoodProduct || Boolean(data.foodDetails), {
+    message: "foodDetails is required for FOOD products",
+    path: ["foodDetails"],
+  })
+  .refine((data) => !data.isFoodProduct || data.variants.length === 1, {
+    message: "FOOD products must have exactly one variant",
+    path: ["variants"],
+  })
+  .refine((data) => data.isFoodProduct || data.foodDetails == null, {
+    message: "foodDetails is only allowed for FOOD products",
+    path: ["foodDetails"],
+  });
 
 export type productSchemaType = z.infer<typeof productSchema>;
 
 // Updating Product
 export const updateProductSchema = baseProductSchema
   .extend({
-    variants: z.array(productVariantSchema).min(1, "At least one variant is required"),
+    variants: z
+      .array(productVariantSchema)
+      .min(1, "At least one variant is required"),
   })
-  .refine(
-    (data) => !data.isFoodProduct || Boolean(data.foodDetails),
-    {
-      message: "foodDetails is required for FOOD products",
-      path: ["foodDetails"],
-    },
-  )
-  .refine(
-    (data) => !data.isFoodProduct || data.variants.length === 1,
-    {
-      message: "FOOD products must have exactly one variant",
-      path: ["variants"],
-    },
-  )
-  .refine(
-    (data) => data.isFoodProduct || data.foodDetails == null,
-    {
-      message: "foodDetails is only allowed for FOOD products",
-      path: ["foodDetails"],
-    },
-  );
+  .refine((data) => !data.isFoodProduct || Boolean(data.foodDetails), {
+    message: "foodDetails is required for FOOD products",
+    path: ["foodDetails"],
+  })
+  .refine((data) => !data.isFoodProduct || data.variants.length === 1, {
+    message: "FOOD products must have exactly one variant",
+    path: ["variants"],
+  })
+  .refine((data) => data.isFoodProduct || data.foodDetails == null, {
+    message: "foodDetails is only allowed for FOOD products",
+    path: ["foodDetails"],
+  });
 
 export type updateProductSchemaType = z.infer<typeof updateProductSchema>;
 
@@ -218,37 +211,93 @@ export const categorySchema = z.object({
 
 export type CategorySchemaType = z.infer<typeof categorySchema>;
 
-//create store
-export const storeSchema = z.object({
-  name: z.string().min(2, "Store name is required"),
-  description: z.string().min(5, "Description is required"),
+/**
+ * CREATE STORE
+ */
+export const storeSchema = z
+  .object({
+    name: z.string().min(2, "Store name is required"),
+    description: z.string().min(5, "Description is required"),
 
-  location: z.string().min(2, "Business location is required"),
+    location: z.string().min(2, "Business location is required"),
 
-  address: z.string().optional(),
+    address: z.string().optional(),
 
-  logo: z.string().optional(),
+    logo: z.string().optional(),
 
-  fulfillmentType: z.enum(["PHYSICAL", "DIGITAL", "HYBRID"]),
+    fulfillmentType: z.enum(["PHYSICAL", "DIGITAL", "HYBRID"]),
 
-  type: z.enum(["GENERAL", "FOOD"]),
-});
+    type: z.enum(["GENERAL", "FOOD"]),
+  })
+  .superRefine((data, ctx) => {
+    const requiresAddress =
+      data.fulfillmentType === "PHYSICAL" || data.fulfillmentType === "HYBRID";
+
+    if (requiresAddress) {
+      if (!data.address || data.address.trim().length < 5) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["address"],
+          message:
+            "A valid pickup / warehouse address is required for physical stores.",
+        });
+      }
+    }
+
+    if (data.fulfillmentType === "DIGITAL") {
+      if (data.address && data.address.trim().length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["address"],
+          message: "Digital stores must not have a physical address.",
+        });
+      }
+    }
+  });
 
 export type storeFormType = z.infer<typeof storeSchema>;
 
-//update store
-export const updateStoreSchema = storeSchema.extend({
-  id: z.string(),
+/**
+ * UPDATE STORE
+ */
+export const updateStoreSchema = storeSchema
+  .extend({
+    id: z.string(),
 
-  logoKey: z.string().nullable().optional(),
+    logoKey: z.string().nullable().optional(),
 
-  bannerImage: z.string().nullable().optional(),
-  bannerKey: z.string().nullable().optional(),
-  tagline: z.string().nullable().optional(),
+    bannerImage: z.string().nullable().optional(),
+    bannerKey: z.string().nullable().optional(),
+    tagline: z.string().nullable().optional(),
 
-  isActive: z.boolean(),
-  emailNotificationsEnabled: z.boolean(),
-});
+    isActive: z.boolean(),
+    emailNotificationsEnabled: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    const requiresAddress =
+      data.fulfillmentType === "PHYSICAL" || data.fulfillmentType === "HYBRID";
+
+    if (requiresAddress) {
+      if (!data.address || data.address.trim().length < 5) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["address"],
+          message:
+            "A valid pickup / warehouse address is required for physical stores.",
+        });
+      }
+    }
+
+    if (data.fulfillmentType === "DIGITAL") {
+      if (data.address && data.address.trim().length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["address"],
+          message: "Digital stores must not have a physical address.",
+        });
+      }
+    }
+  });
 
 export type updateStoreFormType = z.infer<typeof updateStoreSchema>;
 

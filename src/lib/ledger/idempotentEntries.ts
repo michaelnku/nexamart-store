@@ -1,4 +1,5 @@
 import { Prisma } from "@/generated/prisma";
+import { ServiceContext } from "@/lib/system/serviceContext";
 
 function isUniqueConstraintError(error: unknown): boolean {
   const knownError = error as Prisma.PrismaClientKnownRequestError;
@@ -69,17 +70,36 @@ export async function createEscrowEntryIdempotent(
     status: EscrowStatus;
     reference: string;
     metadata?: Prisma.InputJsonValue;
+    context?: ServiceContext;
   },
 ) {
+  const { context, ...escrowInput } = input;
+
   const existing = await tx.escrowLedger.findUnique({
-    where: { reference: input.reference },
+    where: { reference: escrowInput.reference },
     select: { id: true },
   });
   if (existing) return { created: false };
 
   try {
+    const metadataWithContext =
+      context
+        ? ({
+            ...(typeof escrowInput.metadata === "object" &&
+            escrowInput.metadata !== null
+              ? (escrowInput.metadata as Record<string, unknown>)
+              : {}),
+            executedBy: context.type,
+            service: context.service,
+            executedAt: context.executedAt.toISOString(),
+          } satisfies Record<string, unknown>)
+        : escrowInput.metadata;
+
     await tx.escrowLedger.create({
-      data: input,
+      data: {
+        ...escrowInput,
+        metadata: metadataWithContext,
+      },
     });
     return { created: true };
   } catch (error) {

@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  User,
   LogOut,
   Heart,
   Package,
@@ -27,7 +26,6 @@ import { DialogTitle } from "@radix-ui/react-dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { DialogHeader } from "../ui/dialog";
 import { useLogout } from "@/hooks/useLogout";
-import { Separator } from "../ui/separator";
 import { CartBadge } from "../marketplace/BadgeCounts";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import CurrencySelector from "../currency/CurrencySelector";
@@ -35,9 +33,9 @@ import { UserDTO } from "@/lib/types";
 import { ModeToggle } from "./ModeToggle";
 import { SiteSearch } from "../search/SiteSearch";
 import { MobileSearchSheet } from "../search/MobileSearchSheet";
-import { DashboardMenuItems } from "@/constants/dashboard-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getUserInitials } from "@/lib/user";
+import { CustomerSidebarContent } from "./CustomerSidebarContent";
 
 export default function SiteNavbar({
   initialUser,
@@ -54,8 +52,6 @@ export default function SiteNavbar({
 
   const logout = useLogout();
 
-  const role = user?.role as "USER";
-  const menuItems = DashboardMenuItems[role] || [];
   const initials = getUserInitials(user);
   const avatarUrl = user?.image || user?.profileAvatar?.url;
 
@@ -97,7 +93,7 @@ export default function SiteNavbar({
               onOpenChange={setAccountMenuOpen}
             >
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 text-left hover:text-[#3c9ee0]">
+                <button className="flex items-center gap-2 text-left hover:text-[#3c9ee0] transition-colors duration-200">
                   <Avatar size="sm">
                     {avatarUrl ? (
                       <AvatarImage src={avatarUrl} alt="Profile" />
@@ -105,27 +101,30 @@ export default function SiteNavbar({
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                   <span className="flex flex-col leading-tight">
-                    <span className="text-xs">
-                      Hello,{" "}
+                    <span className="text-xs text-gray-400">
                       {user
-                        ? user.name?.split(" ")[0] || user.username
-                        : "Sign in"}
+                        ? `Welcome back, ${user.name?.split(" ")[0] || user.username}`
+                        : "Welcome"}
                     </span>
+
                     <span className="font-semibold flex items-center gap-1">
-                      Account & More
-                      <ChevronDown className="w-4 h-4" />
+                      My Account
+                      <ChevronDown className="w-4 h-4 opacity-70" />
                     </span>
                   </span>
                 </button>
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent align="end" className="w-64 space-y-1">
+              <DropdownMenuContent
+                align="end"
+                className="w-72 p-2 bg-white dark:bg-neutral-900 border shadow-xl rounded-xl"
+              >
                 {!user && (
                   <>
                     <div className="p-3">
                       <Button
                         size="lg"
-                        className="w-full mb-4"
+                        className="w-full bg-[#3c9ee0] hover:bg-[#3187c9] text-white rounded-lg"
                         onClick={() => {
                           router.push("/auth/login");
                           setAccountMenuOpen(false);
@@ -142,14 +141,14 @@ export default function SiteNavbar({
                   <DropdownMenuItem asChild>
                     <Link
                       href="/profile"
-                      className={`border-b flex gap-2 w-full px-2 py-1.5 rounded-md transition
+                      className={` flex gap-2 w-full px-2 py-1.5 rounded-md transition
         ${
           pathname === "/customer/account"
-            ? "bg-[#3c9ee0]/15 text-[#3c9ee0] font-semibold"
+            ? "bg-[#3c9ee0]/15 text-[#3c9ee0] font-medium"
             : "hover:bg-muted hover:text-foreground"
         }
       `}
-                    onClick={() => {
+                      onClick={() => {
                         setAccountMenuOpen(false);
                       }}
                     >
@@ -159,7 +158,7 @@ export default function SiteNavbar({
                         ) : null}
                         <AvatarFallback>{initials}</AvatarFallback>
                       </Avatar>
-                      My Account
+                      Account Overview
                     </Link>
                   </DropdownMenuItem>
                 )}
@@ -178,7 +177,7 @@ export default function SiteNavbar({
                       setAccountMenuOpen(false);
                     }}
                   >
-                    <Package className="w-4 h-4" /> Track Orders
+                    <Package className="w-4 h-4" /> Track a Package
                   </Link>
                 </DropdownMenuItem>
 
@@ -196,7 +195,7 @@ export default function SiteNavbar({
                       setAccountMenuOpen(false);
                     }}
                   >
-                    <Mail className="w-4 h-4" /> Inbox
+                    <Mail className="w-4 h-4" /> Messages
                   </Link>
                 </DropdownMenuItem>
 
@@ -214,7 +213,7 @@ export default function SiteNavbar({
                       setAccountMenuOpen(false);
                     }}
                   >
-                    <Heart className="w-4 h-4" /> Wishlist
+                    <Heart className="w-4 h-4" /> Saved Items
                   </Link>
                 </DropdownMenuItem>
 
@@ -232,7 +231,8 @@ export default function SiteNavbar({
                       setAccountMenuOpen(false);
                     }}
                   >
-                    <Tag className="w-4 h-4" /> Coupons
+                    <Tag className="w-4 h-4" />
+                    Promotions & Coupons
                   </Link>
                 </DropdownMenuItem>
 
@@ -242,7 +242,7 @@ export default function SiteNavbar({
                     <DropdownMenuItem>
                       <Button
                         variant="ghost"
-                        className="flex gap-2 bg-red-50/50 w-full"
+                        className="flex gap-2 w-full text-red-600 hover:bg-red-50 dark:hover:bg-red-950 rounded-md"
                         onClick={() => {
                           logout();
                           setAccountMenuOpen(false);
@@ -258,10 +258,10 @@ export default function SiteNavbar({
 
             <Link
               href="/customer/order/history"
-              className="flex flex-col leading-none hover:text-[#3c9ee0]"
+              className="flex flex-col leading-tight hover:text-[#3c9ee0] transition"
             >
-              <span className="text-xs">Returns</span>
-              <span className="font-semibold">& Orders</span>
+              <span className="text-xs text-gray-400">Orders</span>
+              <span className="font-semibold">Returns & History</span>
             </Link>
 
             <CurrencySelector />
@@ -326,84 +326,20 @@ export default function SiteNavbar({
                   <span>
                     <div className="font-medium text-base">
                       {user
-                        ? `Hi, ${user.name?.split(" ")[0] || user.username}`
+                        ? `Welcome back, ${user.name?.split(" ")[0] || user.username}`
                         : "Welcome to NexaMart"}
                     </div>
                     <p className="text-sm text-gray-500">{user?.email}</p>
                   </span>
                 </div>
 
-                <div className="flex flex-col px-1 space-y-1">
-                  <p className="font-semibold text-gray-800 uppercase text-[13px] tracking-wide px-4 pb-2">
-                    My NexaMart Account
-                  </p>
-
-                  {user && (
-                    <Link
-                      href="/profile"
-                      className={`
-                flex items-center gap-3 py-3 px-4 rounded-md text-sm font-medium transition
-                ${
-                  pathname === "/profile"
-                    ? "bg-[#3c9ee0]/15 text-[#3c9ee0] border-l-4 border-[#3c9ee0] font-semibold"
-                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                }
-              `}
-                      onClick={() => setSheetOpen(false)}
-                    >
-                      <User className="w-4 h-4" /> My Account
-                    </Link>
-                  )}
-
-                  {menuItems.map(({ href, icon: Icon, label }) => {
-                    const active = pathname === href;
-                    return (
-                      <Link
-                        key={href}
-                        href={href}
-                        className={`
-                flex items-center gap-3 py-3 px-4 rounded-md text-sm font-medium transition
-                ${
-                  active
-                    ? "bg-[#3c9ee0]/15 text-[#3c9ee0] border-l-4 border-[#3c9ee0] font-semibold"
-                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                }
-              `}
-                        onClick={() => setSheetOpen(false)}
-                      >
-                        <Icon className="w-5 h-5" />
-                        {label}
-                      </Link>
-                    );
-                  })}
-                </div>
-
-                <Separator />
-
-                <div className="px-4 mt-2 pb-6">
-                  {user ? (
-                    <Button
-                      variant={"secondary"}
-                      className="w-full flex gap-2 text-red-500 "
-                        onClick={() => {
-                          logout();
-                          setSheetOpen(false);
-                        }}
-                    >
-                      <LogOut className="w-4 h-4" /> Logout
-                    </Button>
-                  ) : (
-                    <Button
-                      asChild
-                      className="w-full"
-                      onClick={() => {
-                        setSheetOpen(false);
-                      }}
-                    >
-                      <Link href="/auth/login">Sign In / Create Account</Link>
-                    </Button>
-                  )}
-                </div>
+                <CustomerSidebarContent
+                  user={user}
+                  pathname={pathname}
+                  isMobile
+                  onNavigate={() => setSheetOpen(false)}
+                  onLogout={logout}
+                />
               </SheetContent>
             </Sheet>
           </div>
