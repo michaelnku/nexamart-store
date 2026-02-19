@@ -163,6 +163,8 @@ export default function SiteNavbar({
                   </DropdownMenuItem>
                 )}
 
+                <DropdownMenuSeparator />
+
                 <DropdownMenuItem asChild>
                   <Link
                     href="/customer/order/track"

@@ -773,6 +773,8 @@ enum LedgerEntryType {
   RIDER_PAYOUT
   REFUND
   PLATFORM_FEE
+  WALLET_TOPUP
+  WALLET_WITHDRAWAL
 }
 
 enum LedgerDirection {

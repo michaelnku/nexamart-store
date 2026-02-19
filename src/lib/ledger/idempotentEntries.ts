@@ -1,5 +1,12 @@
 import { Prisma } from "@/generated/prisma";
 import { ServiceContext } from "@/lib/system/serviceContext";
+import {
+  EscrowEntryTypeValue,
+  EscrowRoleValue,
+  EscrowStatusValue,
+  LedgerDirectionValue,
+  LedgerEntryTypeValue,
+} from "@/lib/ledger/types";
 
 function isUniqueConstraintError(error: unknown): boolean {
   const knownError = error as Prisma.PrismaClientKnownRequestError;
@@ -11,33 +18,14 @@ function isUniqueConstraintError(error: unknown): boolean {
 
 type TxLike = Prisma.TransactionClient;
 
-type LedgerDirection = "CREDIT" | "DEBIT";
-type LedgerEntryType =
-  | "ESCROW_DEPOSIT"
-  | "ESCROW_RELEASE"
-  | "SELLER_PAYOUT"
-  | "RIDER_PAYOUT"
-  | "REFUND"
-  | "PLATFORM_FEE";
-
-type EscrowRole = "BUYER" | "SELLER" | "RIDER" | "PLATFORM";
-type EscrowEntryType =
-  | "FUND"
-  | "SELLER_EARNING"
-  | "RIDER_EARNING"
-  | "PLATFORM_COMMISSION"
-  | "RELEASE"
-  | "REFUND";
-type EscrowStatus = "PENDING" | "HELD" | "RELEASED" | "CANCELLED";
-
 export async function createLedgerEntryIdempotent(
   tx: TxLike,
   input: {
     orderId?: string;
     userId?: string;
     walletId?: string;
-    entryType: LedgerEntryType;
-    direction: LedgerDirection;
+    entryType: LedgerEntryTypeValue;
+    direction: LedgerDirectionValue;
     amount: number;
     reference: string;
   },
@@ -64,10 +52,10 @@ export async function createEscrowEntryIdempotent(
   input: {
     orderId: string;
     userId?: string;
-    role: EscrowRole;
-    entryType: EscrowEntryType;
+    role: EscrowRoleValue;
+    entryType: EscrowEntryTypeValue;
     amount: number;
-    status: EscrowStatus;
+    status: EscrowStatusValue;
     reference: string;
     metadata?: Prisma.InputJsonValue;
     context?: ServiceContext;

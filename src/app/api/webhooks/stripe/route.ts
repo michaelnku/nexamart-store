@@ -8,6 +8,7 @@ import { stripe } from "@/lib/stripe";
 import { completeOrderPayment } from "@/lib/payments/completeOrderPayment";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { createServiceContext } from "@/lib/system/serviceContext";
+import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 
 async function handleWalletTopUp(session: Stripe.Checkout.Session) {
   const context = createServiceContext("WALLET_TOPUP_WEBHOOK");
@@ -52,6 +53,8 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
         select: { id: true },
       });
 
+      const platformClearingAccount = await getOrCreateSystemEscrowAccount();
+
       await tx.transaction.create({
         data: {
           walletId: wallet.id,
@@ -60,18 +63,20 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
           status: "SUCCESS",
           amount,
           reference: topupReference,
-          description: `Executed by ${context.service}`,
+          description: "Wallet top-up",
         },
       });
 
       await createDoubleEntryLedger(tx, {
-        toUserId: userId,
+        fromUserId: platformClearingAccount.userId,
+        fromWalletId: platformClearingAccount.walletId,
         toWalletId: wallet.id,
-        entryType: "ESCROW_DEPOSIT",
+        toUserId: userId,
+        entryType: "WALLET_TOPUP",
         amount,
         reference: topupReference,
-        resolveFromWallet: false,
         resolveToWallet: false,
+        allowNegativeFromWallet: true,
         context,
       });
     });

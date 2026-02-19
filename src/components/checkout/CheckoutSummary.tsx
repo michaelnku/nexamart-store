@@ -545,7 +545,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
             </div>
 
             <p className="text-[11px] text-gray-500 text-center">
-              By placing your order, you agree to NexaMartâ€™s Terms of Use and
+              By placing your order, you agree to NexaMart's Terms of Use and
               Privacy Notice.
             </p>
           </div>

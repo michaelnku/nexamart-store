@@ -1,16 +1,9 @@
 import { Prisma } from "@/generated/prisma";
 import { createLedgerEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { ServiceContext } from "@/lib/system/serviceContext";
+import { LedgerEntryTypeValue } from "@/lib/ledger/types";
 
 type Tx = Prisma.TransactionClient;
-
-type LedgerEntryType =
-  | "ESCROW_DEPOSIT"
-  | "ESCROW_RELEASE"
-  | "SELLER_PAYOUT"
-  | "RIDER_PAYOUT"
-  | "REFUND"
-  | "PLATFORM_FEE";
 
 type CreateDoubleEntryLedgerInput = {
   orderId?: string;
@@ -19,10 +12,11 @@ type CreateDoubleEntryLedgerInput = {
   fromWalletId?: string;
   toWalletId?: string;
   amount: number;
-  entryType: LedgerEntryType;
+  entryType: LedgerEntryTypeValue;
   reference: string;
   resolveFromWallet?: boolean;
   resolveToWallet?: boolean;
+  allowNegativeFromWallet?: boolean;
   context?: ServiceContext;
 };
 
@@ -80,7 +74,7 @@ export async function createDoubleEntryLedger(
     }),
   ]);
 
-  if (!existingDebit && fromWalletId) {
+  if (!existingDebit && fromWalletId && !input.allowNegativeFromWallet) {
     const sourceWallet = await tx.wallet.findUnique({
       where: { id: fromWalletId },
       select: { id: true, balance: true },
