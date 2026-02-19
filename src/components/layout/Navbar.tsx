@@ -138,32 +138,33 @@ export default function SiteNavbar({
                 )}
 
                 {user && (
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/profile"
-                      className={` flex gap-2 w-full px-2 py-1.5 rounded-md transition
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/profile"
+                        className={` flex gap-2 w-full px-2 py-1.5 rounded-md transition
         ${
           pathname === "/customer/account"
             ? "bg-[#3c9ee0]/15 text-[#3c9ee0] font-medium"
             : "hover:bg-muted hover:text-foreground"
         }
       `}
-                      onClick={() => {
-                        setAccountMenuOpen(false);
-                      }}
-                    >
-                      <Avatar size="sm">
-                        {avatarUrl ? (
-                          <AvatarImage src={avatarUrl} alt="Profile" />
-                        ) : null}
-                        <AvatarFallback>{initials}</AvatarFallback>
-                      </Avatar>
-                      Account Overview
-                    </Link>
-                  </DropdownMenuItem>
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                        }}
+                      >
+                        <Avatar size="sm">
+                          {avatarUrl ? (
+                            <AvatarImage src={avatarUrl} alt="Profile" />
+                          ) : null}
+                          <AvatarFallback>{initials}</AvatarFallback>
+                        </Avatar>
+                        Account Overview
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
                 )}
-
-                <DropdownMenuSeparator />
 
                 <DropdownMenuItem asChild>
                   <Link
