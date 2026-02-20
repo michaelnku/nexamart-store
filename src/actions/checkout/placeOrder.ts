@@ -235,10 +235,20 @@ export async function placeOrderAction({
           select: { id: true },
         });
 
+        // const availableWalletBalance = await calculateWalletBalance(
+        //   wallet.id,
+        //   tx,
+        // );
+
+        console.log("Wallet ID:", wallet.id);
+
         const availableWalletBalance = await calculateWalletBalance(
           wallet.id,
           tx,
         );
+
+        console.log("Available wallet balance:", availableWalletBalance);
+        console.log("Order total:", totalAmount);
 
         if (availableWalletBalance < totalAmount) {
           throw new PlaceOrderError(
