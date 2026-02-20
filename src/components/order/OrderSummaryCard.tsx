@@ -127,7 +127,7 @@ const OrderSummaryCard = ({ order }: Props) => {
                 )}
 
                 <p className="font-semibold mt-1 text-lg text-[#3c9ee0]">
-                  {formatBaseUSD(item.price)}
+                  {formatBaseUSD(item.price)} {""}
                   <span className="text-gray-600 font-normal">
                     x {item.quantity}
                   </span>
@@ -142,7 +142,10 @@ const OrderSummaryCard = ({ order }: Props) => {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
-          <Link href={`/customer/order/track/tn/${trackingNumber}`} className="w-full">
+          <Link
+            href={`/customer/order/track/tn/${trackingNumber}`}
+            className="w-full"
+          >
             <Button
               size="lg"
               className="w-full bg-[#3c9ee0] hover:bg-[#318bc4] text-white font-semibold rounded-lg shadow"

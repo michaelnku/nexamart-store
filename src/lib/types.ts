@@ -90,6 +90,7 @@ export type OrderTrackDTO = {
   id: string;
   trackingNumber: string | null;
   status: OrderStatus;
+  isFoodOrder?: boolean;
   deliveryType: DeliveryType;
   deliveryAddress?: string | null;
   paymentMethod?: PaymentMethod | null;

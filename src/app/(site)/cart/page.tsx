@@ -40,12 +40,8 @@ export default async function page() {
     },
   });
 
-  if (!cart || cart.items.length === 0) {
-    return (
-      <div className="p-6 max-w-7xl mx-auto min-h-full py-16 text-center">
-        <p>Your cart is empty</p>
-      </div>
-    );
+  if (!cart) {
+    return null;
   }
 
   const hasFood = cart.items.some((i) => i.product.store?.type === "FOOD");
@@ -54,4 +50,3 @@ export default async function page() {
 
   return <CartPage cart={cart} mixedCart={mixedCart} />;
 }
-

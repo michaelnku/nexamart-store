@@ -7,6 +7,7 @@ import { completeDeliveryAndPayRider } from "@/lib/rider/completeDeliveryPayout"
 import { DeliveryStatus } from "@/generated/prisma/client";
 import { hashOtp } from "@/lib/otp";
 import { moveOrderEarningsToPending } from "@/lib/payout/moveToPendingOnDelivery";
+import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 
 export async function autoAssignRiderForPaidOrderAction(orderId: string) {
   const userId = await CurrentUserId();
@@ -62,25 +63,24 @@ export async function riderAcceptDeliveryAction(deliveryId: string) {
     }),
     prisma.order.update({
       where: { id: delivery.orderId },
-      data: { status: "SHIPPED" },
-    }),
-    prisma.orderTimeline.create({
-      data: {
-        orderId: delivery.orderId,
-        status: "SHIPPED",
-        message: "Rider accepted the delivery",
-      },
+      data: { status: "OUT_FOR_DELIVERY" },
     }),
   ]);
+
+  await createOrderTimelineIfMissing({
+    orderId: delivery.orderId,
+    status: "OUT_FOR_DELIVERY",
+    message: "Rider is currently delivering your order.",
+  });
 
   return { success: true };
 }
 
-export async function riderVerifyDeliveryOtpAction(
+export async function verifyDeliveryOTPAction(
   deliveryId: string,
   otp: string,
 ) {
-  const MAX_OTP_ATTEMPTS = 3;
+  const MAX_OTP_ATTEMPTS = 5;
   const ESCROW_DELAY_MS = 24 * 60 * 60 * 1000;
 
   const userId = await CurrentUserId();
@@ -118,7 +118,7 @@ export async function riderVerifyDeliveryOtpAction(
   if (!otpMatches) {
     const nextAttempts = (delivery.otpAttempts ?? 0) + 1;
 
-    if (nextAttempts >= MAX_OTP_ATTEMPTS) {
+    if (nextAttempts > MAX_OTP_ATTEMPTS) {
       await prisma.delivery.update({
         where: { id: deliveryId },
         data: {
@@ -134,7 +134,7 @@ export async function riderVerifyDeliveryOtpAction(
       };
     }
 
-    const attemptsLeft = MAX_OTP_ATTEMPTS - nextAttempts;
+    const attemptsLeft = Math.max(0, MAX_OTP_ATTEMPTS - nextAttempts + 1);
 
     await prisma.delivery.update({
       where: { id: deliveryId },
@@ -151,8 +151,8 @@ export async function riderVerifyDeliveryOtpAction(
   const confirmedAt = new Date();
   const payoutEligibleAt = new Date(confirmedAt.getTime() + ESCROW_DELAY_MS);
 
-  await prisma.$transaction([
-    prisma.delivery.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.delivery.update({
       where: { id: deliveryId },
       data: {
         status: "DELIVERED",
@@ -163,26 +163,36 @@ export async function riderVerifyDeliveryOtpAction(
         isLocked: false,
         lockedAt: null,
       },
-    }),
-    prisma.order.update({
+    });
+
+    await tx.order.update({
       where: { id: delivery.orderId },
       data: {
         status: "DELIVERED",
         customerConfirmedAt: confirmedAt,
       },
-    }),
-    prisma.orderTimeline.create({
-      data: {
+    });
+
+    await createOrderTimelineIfMissing(
+      {
         orderId: delivery.orderId,
         status: "DELIVERED",
-        message: "Delivery confirmed via OTP",
+        message: "Order delivered successfully.",
       },
-    }),
-  ]);
+      tx,
+    );
+  });
 
   await moveOrderEarningsToPending(delivery.orderId);
 
   return { success: true };
+}
+
+export async function riderVerifyDeliveryOtpAction(
+  deliveryId: string,
+  otp: string,
+) {
+  return verifyDeliveryOTPAction(deliveryId, otp);
 }
 
 export async function completeDeliveryAndPayRiderAction(orderId: string) {
@@ -252,7 +262,7 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
           delivery: null,
           sellerGroups: {
             some: {},
-            every: { status: "ARRIVED_AT_HUB" },
+            every: { OR: [{ status: "ARRIVED_AT_HUB" }, { status: "CANCELLED" }] },
           },
         },
       }),
@@ -333,7 +343,9 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
             delivery: null,
             sellerGroups: {
               some: {},
-              every: { status: "ARRIVED_AT_HUB" },
+              every: {
+                OR: [{ status: "ARRIVED_AT_HUB" }, { status: "CANCELLED" }],
+              },
             },
           },
           orderBy: { createdAt: "desc" },

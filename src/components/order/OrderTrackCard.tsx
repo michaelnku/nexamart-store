@@ -4,15 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  Truck,
-  MapPin,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Package,
-  Copy,
-} from "lucide-react";
+import { Truck, MapPin, Copy } from "lucide-react";
 import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
 import { OrderTrackDTO } from "@/lib/types";
 import OrderTimeline from "./OrderTimeline";
@@ -30,6 +22,7 @@ export default function OrderTrackCard({ order }: Props) {
     PENDING: "bg-yellow-500",
     ACCEPTED: "bg-blue-500",
     SHIPPED: "bg-purple-500",
+    OUT_FOR_DELIVERY: "bg-indigo-500",
     DELIVERED: "bg-green-600",
     COMPLETED: "bg-green-700",
     CANCELLED: "bg-red-600",
@@ -53,7 +46,7 @@ export default function OrderTrackCard({ order }: Props) {
   };
 
   return (
-    <main className="max-w-5xl mx-auto px-4 py-6 space-y-10">
+    <main className="max-w-4xl mx-auto px-4 py-10 space-y-10">
       <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">

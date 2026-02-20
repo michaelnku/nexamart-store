@@ -387,8 +387,12 @@ model Order {
   couponId        String?
   discountAmount  Float?
 
-  isPaid         Boolean @default(false)
-  payoutReleased Boolean @default(false)
+  isPaid               Boolean @default(false)
+  payoutReleased       Boolean @default(false)
+  postPaymentFinalized Boolean @default(false)
+
+  arrivedAtHubConfirmedBy String?
+  arrivedAtHubConfirmedAt DateTime?
 
   disputeRaised   Boolean   @default(false)
   disputeReason   String?
@@ -445,6 +449,9 @@ model OrderSellerGroup {
   storeId  String
   sellerId String
 
+  hubInboundCode         String @unique
+  internalTrackingNumber String @unique
+
   subtotal    Float
   shippingFee Float
 
@@ -495,6 +502,7 @@ enum OrderStatus {
 
 enum SellerGroupStatus {
   PENDING_PICKUP
+  ACCEPTED
   IN_TRANSIT_TO_HUB
   ARRIVED_AT_HUB
   VERIFIED
@@ -806,7 +814,7 @@ model Store {
 
   logoKey String?
 
-  shippingRatePerMile Float  @default(500)
+  shippingRatePerMile Float  @default(1.5)
   latitude            Float?
   longitude           Float?
 
@@ -1205,8 +1213,8 @@ model SiteConfiguration {
   sitePhone String?
   siteLogo  String?
 
-  baseDeliveryRate  Float @default(500)
-  ratePerMile       Float @default(200)
+  baseDeliveryRate  Float @default(2)
+  ratePerMile       Float @default(1)
   expressMultiplier Float @default(1.5)
   pickupFee         Float @default(0)
 

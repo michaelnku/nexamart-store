@@ -5,6 +5,7 @@ import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
 import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { ServiceContext } from "@/lib/system/serviceContext";
+import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 
 const PLATFORM_COMMISSION_PERCENT = 12;
 const PAYOUT_HOLD_MS = 24 * 60 * 60 * 1000;
@@ -34,139 +35,46 @@ type CompleteOrderPaymentResult = {
   };
 };
 
-export async function completeOrderPayment({
-  orderId,
-  paymentReference,
-  method,
-  context,
-}: CompleteOrderPaymentParams): Promise<CompleteOrderPaymentResult> {
-  if (!orderId || !paymentReference) {
-    throw new Error("orderId and paymentReference are required");
+async function finalizePostPayment(
+  order: CompleteOrderPaymentResult["order"],
+  context?: ServiceContext,
+): Promise<void> {
+  const releaseAt = new Date(Date.now() + PAYOUT_HOLD_MS);
+
+  const freshOrder = await prisma.order.findUnique({
+    where: { id: order.id },
+    select: {
+      id: true,
+      paymentMethod: true,
+      isFoodOrder: true,
+      postPaymentFinalized: true,
+      sellerGroups: {
+        select: {
+          id: true,
+          sellerId: true,
+          subtotal: true,
+        },
+      },
+      delivery: {
+        select: {
+          riderId: true,
+          fee: true,
+        },
+      },
+    },
+  });
+
+  if (!freshOrder || freshOrder.postPaymentFinalized) {
+    return;
   }
 
-  const releaseAt = new Date(Date.now() + PAYOUT_HOLD_MS);
-  const systemEscrowWalletId = await getOrCreateSystemEscrowWallet();
-
-  const result = await prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({
-      where: { id: orderId },
-      select: {
-        id: true,
-        userId: true,
-        isPaid: true,
-        totalAmount: true,
-        sellerGroups: {
-          select: {
-            id: true,
-            sellerId: true,
-            storeId: true,
-            subtotal: true,
-            shippingFee: true,
-          },
-        },
-        delivery: {
-          select: {
-            id: true,
-            riderId: true,
-            fee: true,
-          },
-        },
-      },
-    });
-
-    if (!order) {
-      throw new Error("Order not found");
-    }
-
-    const existingByReference = await tx.transaction.findUnique({
-      where: { reference: paymentReference },
-      select: { id: true },
-    });
-    if (existingByReference || order.isPaid) {
-      return { justPaid: false, order };
-    }
-
-    if (order.sellerGroups.length === 0) {
-      throw new Error("Order not properly initialized via placeOrderAction");
-    }
-
-    const buyerWallet =
-      method === "WALLET"
-        ? await tx.wallet.upsert({
-            where: { userId: order.userId },
-            update: {},
-            create: { userId: order.userId, currency: "USD" },
-            select: { id: true },
-          })
-        : null;
-
-    if (method === "WALLET" && buyerWallet) {
-      const buyerWalletSnapshot = await tx.wallet.findUnique({
-        where: { id: buyerWallet.id },
-        select: { balance: true },
-      });
-      if ((buyerWalletSnapshot?.balance ?? 0) < order.totalAmount) {
-        throw new Error("Insufficient wallet balance");
-      }
-    }
-
-    await tx.transaction.create({
-      data: {
-        orderId: order.id,
-        userId: order.userId,
-        walletId: buyerWallet?.id,
-        type: "ORDER_PAYMENT",
-        amount: order.totalAmount,
-        status: "SUCCESS",
-        reference: paymentReference,
-        description:
-          context
-            ? `Executed by ${context.service}`
-            : method === "CARD"
-              ? "Stripe order payment"
-              : "Wallet order payment",
-      },
-    });
-
-    await tx.order.update({
-      where: { id: order.id },
-      data: {
-        isPaid: true,
-        status: "ACCEPTED",
-        paymentMethod: method as PaymentMethod,
-      },
-    });
-
-    await createEscrowEntryIdempotent(tx, {
-      orderId: order.id,
-      userId: order.userId,
-      role: "BUYER",
-      entryType: "FUND",
-      amount: order.totalAmount,
-      status: "HELD",
-      reference: `escrow-fund-${order.id}`,
-      context,
-    });
-
-    await createDoubleEntryLedger(tx, {
-      orderId: order.id,
-      fromUserId: order.userId,
-      fromWalletId: buyerWallet?.id,
-      toWalletId: systemEscrowWalletId,
-      entryType: "ESCROW_DEPOSIT",
-      amount: order.totalAmount,
-      reference: `escrow-fund-${order.id}`,
-      resolveFromWallet: method === "WALLET",
-      resolveToWallet: false,
-      context,
-    });
-
-    for (const group of order.sellerGroups) {
+  await prisma.$transaction(async (tx) => {
+    for (const group of freshOrder.sellerGroups) {
       const platformCommission =
         (group.subtotal * PLATFORM_COMMISSION_PERCENT) / 100;
 
       await createEscrowEntryIdempotent(tx, {
-        orderId: order.id,
+        orderId: freshOrder.id,
         userId: group.sellerId,
         role: "SELLER",
         entryType: "SELLER_EARNING",
@@ -178,7 +86,7 @@ export async function completeOrderPayment({
       });
 
       await createEscrowEntryIdempotent(tx, {
-        orderId: order.id,
+        orderId: freshOrder.id,
         role: "PLATFORM",
         entryType: "PLATFORM_COMMISSION",
         amount: platformCommission,
@@ -192,21 +100,21 @@ export async function completeOrderPayment({
       });
     }
 
-    if (order.delivery) {
+    if (freshOrder.delivery) {
       await createEscrowEntryIdempotent(tx, {
-        orderId: order.id,
-        userId: order.delivery.riderId ?? undefined,
+        orderId: freshOrder.id,
+        userId: freshOrder.delivery.riderId ?? undefined,
         role: "RIDER",
         entryType: "RIDER_EARNING",
-        amount: order.delivery.fee,
+        amount: freshOrder.delivery.fee,
         status: "HELD",
-        reference: `rider-held-${order.id}`,
+        reference: `rider-held-${freshOrder.id}`,
         context,
       });
     }
 
     await tx.orderSellerGroup.updateMany({
-      where: { orderId: order.id, payoutEligibleAt: null },
+      where: { orderId: freshOrder.id, payoutEligibleAt: null },
       data: {
         payoutEligibleAt: releaseAt,
         payoutLocked: false,
@@ -214,26 +122,164 @@ export async function completeOrderPayment({
     });
 
     await tx.delivery.updateMany({
-      where: { orderId: order.id, payoutEligibleAt: null },
+      where: { orderId: freshOrder.id, payoutEligibleAt: null },
       data: {
         payoutEligibleAt: releaseAt,
         payoutLocked: false,
       },
     });
 
-    await tx.orderTimeline.create({
-      data: {
-        orderId: order.id,
+    await createOrderTimelineIfMissing(
+      {
+        orderId: freshOrder.id,
         status: "ACCEPTED",
-        message: `Payment confirmed via ${method}`,
+        message: freshOrder.isFoodOrder
+          ? "Payment confirmed. Restaurant is preparing your order."
+          : "Payment confirmed. Waiting for sellers to dispatch items to the hub.",
       },
-    });
+      tx,
+    );
 
-    return { justPaid: true, order };
+    await tx.order.update({
+      where: { id: freshOrder.id },
+      data: { postPaymentFinalized: true },
+    });
   });
 
+  if (freshOrder.isFoodOrder) {
+    await autoAssignRider(order.id);
+  }
+}
+
+export async function completeOrderPayment({
+  orderId,
+  paymentReference,
+  method,
+  context,
+}: CompleteOrderPaymentParams): Promise<CompleteOrderPaymentResult> {
+  if (!orderId || !paymentReference) {
+    throw new Error("orderId and paymentReference are required");
+  }
+
+  const systemEscrowWalletId = await getOrCreateSystemEscrowWallet();
+
+  const result = await prisma.$transaction(
+    async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          userId: true,
+          isPaid: true,
+          totalAmount: true,
+          sellerGroups: {
+            select: {
+              id: true,
+              sellerId: true,
+              storeId: true,
+              subtotal: true,
+              shippingFee: true,
+            },
+          },
+        },
+      });
+
+      if (!order) {
+        throw new Error("Order not found");
+      }
+
+      if (order.isPaid) {
+        return { justPaid: false, order };
+      }
+
+      if (order.sellerGroups.length === 0) {
+        throw new Error("Order not properly initialized via placeOrderAction");
+      }
+
+      const existingByReference = await tx.transaction.findUnique({
+        where: { reference: paymentReference },
+        select: { id: true },
+      });
+
+      const buyerWallet =
+        method === "WALLET"
+          ? await tx.wallet.upsert({
+              where: { userId: order.userId },
+              update: {},
+              create: { userId: order.userId, currency: "USD" },
+              select: { id: true },
+            })
+          : null;
+
+      if (method === "WALLET" && buyerWallet) {
+        const buyerWalletSnapshot = await tx.wallet.findUnique({
+          where: { id: buyerWallet.id },
+          select: { balance: true },
+        });
+        if ((buyerWalletSnapshot?.balance ?? 0) < order.totalAmount) {
+          throw new Error("Insufficient wallet balance");
+        }
+      }
+
+      if (!existingByReference) {
+        await tx.transaction.create({
+          data: {
+            orderId: order.id,
+            userId: order.userId,
+            walletId: buyerWallet?.id,
+            type: "ORDER_PAYMENT",
+            amount: order.totalAmount,
+            status: "SUCCESS",
+            reference: paymentReference,
+            description: context
+              ? `Executed by ${context.service}`
+              : method === "CARD"
+                ? "Stripe order payment"
+                : "Wallet order payment",
+          },
+        });
+      }
+
+      await tx.order.update({
+        where: { id: order.id },
+        data: {
+          isPaid: true,
+          status: "ACCEPTED",
+          paymentMethod: method as PaymentMethod,
+        },
+      });
+
+      await createEscrowEntryIdempotent(tx, {
+        orderId: order.id,
+        userId: order.userId,
+        role: "BUYER",
+        entryType: "FUND",
+        amount: order.totalAmount,
+        status: "HELD",
+        reference: `escrow-fund-${order.id}`,
+        context,
+      });
+
+      await createDoubleEntryLedger(tx, {
+        orderId: order.id,
+        fromUserId: order.userId,
+        fromWalletId: buyerWallet?.id,
+        toWalletId: systemEscrowWalletId,
+        entryType: "ESCROW_DEPOSIT",
+        amount: order.totalAmount,
+        reference: `escrow-fund-${order.id}`,
+        resolveFromWallet: method === "WALLET",
+        resolveToWallet: false,
+        context,
+      });
+
+      return { justPaid: true, order };
+    },
+    { timeout: 15000 },
+  );
+
   if (result.justPaid) {
-    await autoAssignRider(orderId);
+    await finalizePostPayment(result.order, context);
   }
 
   return result;

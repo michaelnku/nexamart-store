@@ -336,13 +336,17 @@ export default function SiteNavbar({
                   </span>
                 </div>
 
-                <CustomerSidebarContent
-                  user={user}
-                  pathname={pathname}
-                  isMobile
-                  onNavigate={() => setSheetOpen(false)}
-                  onLogout={logout}
-                />
+                {user && (
+                  <>
+                    <CustomerSidebarContent
+                      user={user}
+                      pathname={pathname}
+                      isMobile
+                      onNavigate={() => setSheetOpen(false)}
+                      onLogout={logout}
+                    />
+                  </>
+                )}
               </SheetContent>
             </Sheet>
           </div>

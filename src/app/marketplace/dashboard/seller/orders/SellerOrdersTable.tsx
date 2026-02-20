@@ -26,6 +26,7 @@ import {
 import Link from "next/link";
 import { OrderStatus, SellerOrder } from "@/lib/types";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
+import { useRouter } from "next/navigation";
 
 type SellerOrderAction = (
   sellerGroupId: string,
@@ -41,7 +42,7 @@ export default function SellerOrdersTable({
   const [optimisticShipped, setOptimisticShipped] = useState<Set<string>>(
     () => new Set(),
   );
-
+  const router = useRouter();
   const handleAction = (
     actionFn: SellerOrderAction,
     sellerGroupId?: string,
@@ -61,6 +62,7 @@ export default function SellerOrdersTable({
       }
 
       toast.success(res.success);
+      router.refresh();
       onSuccess?.();
     });
   };
@@ -113,12 +115,12 @@ export default function SellerOrdersTable({
                 {(() => {
                   const sellerGroupId = o.sellerGroups?.[0]?.id;
                   const sellerGroupStatus = o.sellerGroups?.[0]?.status;
-                  const isPendingPickup = sellerGroupStatus === "PENDING_PICKUP";
-                  const canMarkAsShipped =
-                    sellerGroupStatus === "IN_TRANSIT_TO_HUB";
+                  const isPendingPickup =
+                    sellerGroupStatus === "PENDING_PICKUP";
+                  const canMarkAsShipped = sellerGroupStatus === "ACCEPTED";
                   const isShipped =
+                    sellerGroupStatus === "IN_TRANSIT_TO_HUB" ||
                     sellerGroupStatus === "ARRIVED_AT_HUB" ||
-                    o.status === "SHIPPED" ||
                     (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
 
                   return (
@@ -132,7 +134,9 @@ export default function SellerOrdersTable({
                         </Link>
                       </td>
 
-                      <td className="p-4 font-medium">{o.customer?.name ?? "-"}</td>
+                      <td className="p-4 font-medium">
+                        {o.customer?.name ?? "-"}
+                      </td>
 
                       <td className="p-4 font-semibold text-gray-900">
                         {formatMoneyFromUSD(o.totalAmount)}
@@ -156,7 +160,9 @@ export default function SellerOrdersTable({
 
                       <td className="p-4">
                         <div className="flex flex-wrap justify-end gap-2">
-                          <Link href={`/marketplace/dashboard/seller/orders/${o.id}`}>
+                          <Link
+                            href={`/marketplace/dashboard/seller/orders/${o.id}`}
+                          >
                             <Button size="sm" variant="outline">
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -203,12 +209,16 @@ export default function SellerOrdersTable({
                               }
                               onClick={() => {
                                 if (!canMarkAsShipped) return;
-                                handleAction(shipOrderAction, sellerGroupId, () => {
-                                  if (!sellerGroupId) return;
-                                  setOptimisticShipped((prev) =>
-                                    new Set(prev).add(sellerGroupId),
-                                  );
-                                });
+                                handleAction(
+                                  shipOrderAction,
+                                  sellerGroupId,
+                                  () => {
+                                    if (!sellerGroupId) return;
+                                    setOptimisticShipped((prev) =>
+                                      new Set(prev).add(sellerGroupId),
+                                    );
+                                  },
+                                );
                               }}
                               className="flex gap-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
                             >
@@ -241,11 +251,10 @@ export default function SellerOrdersTable({
               const sellerGroupId = o.sellerGroups?.[0]?.id;
               const sellerGroupStatus = o.sellerGroups?.[0]?.status;
               const isPendingPickup = sellerGroupStatus === "PENDING_PICKUP";
-              const canMarkAsShipped =
-                sellerGroupStatus === "IN_TRANSIT_TO_HUB";
+              const canMarkAsShipped = sellerGroupStatus === "ACCEPTED";
               const isShipped =
+                sellerGroupStatus === "IN_TRANSIT_TO_HUB" ||
                 sellerGroupStatus === "ARRIVED_AT_HUB" ||
-                o.status === "SHIPPED" ||
                 (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
 
               return (
@@ -268,7 +277,9 @@ export default function SellerOrdersTable({
                   <CardContent className="space-y-2 pb-3">
                     <p className="text-sm text-gray-600">
                       Customer:{" "}
-                      <span className="font-medium">{o.customer?.name ?? "-"}</span>
+                      <span className="font-medium">
+                        {o.customer?.name ?? "-"}
+                      </span>
                     </p>
 
                     <p className="text-sm text-gray-600">
@@ -324,7 +335,9 @@ export default function SellerOrdersTable({
                     {(canMarkAsShipped || isShipped) && (
                       <Button
                         size="sm"
-                        disabled={isPending || !sellerGroupId || !canMarkAsShipped}
+                        disabled={
+                          isPending || !sellerGroupId || !canMarkAsShipped
+                        }
                         onClick={() => {
                           if (!canMarkAsShipped) return;
                           handleAction(shipOrderAction, sellerGroupId, () => {

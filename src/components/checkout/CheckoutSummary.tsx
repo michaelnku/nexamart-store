@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useTransition, useState, useMemo, useEffect, useRef } from "react";
+import { useTransition, useState, useEffect, useRef } from "react";
 import { placeOrderAction } from "@/actions/checkout/placeOrder";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,10 @@ import { useCurrencyStore } from "@/stores/useCurrencyStore";
 import { useQuery } from "@tanstack/react-query";
 import { getEligibleClaimedCouponsAction } from "@/actions/checkout/getEligibleClaimedCoupons";
 import {
+  getCheckoutPreviewAction,
+  type CheckoutPreviewResult,
+} from "@/actions/checkout/getCheckoutPreview";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -30,6 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DeliveryType } from "@/generated/prisma/client";
 
 const deliveryMethod = [
   {
@@ -107,17 +112,14 @@ export default function CheckoutSummary({ cart, address }: Props) {
 
   const [isLoading, setIsLoading] = useState(false);
   const [openAddress, setOpenAddress] = useState(false);
-  const [deliveryType, setDeliveryType] = useState<
-    "HOME_DELIVERY" | "STORE_PICKUP" | "STATION_PICKUP" | "EXPRESS"
-  >("HOME_DELIVERY");
+  const [deliveryType, setDeliveryType] =
+    useState<DeliveryType>("HOME_DELIVERY");
   const [appliedCoupon, setAppliedCoupon] = useState<{
     id: string;
     code: string;
     type: string;
     value: number;
   } | null>(null);
-  const [discountUSD, setDiscountUSD] = useState(0);
-  const [activeDiscountUSD, setActiveDiscountUSD] = useState(0);
   const [applyCoupon, setApplyCoupon] = useState(false);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponOptOut, setCouponOptOut] = useState(false);
@@ -132,6 +134,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
     }[]
   >([]);
   const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
+  const lastPreviewErrorRef = useRef<string | null>(null);
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   const { data: wallet } = useQuery({
@@ -143,45 +146,65 @@ export default function CheckoutSummary({ cart, address }: Props) {
     },
   });
 
-  const subtotalUSD = useMemo(
-    () =>
-      cart.items.reduce((sum, item) => {
-        const priceUSD = item.variant?.priceUSD ?? item.product.basePriceUSD;
+  const { data: preview, isLoading: previewLoading } =
+    useQuery<CheckoutPreviewResult | null>({
+      queryKey: [
+        "checkout-preview",
+        address?.id,
+        deliveryType,
+        applyCoupon && appliedCoupon ? appliedCoupon.id : null,
+      ],
+      queryFn: async () => {
+        if (!address) return null;
+        const result = await getCheckoutPreviewAction({
+          addressId: address.id,
+          deliveryType,
+          couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
+        });
+        return result;
+      },
+      enabled: !!address,
+    });
 
-        return sum + item.quantity * priceUSD;
-      }, 0),
-    [cart.items],
-  );
+  const isPreviewValid = !!preview && !("error" in preview);
+  const previewError = preview && "error" in preview ? preview.error : null;
 
-  const shippingUSD = useMemo(() => {
-    if (!address) return null;
-
-    const miles = address.distanceInMiles ?? 0;
-    const perStoreRate = new Map<string, number>();
-
-    for (const item of cart.items) {
-      perStoreRate.set(
-        item.product.store.id,
-        item.product.store.shippingRatePerMile ?? 0,
-      );
-    }
-
-    return Array.from(perStoreRate.values()).reduce(
-      (sum, rate) => sum + rate * miles,
-      0,
-    );
-  }, [address, cart.items]);
-
-  const totalUSD = Math.max(0, subtotalUSD + (shippingUSD ?? 0) - discountUSD);
+  const subtotalUSD = isPreviewValid ? preview.subtotalUSD : 0;
+  const shippingUSD: number | null = isPreviewValid
+    ? preview.shippingFeeUSD
+    : null;
+  const discountUSD = isPreviewValid ? preview.discountUSD : 0;
+  const totalUSD = isPreviewValid ? preview.totalUSD : 0;
 
   const approxUSD = currency !== "USD" ? totalUSD : null;
 
   const canPayWithWallet =
-    wallet && wallet.balance > 0 && wallet.balance >= totalUSD;
+    !!wallet && isPreviewValid && wallet.balance >= preview.totalUSD;
+
+  const canCheckout = !!address && !previewLoading && isPreviewValid;
+
+  useEffect(() => {
+    if (!previewError) {
+      lastPreviewErrorRef.current = null;
+      return;
+    }
+
+    if (lastPreviewErrorRef.current === previewError) return;
+    lastPreviewErrorRef.current = previewError;
+    toast.error(previewError);
+  }, [previewError]);
 
   const handlePlaceOrder = (paymentMethod: PaymentMethod) => {
     if (!address) {
       toast.error("Add a delivery address first");
+      return;
+    }
+    if (previewLoading) {
+      toast.error("Calculating checkout preview. Please wait.");
+      return;
+    }
+    if (!isPreviewValid) {
+      toast.error(previewError ?? "Cannot checkout right now.");
       return;
     }
 
@@ -191,7 +214,6 @@ export default function CheckoutSummary({ cart, address }: Props) {
           addressId: address.id,
           paymentMethod,
           deliveryType,
-          distanceInMiles: address.distanceInMiles ?? 0,
           couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
           idempotencyKey: idempotencyKeyRef.current,
         });
@@ -222,6 +244,14 @@ export default function CheckoutSummary({ cart, address }: Props) {
       toast.error("Add a delivery address first");
       return;
     }
+    if (previewLoading) {
+      toast.error("Calculating checkout preview. Please wait.");
+      return;
+    }
+    if (!isPreviewValid) {
+      toast.error(previewError ?? "Cannot checkout right now.");
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -250,19 +280,22 @@ export default function CheckoutSummary({ cart, address }: Props) {
     let cancelled = false;
 
     const run = async () => {
+      if (!isPreviewValid) {
+        setCouponLoading(false);
+        return;
+      }
+
       setCouponLoading(true);
       try {
         const res = await getEligibleClaimedCouponsAction({
-          subtotalUSD,
-          shippingUSD: shippingUSD ?? 0,
+          subtotalUSD: preview.subtotalUSD,
+          shippingUSD: preview.shippingFeeUSD,
         });
 
         if (cancelled) return;
 
         if (!res.coupons.length) {
           setAppliedCoupon(null);
-          setActiveDiscountUSD(0);
-          setDiscountUSD(0);
           setApplyCoupon(false);
           setEligibleCoupons([]);
           setSelectedCouponId(null);
@@ -277,17 +310,13 @@ export default function CheckoutSummary({ cart, address }: Props) {
           type: res.coupons[0].type,
           value: res.coupons[0].value,
         });
-        setActiveDiscountUSD(res.coupons[0].discountAmount);
 
         if (!couponOptOut) {
           setApplyCoupon(true);
-          setDiscountUSD(res.coupons[0].discountAmount);
         }
       } catch {
         if (cancelled) return;
         setAppliedCoupon(null);
-        setActiveDiscountUSD(0);
-        setDiscountUSD(0);
         setApplyCoupon(false);
         setEligibleCoupons([]);
         setSelectedCouponId(null);
@@ -300,12 +329,12 @@ export default function CheckoutSummary({ cart, address }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [subtotalUSD, shippingUSD, couponOptOut]);
+  }, [isPreviewValid, preview, couponOptOut]);
 
   if (!cart || cart.items.length === 0)
     return (
-      <div className="min-h-full px-4 py-24 text-center space-y-4">
-        <p className="text-gray-500">
+      <div className="min-h-screen max-w-5xl mx-auto px-4 py-32 text-center space-y-4">
+        <p className="text-gray-500 dark:text-gray-400">
           Cart is empty - add items before checking out
         </p>
         <Button asChild variant="outline">
@@ -318,7 +347,9 @@ export default function CheckoutSummary({ cart, address }: Props) {
     <>
       <div className="max-w-6xl mx-auto min-h-screen px-6 py-8 grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <h2 className="text-2xl font-bold text-black">Your items</h2>
+          <h2 className="text-2xl font-bold text-black dark:text-gray-400">
+            Your items
+          </h2>
 
           {cart.items.map((item) => {
             const priceUSD =
@@ -327,9 +358,9 @@ export default function CheckoutSummary({ cart, address }: Props) {
             return (
               <div
                 key={item.id}
-                className="flex gap-4 pb-6 border-b border-gray-200"
+                className="flex gap-4 pb-6 border-b border-gray-200 "
               >
-                <div className="relative w-36 h-36 rounded-lg overflow-hidden bg-gray-100">
+                <div className="relative w-36 h-36 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-900">
                   <Image
                     src={item.product.images[0]?.imageUrl ?? "/placeholder.png"}
                     alt={item.product.name}
@@ -343,13 +374,13 @@ export default function CheckoutSummary({ cart, address }: Props) {
                     {item.product.name}
                   </p>
                   {item.variant && (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       {item.variant.color} {item.variant.size}
                     </p>
                   )}
-                  <p className="font-semibold text-lg text-black mt-1">
+                  <p className="font-semibold text-lg text-black mt-1 dark:text-gray-400">
                     {formatMoneyFromUSD(priceUSD * item.quantity)}
-                    <span className="text-sm text-gray-500 ml-1">
+                    <span className="text-sm text-gray-500 ml-1 dark:text-gray-400">
                       ({formatMoneyFromUSD(priceUSD)} — {item.quantity})
                     </span>
                   </p>
@@ -360,8 +391,8 @@ export default function CheckoutSummary({ cart, address }: Props) {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-xl p-5 border bg-white shadow-sm space-y-4">
-            <h2 className="text-lg font-semibold text-black">
+          <div className="rounded-xl p-5 border bg-white dark:bg-neutral-900 shadow-sm space-y-4">
+            <h2 className="text-lg font-semibold text-black dark:text-gray-400">
               Delivery Method
             </h2>
 
@@ -377,28 +408,36 @@ export default function CheckoutSummary({ cart, address }: Props) {
                   }`}
                 >
                   <p className="font-semibold text-sm">{option.label}</p>
-                  <p className="text-[12px] text-gray-600">{option.desc}</p>
+                  <p className="text-[12px] text-gray-600 dark:text-gray-400">
+                    {option.desc}
+                  </p>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="rounded-xl p-5 border bg-white shadow-sm space-y-3">
-            <h2 className="text-lg font-semibold text-black">
+          <div className="rounded-xl p-5 border bg-white dark:bg-neutral-900 shadow-sm space-y-3">
+            <h2 className="text-lg font-semibold text-black dark:text-gray-400">
               Delivery Address
             </h2>
 
             {address ? (
               <div className="text-sm text-gray-700 leading-relaxed">
-                <p className="font-medium">{address.fullName}</p>
-                <p>{address.phone}</p>
-                <p>{address.street}</p>
-                <p>
+                <p className="font-medium text-black dark:text-gray-400">
+                  {address.fullName}
+                </p>
+                <p className="text-black dark:text-gray-400">{address.phone}</p>
+                <p className="text-black dark:text-gray-400">
+                  {address.street}
+                </p>
+                <p className="text-black dark:text-gray-400">
                   {address.city}, {address.state}
                 </p>
               </div>
             ) : (
-              <p className="text-sm text-red-500">No delivery address added</p>
+              <p className="text-sm text-red-500 dark:text-red-400">
+                No delivery address added
+              </p>
             )}
 
             <Button
@@ -411,9 +450,11 @@ export default function CheckoutSummary({ cart, address }: Props) {
             </Button>
           </div>
 
-          <div className="rounded-xl p-5 border bg-white shadow-md space-y-3 sticky top-28">
-            <h2 className="text-xl font-semibold text-black">Order Summary</h2>
-            <div className="text-sm space-y-1">
+          <div className="rounded-xl p-5 border bg-white dark:bg-neutral-900 shadow-md space-y-3 sticky top-28">
+            <h2 className="text-xl font-semibold text-black dark:text-gray-400">
+              Order Summary
+            </h2>
+            <div className="text-sm space-y-1 dark:text-gray-400">
               <div className="flex justify-between">
                 <span>Items subtotal</span>
                 <span>{formatMoneyFromUSD(subtotalUSD)}</span>
@@ -433,10 +474,8 @@ export default function CheckoutSummary({ cart, address }: Props) {
                         setApplyCoupon(checked);
                         if (!checked) {
                           setCouponOptOut(true);
-                          setDiscountUSD(0);
                         } else {
                           setCouponOptOut(false);
-                          setDiscountUSD(activeDiscountUSD);
                         }
                       }}
                     />
@@ -490,11 +529,13 @@ export default function CheckoutSummary({ cart, address }: Props) {
                 <span>
                   {shippingUSD !== null
                     ? formatMoneyFromUSD(shippingUSD)
-                    : "Add address to calculate"}
+                    : previewLoading
+                      ? "Calculating..."
+                      : "Add address to calculate"}
                 </span>
               </div>
 
-              <div className="flex justify-between text-lg font-bold text-black">
+              <div className="flex justify-between text-lg font-bold text-black dark:text-gray-400">
                 <span>Total</span>
                 <div className="space-y-1">
                   <span className="font-semibold">
@@ -503,20 +544,26 @@ export default function CheckoutSummary({ cart, address }: Props) {
 
                   {approxUSD && (
                     <p className="text-xs text-muted-foreground italics">
-                      â‰ˆ ${approxUSD.toFixed(2)} USD
+                      ${approxUSD.toFixed(2)} USD
                     </p>
                   )}
                 </div>
               </div>
             </div>
 
+            {previewError && (
+              <p className="text-xs text-red-600">{previewError}</p>
+            )}
+
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Button
                 onClick={onCheckout}
-                disabled={isLoading}
+                disabled={isLoading || previewLoading || !canCheckout}
                 className="h-auto min-w-0 whitespace-normal break-words px-3 py-4 text-center leading-tight bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white font-semibold rounded-lg"
               >
-                {isLoading ? (
+                {previewLoading ? (
+                  "Calculating..."
+                ) : isLoading ? (
                   <Loader2 className="animate-spin" />
                 ) : (
                   "Pay with Card"
@@ -525,15 +572,21 @@ export default function CheckoutSummary({ cart, address }: Props) {
               <Button
                 onClick={() => handlePlaceOrder("WALLET")}
                 variant={"outline"}
-                disabled={!canPayWithWallet || pending}
+                disabled={
+                  !canPayWithWallet || pending || previewLoading || !canCheckout
+                }
                 className={`h-auto min-w-0 whitespace-normal break-words px-3 py-4 text-center leading-tight font-semibold rounded-lg ${
                   canPayWithWallet
                     ? ""
                     : "bg-gray-200 text-gray-500 cursor-not-allowed"
                 }`}
               >
-                {pending ? (
+                {previewLoading ? (
+                  "Calculating..."
+                ) : pending ? (
                   <Loader2 className="animate-spin" />
+                ) : previewError ? (
+                  "Cannot Checkout"
                 ) : wallet?.balance === 0 ? (
                   "Wallet Balance is $0.00"
                 ) : wallet && wallet.balance < totalUSD ? (
@@ -633,11 +686,6 @@ export default function CheckoutSummary({ cart, address }: Props) {
                   type: selected.type,
                   value: selected.value,
                 });
-                setActiveDiscountUSD(selected.discountAmount);
-
-                if (applyCoupon) {
-                  setDiscountUSD(selected.discountAmount);
-                }
 
                 setCouponDialogOpen(false);
               }}

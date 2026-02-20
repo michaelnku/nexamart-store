@@ -21,7 +21,7 @@ const OrderHistoryCard = ({ orders }: Props) => {
     });
 
   return (
-    <main className="max-w-6xl mx-auto px-4 ">
+    <main className="max-w-4xl mx-auto px-4 py-10">
       <h1 className="text-3xl font-semibold mb-6">Your Orders</h1>
 
       <div className="space-y-6">

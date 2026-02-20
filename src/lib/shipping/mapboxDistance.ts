@@ -55,7 +55,9 @@ export async function calculateDrivingDistance(
           destination,
         });
       }
-      throw new Error(`Mapbox directions failed with status ${response.status}`);
+      throw new Error(
+        `Mapbox directions failed with status ${response.status}`,
+      );
     }
 
     const data = (await response.json()) as MapboxDirectionsResponse;

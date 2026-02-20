@@ -152,10 +152,10 @@ const WishListPage = ({ initialData }: Props) => {
             return (
               <Card
                 key={product.id}
-                className="border rounded-xl bg-white shadow-sm hover:shadow-md transition-all p-3 flex flex-col group cursor-pointer"
+                className="border light:bg-white rounded-xl  shadow-sm hover:shadow-md transition-all p-3 flex flex-col group cursor-pointer"
               >
                 <div
-                  className="relative w-full aspect-square rounded-lg overflow-hidden bg-gray-50"
+                  className="relative w-full aspect-square rounded-lg overflow-hidden  bg-gray-50"
                   onClick={() => router.push(`/product/${product.id}`)}
                 >
                   <Image
@@ -173,31 +173,31 @@ const WishListPage = ({ initialData }: Props) => {
 
                 <div className="flex flex-col gap-1 flex-1 mt-2">
                   <p
-                    className="font-medium text-sm line-clamp-2 leading-tight group-hover:text-[#3c9ee0]"
+                    className="font-medium text-sm line-clamp-2 leading-tight group-hover:text-[#3c9ee0] dark:text-gray-400"
                     onClick={() => router.push(`/product/${product.id}`)}
                   >
                     {product.name}
                   </p>
 
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-[17px] text-black">
+                  <div className="flex items-center gap-2 ">
+                    <p className="font-bold text-[17px] text-black dark:text-gray-400">
                       {formatMoneyFromUSD(product.basePriceUSD)}
                     </p>
 
                     {oldPrice && (
-                      <p className="line-through text-[12px] text-gray-400">
+                      <p className="line-through text-[12px] text-gray-400 dark:text-gray-400">
                         {formatMoneyFromUSD(oldPrice)}
                       </p>
                     )}
                   </div>
 
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
                     Sold by{" "}
                     <span
                       onClick={() =>
                         router.push(`/store/${product.store.slug}`)
                       }
-                      className="text-black hover:text-[#3c9ee0] hover:underline font-medium"
+                      className="text-black hover:text-[#3c9ee0] hover:underline font-medium dark:text-gray-400"
                     >
                       {product.store.name}
                     </span>

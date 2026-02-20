@@ -79,19 +79,19 @@ const CartPage = ({ cart, mixedCart }: Props) => {
 
   return (
     <main className="max-w-7xl mx-auto px-4 lg:px-6 py-6 min-h-screen">
-      <h1 className="text-2xl sm:text-3xl font-semibold mb-6 text-black">
+      <h1 className="text-2xl sm:text-3xl font-semibold mb-6 text-black dark:text-gray-400">
         Cart
         <span className="text-[#3c9ee0] px-2">({cart.items.length})</span>
       </h1>
 
       {cart.items.length === 0 ? (
-        <div className="text-center py-36">
-          <p className="text-muted-foreground mb-4 text-lg">
+        <div className="text-center py-36 ">
+          <p className="text-muted-foreground mb-4 text-lg dark:text-gray-400">
             Your cart is empty. Start shopping 🛒
           </p>
           <Button
             onClick={() => router.push("/products")}
-            className="bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white"
+            className="bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white dark:text-gray-400"
           >
             Browse Products
           </Button>
@@ -123,16 +123,16 @@ const CartPage = ({ cart, mixedCart }: Props) => {
                         alt={item.product.name}
                         width={110}
                         height={110}
-                        className="rounded-md object-cover flex-shrink-0"
+                        className="rounded-md object-cover flex-shrink-0 dark:bg-neutral-950 "
                       />
 
                       <div className="flex flex-col justify-between w-full">
-                        <p className="font-medium text-[15px] leading-snug text-black">
+                        <p className="font-medium text-[15px] leading-snug text-black dark:text-gray-400">
                           {item.product.name}
                         </p>
 
                         {item.variant && (
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             {item.variant.color &&
                               `Color: ${item.variant.color} `}
                             {item.variant.size &&
@@ -160,12 +160,12 @@ const CartPage = ({ cart, mixedCart }: Props) => {
                     {/* PRICE + QTY CONTROLS */}
                     <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full sm:w-auto">
                       {/* Desktop Price */}
-                      <p className="hidden sm:block text-lg font-semibold text-[var(--brand-blue)]">
+                      <p className="hidden sm:block text-lg font-semibold text-[var(--brand-blue)] dark:text-gray-400">
                         {displayPrice}
                       </p>
 
                       {/* Quantity Controls */}
-                      <div className="flex items-center border rounded-md bg-white shadow-sm">
+                      <div className="flex items-center border rounded-md bg-white dark:bg-neutral-900 shadow-sm">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -179,7 +179,7 @@ const CartPage = ({ cart, mixedCart }: Props) => {
                         >
                           <Minus size={16} />
                         </Button>
-                        <span className="px-3 font-semibold select-none text-black">
+                        <span className="px-3 font-semibold select-none text-black dark:text-gray-400">
                           {item.quantity}
                         </span>
                         <Button
@@ -200,29 +200,29 @@ const CartPage = ({ cart, mixedCart }: Props) => {
           </div>
 
           {/* ORDER SUMMARY */}
-          <Card className="sticky top-24 p-6 h-fit rounded-xl border border-[var(--brand-blue)] shadow-sm bg-white">
-            <h2 className="text-xl font-semibold mb-4 text-black">
+          <Card className="sticky top-24 p-6 h-fit rounded-xl border border-[var(--brand-blue)] shadow-sm bg-white dark:bg-neutral-900">
+            <h2 className="text-xl font-semibold mb-4 text-black dark:text-gray-400">
               Order Summary
             </h2>
 
             <div className="space-y-3 text-[15px]">
-              <div className="flex justify-between">
+              <div className="flex justify-between dark:text-gray-400">
                 <span>Items Subtotal</span>
                 <span className="font-medium">
                   {formatMoneyFromUSD(subtotalUSD)}
                 </span>
               </div>
 
-              <div className="flex justify-between">
+              <div className="flex justify-between dark:text-gray-400">
                 <span>Estimated Shipping</span>
-                <span className="font-medium text-gray-600">
+                <span className="font-medium text-gray-600 dark:text-gray-400">
                   Calculated at checkout
                 </span>
               </div>
 
               <Separator />
 
-              <div className="flex justify-between text-lg font-bold text-black">
+              <div className="flex justify-between text-lg font-bold text-black dark:text-gray-400">
                 <span>Total</span>
                 <div className="space-y-1">
                   <span className="text-sm font-semibold">

@@ -19,16 +19,25 @@ type TimelineItem = {
   createdAt: string;
 };
 
-const ORDER_STEPS = [
+const NON_FOOD_ORDER_STEPS = [
   "PENDING",
   "ACCEPTED",
   "SHIPPED",
+  "OUT_FOR_DELIVERY",
+  "DELIVERED",
+  "COMPLETED",
+] as const;
+
+const FOOD_ORDER_STEPS = [
+  "PENDING",
+  "ACCEPTED",
+  "OUT_FOR_DELIVERY",
   "DELIVERED",
   "COMPLETED",
 ] as const;
 
 const STEP_CONFIG: Record<
-  (typeof ORDER_STEPS)[number],
+  (typeof NON_FOOD_ORDER_STEPS)[number],
   {
     label: string;
     description: string;
@@ -42,17 +51,22 @@ const STEP_CONFIG: Record<
   },
   ACCEPTED: {
     label: "Accepted",
-    description: "Seller accepted your order",
+    description: "Payment confirmed and order is being prepared",
     icon: Clock,
   },
   SHIPPED: {
-    label: "Shipped",
-    description: "Your order has been shipped",
+    label: "Hub Processing",
+    description: "Seller shipments are being consolidated at the hub",
+    icon: Truck,
+  },
+  OUT_FOR_DELIVERY: {
+    label: "Out for Delivery",
+    description: "Rider is on the way with your order",
     icon: Truck,
   },
   DELIVERED: {
     label: "Delivered",
-    description: "Order completed successfully",
+    description: "Order delivered successfully",
     icon: CheckCircle2,
   },
   COMPLETED: {
@@ -69,6 +83,9 @@ type Props = {
 
 export default function OrderTimeline({ order, timeline }: Props) {
   const isCancelled = order.status === "CANCELLED";
+  const isFoodOrder = Boolean(order.isFoodOrder);
+  const orderSteps = isFoodOrder ? FOOD_ORDER_STEPS : NON_FOOD_ORDER_STEPS;
+
   const formatTimelineDate = (value: string) =>
     new Date(value).toLocaleString("en-US", {
       timeZone: "UTC",
@@ -83,15 +100,11 @@ export default function OrderTimeline({ order, timeline }: Props) {
   /**
    * Latest known status (timeline is the source of truth)
    */
+  const reachedStatuses = new Set<OrderStatus>(timeline.map((t) => t.status));
+  reachedStatuses.add(order.status);
+
   const latestStatus: OrderStatus =
     timeline.length > 0 ? timeline[timeline.length - 1].status : order.status;
-
-  /**
-   * Determine active step index
-   */
-  const currentStepIndex = ORDER_STEPS.indexOf(
-    latestStatus as (typeof ORDER_STEPS)[number],
-  );
 
   return (
     <>
@@ -111,12 +124,15 @@ export default function OrderTimeline({ order, timeline }: Props) {
         )}
 
         <ol className="relative ml-4 border-l border-gray-200 space-y-6">
-          {ORDER_STEPS.map((stepKey, index) => {
+          {orderSteps.map((stepKey, index) => {
             const step = STEP_CONFIG[stepKey];
             const Icon = step.icon;
 
-            const completed = index < currentStepIndex;
-            const active = index === currentStepIndex && !isCancelled;
+            const completed = reachedStatuses.has(stepKey);
+            const active =
+              !isCancelled &&
+              latestStatus === stepKey &&
+              reachedStatuses.has(stepKey);
 
             return (
               <li key={stepKey} className="ml-5 space-y-1">

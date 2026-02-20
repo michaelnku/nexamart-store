@@ -50,6 +50,7 @@ export default async function PublicTrackPage({
     id: order.id,
     trackingNumber: order.trackingNumber,
     status: order.status,
+    isFoodOrder: order.isFoodOrder,
     deliveryType: order.deliveryType,
     deliveryAddress,
     paymentMethod: order.paymentMethod,

@@ -63,7 +63,6 @@ export const metadata: Metadata = {
     "marketplace",
     "buy and sell online",
     "multi vendor store",
-    "Nigeria ecommerce",
     "shop online",
   ],
 

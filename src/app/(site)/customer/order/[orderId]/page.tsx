@@ -110,7 +110,7 @@ export default async function OrderDetailsPage({
   const trackingNumber = order.trackingNumber ?? "NEX-ORD-XXXXX";
 
   return (
-    <div className="">
+    <div className=" max-w-4xl mx-auto py-10">
       <div className="mx-auto max-w-6xl rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
         A one-time delivery code will be sent to your phone number. Please call
         it out to the rider at the delivery point for order:{" "}

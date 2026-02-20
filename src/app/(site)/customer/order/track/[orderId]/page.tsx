@@ -69,6 +69,7 @@ export default async function TrackOrderPage({
     id: order.id,
     trackingNumber: order.trackingNumber,
     status: order.status,
+    isFoodOrder: order.isFoodOrder,
     deliveryType: order.deliveryType,
     deliveryAddress,
     paymentMethod: order.paymentMethod,

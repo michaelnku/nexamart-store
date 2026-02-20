@@ -10,7 +10,6 @@ import {
 import { generateTrackingNumber } from "@/components/helper/generateTrackingNumber";
 import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
 import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
-import { generateDeliveryOtpAndCreateDelivery } from "@/lib/delivery/generateDeliveryOtp";
 import { completeOrderPayment } from "@/lib/payments/completeOrderPayment";
 import { calculateDrivingDistance } from "@/lib/shipping/mapboxDistance";
 import { calculateShippingFee } from "@/lib/shipping/shippingCalculator";
@@ -21,6 +20,17 @@ class PlaceOrderError extends Error {
     super(message);
     this.name = "PlaceOrderError";
   }
+}
+
+function buildSellerGroupCodes(orderId: string, storeId: string) {
+  const seed = crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase();
+  const storeSeed = storeId.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase();
+  const orderSeed = orderId.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase();
+
+  return {
+    hubInboundCode: `HUB-${storeSeed}-${seed}`,
+    internalTrackingNumber: `SG-${orderSeed}-${seed}`,
+  };
 }
 
 export async function placeOrderAction({
@@ -235,20 +245,10 @@ export async function placeOrderAction({
           select: { id: true },
         });
 
-        // const availableWalletBalance = await calculateWalletBalance(
-        //   wallet.id,
-        //   tx,
-        // );
-
-        console.log("Wallet ID:", wallet.id);
-
         const availableWalletBalance = await calculateWalletBalance(
           wallet.id,
           tx,
         );
-
-        console.log("Available wallet balance:", availableWalletBalance);
-        console.log("Order total:", totalAmount);
 
         if (availableWalletBalance < totalAmount) {
           throw new PlaceOrderError(
@@ -305,6 +305,7 @@ export async function placeOrderAction({
             sellerId,
             subtotal: groupSubtotal,
             shippingFee: groupMetrics.shippingFee,
+            ...buildSellerGroupCodes(createdOrder.id, storeId),
           },
         });
 
@@ -413,7 +414,6 @@ export async function placeOrderAction({
 
       if (paymentResult.justPaid) {
         await applyReferralRewardsForPaidOrder(order.id);
-        await generateDeliveryOtpAndCreateDelivery(order.id);
       }
     } catch (error) {
       console.error("Failed to complete wallet order payment:", error);

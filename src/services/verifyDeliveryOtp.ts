@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { hashOtp } from "@/lib/otp";
+import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 
 export async function verifyDeliveryOtp(deliveryId: string, otpInput: string) {
   const delivery = await prisma.delivery.findUnique({
@@ -49,30 +50,35 @@ export async function verifyDeliveryOtp(deliveryId: string, otpInput: string) {
     throw new Error(`Invalid OTP. Attempt ${newAttempts}/3`);
   }
 
-  await prisma.$transaction([
-    prisma.delivery.update({
+  await prisma.$transaction(async (tx) => {
+    const deliveredAt = new Date();
+
+    await tx.delivery.update({
       where: { id: deliveryId },
       data: {
         status: "DELIVERED",
-        deliveredAt: new Date(),
+        deliveredAt,
         otpHash: null,
         otpExpiresAt: null,
         otpAttempts: 0,
       },
-    }),
-    prisma.order.update({
+    });
+
+    await tx.order.update({
       where: { id: delivery.orderId },
       data: {
         status: "DELIVERED",
-        customerConfirmedAt: new Date(),
+        customerConfirmedAt: deliveredAt,
       },
-    }),
-    prisma.orderTimeline.create({
-      data: {
+    });
+
+    await createOrderTimelineIfMissing(
+      {
         orderId: delivery.orderId,
         status: "DELIVERED",
-        message: "Order delivered and OTP verified",
+        message: "Order delivered successfully.",
       },
-    }),
-  ]);
+      tx,
+    );
+  });
 }

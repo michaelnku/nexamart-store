@@ -1,81 +1,51 @@
-"use server";
-
-import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma";
 import { generateOtp, hashOtp } from "@/lib/otp";
-import { sendOtpSms } from "@/services/sendOtpSms";
 
-export async function generateDeliveryOtpAndCreateDelivery(orderId: string) {
-  const existingDelivery = await prisma.delivery.findUnique({
-    where: { orderId },
-  });
+const OTP_TTL_MS = 10 * 60 * 1000;
 
-  if (existingDelivery) {
-    return existingDelivery;
-  }
+type Tx = Prisma.TransactionClient;
 
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
+export async function generateDeliveryOTP(
+  tx: Tx,
+  deliveryId: string,
+): Promise<string | null> {
+  const now = new Date();
+
+  const delivery = await tx.delivery.findUnique({
+    where: { id: deliveryId },
     select: {
       id: true,
-      deliveryStreet: true,
-      deliveryCity: true,
-      deliveryState: true,
-      deliveryCountry: true,
-      deliveryPostal: true,
-      shippingFee: true,
-      distanceInMiles: true,
-      deliveryPhone: true,
+      otpHash: true,
+      otpExpiresAt: true,
     },
   });
 
-  if (!order) throw new Error("Order not found");
+  if (!delivery) {
+    throw new Error("Delivery not found");
+  }
 
-  if (!order.deliveryPhone) {
-    throw new Error("Customer phone missing");
+  if (
+    delivery.otpHash &&
+    delivery.otpExpiresAt &&
+    delivery.otpExpiresAt > now
+  ) {
+    return null;
   }
 
   const otp = generateOtp();
   const otpHash = hashOtp(otp);
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const otpExpiresAt = new Date(now.getTime() + OTP_TTL_MS);
 
-  const deliveryAddress = [
-    order.deliveryStreet,
-    order.deliveryCity,
-    order.deliveryState,
-    order.deliveryCountry,
-    order.deliveryPostal,
-  ]
-    .filter(Boolean)
-    .join(", ");
-
-  const delivery = await prisma.delivery.create({
+  await tx.delivery.update({
+    where: { id: deliveryId },
     data: {
-      orderId,
-      status: "PENDING",
-      fee: order.shippingFee,
-      deliveryAddress,
-      distance: order.distanceInMiles,
       otpHash,
-      otpExpiresAt: expiresAt,
+      otpExpiresAt,
       otpAttempts: 0,
       isLocked: false,
+      lockedAt: null,
     },
   });
 
-  await sendOtpSms(order.deliveryPhone, otp);
-
-  await prisma.order.update({
-    where: { id: orderId },
-    data: { status: "ACCEPTED" },
-  });
-
-  await prisma.orderTimeline.create({
-    data: {
-      orderId,
-      status: "ACCEPTED",
-      message: "Order paid successfully. OTP sent to customer.",
-    },
-  });
-
-  return delivery;
+  return otp;
 }
