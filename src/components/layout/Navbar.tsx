@@ -336,7 +336,7 @@ export default function SiteNavbar({
                   </span>
                 </div>
 
-                {user && (
+                {user ? (
                   <>
                     <CustomerSidebarContent
                       user={user}
@@ -345,6 +345,17 @@ export default function SiteNavbar({
                       onNavigate={() => setSheetOpen(false)}
                       onLogout={logout}
                     />
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      asChild
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => setSheetOpen(false)}
+                    >
+                      <Link href="/auth/login">Sign In / Create Account</Link>
+                    </Button>
                   </>
                 )}
               </SheetContent>
