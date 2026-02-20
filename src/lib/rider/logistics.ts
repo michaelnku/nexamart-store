@@ -2,6 +2,7 @@ import { prisma } from "../prisma";
 import { pusherServer } from "../pusher";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import { generateDeliveryOTP } from "@/lib/delivery/generateDeliveryOtp";
+import { sendDeliveryOtpToCustomer } from "@/lib/delivery/sendDeliveryOtpToCustomer";
 
 export async function autoAssignRider(orderId: string) {
   const order = await prisma.order.findUnique({
@@ -16,6 +17,7 @@ export async function autoAssignRider(orderId: string) {
       deliveryState: true,
       deliveryCountry: true,
       deliveryPostal: true,
+      deliveryPhone: true,
       distanceInMiles: true,
       delivery: {
         select: { id: true, riderId: true, status: true },
@@ -54,6 +56,7 @@ export async function autoAssignRider(orderId: string) {
 
   const riderId = riderProfile.userId;
   const assignedAt = new Date();
+  let generatedOtp: string | null = null;
 
   await prisma.$transaction(async (tx) => {
     const riderReserved = await tx.riderProfile.updateMany({
@@ -127,13 +130,14 @@ export async function autoAssignRider(orderId: string) {
       return;
     }
 
-    await generateDeliveryOTP(tx, assignedDeliveryId);
+    generatedOtp = await generateDeliveryOTP(tx, assignedDeliveryId);
 
     await createOrderTimelineIfMissing(
       {
         orderId,
         status: "OUT_FOR_DELIVERY",
-        message: "Rider has picked up your order. Delivery OTP has been generated.",
+        message:
+          "Rider has picked up your order. Delivery OTP has been generated.",
       },
       tx,
     );
@@ -143,4 +147,18 @@ export async function autoAssignRider(orderId: string) {
     orderId,
     riderId,
   });
+
+  if (generatedOtp) {
+    await sendDeliveryOtpToCustomer(
+      order.userId,
+      order.deliveryPhone,
+      generatedOtp,
+    );
+
+    await createOrderTimelineIfMissing({
+      orderId,
+      status: "OUT_FOR_DELIVERY",
+      message: "Delivery OTP has been sent to customer.",
+    });
+  }
 }

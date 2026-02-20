@@ -347,16 +347,15 @@ export default function SiteNavbar({
                     />
                   </>
                 ) : (
-                  <>
+                  <div className="px-4 mt-2 pb-6">
                     <Button
                       asChild
                       className="w-full"
-                      variant="outline"
                       onClick={() => setSheetOpen(false)}
                     >
                       <Link href="/auth/login">Sign In / Create Account</Link>
                     </Button>
-                  </>
+                  </div>
                 )}
               </SheetContent>
             </Sheet>
