@@ -8,6 +8,8 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { BuyerWallet } from "@/lib/types";
 
+//queryClient.invalidateQueries(["wallet"]);
+
 export function useBuyerWallet() {
   return useQuery<BuyerWallet>({
     queryKey: ["buyer-wallet"],

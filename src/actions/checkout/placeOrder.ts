@@ -14,6 +14,7 @@ import { generateDeliveryOtpAndCreateDelivery } from "@/lib/delivery/generateDel
 import { completeOrderPayment } from "@/lib/payments/completeOrderPayment";
 import { calculateDrivingDistance } from "@/lib/shipping/mapboxDistance";
 import { calculateShippingFee } from "@/lib/shipping/shippingCalculator";
+import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
 
 class PlaceOrderError extends Error {
   constructor(message: string) {
@@ -58,7 +59,9 @@ export async function placeOrderAction({
 
   if (existingKey?.orderId) {
     if (existingKey.userId !== userId) {
-      return { error: "Invalid checkout request. Please refresh and try again." };
+      return {
+        error: "Invalid checkout request. Please refresh and try again.",
+      };
     }
     return {
       success: true,
@@ -232,23 +235,16 @@ export async function placeOrderAction({
           select: { id: true },
         });
 
-        const ledgerTotals = await tx.ledgerEntry.groupBy({
-          by: ["direction"],
-          where: { walletId: wallet.id },
-          _sum: { amount: true },
-        });
+        const availableWalletBalance = await calculateWalletBalance(
+          wallet.id,
+          tx,
+        );
 
-        const credit =
-          ledgerTotals.find((item) => item.direction === "CREDIT")?._sum
-            .amount ?? 0;
-        const debit =
-          ledgerTotals.find((item) => item.direction === "DEBIT")?._sum.amount ??
-          0;
-        const walletBalance = credit - debit;
-        if (walletBalance < totalAmount) {
-          throw new PlaceOrderError("Insufficient wallet balance");
+        if (availableWalletBalance < totalAmount) {
+          throw new PlaceOrderError(
+            "Insufficient wallet balance. Please choose another payment method.",
+          );
         }
-
       }
 
       const createdOrder = await tx.order.create({

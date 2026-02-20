@@ -1,8 +1,14 @@
+import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 
-export async function calculateWalletBalance(walletId: string) {
-  const [credits, debits] = await Promise.all([
-    prisma.ledgerEntry.aggregate({
+export async function calculateWalletBalance(
+  walletId: string,
+  tx?: Prisma.TransactionClient,
+) {
+  const client = tx ?? prisma;
+
+  const [creditsAgg, debitsAgg] = await Promise.all([
+    client.ledgerEntry.aggregate({
       _sum: { amount: true },
       where: {
         walletId,
@@ -12,7 +18,7 @@ export async function calculateWalletBalance(walletId: string) {
         },
       },
     }),
-    prisma.ledgerEntry.aggregate({
+    client.ledgerEntry.aggregate({
       _sum: { amount: true },
       where: {
         walletId,
@@ -24,8 +30,8 @@ export async function calculateWalletBalance(walletId: string) {
     }),
   ]);
 
-  const totalCredits = credits._sum.amount ?? 0;
-  const totalDebits = debits._sum.amount ?? 0;
+  const totalCredits = creditsAgg._sum.amount ?? 0;
+  const totalDebits = debitsAgg._sum.amount ?? 0;
 
   return totalCredits - totalDebits;
 }
