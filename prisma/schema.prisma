@@ -525,14 +525,22 @@ enum PayoutStatus {
 }
 
 model Job {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   type      String
   payload   Json
+  attempts  Int     @default(0)
+  lastError String?
+
+  runAt      DateTime @default(now())
+  maxRetries Int      @default(5)
+
   status    String   @default("PENDING")
   createdAt DateTime @default(now())
 
   @@index([status])
   @@index([type])
+  @@index([runAt])
+  @@index([status, type, runAt])
 }
 
 model CronLock {

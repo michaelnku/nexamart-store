@@ -41,7 +41,13 @@ export default async function page() {
   });
 
   if (!cart) {
-    return null;
+    return (
+      <div className="text-center py-36 min-h-screen max-w-3xl mx-auto dark:bg-neutral-900 ">
+        <p className="text-muted-foreground mb-4 text-lg dark:text-gray-400">
+          Your cart is empty. Start shopping 🛒
+        </p>
+      </div>
+    );
   }
 
   const hasFood = cart.items.some((i) => i.product.store?.type === "FOOD");

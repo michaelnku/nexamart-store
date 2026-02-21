@@ -5,6 +5,8 @@ import { generateDeliveryOTP } from "@/lib/delivery/generateDeliveryOtp";
 import { sendDeliveryOtpToCustomer } from "@/lib/delivery/sendDeliveryOtpToCustomer";
 
 export async function autoAssignRider(orderId: string) {
+  console.log("AUTO ASSIGN CALLED", orderId);
+
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     select: {
@@ -42,6 +44,8 @@ export async function autoAssignRider(orderId: string) {
     }
   }
 
+  console.log("Checking available riders...");
+
   const riderProfile = await prisma.riderProfile.findFirst({
     where: {
       isAvailable: true,
@@ -52,7 +56,12 @@ export async function autoAssignRider(orderId: string) {
     select: { userId: true },
   });
 
-  if (!riderProfile) return;
+  if (!riderProfile) {
+    console.log("NO AVAILABLE RIDER FOUND");
+    return;
+  }
+
+  console.log("Rider found:", riderProfile);
 
   const riderId = riderProfile.userId;
   const assignedAt = new Date();
@@ -65,7 +74,7 @@ export async function autoAssignRider(orderId: string) {
     });
 
     if (riderReserved.count !== 1) {
-      return;
+      throw new Error("Failed to reserve rider");
     }
 
     const orderLocked = await tx.order.updateMany({
@@ -143,17 +152,27 @@ export async function autoAssignRider(orderId: string) {
     );
   });
 
+  console.log("Generated OTP:", generatedOtp);
+
   await pusherServer.trigger(`user-${order.userId}`, "rider-assigned", {
     orderId,
     riderId,
   });
 
+  console.log("Sending OTP to:", order.deliveryPhone);
+
   if (generatedOtp) {
-    await sendDeliveryOtpToCustomer(
+    void sendDeliveryOtpToCustomer(
       order.userId,
       order.deliveryPhone,
       generatedOtp,
-    );
+    )
+      .then(() => {
+        console.log("OTP sent to customer");
+      })
+      .catch((error) => {
+        console.error("Failed to send OTP to customer:", error);
+      });
 
     await createOrderTimelineIfMissing({
       orderId,

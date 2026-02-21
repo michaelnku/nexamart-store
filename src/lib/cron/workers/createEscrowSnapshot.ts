@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { acquireCronLock, releaseCronLock } from "@/lib/cron/cronLock";
+import { acquireCronLock, releaseCronLock } from "@/lib/cron/workers/cronLock";
 
 const LOCK_NAME = "ESCROW_SNAPSHOT_DAILY";
 

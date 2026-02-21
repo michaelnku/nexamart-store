@@ -6,9 +6,20 @@ import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { ServiceContext } from "@/lib/system/serviceContext";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
+import { processPendingJobs } from "@/worker";
 
-const PLATFORM_COMMISSION_PERCENT = 12;
+const PLATFORM_COMMISSION_PERCENT = 15;
+//const PLATFORM_COMMISSION_PERCENT = 12;
 const PAYOUT_HOLD_MS = 24 * 60 * 60 * 1000;
+const FINALIZE_ORDER_JOB_TYPE = "FINALIZE_ORDER";
+const FINALIZE_ORDER_JOB_ID_PREFIX = "finalize-order";
+
+function isUniqueConstraintError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  if (!("code" in error)) return false;
+  const candidate = error as { code?: unknown };
+  return candidate.code === "P2002";
+}
 
 export type PaymentMethodType = "CARD" | "WALLET";
 
@@ -35,14 +46,14 @@ type CompleteOrderPaymentResult = {
   };
 };
 
-async function finalizePostPayment(
-  order: CompleteOrderPaymentResult["order"],
+export async function finalizePostPayment(
+  orderId: string,
   context?: ServiceContext,
 ): Promise<void> {
   const releaseAt = new Date(Date.now() + PAYOUT_HOLD_MS);
 
   const freshOrder = await prisma.order.findUnique({
-    where: { id: order.id },
+    where: { id: orderId },
     select: {
       id: true,
       paymentMethod: true,
@@ -147,7 +158,7 @@ async function finalizePostPayment(
   });
 
   if (freshOrder.isFoodOrder) {
-    await autoAssignRider(order.id);
+    await autoAssignRider(orderId);
   }
 }
 
@@ -165,12 +176,63 @@ export async function completeOrderPayment({
 
   const result = await prisma.$transaction(
     async (tx) => {
+      const ensureFinalizeOrderJob = async (
+        paidOrderId: string,
+        isPostPaymentFinalized: boolean,
+      ) => {
+        if (isPostPaymentFinalized) return;
+        const finalizeJobId = `${FINALIZE_ORDER_JOB_ID_PREFIX}-${paidOrderId}`;
+
+        try {
+          await tx.job.create({
+            data: {
+              id: finalizeJobId,
+              type: FINALIZE_ORDER_JOB_TYPE,
+              status: "PENDING",
+              runAt: new Date(),
+              maxRetries: 5,
+              attempts: 0,
+              lastError: null,
+              payload: {
+                orderId: paidOrderId,
+              },
+            },
+          });
+          return;
+        } catch (error) {
+          if (isUniqueConstraintError(error)) {
+            // Job already exists; continue with idempotent recovery update path.
+          } else {
+            throw error;
+          }
+        }
+
+        await tx.job.updateMany({
+          where: {
+            id: finalizeJobId,
+            status: { in: ["FAILED", "COMPLETED"] },
+          },
+          data: {
+            type: FINALIZE_ORDER_JOB_TYPE,
+            status: "PENDING",
+            runAt: new Date(),
+            maxRetries: 5,
+            attempts: 0,
+            lastError: null,
+            payload: {
+              orderId: paidOrderId,
+            },
+          },
+        });
+      };
+
       const order = await tx.order.findUnique({
         where: { id: orderId },
         select: {
           id: true,
           userId: true,
           isPaid: true,
+          postPaymentFinalized: true,
           totalAmount: true,
           sellerGroups: {
             select: {
@@ -189,6 +251,7 @@ export async function completeOrderPayment({
       }
 
       if (order.isPaid) {
+        await ensureFinalizeOrderJob(order.id, order.postPaymentFinalized);
         return { justPaid: false, order };
       }
 
@@ -273,13 +336,19 @@ export async function completeOrderPayment({
         context,
       });
 
+      await ensureFinalizeOrderJob(order.id, order.postPaymentFinalized);
+
       return { justPaid: true, order };
     },
     { timeout: 15000 },
   );
 
   if (result.justPaid) {
-    await finalizePostPayment(result.order, context);
+    try {
+      await processPendingJobs(1, context);
+    } catch (error) {
+      console.error("Immediate finalize job processing failed:", error);
+    }
   }
 
   return result;

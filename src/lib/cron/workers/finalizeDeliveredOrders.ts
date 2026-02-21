@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { acquireCronLock, releaseCronLock } from "./cronLock";
-import { releaseEligibleSellerGroups } from "@/lib/cron/releaseEligibleSellerGroups";
+import { releaseEligibleSellerGroups } from "@/lib/cron/workers/releaseEligibleSellerGroups";
 
 const LOCK_NAME = "FINALIZE_DELIVERIES";
 const ESCROW_DELAY_MS = 24 * 60 * 60 * 1000;
@@ -55,7 +55,8 @@ export async function finalizeDeliveredOrders() {
     const releaseResult = await releaseEligibleSellerGroups();
 
     return {
-      processedGroups: "processed" in releaseResult ? releaseResult.processed : 0,
+      processedGroups:
+        "processed" in releaseResult ? releaseResult.processed : 0,
       at: now.toISOString(),
     };
   } finally {

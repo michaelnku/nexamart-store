@@ -1,8 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { acquireCronLock, releaseCronLock } from "@/lib/cron/cronLock";
+import { acquireCronLock, releaseCronLock } from "@/lib/cron/workers/cronLock";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { Prisma } from "@/generated/prisma";
-import { createServiceContext, ServiceContext } from "@/lib/system/serviceContext";
+import {
+  createServiceContext,
+  ServiceContext,
+} from "@/lib/system/serviceContext";
 
 const LOCK_NAME = "RELEASE_ELIGIBLE_RIDER_PAYOUTS";
 const BATCH_SIZE = 20;

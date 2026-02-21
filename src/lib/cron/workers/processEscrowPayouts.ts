@@ -1,4 +1,4 @@
-import { acquireCronLock, releaseCronLock } from "@/lib/cron/cronLock";
+import { acquireCronLock, releaseCronLock } from "@/lib/cron/workers/cronLock";
 import { prisma } from "@/lib/prisma";
 import { releaseEscrowPayout } from "@/lib/payout/releaseEscrowPayout";
 

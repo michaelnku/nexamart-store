@@ -350,7 +350,7 @@ export default function SiteNavbar({
                   <div className="px-4 mt-2 pb-6">
                     <Button
                       asChild
-                      className="w-full"
+                      className="w-full bg-[#3c9ee0] hover:bg-[#3187c9] text-white rounded-lg"
                       onClick={() => setSheetOpen(false)}
                     >
                       <Link href="/auth/login">Sign In / Create Account</Link>

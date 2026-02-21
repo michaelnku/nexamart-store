@@ -17,7 +17,6 @@ export async function sendDeliveryOtpToCustomer(
   }
 
   await pusherServer.trigger(`user-${user.id}`, "delivery-otp-generated", {
-    otp,
     message: "Your delivery OTP is ready.",
   });
 
@@ -25,9 +24,14 @@ export async function sendDeliveryOtpToCustomer(
     return;
   }
 
-  try {
-    await sendOtpSms(phone, otp);
-  } catch (error) {
-    console.error("Failed to send delivery OTP SMS:", error);
+  const hasSmsProvider =
+    Boolean(process.env.TWILIO_ACCOUNT_SID) &&
+    Boolean(process.env.TWILIO_AUTH_TOKEN) &&
+    Boolean(process.env.TWILIO_PHONE_NUMBER);
+
+  if (!hasSmsProvider) {
+    return;
   }
+
+  await sendOtpSms(phone, otp);
 }

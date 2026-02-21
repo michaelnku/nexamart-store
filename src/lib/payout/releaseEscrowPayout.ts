@@ -1,16 +1,14 @@
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
-import {
-  createEscrowEntryIdempotent,
-} from "@/lib/ledger/idempotentEntries";
+import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { getCommissionRate } from "./commission";
 
-const PLATFORM_COMMISSION_PERCENT = 12;
+const PLATFORM_COMMISSION_PERCENT = 15;
+//const PLATFORM_COMMISSION_PERCENT = getCommissionRate();
 
-type ReleaseResult =
-  | { success: true }
-  | { skipped: true; reason: string };
+type ReleaseResult = { success: true } | { skipped: true; reason: string };
 
 type ReleaseEscrowOptions = {
   allowDisputedOrder?: boolean;
