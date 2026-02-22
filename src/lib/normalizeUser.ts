@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { SessionUser, UserDTO } from "@/lib/types";
 
 export async function normalizeUser(
-  sessionUser: SessionUser | undefined | null
+  sessionUser: SessionUser | undefined | null,
 ): Promise<UserDTO | null> {
   if (!sessionUser?.email) return null;
 
@@ -20,8 +20,8 @@ export async function normalizeUser(
     db.role === "SELLER"
       ? Boolean(db.store?.isVerified)
       : db.role === "RIDER"
-      ? Boolean(db.riderProfile?.isVerified)
-      : false;
+        ? Boolean(db.riderProfile?.isVerified)
+        : false;
 
   return {
     id: db.id,
