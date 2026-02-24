@@ -46,6 +46,10 @@ export default Middleware((req) => {
     }
   }
 
+  if (pathname.startsWith("/api/cron")) {
+    return NextResponse.next();
+  }
+
   if (pathname.startsWith("/api/currency-rates")) {
     return;
   }

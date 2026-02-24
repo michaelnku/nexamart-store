@@ -1,14 +1,19 @@
 import { prisma } from "@/lib/prisma";
 import { finalizePostPayment } from "@/lib/payments/completeOrderPayment";
 import { ServiceContext } from "@/lib/system/serviceContext";
+import { markSellerGroupReady } from "@/lib/order/markSellerGroupReady";
 
 const FINALIZE_ORDER_JOB_TYPE = "FINALIZE_ORDER";
+const MARK_SELLER_GROUP_READY_JOB_TYPE = "MARK_SELLER_GROUP_READY";
 const DEFAULT_JOB_BATCH_LIMIT = 10;
 const DEFAULT_MAX_RETRIES = 5;
 const BACKOFF_BASE_SECONDS = 30;
 
 type FinalizeOrderJobPayload = {
   orderId: string;
+};
+type MarkSellerGroupReadyJobPayload = {
+  sellerGroupId: string;
 };
 
 function isFinalizeOrderPayload(
@@ -19,6 +24,14 @@ function isFinalizeOrderPayload(
   return typeof candidate.orderId === "string";
 }
 
+function isMarkSellerGroupReadyPayload(
+  payload: unknown,
+): payload is MarkSellerGroupReadyJobPayload {
+  if (typeof payload !== "object" || payload === null) return false;
+  const candidate = payload as Record<string, unknown>;
+  return typeof candidate.sellerGroupId === "string";
+}
+
 export async function processPendingJobs(
   limit = DEFAULT_JOB_BATCH_LIMIT,
   context?: ServiceContext,
@@ -27,7 +40,9 @@ export async function processPendingJobs(
   const jobs = await prisma.job.findMany({
     where: {
       status: "PENDING",
-      type: FINALIZE_ORDER_JOB_TYPE,
+      type: {
+        in: [FINALIZE_ORDER_JOB_TYPE, MARK_SELLER_GROUP_READY_JOB_TYPE],
+      },
       runAt: { lte: now },
     },
     orderBy: { createdAt: "asc" },
@@ -38,7 +53,6 @@ export async function processPendingJobs(
 
   for (const job of jobs) {
     if (processed >= limit) break;
-    if (!isFinalizeOrderPayload(job.payload)) continue;
 
     const lock = await prisma.job.updateMany({
       where: {
@@ -54,7 +68,19 @@ export async function processPendingJobs(
     if (lock.count !== 1) continue;
 
     try {
-      await finalizePostPayment(job.payload.orderId, context);
+      if (
+        job.type === FINALIZE_ORDER_JOB_TYPE &&
+        isFinalizeOrderPayload(job.payload)
+      ) {
+        await finalizePostPayment(job.payload.orderId, context);
+      } else if (
+        job.type === MARK_SELLER_GROUP_READY_JOB_TYPE &&
+        isMarkSellerGroupReadyPayload(job.payload)
+      ) {
+        await markSellerGroupReady(job.payload.sellerGroupId);
+      } else {
+        throw new Error("Invalid job payload");
+      }
 
       await prisma.job.update({
         where: { id: job.id },

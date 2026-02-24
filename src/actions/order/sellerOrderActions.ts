@@ -144,6 +144,10 @@ export const acceptOrderAction = async (
       }
     }
 
+    const prepReadyAt = group.order.isFoodOrder
+      ? new Date(Date.now() + (prepTimeMinutes as number) * 60 * 1000)
+      : null;
+
     await prisma.$transaction(async (tx) => {
       await tx.orderSellerGroup.update({
         where: { id: sellerGroupId },
@@ -152,9 +156,7 @@ export const acceptOrderAction = async (
           prepTimeMinutes: group.order.isFoodOrder
             ? (prepTimeMinutes as number)
             : null,
-          readyAt: group.order.isFoodOrder
-            ? new Date(Date.now() + (prepTimeMinutes as number) * 60 * 1000)
-            : null,
+          readyAt: prepReadyAt,
         },
       });
 
@@ -166,6 +168,35 @@ export const acceptOrderAction = async (
         },
         tx,
       );
+
+      if (group.order.isFoodOrder && prepReadyAt) {
+        await tx.job.upsert({
+          where: { id: `mark-ready-${sellerGroupId}` },
+          update: {
+            type: "MARK_SELLER_GROUP_READY",
+            status: "PENDING",
+            runAt: prepReadyAt,
+            attempts: 0,
+            lastError: null,
+            maxRetries: 5,
+            payload: {
+              sellerGroupId,
+            },
+          },
+          create: {
+            id: `mark-ready-${sellerGroupId}`,
+            type: "MARK_SELLER_GROUP_READY",
+            status: "PENDING",
+            runAt: prepReadyAt,
+            attempts: 0,
+            lastError: null,
+            maxRetries: 5,
+            payload: {
+              sellerGroupId,
+            },
+          },
+        });
+      }
     });
 
     return { success: "Order accepted" };
