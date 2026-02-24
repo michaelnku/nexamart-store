@@ -504,6 +504,8 @@ export type SellerOrder = {
   sellerGroups: {
     id: string;
     status: string;
+    prepTimeMinutes?: number | null;
+    readyAt?: string | Date | null;
   }[];
   customer?: {
     name?: string | null;

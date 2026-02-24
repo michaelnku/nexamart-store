@@ -30,12 +30,6 @@ export async function createLedgerEntryIdempotent(
     reference: string;
   },
 ) {
-  const existing = await tx.ledgerEntry.findUnique({
-    where: { reference: input.reference },
-    select: { id: true },
-  });
-  if (existing) return { created: false };
-
   try {
     await tx.ledgerEntry.create({
       data: input,
@@ -62,12 +56,6 @@ export async function createEscrowEntryIdempotent(
   },
 ) {
   const { context, ...escrowInput } = input;
-
-  const existing = await tx.escrowLedger.findUnique({
-    where: { reference: escrowInput.reference },
-    select: { id: true },
-  });
-  if (existing) return { created: false };
 
   try {
     const metadataWithContext =

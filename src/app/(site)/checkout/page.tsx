@@ -33,7 +33,7 @@ export default async function CheckoutPage() {
 
   const address = await prisma.address.findFirst({
     where: { userId },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
   });
 
   if (!cart)

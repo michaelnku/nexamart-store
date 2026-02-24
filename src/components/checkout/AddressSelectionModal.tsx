@@ -28,6 +28,7 @@ type Props = {
   selectedAddressId?: string;
   onSelectAddress: (address: AddressOption) => void;
   onAddNewAddress: () => void;
+  selecting?: boolean;
 };
 
 export default function AddressSelectionModal({
@@ -37,6 +38,7 @@ export default function AddressSelectionModal({
   selectedAddressId,
   onSelectAddress,
   onAddNewAddress,
+  selecting = false,
 }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,11 +56,12 @@ export default function AddressSelectionModal({
               key={item.id}
               type="button"
               onClick={() => onSelectAddress(item)}
+              disabled={selecting}
               className={`w-full rounded-lg border p-3 text-left transition ${
                 selectedAddressId === item.id
                   ? "border-[var(--brand-blue)] bg-[var(--brand-blue)]/10"
                   : "border-gray-200 hover:border-gray-300"
-              }`}
+              } ${selecting ? "cursor-not-allowed opacity-60" : ""}`}
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="font-medium">{item.fullName}</p>
@@ -79,10 +82,16 @@ export default function AddressSelectionModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={selecting}
+          >
             Cancel
           </Button>
-          <Button onClick={onAddNewAddress}>Add New Address</Button>
+          <Button onClick={onAddNewAddress} disabled={selecting}>
+            Add New Address
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

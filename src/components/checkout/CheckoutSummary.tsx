@@ -21,7 +21,10 @@ import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { useCurrencyStore } from "@/stores/useCurrencyStore";
 import { useQuery } from "@tanstack/react-query";
 import { getEligibleClaimedCouponsAction } from "@/actions/checkout/getEligibleClaimedCoupons";
-import { getUserAddressesAction } from "@/actions/checkout/addressAction";
+import {
+  getUserAddressesAction,
+  setDefaultAddressAction,
+} from "@/actions/checkout/addressAction";
 import {
   getCheckoutPreviewAction,
   type CheckoutPreviewResult,
@@ -116,6 +119,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
   const [openAddress, setOpenAddress] = useState(false);
   const [openAddressPicker, setOpenAddressPicker] = useState(false);
   const [addressesLoading, setAddressesLoading] = useState(false);
+  const [selectingAddress, setSelectingAddress] = useState(false);
   const [addresses, setAddresses] = useState<CheckoutAddress[]>([]);
   const [selectedAddress, setSelectedAddress] =
     useState<CheckoutAddress | null>(address);
@@ -696,9 +700,33 @@ export default function CheckoutSummary({ cart, address }: Props) {
           onOpenChange={setOpenAddressPicker}
           addresses={addresses}
           selectedAddressId={selectedAddress?.id}
-          onSelectAddress={(item) => {
-            setSelectedAddress(item);
-            setOpenAddressPicker(false);
+          selecting={selectingAddress}
+          onSelectAddress={async (item) => {
+            setSelectingAddress(true);
+            try {
+              const result = await setDefaultAddressAction(item.id);
+              if ("error" in result) {
+                toast.error(result.error);
+                return;
+              }
+
+              setSelectedAddress({
+                ...item,
+                isDefault: true,
+              });
+              setAddresses((prev) =>
+                prev.map((addressItem) => ({
+                  ...addressItem,
+                  isDefault: addressItem.id === item.id,
+                })),
+              );
+              setOpenAddressPicker(false);
+            } catch (error) {
+              console.error("Failed to set default address:", error);
+              toast.error("Could not set default address right now.");
+            } finally {
+              setSelectingAddress(false);
+            }
           }}
           onAddNewAddress={() => {
             setOpenAddressPicker(false);

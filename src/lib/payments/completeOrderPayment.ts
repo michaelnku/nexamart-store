@@ -84,6 +84,26 @@ export interface CompleteOrderPaymentParams {
 export interface CompleteOrderPaymentCoreParams extends CompleteOrderPaymentParams {
   tx: Prisma.TransactionClient;
   systemEscrowWalletId: string;
+  preloadedOrder?: {
+    id: string;
+    userId: string;
+    paymentMethod: PaymentMethod;
+    isPaid: boolean;
+    postPaymentFinalized: boolean;
+    totalAmount: number;
+    sellerGroups: Array<{
+      id: string;
+      sellerId: string;
+      storeId: string;
+      subtotal: number;
+      shippingFee: number;
+    }>;
+  };
+  preloadedWallet?: {
+    id: string;
+    balance: number;
+  } | null;
+  assumePaymentReferenceFresh?: boolean;
 }
 
 type CompleteOrderPaymentResult = {
@@ -225,31 +245,36 @@ export async function completeOrderPaymentCore({
   method,
   context,
   systemEscrowWalletId,
+  preloadedOrder,
+  preloadedWallet,
+  assumePaymentReferenceFresh = false,
 }: CompleteOrderPaymentCoreParams): Promise<CompleteOrderPaymentResult> {
   if (!orderId || !paymentReference) {
     throw new Error("orderId and paymentReference are required");
   }
 
-  const order = await tx.order.findUnique({
-    where: { id: orderId },
-    select: {
-      id: true,
-      userId: true,
-      paymentMethod: true,
-      isPaid: true,
-      postPaymentFinalized: true,
-      totalAmount: true,
-      sellerGroups: {
-        select: {
-          id: true,
-          sellerId: true,
-          storeId: true,
-          subtotal: true,
-          shippingFee: true,
+  const order =
+    preloadedOrder ??
+    (await tx.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        userId: true,
+        paymentMethod: true,
+        isPaid: true,
+        postPaymentFinalized: true,
+        totalAmount: true,
+        sellerGroups: {
+          select: {
+            id: true,
+            sellerId: true,
+            storeId: true,
+            subtotal: true,
+            shippingFee: true,
+          },
         },
       },
-    },
-  });
+    }));
 
   if (!order) {
     throw new Error("Order not found");
@@ -263,27 +288,36 @@ export async function completeOrderPaymentCore({
     throw new Error("Order not properly initialized via placeOrderAction");
   }
 
-  let transactionRow = await tx.transaction.findUnique({
-    where: { reference: paymentReference },
-    select: { id: true, orderId: true },
-  });
+  let transactionRow = assumePaymentReferenceFresh
+    ? null
+    : await tx.transaction.findUnique({
+        where: { reference: paymentReference },
+        select: { id: true, orderId: true },
+      });
 
   const buyerWallet =
     method === "WALLET"
-      ? await tx.wallet.upsert({
-          where: { userId: order.userId },
-          update: {},
-          create: { userId: order.userId, currency: "USD" },
-          select: { id: true },
-        })
+      ? preloadedWallet
+        ? { id: preloadedWallet.id }
+        : await tx.wallet.upsert({
+            where: { userId: order.userId },
+            update: {},
+            create: { userId: order.userId, currency: "USD" },
+            select: { id: true },
+          })
       : null;
 
   if (method === "WALLET" && buyerWallet) {
-    const buyerWalletSnapshot = await tx.wallet.findUnique({
-      where: { id: buyerWallet.id },
-      select: { balance: true },
-    });
-    if ((buyerWalletSnapshot?.balance ?? 0) < order.totalAmount) {
+    const availableBalance =
+      preloadedWallet && preloadedWallet.id === buyerWallet.id
+        ? preloadedWallet.balance
+        : (
+            await tx.wallet.findUnique({
+              where: { id: buyerWallet.id },
+              select: { balance: true },
+            })
+          )?.balance ?? 0;
+    if (availableBalance < order.totalAmount) {
       throw new Error("Insufficient wallet balance");
     }
   }
@@ -316,40 +350,39 @@ export async function completeOrderPaymentCore({
     throw new Error("Invariant violation: WALLET order without transaction.");
   }
 
-  await tx.order.update({
-    where: { id: order.id },
-    data: {
-      isPaid: true,
-      status: "ACCEPTED",
-      paymentMethod: method as PaymentMethod,
-    },
-  });
-
-  await createEscrowEntryIdempotent(tx, {
-    orderId: order.id,
-    userId: order.userId,
-    role: "BUYER",
-    entryType: "FUND",
-    amount: order.totalAmount,
-    status: "HELD",
-    reference: `escrow-fund-${order.id}`,
-    context,
-  });
-
-  await createDoubleEntryLedger(tx, {
-    orderId: order.id,
-    fromUserId: order.userId,
-    fromWalletId: buyerWallet?.id,
-    toWalletId: systemEscrowWalletId,
-    entryType: "ESCROW_DEPOSIT",
-    amount: order.totalAmount,
-    reference: `escrow-fund-${order.id}`,
-    resolveFromWallet: method === "WALLET",
-    resolveToWallet: false,
-    context,
-  });
-
-  await ensureFinalizeOrderJob(tx, order.id, order.postPaymentFinalized);
+  await Promise.all([
+    tx.order.update({
+      where: { id: order.id },
+      data: {
+        isPaid: true,
+        status: "ACCEPTED",
+        paymentMethod: method as PaymentMethod,
+      },
+    }),
+    createEscrowEntryIdempotent(tx, {
+      orderId: order.id,
+      userId: order.userId,
+      role: "BUYER",
+      entryType: "FUND",
+      amount: order.totalAmount,
+      status: "HELD",
+      reference: `escrow-fund-${order.id}`,
+      context,
+    }),
+    createDoubleEntryLedger(tx, {
+      orderId: order.id,
+      fromUserId: order.userId,
+      fromWalletId: buyerWallet?.id,
+      toWalletId: systemEscrowWalletId,
+      entryType: "ESCROW_DEPOSIT",
+      amount: order.totalAmount,
+      reference: `escrow-fund-${order.id}`,
+      resolveFromWallet: method === "WALLET",
+      resolveToWallet: false,
+      context,
+    }),
+    ensureFinalizeOrderJob(tx, order.id, order.postPaymentFinalized),
+  ]);
 
   return { justPaid: true, order };
 }

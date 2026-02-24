@@ -1,5 +1,4 @@
 import { Prisma } from "@/generated/prisma";
-import { createLedgerEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { ServiceContext } from "@/lib/system/serviceContext";
 import { LedgerEntryTypeValue } from "@/lib/ledger/types";
 
@@ -62,19 +61,35 @@ export async function createDoubleEntryLedger(
 
   const debitRef = `${input.reference}-debit`;
   const creditRef = `${input.reference}-credit`;
+  const inserted = await tx.ledgerEntry.createMany({
+    data: [
+      {
+        orderId: input.orderId,
+        userId: input.fromUserId,
+        walletId: fromWalletId,
+        entryType: input.entryType,
+        direction: "DEBIT",
+        amount,
+        reference: debitRef,
+      },
+      {
+        orderId: input.orderId,
+        userId: input.toUserId,
+        walletId: toWalletId,
+        entryType: input.entryType,
+        direction: "CREDIT",
+        amount,
+        reference: creditRef,
+      },
+    ],
+    skipDuplicates: true,
+  });
 
-  const [existingDebit, existingCredit] = await Promise.all([
-    tx.ledgerEntry.findUnique({
-      where: { reference: debitRef },
-      select: { id: true },
-    }),
-    tx.ledgerEntry.findUnique({
-      where: { reference: creditRef },
-      select: { id: true },
-    }),
-  ]);
+  if (inserted.count === 1) {
+    throw new Error("Incomplete double-entry ledger pair");
+  }
 
-  if (!existingDebit && fromWalletId && !input.allowNegativeFromWallet) {
+  if (inserted.count === 2 && fromWalletId && !input.allowNegativeFromWallet) {
     const sourceWallet = await tx.wallet.findUnique({
       where: { id: fromWalletId },
       select: { id: true, balance: true },
@@ -87,54 +102,23 @@ export async function createDoubleEntryLedger(
     }
   }
 
-  const debitCreate = await createLedgerEntryIdempotent(tx, {
-    orderId: input.orderId,
-    userId: input.fromUserId,
-    walletId: fromWalletId,
-    entryType: input.entryType,
-    direction: "DEBIT",
-    amount,
-    reference: debitRef,
-  });
-
-  const creditCreate = await createLedgerEntryIdempotent(tx, {
-    orderId: input.orderId,
-    userId: input.toUserId,
-    walletId: toWalletId,
-    entryType: input.entryType,
-    direction: "CREDIT",
-    amount,
-    reference: creditRef,
-  });
-
   // wallet.balance is a cached projection of LedgerEntry.
   // We only mutate cached balance when an entry is newly created in this tx.
-  if (debitCreate.created && fromWalletId) {
-    await tx.wallet.update({
-      where: { id: fromWalletId },
-      data: { balance: { decrement: amount } },
-    });
-  }
-
-  if (creditCreate.created && toWalletId) {
-    await tx.wallet.update({
-      where: { id: toWalletId },
-      data: { balance: { increment: amount } },
-    });
-  }
-
-  const pair = await tx.ledgerEntry.findMany({
-    where: { reference: { in: [debitRef, creditRef] } },
-    select: { reference: true, direction: true, amount: true },
-  });
-
-  const debit = pair.find((item) => item.reference === debitRef);
-  const credit = pair.find((item) => item.reference === creditRef);
-  if (!debit || !credit) {
-    throw new Error("Incomplete double-entry ledger pair");
-  }
-  if (debit.amount !== credit.amount) {
-    throw new Error("Ledger imbalance detected");
+  if (inserted.count === 2) {
+    await Promise.all([
+      fromWalletId
+        ? tx.wallet.update({
+            where: { id: fromWalletId },
+            data: { balance: { decrement: amount } },
+          })
+        : Promise.resolve(),
+      toWalletId
+        ? tx.wallet.update({
+            where: { id: toWalletId },
+            data: { balance: { increment: amount } },
+          })
+        : Promise.resolve(),
+    ]);
   }
 
   return { debitReference: debitRef, creditReference: creditRef };

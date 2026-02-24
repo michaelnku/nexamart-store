@@ -118,11 +118,12 @@ export default function SellerOrdersTable({
                   const isFoodOrder = Boolean(o.isFoodOrder);
                   const sellerGroupId = o.sellerGroups?.[0]?.id;
                   const sellerGroupStatus = o.sellerGroups?.[0]?.status;
+                  const readyAt = o.sellerGroups?.[0]?.readyAt;
                   const isPendingPickup =
                     sellerGroupStatus === "PENDING_PICKUP";
                   const canMarkAsShipped =
                     !isFoodOrder && sellerGroupStatus === "ACCEPTED";
-                  const canMarkAsReady =
+                  const isPreparingFood =
                     isFoodOrder && sellerGroupStatus === "PREPARING";
                   const isShipped =
                     sellerGroupStatus === "IN_TRANSIT_TO_HUB" ||
@@ -131,6 +132,12 @@ export default function SellerOrdersTable({
                   const isReady =
                     sellerGroupStatus === "READY" ||
                     (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
+                  const readyAtLabel = readyAt
+                    ? new Date(readyAt).toLocaleTimeString([], {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                    : null;
 
                   return (
                     <>
@@ -238,20 +245,18 @@ export default function SellerOrdersTable({
                           )}
 
                           {(isFoodOrder
-                            ? canMarkAsReady || isReady
+                            ? isPreparingFood || isReady
                             : canMarkAsShipped || isShipped) && (
                             <Button
                               size="sm"
                               disabled={
                                 isPending ||
                                 !sellerGroupId ||
-                                (isFoodOrder
-                                  ? !canMarkAsReady
-                                  : !canMarkAsShipped)
+                                (isFoodOrder ? true : !canMarkAsShipped)
                               }
                               onClick={() => {
                                 if (
-                                  (isFoodOrder && !canMarkAsReady) ||
+                                  isFoodOrder ||
                                   (!isFoodOrder && !canMarkAsShipped)
                                 ) {
                                   return;
@@ -269,11 +274,12 @@ export default function SellerOrdersTable({
                               }}
                               className="flex gap-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
                             >
-                              <Truck className="h-4 w-4" />
                               {isFoodOrder
                                 ? isReady
-                                  ? "Ready"
-                                  : "Food Is Ready"
+                                  ? "Ready for Pickup"
+                                  : readyAtLabel
+                                    ? `Preparing • auto ready ${readyAtLabel}`
+                                    : "Preparing • auto ready"
                                 : isShipped
                                   ? "Shipped"
                                   : "Mark as Shipped"}
@@ -304,10 +310,11 @@ export default function SellerOrdersTable({
               const isFoodOrder = Boolean(o.isFoodOrder);
               const sellerGroupId = o.sellerGroups?.[0]?.id;
               const sellerGroupStatus = o.sellerGroups?.[0]?.status;
+              const readyAt = o.sellerGroups?.[0]?.readyAt;
               const isPendingPickup = sellerGroupStatus === "PENDING_PICKUP";
               const canMarkAsShipped =
                 !isFoodOrder && sellerGroupStatus === "ACCEPTED";
-              const canMarkAsReady =
+              const isPreparingFood =
                 isFoodOrder && sellerGroupStatus === "PREPARING";
               const isShipped =
                 sellerGroupStatus === "IN_TRANSIT_TO_HUB" ||
@@ -316,6 +323,12 @@ export default function SellerOrdersTable({
               const isReady =
                 sellerGroupStatus === "READY" ||
                 (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
+              const readyAtLabel = readyAt
+                ? new Date(readyAt).toLocaleTimeString([], {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
+                : null;
 
               return (
                 <>
@@ -420,18 +433,18 @@ export default function SellerOrdersTable({
                     )}
 
                     {(isFoodOrder
-                      ? canMarkAsReady || isReady
+                      ? isPreparingFood || isReady
                       : canMarkAsShipped || isShipped) && (
                       <Button
                         size="sm"
                         disabled={
                           isPending ||
                           !sellerGroupId ||
-                          (isFoodOrder ? !canMarkAsReady : !canMarkAsShipped)
+                          (isFoodOrder ? true : !canMarkAsShipped)
                         }
                         onClick={() => {
                           if (
-                            (isFoodOrder && !canMarkAsReady) ||
+                            isFoodOrder ||
                             (!isFoodOrder && !canMarkAsShipped)
                           ) {
                             return;
@@ -447,8 +460,10 @@ export default function SellerOrdersTable({
                       >
                         {isFoodOrder
                           ? isReady
-                            ? "Ready"
-                            : "Food Is Ready"
+                            ? "Ready for Pickup"
+                            : readyAtLabel
+                              ? `Preparing • auto ready ${readyAtLabel}`
+                              : "Preparing • auto ready"
                           : isShipped
                             ? "Shipped"
                             : "Mark as Shipped"}

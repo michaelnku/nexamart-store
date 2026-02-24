@@ -28,8 +28,14 @@ class PlaceOrderError extends Error {
 
 function buildSellerGroupCodes(orderId: string, storeId: string) {
   const seed = crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase();
-  const storeSeed = storeId.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase();
-  const orderSeed = orderId.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase();
+  const storeSeed = storeId
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(-6)
+    .toUpperCase();
+  const orderSeed = orderId
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(-6)
+    .toUpperCase();
 
   return {
     hubInboundCode: `HUB-${storeSeed}-${seed}`,
@@ -299,20 +305,17 @@ export async function placeOrderAction({
 
   try {
     order = await prisma.$transaction(async (tx) => {
+      let walletForPayment: { id: string; balance: number } | null = null;
+
       if (paymentMethod === "WALLET") {
-        const wallet = await tx.wallet.upsert({
+        walletForPayment = await tx.wallet.upsert({
           where: { userId },
           update: {},
           create: { userId },
-          select: { id: true },
+          select: { id: true, balance: true },
         });
 
-        const availableWalletBalance = await calculateWalletBalance(
-          wallet.id,
-          tx,
-        );
-
-        if (availableWalletBalance < totalAmount) {
+        if (walletForPayment.balance < totalAmount) {
           throw new PlaceOrderError(
             "Insufficient wallet balance. Please choose another payment method.",
           );
@@ -345,43 +348,54 @@ export async function placeOrderAction({
         },
       });
 
-      for (const [storeId, items] of itemsByStore) {
-        const sellerId = items[0].product.store.userId;
+      const createdSellerGroups = await Promise.all(
+        Array.from(itemsByStore.entries()).map(async ([storeId, items]) => {
+          const sellerId = items[0].product.store.userId;
 
-        const groupSubtotal = items.reduce(
-          (s, i) => s + i.quantity * i.variant!.priceUSD,
-          0,
-        );
-
-        const groupMetrics = storeMetrics.get(storeId);
-        if (!groupMetrics) {
-          throw new PlaceOrderError(
-            `Shipping metrics missing for store ${storeId}.`,
+          const groupSubtotal = items.reduce(
+            (s, i) => s + i.quantity * i.variant!.priceUSD,
+            0,
           );
-        }
 
-        const group = await tx.orderSellerGroup.create({
-          data: {
-            orderId: createdOrder.id,
-            storeId,
-            sellerId,
-            subtotal: groupSubtotal,
-            shippingFee: groupMetrics.shippingFee,
-            ...buildSellerGroupCodes(createdOrder.id, storeId),
-          },
-        });
+          const groupMetrics = storeMetrics.get(storeId);
+          if (!groupMetrics) {
+            throw new PlaceOrderError(
+              `Shipping metrics missing for store ${storeId}.`,
+            );
+          }
 
-        await tx.orderItem.createMany({
-          data: items.map((i) => ({
-            orderId: createdOrder.id,
-            sellerGroupId: group.id,
-            productId: i.productId,
-            variantId: i.variantId,
-            quantity: i.quantity,
-            price: i.variant!.priceUSD,
-          })),
-        });
-      }
+          const group = await tx.orderSellerGroup.create({
+            data: {
+              orderId: createdOrder.id,
+              storeId,
+              sellerId,
+              subtotal: groupSubtotal,
+              shippingFee: groupMetrics.shippingFee,
+              ...buildSellerGroupCodes(createdOrder.id, storeId),
+            },
+            select: {
+              id: true,
+              sellerId: true,
+              storeId: true,
+              subtotal: true,
+              shippingFee: true,
+            },
+          });
+
+          await tx.orderItem.createMany({
+            data: items.map((i) => ({
+              orderId: createdOrder.id,
+              sellerGroupId: group.id,
+              productId: i.productId,
+              variantId: i.variantId,
+              quantity: i.quantity,
+              price: i.variant!.priceUSD,
+            })),
+          });
+
+          return group;
+        }),
+      );
 
       if (validatedCouponResult.coupon?.id) {
         await tx.couponUsage.create({
@@ -439,6 +453,18 @@ export async function placeOrderAction({
           paymentReference: `wallet-order-${createdOrder.id}`,
           method: "WALLET",
           systemEscrowWalletId,
+          preloadedOrder: {
+            id: createdOrder.id,
+            userId: createdOrder.userId,
+            paymentMethod: (createdOrder.paymentMethod ??
+              paymentMethod) as PaymentMethod,
+            isPaid: createdOrder.isPaid,
+            postPaymentFinalized: createdOrder.postPaymentFinalized,
+            totalAmount: createdOrder.totalAmount,
+            sellerGroups: createdSellerGroups,
+          },
+          preloadedWallet: walletForPayment,
+          assumePaymentReferenceFresh: true,
         });
 
         walletJustPaid = paymentResult.justPaid;

@@ -12,6 +12,8 @@ export const publicRoutes = [
   "/terms-of-service",
   "/cookies",
   "/help",
+  "/cart",
+  "/wishlist",
 ];
 
 export const authRoutes = [

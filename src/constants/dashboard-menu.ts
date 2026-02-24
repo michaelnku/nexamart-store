@@ -361,7 +361,7 @@ export const DashboardMenuItems = {
           name: "My Cart",
         },
         {
-          href: "/customer/wishlist",
+          href: "/wishlist",
           icon: Heart,
           name: "Saved Items",
         },
