@@ -1,4 +1,4 @@
-import { PaymentMethod } from "@/generated/prisma/client";
+import { PaymentMethod, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { autoAssignRider } from "@/lib/rider/logistics";
 import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
@@ -21,6 +21,57 @@ function isUniqueConstraintError(error: unknown): boolean {
   return candidate.code === "P2002";
 }
 
+async function ensureFinalizeOrderJob(
+  tx: Prisma.TransactionClient,
+  paidOrderId: string,
+  isPostPaymentFinalized: boolean,
+) {
+  if (isPostPaymentFinalized) return;
+  const finalizeJobId = `${FINALIZE_ORDER_JOB_ID_PREFIX}-${paidOrderId}`;
+
+  try {
+    await tx.job.create({
+      data: {
+        id: finalizeJobId,
+        type: FINALIZE_ORDER_JOB_TYPE,
+        status: "PENDING",
+        runAt: new Date(),
+        maxRetries: 5,
+        attempts: 0,
+        lastError: null,
+        payload: {
+          orderId: paidOrderId,
+        },
+      },
+    });
+    return;
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      // Job already exists; continue with idempotent recovery update path.
+    } else {
+      throw error;
+    }
+  }
+
+  await tx.job.updateMany({
+    where: {
+      id: finalizeJobId,
+      status: { in: ["FAILED", "COMPLETED"] },
+    },
+    data: {
+      type: FINALIZE_ORDER_JOB_TYPE,
+      status: "PENDING",
+      runAt: new Date(),
+      maxRetries: 5,
+      attempts: 0,
+      lastError: null,
+      payload: {
+        orderId: paidOrderId,
+      },
+    },
+  });
+}
+
 export type PaymentMethodType = "CARD" | "WALLET";
 
 export interface CompleteOrderPaymentParams {
@@ -28,6 +79,11 @@ export interface CompleteOrderPaymentParams {
   paymentReference: string;
   method: PaymentMethodType;
   context?: ServiceContext;
+}
+
+export interface CompleteOrderPaymentCoreParams extends CompleteOrderPaymentParams {
+  tx: Prisma.TransactionClient;
+  systemEscrowWalletId: string;
 }
 
 type CompleteOrderPaymentResult = {
@@ -162,6 +218,154 @@ export async function finalizePostPayment(
   }
 }
 
+export async function completeOrderPaymentCore({
+  tx,
+  orderId,
+  paymentReference,
+  method,
+  context,
+  systemEscrowWalletId,
+}: CompleteOrderPaymentCoreParams): Promise<CompleteOrderPaymentResult> {
+  if (!orderId || !paymentReference) {
+    throw new Error("orderId and paymentReference are required");
+  }
+
+  const order = await tx.order.findUnique({
+    where: { id: orderId },
+    select: {
+      id: true,
+      userId: true,
+      paymentMethod: true,
+      isPaid: true,
+      postPaymentFinalized: true,
+      totalAmount: true,
+      sellerGroups: {
+        select: {
+          id: true,
+          sellerId: true,
+          storeId: true,
+          subtotal: true,
+          shippingFee: true,
+        },
+      },
+    },
+  });
+
+  if (!order) {
+    throw new Error("Order not found");
+  }
+
+  if (order.isPaid) {
+    throw new Error("Order already marked as paid.");
+  }
+
+  if (order.sellerGroups.length === 0) {
+    throw new Error("Order not properly initialized via placeOrderAction");
+  }
+
+  let transactionRow = await tx.transaction.findUnique({
+    where: { reference: paymentReference },
+    select: { id: true, orderId: true },
+  });
+
+  const buyerWallet =
+    method === "WALLET"
+      ? await tx.wallet.upsert({
+          where: { userId: order.userId },
+          update: {},
+          create: { userId: order.userId, currency: "USD" },
+          select: { id: true },
+        })
+      : null;
+
+  if (method === "WALLET" && buyerWallet) {
+    const buyerWalletSnapshot = await tx.wallet.findUnique({
+      where: { id: buyerWallet.id },
+      select: { balance: true },
+    });
+    if ((buyerWalletSnapshot?.balance ?? 0) < order.totalAmount) {
+      throw new Error("Insufficient wallet balance");
+    }
+  }
+
+  if (!transactionRow) {
+    transactionRow = await tx.transaction.create({
+      data: {
+        orderId: order.id,
+        userId: order.userId,
+        walletId: buyerWallet?.id,
+        type: "ORDER_PAYMENT",
+        amount: order.totalAmount,
+        status: "SUCCESS",
+        reference: paymentReference,
+        description: context
+          ? `Executed by ${context.service}`
+          : method === "CARD"
+            ? "Stripe order payment"
+            : "Wallet order payment",
+      },
+      select: { id: true, orderId: true },
+    });
+  }
+
+  if (transactionRow.orderId !== order.id) {
+    throw new Error("Wallet transaction validation failed");
+  }
+
+  if (order.paymentMethod === "WALLET" && !transactionRow) {
+    throw new Error("Invariant violation: WALLET order without transaction.");
+  }
+
+  await tx.order.update({
+    where: { id: order.id },
+    data: {
+      isPaid: true,
+      status: "ACCEPTED",
+      paymentMethod: method as PaymentMethod,
+    },
+  });
+
+  await createEscrowEntryIdempotent(tx, {
+    orderId: order.id,
+    userId: order.userId,
+    role: "BUYER",
+    entryType: "FUND",
+    amount: order.totalAmount,
+    status: "HELD",
+    reference: `escrow-fund-${order.id}`,
+    context,
+  });
+
+  await createDoubleEntryLedger(tx, {
+    orderId: order.id,
+    fromUserId: order.userId,
+    fromWalletId: buyerWallet?.id,
+    toWalletId: systemEscrowWalletId,
+    entryType: "ESCROW_DEPOSIT",
+    amount: order.totalAmount,
+    reference: `escrow-fund-${order.id}`,
+    resolveFromWallet: method === "WALLET",
+    resolveToWallet: false,
+    context,
+  });
+
+  await ensureFinalizeOrderJob(tx, order.id, order.postPaymentFinalized);
+
+  return { justPaid: true, order };
+}
+
+export async function completeOrderPaymentSideEffects(
+  orderId: string,
+  context?: ServiceContext,
+): Promise<void> {
+  if (!orderId) return;
+  try {
+    await processPendingJobs(1, context);
+  } catch (error) {
+    console.error("Immediate finalize job processing failed:", error);
+  }
+}
+
 export async function completeOrderPayment({
   orderId,
   paymentReference,
@@ -175,180 +379,20 @@ export async function completeOrderPayment({
   const systemEscrowWalletId = await getOrCreateSystemEscrowWallet();
 
   const result = await prisma.$transaction(
-    async (tx) => {
-      const ensureFinalizeOrderJob = async (
-        paidOrderId: string,
-        isPostPaymentFinalized: boolean,
-      ) => {
-        if (isPostPaymentFinalized) return;
-        const finalizeJobId = `${FINALIZE_ORDER_JOB_ID_PREFIX}-${paidOrderId}`;
-
-        try {
-          await tx.job.create({
-            data: {
-              id: finalizeJobId,
-              type: FINALIZE_ORDER_JOB_TYPE,
-              status: "PENDING",
-              runAt: new Date(),
-              maxRetries: 5,
-              attempts: 0,
-              lastError: null,
-              payload: {
-                orderId: paidOrderId,
-              },
-            },
-          });
-          return;
-        } catch (error) {
-          if (isUniqueConstraintError(error)) {
-            // Job already exists; continue with idempotent recovery update path.
-          } else {
-            throw error;
-          }
-        }
-
-        await tx.job.updateMany({
-          where: {
-            id: finalizeJobId,
-            status: { in: ["FAILED", "COMPLETED"] },
-          },
-          data: {
-            type: FINALIZE_ORDER_JOB_TYPE,
-            status: "PENDING",
-            runAt: new Date(),
-            maxRetries: 5,
-            attempts: 0,
-            lastError: null,
-            payload: {
-              orderId: paidOrderId,
-            },
-          },
-        });
-      };
-
-      const order = await tx.order.findUnique({
-        where: { id: orderId },
-        select: {
-          id: true,
-          userId: true,
-          isPaid: true,
-          postPaymentFinalized: true,
-          totalAmount: true,
-          sellerGroups: {
-            select: {
-              id: true,
-              sellerId: true,
-              storeId: true,
-              subtotal: true,
-              shippingFee: true,
-            },
-          },
-        },
-      });
-
-      if (!order) {
-        throw new Error("Order not found");
-      }
-
-      if (order.isPaid) {
-        await ensureFinalizeOrderJob(order.id, order.postPaymentFinalized);
-        return { justPaid: false, order };
-      }
-
-      if (order.sellerGroups.length === 0) {
-        throw new Error("Order not properly initialized via placeOrderAction");
-      }
-
-      const existingByReference = await tx.transaction.findUnique({
-        where: { reference: paymentReference },
-        select: { id: true },
-      });
-
-      const buyerWallet =
-        method === "WALLET"
-          ? await tx.wallet.upsert({
-              where: { userId: order.userId },
-              update: {},
-              create: { userId: order.userId, currency: "USD" },
-              select: { id: true },
-            })
-          : null;
-
-      if (method === "WALLET" && buyerWallet) {
-        const buyerWalletSnapshot = await tx.wallet.findUnique({
-          where: { id: buyerWallet.id },
-          select: { balance: true },
-        });
-        if ((buyerWalletSnapshot?.balance ?? 0) < order.totalAmount) {
-          throw new Error("Insufficient wallet balance");
-        }
-      }
-
-      if (!existingByReference) {
-        await tx.transaction.create({
-          data: {
-            orderId: order.id,
-            userId: order.userId,
-            walletId: buyerWallet?.id,
-            type: "ORDER_PAYMENT",
-            amount: order.totalAmount,
-            status: "SUCCESS",
-            reference: paymentReference,
-            description: context
-              ? `Executed by ${context.service}`
-              : method === "CARD"
-                ? "Stripe order payment"
-                : "Wallet order payment",
-          },
-        });
-      }
-
-      await tx.order.update({
-        where: { id: order.id },
-        data: {
-          isPaid: true,
-          status: "ACCEPTED",
-          paymentMethod: method as PaymentMethod,
-        },
-      });
-
-      await createEscrowEntryIdempotent(tx, {
-        orderId: order.id,
-        userId: order.userId,
-        role: "BUYER",
-        entryType: "FUND",
-        amount: order.totalAmount,
-        status: "HELD",
-        reference: `escrow-fund-${order.id}`,
+    async (tx) =>
+      completeOrderPaymentCore({
+        tx,
+        orderId,
+        paymentReference,
+        method,
         context,
-      });
-
-      await createDoubleEntryLedger(tx, {
-        orderId: order.id,
-        fromUserId: order.userId,
-        fromWalletId: buyerWallet?.id,
-        toWalletId: systemEscrowWalletId,
-        entryType: "ESCROW_DEPOSIT",
-        amount: order.totalAmount,
-        reference: `escrow-fund-${order.id}`,
-        resolveFromWallet: method === "WALLET",
-        resolveToWallet: false,
-        context,
-      });
-
-      await ensureFinalizeOrderJob(order.id, order.postPaymentFinalized);
-
-      return { justPaid: true, order };
-    },
+        systemEscrowWalletId,
+      }),
     { timeout: 15000 },
   );
 
   if (result.justPaid) {
-    try {
-      await processPendingJobs(1, context);
-    } catch (error) {
-      console.error("Immediate finalize job processing failed:", error);
-    }
+    await completeOrderPaymentSideEffects(result.order.id, context);
   }
 
   return result;

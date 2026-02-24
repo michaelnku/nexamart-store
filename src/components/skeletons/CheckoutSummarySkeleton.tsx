@@ -8,9 +8,7 @@ export default function CheckoutSummarySkeleton() {
       className="
         max-w-6xl mx-auto px-4 sm:px-6 py-8 grid gap-8
         grid-cols-1 lg:grid-cols-3
-        min-h-[180vh]
-        sm:min-h-[160vh]
-        lg:min-h-[130vh]
+        min-h-full
       "
     >
       {/* LEFT — ITEMS LIST */}

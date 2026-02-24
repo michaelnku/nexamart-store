@@ -6,6 +6,7 @@ import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
+import { markSellerGroupReady } from "@/lib/order/markSellerGroupReady";
 
 export const markSellerDispatchedToHubAction = async (
   sellerGroupId: string,
@@ -35,14 +36,33 @@ export const markSellerDispatchedToHubAction = async (
 
     if (!sellerGroup) return { error: "Order group not found" };
     if (sellerGroup.sellerId !== userId) return { error: "Forbidden" };
-    if (sellerGroup.order.isFoodOrder) {
-      return { error: "Food orders do not use hub dispatch flow." };
-    }
     if (sellerGroup.status === "ARRIVED_AT_HUB") {
       return { error: "Group already marked as arrived at hub." };
     }
     if (sellerGroup.status === "CANCELLED") {
       return { error: "Cannot dispatch a cancelled order group." };
+    }
+
+    if (sellerGroup.order.isFoodOrder) {
+      const readyResult = await markSellerGroupReady(sellerGroupId);
+
+      if (readyResult.reason === "ALREADY_READY") {
+        return { error: "Food order is already marked as ready." };
+      }
+
+      if (readyResult.reason === "NOT_PREPARING") {
+        return { error: "Food order must be preparing before marking ready." };
+      }
+
+      if (!readyResult.updated) {
+        return { error: "Unable to mark food order as ready." };
+      }
+
+      revalidatePath("/marketplace/dashboard/seller/orders");
+      revalidatePath(
+        `/marketplace/dashboard/seller/orders/${sellerGroup.orderId}`,
+      );
+      return { success: "Food order marked ready for rider pickup" };
     }
 
     await prisma.$transaction(async (tx) => {
@@ -80,7 +100,10 @@ export const markSellerDispatchedToHubAction = async (
   }
 };
 
-export const acceptOrderAction = async (sellerGroupId: string) => {
+export const acceptOrderAction = async (
+  sellerGroupId: string,
+  prepTimeMinutes?: number,
+) => {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
 
@@ -111,11 +134,27 @@ export const acceptOrderAction = async (sellerGroupId: string) => {
       return { error: "Order already processed." };
     }
 
+    if (group.order.isFoodOrder) {
+      if (
+        !Number.isInteger(prepTimeMinutes) ||
+        (prepTimeMinutes as number) < 1 ||
+        (prepTimeMinutes as number) > 180
+      ) {
+        return { error: "Prep time must be between 1 and 180 minutes." };
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.orderSellerGroup.update({
         where: { id: sellerGroupId },
         data: {
-          status: "ACCEPTED",
+          status: group.order.isFoodOrder ? "PREPARING" : "ACCEPTED",
+          prepTimeMinutes: group.order.isFoodOrder
+            ? (prepTimeMinutes as number)
+            : null,
+          readyAt: group.order.isFoodOrder
+            ? new Date(Date.now() + (prepTimeMinutes as number) * 60 * 1000)
+            : null,
         },
       });
 
@@ -163,7 +202,7 @@ export const cancelOrderAction = async (sellerGroupId: string) => {
     }
 
     if (
-      !["PENDING_PICKUP", "ACCEPTED", "IN_TRANSIT_TO_HUB"].includes(
+      !["PENDING_PICKUP", "ACCEPTED", "PREPARING", "IN_TRANSIT_TO_HUB"].includes(
         group.status,
       )
     ) {

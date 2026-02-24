@@ -13,7 +13,6 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import AddressForm from "./AddressForm";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Loader2 } from "lucide-react";
 import ky from "ky";
 import { useCartStore } from "@/stores/useCartstore";
@@ -22,6 +21,7 @@ import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { useCurrencyStore } from "@/stores/useCurrencyStore";
 import { useQuery } from "@tanstack/react-query";
 import { getEligibleClaimedCouponsAction } from "@/actions/checkout/getEligibleClaimedCoupons";
+import { getUserAddressesAction } from "@/actions/checkout/addressAction";
 import {
   getCheckoutPreviewAction,
   type CheckoutPreviewResult,
@@ -35,6 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DeliveryType } from "@/generated/prisma/client";
+import AddressSelectionModal from "./AddressSelectionModal";
 
 const deliveryMethod = [
   {
@@ -91,6 +92,7 @@ type CheckoutAddress = {
   city: string;
   state: string | null;
   country?: string;
+  isDefault?: boolean;
   distanceInMiles?: number;
 };
 
@@ -112,6 +114,11 @@ export default function CheckoutSummary({ cart, address }: Props) {
 
   const [isLoading, setIsLoading] = useState(false);
   const [openAddress, setOpenAddress] = useState(false);
+  const [openAddressPicker, setOpenAddressPicker] = useState(false);
+  const [addressesLoading, setAddressesLoading] = useState(false);
+  const [addresses, setAddresses] = useState<CheckoutAddress[]>([]);
+  const [selectedAddress, setSelectedAddress] =
+    useState<CheckoutAddress | null>(address);
   const [deliveryType, setDeliveryType] =
     useState<DeliveryType>("HOME_DELIVERY");
   const [appliedCoupon, setAppliedCoupon] = useState<{
@@ -137,6 +144,10 @@ export default function CheckoutSummary({ cart, address }: Props) {
   const lastPreviewErrorRef = useRef<string | null>(null);
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
+  useEffect(() => {
+    setSelectedAddress(address);
+  }, [address]);
+
   const { data: wallet } = useQuery({
     queryKey: ["wallet"],
     queryFn: async () => {
@@ -150,20 +161,20 @@ export default function CheckoutSummary({ cart, address }: Props) {
     useQuery<CheckoutPreviewResult | null>({
       queryKey: [
         "checkout-preview",
-        address?.id,
+        selectedAddress?.id,
         deliveryType,
         applyCoupon && appliedCoupon ? appliedCoupon.id : null,
       ],
       queryFn: async () => {
-        if (!address) return null;
+        if (!selectedAddress) return null;
         const result = await getCheckoutPreviewAction({
-          addressId: address.id,
+          addressId: selectedAddress.id,
           deliveryType,
           couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
         });
         return result;
       },
-      enabled: !!address,
+      enabled: !!selectedAddress,
     });
 
   const isPreviewValid = !!preview && !("error" in preview);
@@ -181,7 +192,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
   const canPayWithWallet =
     !!wallet && isPreviewValid && wallet.balance >= preview.totalUSD;
 
-  const canCheckout = !!address && !previewLoading && isPreviewValid;
+  const canCheckout = !!selectedAddress && !previewLoading && isPreviewValid;
 
   useEffect(() => {
     if (!previewError) {
@@ -195,7 +206,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
   }, [previewError]);
 
   const handlePlaceOrder = (paymentMethod: PaymentMethod) => {
-    if (!address) {
+    if (!selectedAddress) {
       toast.error("Add a delivery address first");
       return;
     }
@@ -211,7 +222,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
     startTransition(async () => {
       try {
         const res = await placeOrderAction({
-          addressId: address.id,
+          addressId: selectedAddress.id,
           paymentMethod,
           deliveryType,
           couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
@@ -240,7 +251,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
       return;
     }
 
-    if (!address) {
+    if (!selectedAddress) {
       toast.error("Add a delivery address first");
       return;
     }
@@ -258,7 +269,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
       const response = await ky
         .post("/api/checkout", {
           json: {
-            addressId: address.id,
+            addressId: selectedAddress.id,
             deliveryType,
             couponId: applyCoupon && appliedCoupon ? appliedCoupon.id : null,
             idempotencyKey: idempotencyKeyRef.current,
@@ -331,9 +342,60 @@ export default function CheckoutSummary({ cart, address }: Props) {
     };
   }, [isPreviewValid, preview, couponOptOut]);
 
+  const onOpenAddressFlow = async () => {
+    setAddressesLoading(true);
+    try {
+      const result = await getUserAddressesAction();
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
+
+      const fetchedAddresses = result.addresses as CheckoutAddress[];
+      setAddresses(fetchedAddresses);
+
+      if (fetchedAddresses.length > 1) {
+        setOpenAddressPicker(true);
+        return;
+      }
+
+      if (fetchedAddresses.length === 1) {
+        setSelectedAddress(fetchedAddresses[0]);
+      }
+
+      setOpenAddress(true);
+    } catch (error) {
+      console.error("Failed to load addresses:", error);
+      toast.error("Could not load addresses right now.");
+    } finally {
+      setAddressesLoading(false);
+    }
+  };
+
+  const onBackToAddressSelection = async () => {
+    setAddressesLoading(true);
+    try {
+      const result = await getUserAddressesAction();
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
+
+      const fetchedAddresses = result.addresses as CheckoutAddress[];
+      setAddresses(fetchedAddresses);
+      setOpenAddress(false);
+      setOpenAddressPicker(true);
+    } catch (error) {
+      console.error("Failed to load addresses:", error);
+      toast.error("Could not load addresses right now.");
+    } finally {
+      setAddressesLoading(false);
+    }
+  };
+
   if (!cart || cart.items.length === 0)
     return (
-      <div className="min-h-screen max-w-5xl mx-auto px-4 py-32 text-center space-y-4">
+      <div className="min-h-full max-w-5xl mx-auto px-4 py-32 text-center space-y-4">
         <p className="text-gray-500 dark:text-gray-400">
           Cart is empty - add items before checking out
         </p>
@@ -344,8 +406,8 @@ export default function CheckoutSummary({ cart, address }: Props) {
     );
 
   return (
-    <>
-      <div className="max-w-6xl mx-auto min-h-screen px-6 py-8 grid lg:grid-cols-3 gap-8">
+    <div>
+      <div className="max-w-6xl mx-auto min-h-full px-6 py-8 grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <h2 className="text-2xl font-bold text-black dark:text-gray-400">
             Your items
@@ -421,17 +483,19 @@ export default function CheckoutSummary({ cart, address }: Props) {
               Delivery Address
             </h2>
 
-            {address ? (
+            {selectedAddress ? (
               <div className="text-sm text-gray-700 leading-relaxed">
                 <p className="font-medium text-black dark:text-gray-400">
-                  {address.fullName}
-                </p>
-                <p className="text-black dark:text-gray-400">{address.phone}</p>
-                <p className="text-black dark:text-gray-400">
-                  {address.street}
+                  {selectedAddress.fullName}
                 </p>
                 <p className="text-black dark:text-gray-400">
-                  {address.city}, {address.state}
+                  {selectedAddress.phone}
+                </p>
+                <p className="text-black dark:text-gray-400">
+                  {selectedAddress.street}
+                </p>
+                <p className="text-black dark:text-gray-400">
+                  {selectedAddress.city}, {selectedAddress.state}
                 </p>
               </div>
             ) : (
@@ -444,9 +508,14 @@ export default function CheckoutSummary({ cart, address }: Props) {
               variant="outline"
               size="sm"
               className="w-full rounded-lg border-[var(--brand-blue)] text-[var(--brand-blue)] hover:bg-[var(--brand-blue)] hover:text-white transition"
-              onClick={() => setOpenAddress(true)}
+              onClick={onOpenAddressFlow}
+              disabled={addressesLoading}
             >
-              {address ? "Change Address" : "Add Address"}
+              {addressesLoading
+                ? "Loading addresses..."
+                : selectedAddress
+                  ? "Change Address"
+                  : "Add Address"}
             </Button>
           </div>
 
@@ -605,96 +674,109 @@ export default function CheckoutSummary({ cart, address }: Props) {
         </div>
       </div>
 
-      <Drawer open={openAddress} onOpenChange={setOpenAddress}>
-        <DrawerContent className="w-full max-w-lg mx-auto p-4 space-y-3">
-          <DrawerHeader>
-            <VisuallyHidden>
+      <div>
+        <Drawer open={openAddress} onOpenChange={setOpenAddress}>
+          <DrawerContent className="w-full max-w-lg mx-auto p-4 space-y-3">
+            <DrawerHeader>
               <DrawerTitle>Delivery Address</DrawerTitle>
-            </VisuallyHidden>
-            <p className="font-semibold text-lg text-center">
-              Delivery Address
-            </p>
-          </DrawerHeader>
+            </DrawerHeader>
 
-          <AddressForm
-            onSuccess={() => {
-              setOpenAddress(false);
-              router.refresh();
-            }}
-          />
-        </DrawerContent>
-      </Drawer>
-
-      <Dialog open={couponDialogOpen} onOpenChange={setCouponDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Select a coupon</DialogTitle>
-            <DialogDescription>
-              Choose one of your active claimed coupons to apply.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3">
-            {eligibleCoupons.map((c) => (
-              <label
-                key={c.id}
-                className="flex items-center justify-between gap-3 rounded-lg border p-3 cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="coupon"
-                    className="h-4 w-4 accent-[var(--brand-blue)]"
-                    checked={selectedCouponId === c.id}
-                    onChange={() => setSelectedCouponId(c.id)}
-                  />
-                  <div>
-                    <p className="font-medium">{c.code}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Saves {formatMoneyFromUSD(c.discountAmount)}
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs text-gray-500">
-                  {c.type === "PERCENTAGE"
-                    ? `${c.value}% OFF`
-                    : c.type === "FIXED"
-                      ? `$${c.value} OFF`
-                      : "Free Shipping"}
-                </span>
-              </label>
-            ))}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCouponDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                const selected = eligibleCoupons.find(
-                  (c) => c.id === selectedCouponId,
-                );
-                if (!selected) return;
-
-                setAppliedCoupon({
-                  id: selected.id,
-                  code: selected.code,
-                  type: selected.type,
-                  value: selected.value,
-                });
-
-                setCouponDialogOpen(false);
+            <AddressForm
+              onSuccess={() => {
+                setOpenAddress(false);
+                router.refresh();
               }}
-            >
-              Apply selected
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+              onBackToSelection={onBackToAddressSelection}
+            />
+          </DrawerContent>
+        </Drawer>
+
+        <AddressSelectionModal
+          open={openAddressPicker}
+          onOpenChange={setOpenAddressPicker}
+          addresses={addresses}
+          selectedAddressId={selectedAddress?.id}
+          onSelectAddress={(item) => {
+            setSelectedAddress(item);
+            setOpenAddressPicker(false);
+          }}
+          onAddNewAddress={() => {
+            setOpenAddressPicker(false);
+            setOpenAddress(true);
+          }}
+        />
+
+        <Dialog open={couponDialogOpen} onOpenChange={setCouponDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Select a coupon</DialogTitle>
+              <DialogDescription>
+                Choose one of your active claimed coupons to apply.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3">
+              {eligibleCoupons.map((c) => (
+                <label
+                  key={c.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border p-3 cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="coupon"
+                      className="h-4 w-4 accent-[var(--brand-blue)]"
+                      checked={selectedCouponId === c.id}
+                      onChange={() => setSelectedCouponId(c.id)}
+                    />
+                    <div>
+                      <p className="font-medium">{c.code}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Saves {formatMoneyFromUSD(c.discountAmount)}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    {c.type === "PERCENTAGE"
+                      ? `${c.value}% OFF`
+                      : c.type === "FIXED"
+                        ? `$${c.value} OFF`
+                        : "Free Shipping"}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setCouponDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  const selected = eligibleCoupons.find(
+                    (c) => c.id === selectedCouponId,
+                  );
+                  if (!selected) return;
+
+                  setAppliedCoupon({
+                    id: selected.id,
+                    code: selected.code,
+                    type: selected.type,
+                    value: selected.value,
+                  });
+
+                  setCouponDialogOpen(false);
+                }}
+              >
+                Apply selected
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
   );
 }

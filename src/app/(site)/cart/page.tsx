@@ -42,7 +42,7 @@ export default async function page() {
 
   if (!cart) {
     return (
-      <div className="text-center py-36 min-h-screen max-w-3xl mx-auto dark:bg-neutral-900 ">
+      <div className="text-center py-36 min-h-full max-w-3xl mx-auto dark:bg-neutral-900 ">
         <p className="text-muted-foreground mb-4 text-lg dark:text-gray-400">
           Your cart is empty. Start shopping 🛒
         </p>

@@ -78,7 +78,7 @@ const CartPage = ({ cart, mixedCart }: Props) => {
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-4 lg:px-6 py-6 min-h-screen">
+    <main className="max-w-7xl mx-auto px-4 lg:px-6 py-6 min-h-full">
       <h1 className="text-2xl sm:text-3xl font-semibold mb-6 text-black dark:text-gray-400">
         Cart
         <span className="text-[#3c9ee0] px-2">({cart.items.length})</span>

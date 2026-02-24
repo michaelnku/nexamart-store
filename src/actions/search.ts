@@ -3,6 +3,7 @@
 import { CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { GlobalSearchResult } from "@/lib/types";
+import { calculateStoresPrepPerformance } from "@/lib/store/calculateStorePrepPerformance";
 
 export type SearchParams = {
   query: string;
@@ -64,6 +65,23 @@ export async function globalSearchAction({
     },
   });
 
+  const storePerformance = await calculateStoresPrepPerformance(
+    stores.map((store) => store.id),
+  );
+
+  const boostedStores = [...stores].sort((a, b) => {
+    const aPerf = storePerformance[a.id];
+    const bPerf = storePerformance[b.id];
+    const aElite = aPerf?.badge === "ELITE" ? 1 : 0;
+    const bElite = bPerf?.badge === "ELITE" ? 1 : 0;
+    if (aElite !== bElite) return bElite - aElite;
+
+    const onTimeDiff = (bPerf?.onTimeRate ?? 0) - (aPerf?.onTimeRate ?? 0);
+    if (onTimeDiff !== 0) return onTimeDiff;
+
+    return a.name.localeCompare(b.name);
+  });
+
   const categories = await prisma.category.findMany({
     where: {
       name: { contains: q, mode: "insensitive" },
@@ -98,11 +116,13 @@ export async function globalSearchAction({
         : null,
     })),
 
-    stores: stores.map((s) => ({
+    stores: boostedStores.map((s) => ({
       id: s.id,
       name: s.name,
       slug: s.slug,
       logo: s.logo ?? null,
+      badge: storePerformance[s.id]?.badge ?? "LOW_PERFORMANCE",
+      onTimeRate: storePerformance[s.id]?.onTimeRate ?? 0,
     })),
 
     categories: categories.map((c) => ({

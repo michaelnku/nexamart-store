@@ -13,6 +13,10 @@ datasource db {
   provider = "postgresql"
 }
 
+/// *
+/// * ===========================
+/// * USER & AUTHENTICATION
+/// * ===========================
 model User {
   id                  String             @id @default(cuid())
   name                String?
@@ -114,36 +118,41 @@ model PasswordResetAttempt {
   @@index([createdAt])
 }
 
+/// *
+/// * ===========================
+/// * PRODUCTS & CATEGORIES
+/// * ===========================
 model Product {
-  id               String           @id @default(cuid())
-  name             String           @db.VarChar(120)
-  description      String
-  brand            String?
-  storeId          String
-  categoryId       String
-  isPublished      Boolean          @default(true)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  brandId          String?
-  discount         Float?
-  specifications   String[]         @default([])
-  technicalDetails Json             @default("[]")
-  sold             Int              @default(0)
-  basePriceUSD     Float
-  oldPriceUSD      Float?
-  averageRating    Float            @default(0)
-  reviewCount      Int              @default(0)
-  foodDetails      Json?
-  isFoodProduct    Boolean          @default(false)
-  cartItems        CartItem[]
-  orderItems       OrderItem[]
-  Brand            Brand?           @relation(fields: [brandId], references: [id])
-  category         Category         @relation(fields: [categoryId], references: [id])
-  store            Store            @relation(fields: [storeId], references: [id])
-  images           ProductImage[]
-  variants         ProductVariant[]
-  reviews          Review[]
-  wishlistItems    WishlistItem[]
+  id                     String           @id @default(cuid())
+  name                   String           @db.VarChar(120)
+  description            String
+  brand                  String?
+  storeId                String
+  categoryId             String
+  isPublished            Boolean          @default(true)
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  brandId                String?
+  discount               Float?
+  defaultPrepTimeMinutes Int?
+  specifications         String[]         @default([])
+  technicalDetails       Json             @default("[]")
+  sold                   Int              @default(0)
+  basePriceUSD           Float
+  oldPriceUSD            Float?
+  averageRating          Float            @default(0)
+  reviewCount            Int              @default(0)
+  foodDetails            Json?
+  isFoodProduct          Boolean          @default(false)
+  cartItems              CartItem[]
+  orderItems             OrderItem[]
+  Brand                  Brand?           @relation(fields: [brandId], references: [id])
+  category               Category         @relation(fields: [categoryId], references: [id])
+  store                  Store            @relation(fields: [storeId], references: [id])
+  images                 ProductImage[]
+  variants               ProductVariant[]
+  reviews                Review[]
+  wishlistItems          WishlistItem[]
 
   @@index([storeId])
   @@index([categoryId])
@@ -196,6 +205,10 @@ model Category {
   @@index([path])
 }
 
+/// *
+/// * ===========================
+/// * REVIEWS & SEARCH
+/// * ===========================
 model Review {
   id        String   @id @default(cuid())
   productId String
@@ -229,6 +242,10 @@ model SearchKeyword {
   updatedAt DateTime @updatedAt
 }
 
+/// *
+/// * ===========================
+/// * CART & WISHLIST
+/// * ===========================
 model Cart {
   id        String     @id @default(cuid())
   userId    String     @unique
@@ -352,6 +369,11 @@ model OrderSellerGroup {
   status                 SellerGroupStatus @default(PENDING_PICKUP)
   expectedAtHub          DateTime?
   arrivedAtHub           DateTime?
+  prepTimeMinutes        Int?
+  readyAt                DateTime?
+  isLate                 Boolean           @default(false)
+  lateMarkedAt           DateTime?
+  actualReadyAt          DateTime?
   verified               Boolean           @default(false)
   createdAt              DateTime          @default(now())
   payoutEligibleAt       DateTime?
@@ -379,6 +401,10 @@ model OrderItem {
   variant       ProductVariant?   @relation(fields: [variantId], references: [id])
 }
 
+/// *
+/// * ===========================
+/// * PAYMENTS & FINANCE
+/// * ===========================
 model Job {
   id         String   @id @default(cuid())
   type       String
@@ -399,60 +425,6 @@ model Job {
 model CronLock {
   name     String   @id
   lockedAt DateTime
-}
-
-model Delivery {
-  id               String         @id @default(cuid())
-  orderId          String         @unique
-  riderId          String?
-  status           DeliveryStatus @default(PENDING)
-  deliveryAddress  String?
-  distance         Float?
-  fee              Float
-  assignedAt       DateTime?
-  deliveredAt      DateTime?
-  otpAttempts      Int            @default(0)
-  otpExpiresAt     DateTime?
-  otpHash          String?
-  isLocked         Boolean        @default(false)
-  lockedAt         DateTime?
-  payoutEligibleAt DateTime?
-  payoutLocked     Boolean        @default(false)
-  payoutReleasedAt DateTime?
-  order            Order          @relation("OrderDelivery", fields: [orderId], references: [id], onDelete: Cascade)
-  rider            User?          @relation("RiderDeliveries", fields: [riderId], references: [id])
-
-  @@index([orderId])
-}
-
-model RiderProfile {
-  id                 String    @id @default(cuid())
-  userId             String    @unique
-  vehicleType        String
-  plateNumber        String
-  licenseNumber      String
-  vehicleColor       String
-  vehicleModel       String
-  isVerified         Boolean   @default(false)
-  verifiedAt         DateTime?
-  verificationMethod String?
-  isAvailable        Boolean   @default(false)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  stripeAccountId    String?   @unique
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model RiderSchedule {
-  id        String  @id @default(cuid())
-  dayOfWeek Int
-  startTime String
-  endTime   String
-  isActive  Boolean @default(true)
-  riderId   String
-  rider     User    @relation(fields: [riderId], references: [id], onDelete: Cascade)
-
-  @@unique([riderId, dayOfWeek])
 }
 
 model Wallet {
@@ -552,7 +524,65 @@ model EscrowSnapshot {
 
 /// *
 /// * ===========================
-/// * STORE (Marketplace)
+/// * RiDER & DELIVERY
+/// * ===========================
+model RiderProfile {
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  vehicleType        String
+  plateNumber        String
+  licenseNumber      String
+  vehicleColor       String
+  vehicleModel       String
+  isVerified         Boolean   @default(false)
+  verifiedAt         DateTime?
+  verificationMethod String?
+  isAvailable        Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  stripeAccountId    String?   @unique
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RiderSchedule {
+  id        String  @id @default(cuid())
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  isActive  Boolean @default(true)
+  riderId   String
+  rider     User    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  @@unique([riderId, dayOfWeek])
+}
+
+model Delivery {
+  id               String         @id @default(cuid())
+  orderId          String         @unique
+  riderId          String?
+  status           DeliveryStatus @default(PENDING)
+  deliveryAddress  String?
+  distance         Float?
+  fee              Float
+  assignedAt       DateTime?
+  deliveredAt      DateTime?
+  otpAttempts      Int            @default(0)
+  otpExpiresAt     DateTime?
+  otpHash          String?
+  isLocked         Boolean        @default(false)
+  lockedAt         DateTime?
+  payoutEligibleAt DateTime?
+  payoutLocked     Boolean        @default(false)
+  payoutReleasedAt DateTime?
+  order            Order          @relation("OrderDelivery", fields: [orderId], references: [id], onDelete: Cascade)
+  rider            User?          @relation("RiderDeliveries", fields: [riderId], references: [id])
+
+  @@index([orderId])
+}
+
+/// *
+/// * ===========================
+/// * STORE & BRAND
 /// * ===========================
 model Store {
   id                        String             @id @default(cuid())
@@ -641,14 +671,12 @@ model ProductAnalytics {
   sales     Int    @default(0)
 }
 
-model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  title     String
-  message   String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model StoreAnalytics {
+  id      String @id @default(cuid())
+  storeId String @unique
+  views   Int    @default(0)
+  clicks  Int    @default(0)
+  sales   Int    @default(0)
 }
 
 /// *
@@ -805,6 +833,10 @@ model ReferralReward {
   @@index([transactionId])
 }
 
+/// *
+/// * ===========================
+/// * ADDRESS & SITE CONFIG
+/// * ===========================
 model Address {
   id         String       @id @default(cuid())
   userId     String
@@ -824,6 +856,20 @@ model Address {
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model SiteConfiguration {
+  id                String   @id @default(cuid())
+  siteName          String
+  siteEmail         String
+  sitePhone         String?
+  siteLogo          String?
+  baseDeliveryRate  Float    @default(2)
+  ratePerMile       Float    @default(1)
+  expressMultiplier Float    @default(1.5)
+  pickupFee         Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
 model UserPreference {
   id                   String   @id @default(cuid())
   userId               String   @unique
@@ -838,18 +884,24 @@ model UserPreference {
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model SiteConfiguration {
-  id                String   @id @default(cuid())
-  siteName          String
-  siteEmail         String
-  sitePhone         String?
-  siteLogo          String?
-  baseDeliveryRate  Float    @default(2)
-  ratePerMile       Float    @default(1)
-  expressMultiplier Float    @default(1.5)
-  pickupFee         Float    @default(0)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// *
+/// * ===========================
+/// * ENUMS
+/// * ===========================
+enum AddressLabel {
+  HOME
+  OFFICE
+  OTHER
 }
 
 enum UserRole {
@@ -886,6 +938,8 @@ enum SellerGroupStatus {
   VERIFIED
   CANCELLED
   ACCEPTED
+  PREPARING
+  READY
 }
 
 enum DeliveryType {
@@ -1031,14 +1085,4 @@ enum ReferralRewardStatus {
   PENDING
   PAID
   FAILED
-}
-
-/// *
-/// * ===========================
-/// * ADDRESS & SITE CONFIG
-/// * ===========================
-enum AddressLabel {
-  HOME
-  OFFICE
-  OTHER
 }

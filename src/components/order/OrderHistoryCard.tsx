@@ -77,11 +77,10 @@ const OrderHistoryCard = ({ orders }: Props) => {
                                 : "bg-gray-500"
                   }`}
                 >
-                  {order.status}
+                  {order.status.replaceAll("_", " ")}
                 </Badge>
               </div>
 
-              {/* Product Preview */}
               <div className="flex gap-5 items-start mt-5">
                 <div className="relative w-24 h-24 border rounded-md bg-gray-50 dark:bg-neutral-900 overflow-hidden">
                   <Image

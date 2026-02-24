@@ -18,6 +18,7 @@ import {
   absoluteUrl,
   toSeoDescription,
 } from "@/lib/seo";
+import { calculateStorePrepPerformance } from "@/lib/store/calculateStorePrepPerformance";
 
 interface StoreFrontProps {
   params: Promise<{ slug: string }>;
@@ -112,6 +113,19 @@ const page = async ({ params }: StoreFrontProps) => {
   }
 
   const isOwner = user?.id === store.userId;
+  const performance =
+    store.type === "FOOD"
+      ? await calculateStorePrepPerformance(store.id)
+      : null;
+
+  const badgeClass =
+    performance?.badge === "ELITE"
+      ? "bg-emerald-100 text-emerald-800"
+      : performance?.badge === "RELIABLE"
+        ? "bg-blue-100 text-blue-800"
+        : performance?.badge === "STANDARD"
+          ? "bg-amber-100 text-amber-800"
+          : "bg-red-100 text-red-800";
 
   return (
     <section className="min-h-full p-6 dark:bg-zinc-900">
@@ -164,7 +178,16 @@ const page = async ({ params }: StoreFrontProps) => {
           </div>
 
           {/* Store Name */}
-          <h1 className="text-4xl font-bold">{store.name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-4xl font-bold">{store.name}</h1>
+            {performance && (
+              <span
+                className={`rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass}`}
+              >
+                {performance.badge.replaceAll("_", " ")}
+              </span>
+            )}
+          </div>
 
           {/* Location */}
           {store.location && (

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processPendingJobs } from "@/worker";
+import { autoMarkPreparingFoodOrdersReady } from "@/lib/cron/workers/autoMarkPreparingFoodOrdersReady";
 
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
@@ -23,5 +24,10 @@ export async function GET(req: NextRequest) {
   }
 
   const result = await processPendingJobs();
-  return NextResponse.json({ ok: true, ...result });
+  const foodReadyResult = await autoMarkPreparingFoodOrdersReady();
+  return NextResponse.json({
+    ok: true,
+    ...result,
+    foodReadyProcessed: foodReadyResult.processed,
+  });
 }

@@ -260,6 +260,9 @@ export async function getRiderStats() {
     activeDeliveries,
     completedToday,
     wallet,
+    riderProfile,
+    assignedPendingAcceptCount,
+    pendingPayouts,
     nextDelivery,
     recentDeliveries,
     riderTransactions,
@@ -286,6 +289,27 @@ export async function getRiderStats() {
       },
       select: {
         totalEarnings: true,
+      },
+    }),
+    prisma.riderProfile.findUnique({
+      where: {
+        userId: user.id,
+      },
+      select: {
+        isVerified: true,
+        isAvailable: true,
+      },
+    }),
+    prisma.delivery.count({
+      where: {
+        riderId: user.id,
+        status: "ASSIGNED",
+      },
+    }),
+    prisma.withdrawal.count({
+      where: {
+        wallet: { userId: user.id },
+        status: { in: ["PENDING", "PROCESSING", "APPROVED"] },
       },
     }),
     prisma.delivery.findFirst({
@@ -377,6 +401,10 @@ export async function getRiderStats() {
     activeDeliveries,
     completedToday,
     totalEarnings: wallet?.totalEarnings ?? 0,
+    isRiderVerified: riderProfile?.isVerified ?? false,
+    isRiderAvailable: riderProfile?.isAvailable ?? false,
+    assignedPendingAcceptCount,
+    pendingPayouts,
     nextDeliveryAt: nextDelivery?.assignedAt?.toISOString() ?? null,
     latestEvents,
   };

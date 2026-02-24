@@ -4,6 +4,7 @@ import { createDailyEscrowSnapshot } from "@/lib/cron/workers/createEscrowSnapsh
 import { finalizeDeliveredOrders } from "@/lib/cron/workers/finalizeDeliveredOrders";
 import { releaseEligibleRiderPayouts } from "@/lib/cron/workers/releaseEligibleRiderPayouts";
 import { processHubTimeouts } from "@/lib/cron/workers/processHubTimeouts";
+import { autoMarkPreparingFoodOrdersReady } from "@/lib/cron/workers/autoMarkPreparingFoodOrdersReady";
 
 type StuckOrderPayload = {
   orderId: string;
@@ -19,6 +20,7 @@ cron.schedule("*/2 * * * *", async () => {
   await finalizeDeliveredOrders();
   await releaseEligibleRiderPayouts();
   await processHubTimeouts();
+  await autoMarkPreparingFoodOrdersReady();
 
   const jobs = await prisma.job.findMany({
     where: { type: "HANDLE_STUCK_ORDER", status: "PENDING" },

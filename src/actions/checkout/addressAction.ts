@@ -203,3 +203,29 @@ export async function setDefaultAddressAction(addressId: string) {
     return { error: "Failed to set default address" };
   }
 }
+
+export async function getUserAddressesAction() {
+  const userId = await CurrentUserId();
+  if (!userId) return { error: "Unauthorized", addresses: [] as const };
+
+  try {
+    const addresses = await prisma.address.findMany({
+      where: { userId },
+      orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        fullName: true,
+        phone: true,
+        street: true,
+        city: true,
+        state: true,
+        country: true,
+        isDefault: true,
+      },
+    });
+
+    return { success: true, addresses };
+  } catch {
+    return { error: "Failed to load addresses", addresses: [] as const };
+  }
+}

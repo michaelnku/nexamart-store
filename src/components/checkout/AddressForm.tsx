@@ -44,6 +44,7 @@ type AddressLabel = "HOME" | "OFFICE" | "OTHER";
 type Props = {
   onSuccess: () => void;
   initialData?: Partial<Address>;
+  onBackToSelection?: () => void | Promise<void>;
 };
 
 function splitStoredPhone(phone?: string | null) {
@@ -68,7 +69,11 @@ function buildNormalizedPhone(country: string, local: string): string {
   return `+${cleanCountry}${cleanLocal}`;
 }
 
-export default function AddressForm({ onSuccess, initialData }: Props) {
+export default function AddressForm({
+  onSuccess,
+  initialData,
+  onBackToSelection,
+}: Props) {
   const { data: user } = useCurrentUserQuery();
   const [pending, startTransition] = useTransition();
   const [addressQuery, setAddressQuery] = useState("");
@@ -78,20 +83,23 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
     latitude: number;
     longitude: number;
   } | null>(null);
-  const [selectedPlaceName, setSelectedPlaceName] = useState<string | null>(null);
+  const [selectedPlaceName, setSelectedPlaceName] = useState<string | null>(
+    null,
+  );
   const [openSuggestions, setOpenSuggestions] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [selectionError, setSelectionError] = useState<string | null>(null);
-  const [countryCode, setCountryCode] = useState(() =>
-    splitStoredPhone(initialData?.phone).countryCode,
+  const [countryCode, setCountryCode] = useState(
+    () => splitStoredPhone(initialData?.phone).countryCode,
   );
-  const [localPhoneNumber, setLocalPhoneNumber] = useState(() =>
-    splitStoredPhone(initialData?.phone).localNumber,
+  const [localPhoneNumber, setLocalPhoneNumber] = useState(
+    () => splitStoredPhone(initialData?.phone).localNumber,
   );
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const isEdit = Boolean(initialData?.id);
-  const { suggestions, loading, error, search, clear } = useAddressAutocomplete();
+  const { suggestions, loading, error, search, clear } =
+    useAddressAutocomplete();
 
   const form = useForm<addressSchemaType>({
     resolver: zodResolver(addressSchema),
@@ -112,7 +120,12 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
     if (!initialData?.street || !initialData?.city || !initialData?.country) {
       return "";
     }
-    return [initialData.street, initialData.city, initialData.state, initialData.country]
+    return [
+      initialData.street,
+      initialData.city,
+      initialData.state,
+      initialData.country,
+    ]
       .filter(Boolean)
       .join(", ");
   }, [initialData]);
@@ -257,9 +270,7 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      setActiveIndex((prev) =>
-        prev <= 0 ? suggestions.length - 1 : prev - 1,
-      );
+      setActiveIndex((prev) => (prev <= 0 ? suggestions.length - 1 : prev - 1));
       return;
     }
 
@@ -319,7 +330,7 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-5 max-h-[70dvh] overflow-y-auto pr-1 sm:max-h-none sm:overflow-visible sm:pr-0"
+        className="space-y-5 max-h-[calc(100dvh-12rem)] overflow-y-auto pr-1"
       >
         {/* ADDRESS LABEL */}
         <div className="space-y-2">
@@ -386,7 +397,10 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
                       inputMode="numeric"
                       value={countryCode}
                       onChange={(event) => {
-                        const nextCountry = event.target.value.replace(/\D/g, "");
+                        const nextCountry = event.target.value.replace(
+                          /\D/g,
+                          "",
+                        );
                         setCountryCode(nextCountry);
                         field.onChange(
                           buildNormalizedPhone(nextCountry, localPhoneNumber),
@@ -410,7 +424,9 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
                       onChange={(event) => {
                         const nextLocal = event.target.value.replace(/\D/g, "");
                         setLocalPhoneNumber(nextLocal);
-                        field.onChange(buildNormalizedPhone(countryCode, nextLocal));
+                        field.onChange(
+                          buildNormalizedPhone(countryCode, nextLocal),
+                        );
                       }}
                       placeholder="Phone number"
                     />
@@ -440,7 +456,9 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
               aria-expanded={openSuggestions}
               aria-controls="address-suggestions-list"
               aria-activedescendant={
-                activeIndex >= 0 ? `address-suggestion-${activeIndex}` : undefined
+                activeIndex >= 0
+                  ? `address-suggestion-${activeIndex}`
+                  : undefined
               }
             />
             {loading ? (
@@ -457,16 +475,23 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
               className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-md border bg-white shadow-lg"
             >
               {loading && (
-                <div className="px-3 py-2 text-sm text-gray-500">Loading...</div>
+                <div className="px-3 py-2 text-sm text-gray-500">
+                  Loading...
+                </div>
               )}
 
               {!loading && error && (
                 <div className="px-3 py-2 text-sm text-red-500">{error}</div>
               )}
 
-              {!loading && !error && suggestions.length === 0 && addressQuery.trim() && (
-                <div className="px-3 py-2 text-sm text-gray-500">No results found.</div>
-              )}
+              {!loading &&
+                !error &&
+                suggestions.length === 0 &&
+                addressQuery.trim() && (
+                  <div className="px-3 py-2 text-sm text-gray-500">
+                    No results found.
+                  </div>
+                )}
 
               {!loading &&
                 !error &&
@@ -602,6 +627,17 @@ export default function AddressForm({ onSuccess, initialData }: Props) {
         />
 
         {/* SUBMIT */}
+        {onBackToSelection ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void onBackToSelection()}
+            className="w-full"
+          >
+            Saved Addresses
+          </Button>
+        ) : null}
+
         <Button
           type="submit"
           disabled={pending}

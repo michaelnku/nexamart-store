@@ -240,7 +240,7 @@ export default function RiderDeliveriesClient() {
                     <p className="text-sm text-gray-500">Status</p>
                     <p className="font-medium">
                       {delivery.status
-                        .replace("_", " ")
+                        .replaceAll("_", " ")
                         .toLowerCase()
                         .replace(/\b\w/g, (c) => c.toUpperCase())}
                     </p>
@@ -353,3 +353,4 @@ export default function RiderDeliveriesClient() {
     </main>
   );
 }
+

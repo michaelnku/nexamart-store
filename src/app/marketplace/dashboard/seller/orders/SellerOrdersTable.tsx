@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation";
 
 type SellerOrderAction = (
   sellerGroupId: string,
+  prepTimeMinutes?: number,
 ) => Promise<{ success?: string; error?: string }>;
 
 export default function SellerOrdersTable({
@@ -47,6 +48,7 @@ export default function SellerOrdersTable({
     actionFn: SellerOrderAction,
     sellerGroupId?: string,
     onSuccess?: () => void,
+    prepTimeMinutes?: number,
   ) => {
     if (isPending) return;
     if (!sellerGroupId) {
@@ -55,7 +57,7 @@ export default function SellerOrdersTable({
     }
 
     startTransition(async () => {
-      const res = await actionFn(sellerGroupId);
+      const res = await actionFn(sellerGroupId, prepTimeMinutes);
       if (res?.error) {
         toast.error(res.error);
         return;
@@ -113,14 +115,21 @@ export default function SellerOrdersTable({
                 className="border-t transition-colors hover:bg-gray-50"
               >
                 {(() => {
+                  const isFoodOrder = Boolean(o.isFoodOrder);
                   const sellerGroupId = o.sellerGroups?.[0]?.id;
                   const sellerGroupStatus = o.sellerGroups?.[0]?.status;
                   const isPendingPickup =
                     sellerGroupStatus === "PENDING_PICKUP";
-                  const canMarkAsShipped = sellerGroupStatus === "ACCEPTED";
+                  const canMarkAsShipped =
+                    !isFoodOrder && sellerGroupStatus === "ACCEPTED";
+                  const canMarkAsReady =
+                    isFoodOrder && sellerGroupStatus === "PREPARING";
                   const isShipped =
                     sellerGroupStatus === "IN_TRANSIT_TO_HUB" ||
                     sellerGroupStatus === "ARRIVED_AT_HUB" ||
+                    (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
+                  const isReady =
+                    sellerGroupStatus === "READY" ||
                     (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
 
                   return (
@@ -173,9 +182,36 @@ export default function SellerOrdersTable({
                               <Button
                                 size="sm"
                                 disabled={isPending || !sellerGroupId}
-                                onClick={() =>
-                                  handleAction(acceptOrderAction, sellerGroupId)
-                                }
+                                onClick={() => {
+                                  if (!isFoodOrder) {
+                                    handleAction(acceptOrderAction, sellerGroupId);
+                                    return;
+                                  }
+
+                                  const input = window.prompt(
+                                    "Enter preparation time in minutes (1-180):",
+                                  );
+                                  if (input === null) return;
+
+                                  const parsed = Number.parseInt(input, 10);
+                                  if (
+                                    !Number.isInteger(parsed) ||
+                                    parsed < 1 ||
+                                    parsed > 180
+                                  ) {
+                                    toast.error(
+                                      "Prep time must be a whole number between 1 and 180.",
+                                    );
+                                    return;
+                                  }
+
+                                  handleAction(
+                                    acceptOrderAction,
+                                    sellerGroupId,
+                                    undefined,
+                                    parsed,
+                                  );
+                                }}
                                 className="flex gap-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
                               >
                                 {isPending ? (
@@ -201,14 +237,25 @@ export default function SellerOrdersTable({
                             </>
                           )}
 
-                          {(canMarkAsShipped || isShipped) && (
+                          {(isFoodOrder
+                            ? canMarkAsReady || isReady
+                            : canMarkAsShipped || isShipped) && (
                             <Button
                               size="sm"
                               disabled={
-                                isPending || !sellerGroupId || !canMarkAsShipped
+                                isPending ||
+                                !sellerGroupId ||
+                                (isFoodOrder
+                                  ? !canMarkAsReady
+                                  : !canMarkAsShipped)
                               }
                               onClick={() => {
-                                if (!canMarkAsShipped) return;
+                                if (
+                                  (isFoodOrder && !canMarkAsReady) ||
+                                  (!isFoodOrder && !canMarkAsShipped)
+                                ) {
+                                  return;
+                                }
                                 handleAction(
                                   shipOrderAction,
                                   sellerGroupId,
@@ -223,7 +270,13 @@ export default function SellerOrdersTable({
                               className="flex gap-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
                             >
                               <Truck className="h-4 w-4" />
-                              {isShipped ? "Shipped" : "Mark as Shipped"}
+                              {isFoodOrder
+                                ? isReady
+                                  ? "Ready"
+                                  : "Food Is Ready"
+                                : isShipped
+                                  ? "Shipped"
+                                  : "Mark as Shipped"}
                             </Button>
                           )}
                         </div>
@@ -248,13 +301,20 @@ export default function SellerOrdersTable({
         {orders.map((o) => (
           <Card key={o.id} className="rounded-xl border bg-white shadow-sm">
             {(() => {
+              const isFoodOrder = Boolean(o.isFoodOrder);
               const sellerGroupId = o.sellerGroups?.[0]?.id;
               const sellerGroupStatus = o.sellerGroups?.[0]?.status;
               const isPendingPickup = sellerGroupStatus === "PENDING_PICKUP";
-              const canMarkAsShipped = sellerGroupStatus === "ACCEPTED";
+              const canMarkAsShipped =
+                !isFoodOrder && sellerGroupStatus === "ACCEPTED";
+              const canMarkAsReady =
+                isFoodOrder && sellerGroupStatus === "PREPARING";
               const isShipped =
                 sellerGroupStatus === "IN_TRANSIT_TO_HUB" ||
                 sellerGroupStatus === "ARRIVED_AT_HUB" ||
+                (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
+              const isReady =
+                sellerGroupStatus === "READY" ||
                 (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
 
               return (
@@ -306,9 +366,36 @@ export default function SellerOrdersTable({
                         <Button
                           size="sm"
                           disabled={isPending || !sellerGroupId}
-                          onClick={() =>
-                            handleAction(acceptOrderAction, sellerGroupId)
-                          }
+                          onClick={() => {
+                            if (!isFoodOrder) {
+                              handleAction(acceptOrderAction, sellerGroupId);
+                              return;
+                            }
+
+                            const input = window.prompt(
+                              "Enter preparation time in minutes (1-180):",
+                            );
+                            if (input === null) return;
+
+                            const parsed = Number.parseInt(input, 10);
+                            if (
+                              !Number.isInteger(parsed) ||
+                              parsed < 1 ||
+                              parsed > 180
+                            ) {
+                              toast.error(
+                                "Prep time must be a whole number between 1 and 180.",
+                              );
+                              return;
+                            }
+
+                            handleAction(
+                              acceptOrderAction,
+                              sellerGroupId,
+                              undefined,
+                              parsed,
+                            );
+                          }}
                           className="flex-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
                         >
                           {isPending ? (
@@ -332,14 +419,23 @@ export default function SellerOrdersTable({
                       </>
                     )}
 
-                    {(canMarkAsShipped || isShipped) && (
+                    {(isFoodOrder
+                      ? canMarkAsReady || isReady
+                      : canMarkAsShipped || isShipped) && (
                       <Button
                         size="sm"
                         disabled={
-                          isPending || !sellerGroupId || !canMarkAsShipped
+                          isPending ||
+                          !sellerGroupId ||
+                          (isFoodOrder ? !canMarkAsReady : !canMarkAsShipped)
                         }
                         onClick={() => {
-                          if (!canMarkAsShipped) return;
+                          if (
+                            (isFoodOrder && !canMarkAsReady) ||
+                            (!isFoodOrder && !canMarkAsShipped)
+                          ) {
+                            return;
+                          }
                           handleAction(shipOrderAction, sellerGroupId, () => {
                             if (!sellerGroupId) return;
                             setOptimisticShipped((prev) =>
@@ -349,7 +445,13 @@ export default function SellerOrdersTable({
                         }}
                         className="flex-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
                       >
-                        {isShipped ? "Shipped" : "Mark as Shipped"}
+                        {isFoodOrder
+                          ? isReady
+                            ? "Ready"
+                            : "Food Is Ready"
+                          : isShipped
+                            ? "Shipped"
+                            : "Mark as Shipped"}
                       </Button>
                     )}
                   </CardFooter>

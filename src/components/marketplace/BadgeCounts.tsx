@@ -48,7 +48,7 @@ const CartBadge = () => {
     <div className="relative inline-flex items-center cursor-pointer">
       <ShoppingCart
         className={`h-5 w-5 ${
-          count > 0 ? "stroke-blue-700" : "stroke-gray-600"
+          count > 0 ? "stroke-blue-700" : "stroke-gray-400"
         }`}
       />
       {count > 0 && <AnimatedBadge count={count} />}

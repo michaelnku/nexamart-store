@@ -7,9 +7,7 @@ export default function CartPageSkeleton() {
     <main
       className="
         max-w-7xl mx-auto px-4 lg:px-6 py-6 space-y-6
-        min-h-[160vh]
-        sm:min-h-[140vh]
-        lg:min-h-[120vh]
+        min-h-full
       "
     >
       {/* PAGE TITLE */}

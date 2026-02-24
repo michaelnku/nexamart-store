@@ -34,7 +34,15 @@ export async function autoAssignRider(orderId: string) {
 
   if (!order.sellerGroups.length) return;
 
-  if (!order.isFoodOrder) {
+  if (order.isFoodOrder) {
+    const activeGroups = order.sellerGroups.filter(
+      (group) => group.status !== "CANCELLED",
+    );
+    if (!activeGroups.length) return;
+    if (activeGroups.some((group) => group.status !== "READY")) {
+      return;
+    }
+  } else {
     const activeGroups = order.sellerGroups.filter(
       (group) => group.status !== "CANCELLED",
     );
@@ -68,33 +76,13 @@ export async function autoAssignRider(orderId: string) {
   let generatedOtp: string | null = null;
 
   await prisma.$transaction(async (tx) => {
-    const riderReserved = await tx.riderProfile.updateMany({
-      where: { userId: riderId, isAvailable: true },
-      data: { isAvailable: false },
-    });
-
-    if (riderReserved.count !== 1) {
-      throw new Error("Failed to reserve rider");
-    }
-
-    const orderLocked = await tx.order.updateMany({
-      where: {
-        id: orderId,
-        status: { not: "OUT_FOR_DELIVERY" },
-      },
-      data: { status: "OUT_FOR_DELIVERY" },
-    });
-
-    if (orderLocked.count !== 1) {
-      return;
-    }
-
     let assignedDeliveryId: string | null = null;
 
     if (order.delivery?.id) {
       const deliveryAssigned = await tx.delivery.updateMany({
         where: {
           id: order.delivery.id,
+          status: "PENDING",
           riderId: null,
         },
         data: {
@@ -137,6 +125,27 @@ export async function autoAssignRider(orderId: string) {
 
     if (!assignedDeliveryId) {
       return;
+    }
+
+    const riderReserved = await tx.riderProfile.updateMany({
+      where: { userId: riderId, isAvailable: true },
+      data: { isAvailable: false },
+    });
+
+    if (riderReserved.count !== 1) {
+      throw new Error("Failed to reserve rider");
+    }
+
+    const orderLocked = await tx.order.updateMany({
+      where: {
+        id: orderId,
+        status: { not: "OUT_FOR_DELIVERY" },
+      },
+      data: { status: "OUT_FOR_DELIVERY" },
+    });
+
+    if (orderLocked.count !== 1) {
+      throw new Error("Order already out for delivery");
     }
 
     generatedOtp = await generateDeliveryOTP(tx, assignedDeliveryId);

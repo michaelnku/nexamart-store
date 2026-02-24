@@ -127,7 +127,7 @@ export default function SellerWalletPage() {
                       }`}
                     >
                       {w.status
-                        .replace("_", " ")
+                        .replaceAll("_", " ")
                         .toLowerCase()
                         .replace(/\b\w/g, (c: string) => c.toUpperCase())}
                     </span>
@@ -178,7 +178,7 @@ export default function SellerWalletPage() {
                       }`}
                     >
                       {w.status
-                        .replace("_", " ")
+                        .replaceAll("_", " ")
                         .toLowerCase()
                         .replace(/\b\w/g, (c: string) => c.toUpperCase())}
                     </td>

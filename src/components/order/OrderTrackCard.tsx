@@ -148,7 +148,7 @@ export default function OrderTrackCard({ order }: Props) {
 
             <p>
               <strong>Delivery Type:</strong>{" "}
-              {order.deliveryType.replace("_", " ")}
+              {order.deliveryType.replaceAll("_", " ")}
             </p>
 
             <p>
@@ -185,3 +185,4 @@ export default function OrderTrackCard({ order }: Props) {
     </main>
   );
 }
+

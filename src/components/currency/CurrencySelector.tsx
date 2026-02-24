@@ -22,7 +22,7 @@ export default function CurrencySelector() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium hover:text-[#3c9ee0]">
+      <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium hover:text-[#3c9ee0] text-gray-400 transition">
         <Globe className="w-4 h-4" /> {currency}
       </DropdownMenuTrigger>
 

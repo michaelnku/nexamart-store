@@ -357,6 +357,8 @@ export type SearchStore = {
   name: string;
   slug: string;
   logo?: string | null;
+  badge?: "ELITE" | "RELIABLE" | "STANDARD" | "LOW_PERFORMANCE";
+  onTimeRate?: number;
 };
 
 export type SearchCategory = {
@@ -496,6 +498,7 @@ export type DeliveryType =
 export type SellerOrder = {
   id: string;
   status: OrderStatus;
+  isFoodOrder?: boolean;
   deliveryType: DeliveryType;
   totalAmount: number;
   sellerGroups: {
