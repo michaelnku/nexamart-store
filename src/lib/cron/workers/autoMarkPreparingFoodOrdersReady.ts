@@ -26,7 +26,7 @@ export async function autoMarkPreparingFoodOrdersReady() {
     let processed = 0;
 
     for (const group of dueGroups) {
-      const result = await markSellerGroupReady(group.id);
+      const result = await markSellerGroupReady(group.id, "AUTO");
       if (result.updated) processed += 1;
     }
 

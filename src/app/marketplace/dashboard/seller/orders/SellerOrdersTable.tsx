@@ -15,23 +15,58 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  CheckCircle2,
-  XCircle,
-  Truck,
-  Loader2,
-  PackageSearch,
-  Eye,
-} from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, PackageSearch, Eye } from "lucide-react";
 import Link from "next/link";
-import { OrderStatus, SellerOrder } from "@/lib/types";
+import { SellerOrder } from "@/lib/types";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { useRouter } from "next/navigation";
+import FoodPrepTimeModal from "./FoodPrepTimeModal";
 
 type SellerOrderAction = (
   sellerGroupId: string,
   prepTimeMinutes?: number,
 ) => Promise<{ success?: string; error?: string }>;
+
+type SellerRowState = {
+  isFoodOrder: boolean;
+  sellerGroupId?: string;
+  sellerGroupStatus?: string;
+  rowPending: boolean;
+  isPreparingFood: boolean;
+  isReadyFood: boolean;
+  canDispatchToHub: boolean;
+  isDispatchedToHub: boolean;
+  isHubVerified: boolean;
+};
+
+function getSellerRowState(order: SellerOrder): SellerRowState {
+  const isFoodOrder = Boolean(order.isFoodOrder);
+  const sellerGroupId = order.sellerGroups?.[0]?.id;
+  const sellerGroupStatus = order.sellerGroups?.[0]?.status;
+
+  const rowPending = sellerGroupStatus === "PENDING";
+  const isPreparingFood = isFoodOrder && sellerGroupStatus === "PREPARING";
+  const isReadyFood = isFoodOrder && sellerGroupStatus === "READY";
+
+  const canDispatchToHub = !isFoodOrder && sellerGroupStatus === "ACCEPTED";
+  const isDispatchedToHub =
+    !isFoodOrder &&
+    (sellerGroupStatus === "DISPATCHED_TO_HUB" ||
+      sellerGroupStatus === "ARRIVED_AT_HUB");
+  const isHubVerified = !isFoodOrder && sellerGroupStatus === "VERIFIED_AT_HUB";
+
+  return {
+    isFoodOrder,
+    sellerGroupId,
+    sellerGroupStatus,
+    rowPending,
+    isPreparingFood,
+    isReadyFood,
+    canDispatchToHub,
+    isDispatchedToHub,
+    isHubVerified,
+  };
+}
 
 export default function SellerOrdersTable({
   orders,
@@ -40,14 +75,14 @@ export default function SellerOrdersTable({
 }) {
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const [isPending, startTransition] = useTransition();
-  const [optimisticShipped, setOptimisticShipped] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const [foodAcceptSellerGroupId, setFoodAcceptSellerGroupId] = useState<
+    string | null
+  >(null);
   const router = useRouter();
+
   const handleAction = (
     actionFn: SellerOrderAction,
     sellerGroupId?: string,
-    onSuccess?: () => void,
     prepTimeMinutes?: number,
   ) => {
     if (isPending) return;
@@ -63,23 +98,103 @@ export default function SellerOrdersTable({
         return;
       }
 
-      toast.success(res.success);
+      if (res?.success) {
+        toast.success(res.success);
+      }
       router.refresh();
-      onSuccess?.();
     });
   };
 
-  const statusColor: Record<OrderStatus, string> = {
-    PENDING: "bg-yellow-200 text-yellow-800",
+  const statusColor: Record<string, string> = {
+    PENDING_PAYMENT: "bg-yellow-200 text-yellow-800",
+    PAID: "bg-emerald-100 text-emerald-700",
     ACCEPTED: "bg-[#e0efff] text-[#3c9ee0]",
-    SHIPPED: "bg-purple-100 text-purple-700",
-    OUT_FOR_DELIVERY: "bg-indigo-100 text-indigo-700",
+    PREPARING: "bg-amber-100 text-amber-700",
+    READY: "bg-green-100 text-green-700",
+    IN_DELIVERY: "bg-indigo-100 text-indigo-700",
     DELIVERED: "bg-green-100 text-green-700",
     COMPLETED: "bg-green-200 text-green-800",
     CANCELLED: "bg-red-100 text-red-700",
     RETURN_REQUESTED: "bg-orange-200 text-orange-800",
     RETURNED: "bg-red-200 text-red-800",
     REFUNDED: "bg-gray-200 text-gray-800",
+
+    // legacy fallback
+    PENDING: "bg-yellow-200 text-yellow-800",
+    SHIPPED: "bg-purple-100 text-purple-700",
+    OUT_FOR_DELIVERY: "bg-indigo-100 text-indigo-700",
+  };
+
+  const handleAcceptClick = (state: SellerRowState) => {
+    if (!state.sellerGroupId) {
+      toast.error("Seller group not found for this order");
+      return;
+    }
+
+    if (!state.isFoodOrder) {
+      handleAction(acceptOrderAction, state.sellerGroupId);
+      return;
+    }
+
+    setFoodAcceptSellerGroupId(state.sellerGroupId);
+  };
+
+  const handleConfirmFoodEta = (prepTimeMinutes: number) => {
+    if (!foodAcceptSellerGroupId) return;
+    handleAction(acceptOrderAction, foodAcceptSellerGroupId, prepTimeMinutes);
+    setFoodAcceptSellerGroupId(null);
+  };
+
+  const renderOpsButton = (order: SellerOrder, state: SellerRowState) => {
+    const {
+      isFoodOrder,
+      sellerGroupId,
+      isPreparingFood,
+      isReadyFood,
+      canDispatchToHub,
+      isDispatchedToHub,
+      isHubVerified,
+    } = state;
+
+    const showButton = isFoodOrder
+      ? isPreparingFood || isReadyFood
+      : canDispatchToHub || isDispatchedToHub || isHubVerified;
+
+    if (!showButton) return null;
+
+    return (
+      <Button
+        size="sm"
+        disabled={
+          isPending ||
+          !sellerGroupId ||
+          (isFoodOrder ? isReadyFood : !canDispatchToHub)
+        }
+        onClick={() => {
+          if (!sellerGroupId) return;
+
+          if (isFoodOrder && !isReadyFood) {
+            handleAction(shipOrderAction, sellerGroupId);
+            return;
+          }
+
+          if (!isFoodOrder && canDispatchToHub) {
+            handleAction(shipOrderAction, sellerGroupId);
+          }
+        }}
+        className="flex gap-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
+      >
+        {isFoodOrder
+          ? isReadyFood
+            ? "Ready for Pickup"
+            : "Food is Ready"
+          : isHubVerified
+            ? "Hub Verified"
+            : isDispatchedToHub
+              ? "Dispatched to Hub"
+              : "Dispatch to Hub"}
+      </Button>
+    );
   };
 
   return (
@@ -109,189 +224,84 @@ export default function SellerOrdersTable({
               </tr>
             )}
 
-            {orders.map((o) => (
-              <tr
-                key={o.id}
-                className="border-t transition-colors hover:bg-gray-50"
-              >
-                {(() => {
-                  const isFoodOrder = Boolean(o.isFoodOrder);
-                  const sellerGroupId = o.sellerGroups?.[0]?.id;
-                  const sellerGroupStatus = o.sellerGroups?.[0]?.status;
-                  const readyAt = o.sellerGroups?.[0]?.readyAt;
-                  const isPendingPickup =
-                    sellerGroupStatus === "PENDING_PICKUP";
-                  const canMarkAsShipped =
-                    !isFoodOrder && sellerGroupStatus === "ACCEPTED";
-                  const isPreparingFood =
-                    isFoodOrder && sellerGroupStatus === "PREPARING";
-                  const isShipped =
-                    sellerGroupStatus === "IN_TRANSIT_TO_HUB" ||
-                    sellerGroupStatus === "ARRIVED_AT_HUB" ||
-                    (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
-                  const isReady =
-                    sellerGroupStatus === "READY" ||
-                    (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
-                  const readyAtLabel = readyAt
-                    ? new Date(readyAt).toLocaleTimeString([], {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })
-                    : null;
+            {orders.map((o) => {
+              const state = getSellerRowState(o);
+              return (
+                <tr key={o.id} className="border-t transition-colors hover:bg-gray-50">
+                  <td className="p-4 font-medium">
+                    <Link
+                      href={`/marketplace/dashboard/seller/orders/${o.id}`}
+                      className="hover:underline"
+                    >
+                      #{o.id.slice(-6)}
+                    </Link>
+                  </td>
 
-                  return (
-                    <>
-                      <td className="p-4 font-medium">
-                        <Link
-                          href={`/marketplace/dashboard/seller/orders/${o.id}`}
-                          className="hover:underline"
-                        >
-                          #{o.id.slice(-6)}
-                        </Link>
-                      </td>
+                  <td className="p-4 font-medium">{o.customer?.name ?? "-"}</td>
 
-                      <td className="p-4 font-medium">
-                        {o.customer?.name ?? "-"}
-                      </td>
+                  <td className="p-4 font-semibold text-gray-900">
+                    {formatMoneyFromUSD(o.totalAmount)}
+                  </td>
 
-                      <td className="p-4 font-semibold text-gray-900">
-                        {formatMoneyFromUSD(o.totalAmount)}
-                      </td>
+                  <td className="p-4">
+                    <span
+                      className={`rounded-full px-2 py-[3px] text-[11px] font-semibold ${
+                        statusColor[o.status] ?? "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {o.status.replaceAll("_", " ")}
+                    </span>
+                  </td>
 
-                      <td className="p-4">
-                        <span
-                          className={`rounded-full px-2 py-[3px] text-[11px] font-semibold ${
-                            statusColor[o.status]
-                          }`}
-                        >
-                          {o.status.replaceAll("_", " ")}
-                        </span>
-                      </td>
+                  <td className="p-4">
+                    <span className="rounded-full bg-[#3c9ee0]/10 px-2 py-[3px] text-[11px] font-medium text-[#3c9ee0]">
+                      {o.deliveryType.replaceAll("_", " ")}
+                    </span>
+                  </td>
 
-                      <td className="p-4">
-                        <span className="rounded-full bg-[#3c9ee0]/10 px-2 py-[3px] text-[11px] font-medium text-[#3c9ee0]">
-                          {o.deliveryType.replaceAll("_", " ")}
-                        </span>
-                      </td>
+                  <td className="p-4">
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Link href={`/marketplace/dashboard/seller/orders/${o.id}`}>
+                        <Button size="sm" variant="outline">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
 
-                      <td className="p-4">
-                        <div className="flex flex-wrap justify-end gap-2">
-                          <Link
-                            href={`/marketplace/dashboard/seller/orders/${o.id}`}
+                      {state.rowPending && (
+                        <>
+                          <Button
+                            size="sm"
+                            disabled={isPending || !state.sellerGroupId}
+                            onClick={() => handleAcceptClick(state)}
+                            className="flex gap-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
                           >
-                            <Button size="sm" variant="outline">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </Link>
+                            {isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-4 w-4" />
+                            )}
+                            Accept
+                          </Button>
 
-                          {isPendingPickup && (
-                            <>
-                              <Button
-                                size="sm"
-                                disabled={isPending || !sellerGroupId}
-                                onClick={() => {
-                                  if (!isFoodOrder) {
-                                    handleAction(acceptOrderAction, sellerGroupId);
-                                    return;
-                                  }
+                          <Button
+                            size="sm"
+                            disabled={isPending || !state.sellerGroupId}
+                            variant="destructive"
+                            onClick={() => handleAction(cancelOrderAction, state.sellerGroupId)}
+                            className="flex gap-1"
+                          >
+                            <XCircle className="h-4 w-4" />
+                            Cancel
+                          </Button>
+                        </>
+                      )}
 
-                                  const input = window.prompt(
-                                    "Enter preparation time in minutes (1-180):",
-                                  );
-                                  if (input === null) return;
-
-                                  const parsed = Number.parseInt(input, 10);
-                                  if (
-                                    !Number.isInteger(parsed) ||
-                                    parsed < 1 ||
-                                    parsed > 180
-                                  ) {
-                                    toast.error(
-                                      "Prep time must be a whole number between 1 and 180.",
-                                    );
-                                    return;
-                                  }
-
-                                  handleAction(
-                                    acceptOrderAction,
-                                    sellerGroupId,
-                                    undefined,
-                                    parsed,
-                                  );
-                                }}
-                                className="flex gap-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
-                              >
-                                {isPending ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <CheckCircle2 className="h-4 w-4" />
-                                )}
-                                Accept
-                              </Button>
-
-                              <Button
-                                size="sm"
-                                disabled={isPending || !sellerGroupId}
-                                variant="destructive"
-                                onClick={() =>
-                                  handleAction(cancelOrderAction, sellerGroupId)
-                                }
-                                className="flex gap-1"
-                              >
-                                <XCircle className="h-4 w-4" />
-                                Cancel
-                              </Button>
-                            </>
-                          )}
-
-                          {(isFoodOrder
-                            ? isPreparingFood || isReady
-                            : canMarkAsShipped || isShipped) && (
-                            <Button
-                              size="sm"
-                              disabled={
-                                isPending ||
-                                !sellerGroupId ||
-                                (isFoodOrder ? true : !canMarkAsShipped)
-                              }
-                              onClick={() => {
-                                if (
-                                  isFoodOrder ||
-                                  (!isFoodOrder && !canMarkAsShipped)
-                                ) {
-                                  return;
-                                }
-                                handleAction(
-                                  shipOrderAction,
-                                  sellerGroupId,
-                                  () => {
-                                    if (!sellerGroupId) return;
-                                    setOptimisticShipped((prev) =>
-                                      new Set(prev).add(sellerGroupId),
-                                    );
-                                  },
-                                );
-                              }}
-                              className="flex gap-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
-                            >
-                              {isFoodOrder
-                                ? isReady
-                                  ? "Ready for Pickup"
-                                  : readyAtLabel
-                                    ? `Preparing • auto ready ${readyAtLabel}`
-                                    : "Preparing • auto ready"
-                                : isShipped
-                                  ? "Shipped"
-                                  : "Mark as Shipped"}
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </>
-                  );
-                })()}
-              </tr>
-            ))}
+                      {renderOpsButton(o, state)}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -304,178 +314,82 @@ export default function SellerOrdersTable({
           </div>
         )}
 
-        {orders.map((o) => (
-          <Card key={o.id} className="rounded-xl border bg-white shadow-sm">
-            {(() => {
-              const isFoodOrder = Boolean(o.isFoodOrder);
-              const sellerGroupId = o.sellerGroups?.[0]?.id;
-              const sellerGroupStatus = o.sellerGroups?.[0]?.status;
-              const readyAt = o.sellerGroups?.[0]?.readyAt;
-              const isPendingPickup = sellerGroupStatus === "PENDING_PICKUP";
-              const canMarkAsShipped =
-                !isFoodOrder && sellerGroupStatus === "ACCEPTED";
-              const isPreparingFood =
-                isFoodOrder && sellerGroupStatus === "PREPARING";
-              const isShipped =
-                sellerGroupStatus === "IN_TRANSIT_TO_HUB" ||
-                sellerGroupStatus === "ARRIVED_AT_HUB" ||
-                (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
-              const isReady =
-                sellerGroupStatus === "READY" ||
-                (!!sellerGroupId && optimisticShipped.has(sellerGroupId));
-              const readyAtLabel = readyAt
-                ? new Date(readyAt).toLocaleTimeString([], {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })
-                : null;
+        {orders.map((o) => {
+          const state = getSellerRowState(o);
+          return (
+            <Card key={o.id} className="rounded-xl border bg-white shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-base font-semibold">#{o.id.slice(-6)}</CardTitle>
+                  <span
+                    className={`rounded-full px-2 py-[2px] text-[11px] font-semibold ${
+                      statusColor[o.status] ?? "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {o.status.replaceAll("_", " ")}
+                  </span>
+                </div>
+              </CardHeader>
 
-              return (
-                <>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <CardTitle className="text-base font-semibold">
-                        #{o.id.slice(-6)}
-                      </CardTitle>
-                      <span
-                        className={`rounded-full px-2 py-[2px] text-[11px] font-semibold ${
-                          statusColor[o.status]
-                        }`}
-                      >
-                        {o.status.replaceAll("_", " ")}
-                      </span>
-                    </div>
-                  </CardHeader>
+              <CardContent className="space-y-2 pb-3">
+                <p className="text-sm text-gray-600">
+                  Customer: <span className="font-medium">{o.customer?.name ?? "-"}</span>
+                </p>
 
-                  <CardContent className="space-y-2 pb-3">
-                    <p className="text-sm text-gray-600">
-                      Customer:{" "}
-                      <span className="font-medium">
-                        {o.customer?.name ?? "-"}
-                      </span>
-                    </p>
+                <p className="text-sm text-gray-600">
+                  Delivery: <span className="font-semibold text-[#3c9ee0]">{o.deliveryType.replaceAll("_", " ")}</span>
+                </p>
 
-                    <p className="text-sm text-gray-600">
-                      Delivery:{" "}
-                      <span className="font-semibold text-[#3c9ee0]">
-                        {o.deliveryType.replaceAll("_", " ")}
-                      </span>
-                    </p>
+                <p className="text-lg font-bold text-gray-900">{formatMoneyFromUSD(o.totalAmount)}</p>
+              </CardContent>
 
-                    <p className="text-lg font-bold text-gray-900">
-                      {formatMoneyFromUSD(o.totalAmount)}
-                    </p>
-                  </CardContent>
+              <CardFooter className="flex flex-wrap justify-between gap-2 pt-0">
+                <Link href={`/marketplace/dashboard/seller/orders/${o.id}`}>
+                  <Button size="sm" variant="outline" className="w-full">
+                    <Eye className="mr-1 h-4 w-4" /> View
+                  </Button>
+                </Link>
 
-                  <CardFooter className="flex flex-wrap justify-between gap-2 pt-0">
-                    <Link href={`/marketplace/dashboard/seller/orders/${o.id}`}>
-                      <Button size="sm" variant="outline" className="w-full">
-                        <Eye className="mr-1 h-4 w-4" /> View
-                      </Button>
-                    </Link>
+                {state.rowPending && (
+                  <>
+                    <Button
+                      size="sm"
+                      disabled={isPending || !state.sellerGroupId}
+                      onClick={() => handleAcceptClick(state)}
+                      className="flex-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
+                    >
+                      {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Accept"}
+                    </Button>
 
-                    {isPendingPickup && (
-                      <>
-                        <Button
-                          size="sm"
-                          disabled={isPending || !sellerGroupId}
-                          onClick={() => {
-                            if (!isFoodOrder) {
-                              handleAction(acceptOrderAction, sellerGroupId);
-                              return;
-                            }
+                    <Button
+                      size="sm"
+                      disabled={isPending || !state.sellerGroupId}
+                      variant="destructive"
+                      onClick={() => handleAction(cancelOrderAction, state.sellerGroupId)}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                )}
 
-                            const input = window.prompt(
-                              "Enter preparation time in minutes (1-180):",
-                            );
-                            if (input === null) return;
-
-                            const parsed = Number.parseInt(input, 10);
-                            if (
-                              !Number.isInteger(parsed) ||
-                              parsed < 1 ||
-                              parsed > 180
-                            ) {
-                              toast.error(
-                                "Prep time must be a whole number between 1 and 180.",
-                              );
-                              return;
-                            }
-
-                            handleAction(
-                              acceptOrderAction,
-                              sellerGroupId,
-                              undefined,
-                              parsed,
-                            );
-                          }}
-                          className="flex-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
-                        >
-                          {isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            "Accept"
-                          )}
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          disabled={isPending || !sellerGroupId}
-                          variant="destructive"
-                          onClick={() =>
-                            handleAction(cancelOrderAction, sellerGroupId)
-                          }
-                          className="flex-1"
-                        >
-                          Cancel
-                        </Button>
-                      </>
-                    )}
-
-                    {(isFoodOrder
-                      ? isPreparingFood || isReady
-                      : canMarkAsShipped || isShipped) && (
-                      <Button
-                        size="sm"
-                        disabled={
-                          isPending ||
-                          !sellerGroupId ||
-                          (isFoodOrder ? true : !canMarkAsShipped)
-                        }
-                        onClick={() => {
-                          if (
-                            isFoodOrder ||
-                            (!isFoodOrder && !canMarkAsShipped)
-                          ) {
-                            return;
-                          }
-                          handleAction(shipOrderAction, sellerGroupId, () => {
-                            if (!sellerGroupId) return;
-                            setOptimisticShipped((prev) =>
-                              new Set(prev).add(sellerGroupId),
-                            );
-                          });
-                        }}
-                        className="flex-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
-                      >
-                        {isFoodOrder
-                          ? isReady
-                            ? "Ready for Pickup"
-                            : readyAtLabel
-                              ? `Preparing • auto ready ${readyAtLabel}`
-                              : "Preparing • auto ready"
-                          : isShipped
-                            ? "Shipped"
-                            : "Mark as Shipped"}
-                      </Button>
-                    )}
-                  </CardFooter>
-                </>
-              );
-            })()}
-          </Card>
-        ))}
+                {renderOpsButton(o, state) && (
+                  <div className="flex-1">{renderOpsButton(o, state)}</div>
+                )}
+              </CardFooter>
+            </Card>
+          );
+        })}
       </div>
+
+      <FoodPrepTimeModal
+        open={Boolean(foodAcceptSellerGroupId)}
+        onOpenChange={(open) => {
+          if (!open) setFoodAcceptSellerGroupId(null);
+        }}
+        onConfirm={handleConfirmFoodEta}
+        isSubmitting={isPending}
+      />
     </div>
   );
 }

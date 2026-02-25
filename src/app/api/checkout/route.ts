@@ -2,7 +2,6 @@ import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { DeliveryType } from "@/generated/prisma/client";
 import { placeOrderAction } from "@/actions/checkout/placeOrder";
-import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { getAppBaseUrl } from "@/lib/config/appUrl";
 
@@ -50,24 +49,7 @@ export async function POST(req: Request) {
       return new NextResponse(placeOrder.error, { status });
     }
 
-    const order = await prisma.order.findUnique({
-      where: { id: placeOrder.orderId },
-      select: {
-        id: true,
-        totalAmount: true,
-        shippingFee: true,
-        sellerGroups: {
-          select: { id: true },
-        },
-      },
-    });
-
-    if (
-      !order ||
-      order.shippingFee == null ||
-      order.totalAmount <= 0 ||
-      order.sellerGroups.length === 0
-    ) {
+    if (!placeOrder.orderId || !placeOrder.totalAmount || placeOrder.totalAmount <= 0) {
       return new NextResponse(
         "Order not properly initialized via place Order Action",
         {
@@ -87,15 +69,21 @@ export async function POST(req: Request) {
           price_data: {
             currency: "usd",
             product_data: {
-              name: `NexaMart Order ${order.id.slice(-8)}`,
+              name:
+                placeOrder.orders && placeOrder.orders.length > 1
+                  ? `NexaMart Checkout (${placeOrder.orders.length} orders)`
+                  : `NexaMart Order ${placeOrder.orderId.slice(-8)}`,
             },
-            unit_amount: Math.round(order.totalAmount * 100),
+            unit_amount: Math.round(placeOrder.totalAmount * 100),
           },
         },
       ],
-      success_url: `${baseUrl}/customer/order/success/${order.id}`,
+      success_url: `${baseUrl}/customer/order/success/${placeOrder.orderId}`,
       cancel_url: `${baseUrl}/cart?canceled=1`,
-      metadata: { orderId: order.id },
+      metadata: {
+        orderId: placeOrder.orderId,
+        checkoutGroupId: placeOrder.checkoutGroupId ?? "",
+      },
     });
 
     return NextResponse.json({ url: session.url }, { headers: corsHeaders });

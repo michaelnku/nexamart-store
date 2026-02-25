@@ -1,33 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processPendingJobs } from "@/worker";
-import { autoMarkPreparingFoodOrdersReady } from "@/lib/cron/workers/autoMarkPreparingFoodOrdersReady";
+import { prisma } from "@/lib/prisma";
+
+const CRON_LOCK_NAME = "job_processor";
+const CRON_LOCK_WINDOW_MS = 2 * 60 * 1000;
+
+async function acquireCronLock() {
+  const now = new Date();
+  const staleBefore = new Date(now.getTime() - CRON_LOCK_WINDOW_MS);
+
+  try {
+    await prisma.cronLock.create({
+      data: { name: CRON_LOCK_NAME, lockedAt: now },
+    });
+    return { acquired: true };
+  } catch {
+    const updated = await prisma.cronLock.updateMany({
+      where: {
+        name: CRON_LOCK_NAME,
+        lockedAt: { lt: staleBefore },
+      },
+      data: { lockedAt: now },
+    });
+    return { acquired: updated.count === 1 };
+  }
+}
 
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { ok: false, error: "CRON_SECRET is not configured" },
-      { status: 500 },
-    );
-  }
-
-  const authHeader = req.headers.get("authorization");
   const querySecret = req.nextUrl.searchParams.get("secret");
-  const isAuthorized =
-    authHeader === `Bearer ${cronSecret}` || querySecret === cronSecret;
 
-  if (!isAuthorized) {
-    return NextResponse.json(
-      { ok: false, error: "Unauthorized" },
-      { status: 401 },
-    );
+  if (!cronSecret || querySecret !== cronSecret) {
+    return NextResponse.json({ ok: false }, { status: 401 });
   }
 
-  const result = await processPendingJobs();
-  const foodReadyResult = await autoMarkPreparingFoodOrdersReady();
+  const lock = await acquireCronLock();
+  if (!lock.acquired) {
+    return NextResponse.json({ ok: true, skipped: true });
+  }
+
+  const result = await processPendingJobs(20);
+
   return NextResponse.json({
     ok: true,
-    ...result,
-    foodReadyProcessed: foodReadyResult.processed,
+    processed: result.processed,
   });
 }

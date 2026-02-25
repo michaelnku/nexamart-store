@@ -47,14 +47,15 @@ function CategoryMiniList({ categories }: Props) {
       <div
         className="
   grid grid-cols-2 gap-3
-  md:flex md:flex-col md:divide-y md:justify-between
+  lg:grid-cols-1 lg:gap-2
 "
       >
         {categories.slice(0, 3).map((cat) => {
           const CardContent = (
             <div
               className="
-                group flex flex-col items-center gap-2
+                group flex min-h-[110px] flex-col items-center justify-center gap-2
+                lg:min-h-[64px] lg:flex-row lg:justify-start
                 rounded-xl border bg-background p-4
                 transition-colors hover:bg-muted
               "
@@ -81,7 +82,7 @@ function CategoryMiniList({ categories }: Props) {
                 )}
               </div>
 
-              <span className="text-sm font-medium text-center">
+              <span className="text-sm font-medium text-center lg:text-left">
                 {cat.name}
               </span>
             </div>
@@ -146,7 +147,8 @@ function CategoryMiniList({ categories }: Props) {
         <Link
           href="/category"
           className="
-    group flex flex-col items-center gap-2
+    group flex min-h-[110px] flex-col items-center justify-center gap-2
+    lg:min-h-[64px] lg:flex-row lg:justify-start
     rounded-xl border bg-background p-4
     transition-colors hover:bg-muted
   "
@@ -164,7 +166,7 @@ function CategoryMiniList({ categories }: Props) {
             <LayoutGrid className="w-5 h-5" />
           </div>
 
-          <span className="text-sm font-medium text-center">
+          <span className="text-sm font-medium text-center lg:text-left">
             All Categories
           </span>
         </Link>

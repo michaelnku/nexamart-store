@@ -113,8 +113,11 @@ export async function saveRiderProfileAction(
         isAvailable: profile.isAvailable,
       },
     };
-  } catch (error: any) {
-    if (error?.message === "Plate number is already registered") {
+  } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      error.message === "Plate number is already registered"
+    ) {
       return { error: error.message };
     }
 
@@ -262,8 +265,11 @@ export async function updateRiderProfileAction(
     });
 
     return { success: true };
-  } catch (error: any) {
-    return { error: error.message ?? "Update failed" };
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      return { error: error.message || "Update failed" };
+    }
+    return { error: "Update failed" };
   }
 }
 
@@ -281,7 +287,7 @@ export async function deleteRiderProfileAction(): Promise<{
     where: {
       riderId: userId,
       status: {
-        in: ["ASSIGNED", "IN_TRANSIT"],
+        in: ["ASSIGNED", "PICKED_UP"],
       },
     },
   });

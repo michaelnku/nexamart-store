@@ -94,6 +94,7 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
 async function handleOrderCheckout(session: Stripe.Checkout.Session) {
   const context = createServiceContext("ORDER_PAYMENT_WEBHOOK");
   const orderId = session.metadata?.orderId;
+  const checkoutGroupId = session.metadata?.checkoutGroupId || null;
   const paymentIntentRaw = session.payment_intent;
   const paymentIntentId =
     typeof paymentIntentRaw === "string"
@@ -105,47 +106,60 @@ async function handleOrderCheckout(session: Stripe.Checkout.Session) {
     return new NextResponse("Invalid checkout metadata", { status: 400 });
   }
 
-  const paymentResult = await completeOrderPayment({
-    orderId,
-    paymentReference: `order-payment-${paymentIntentId}`,
-    method: "CARD",
-    context,
-  });
+  const targetOrders = checkoutGroupId
+    ? await prisma.order.findMany({
+        where: { checkoutGroupId, isPaid: false },
+        select: { id: true },
+      })
+    : await prisma.order
+        .findMany({
+          where: { id: orderId, isPaid: false },
+          select: { id: true },
+        });
 
-  if (!paymentResult.justPaid) {
-    return new NextResponse(null, { status: 200 });
-  }
-
-  const paidOrder = paymentResult.order;
-
-  await prisma.product.updateMany({
-    where: {
-      id: {
-        in: await prisma.orderItem
-          .findMany({
-            where: { orderId: paidOrder.id },
-            select: { productId: true },
-          })
-          .then((items) => items.map((item) => item.productId)),
-      },
-    },
-    data: { isPublished: true },
-  });
-
-  await pusherServer.trigger(`user-${paidOrder.userId}`, "payment-success", {
-    orderId,
-    message: "Payment received! Your order is now processing.",
-  });
-
-  for (const group of paidOrder.sellerGroups) {
-    await pusherServer.trigger(`seller-${group.sellerId}`, "new-order", {
-      orderId,
-      storeId: group.storeId,
-      subtotal: group.subtotal,
+  for (const target of targetOrders) {
+    const paymentResult = await completeOrderPayment({
+      orderId: target.id,
+      paymentReference: `order-payment-${paymentIntentId}-${target.id}`,
+      method: "CARD",
+      context,
     });
-  }
 
-  await applyReferralRewardsForPaidOrder(orderId);
+    if (!paymentResult.justPaid) {
+      continue;
+    }
+
+    const paidOrder = paymentResult.order;
+
+    await prisma.product.updateMany({
+      where: {
+        id: {
+          in: await prisma.orderItem
+            .findMany({
+              where: { orderId: paidOrder.id },
+              select: { productId: true },
+            })
+            .then((items) => items.map((item) => item.productId)),
+        },
+      },
+      data: { isPublished: true },
+    });
+
+    await pusherServer.trigger(`user-${paidOrder.userId}`, "payment-success", {
+      orderId: target.id,
+      message: "Payment received! Your order is now processing.",
+    });
+
+    for (const group of paidOrder.sellerGroups) {
+      await pusherServer.trigger(`seller-${group.sellerId}`, "new-order", {
+        orderId: target.id,
+        storeId: group.storeId,
+        subtotal: group.subtotal,
+      });
+    }
+
+    await applyReferralRewardsForPaidOrder(target.id);
+  }
 
   return new NextResponse(null, { status: 200 });
 }

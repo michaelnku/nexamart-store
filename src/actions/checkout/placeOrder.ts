@@ -5,7 +5,7 @@ import { CurrentUserId } from "@/lib/currentUser";
 import {
   DeliveryType,
   PaymentMethod,
-  type Order,
+  Prisma,
 } from "@/generated/prisma/client";
 import { generateTrackingNumber } from "@/components/helper/generateTrackingNumber";
 import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
@@ -18,6 +18,33 @@ import { calculateDrivingDistance } from "@/lib/shipping/mapboxDistance";
 import { calculateShippingFee } from "@/lib/shipping/shippingCalculator";
 import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
 import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
+import { buildDoubleEntryLedgerRows } from "@/lib/finance/ledgerService";
+
+type StoreGroup = {
+  storeId: string;
+  sellerId: string;
+  storeName: string;
+  storeType: "FOOD" | "GENERAL";
+  items: Array<{
+    id: string;
+    productId: string;
+    variantId: string;
+    quantity: number;
+    priceUSD: number;
+  }>;
+  subtotal: number;
+  shippingFee: number;
+  distanceInMiles: number;
+};
+
+type InternalOrderGroup = {
+  isFoodOrder: boolean;
+  stores: StoreGroup[];
+  subtotal: number;
+  shippingFee: number;
+  distanceInMiles: number;
+  totalAmount: number;
+};
 
 class PlaceOrderError extends Error {
   constructor(message: string) {
@@ -41,6 +68,37 @@ function buildSellerGroupCodes(orderId: string, storeId: string) {
     hubInboundCode: `HUB-${storeSeed}-${seed}`,
     internalTrackingNumber: `SG-${orderSeed}-${seed}`,
   };
+}
+
+function splitDiscountAcrossGroups(
+  groups: Array<{ baseAmount: number }>,
+  totalDiscount: number,
+) {
+  if (groups.length === 0 || totalDiscount <= 0) {
+    return groups.map(() => 0);
+  }
+
+  const totalBase = groups.reduce((sum, group) => sum + group.baseAmount, 0);
+  if (totalBase <= 0) {
+    return groups.map(() => 0);
+  }
+
+  const rawDiscounts = groups.map((group) => (group.baseAmount / totalBase) * totalDiscount);
+  const floored = rawDiscounts.map((value) => Math.floor(value * 100) / 100);
+  const flooredTotal = floored.reduce((sum, value) => sum + value, 0);
+  let remainder = Math.round((totalDiscount - flooredTotal) * 100);
+
+  const sortedIndexes = rawDiscounts
+    .map((value, index) => ({ index, frac: value - floored[index] }))
+    .sort((a, b) => b.frac - a.frac)
+    .map((entry) => entry.index);
+
+  for (let i = 0; i < remainder; i += 1) {
+    const idx = sortedIndexes[i % sortedIndexes.length];
+    floored[idx] += 0.01;
+  }
+
+  return floored;
 }
 
 export async function placeOrderAction({
@@ -83,9 +141,60 @@ export async function placeOrderAction({
         error: "Invalid checkout request. Please refresh and try again.",
       };
     }
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: existingKey.orderId },
+      select: {
+        id: true,
+        trackingNumber: true,
+        totalAmount: true,
+        checkoutGroupId: true,
+      },
+    });
+
+    if (!existingOrder) {
+      return { error: "Checkout failed. Please try again." };
+    }
+
+    const existingOrders = existingOrder.checkoutGroupId
+      ? await prisma.order.findMany({
+          where: { checkoutGroupId: existingOrder.checkoutGroupId },
+          select: {
+            id: true,
+            sellerGroups: {
+              select: {
+                store: {
+                  select: { name: true },
+                },
+              },
+            },
+          },
+        })
+      : [];
+
+    const totalAmount = existingOrder.checkoutGroupId
+      ? await prisma.order
+          .aggregate({
+            where: { checkoutGroupId: existingOrder.checkoutGroupId },
+            _sum: { totalAmount: true },
+          })
+          .then((result) => result._sum.totalAmount ?? 0)
+      : existingOrder.totalAmount;
+
     return {
       success: true,
-      orderId: existingKey.orderId,
+      orderId: existingOrder.id,
+      trackingNumber: existingOrder.trackingNumber,
+      checkoutGroupId: existingOrder.checkoutGroupId,
+      totalAmount,
+      orders: existingOrders.length
+        ? existingOrders.map((order) => ({
+            orderId: order.id,
+            sellerName: order.sellerGroups
+              .map((group) => group.store.name)
+              .join(", "),
+          }))
+        : [{ orderId: existingOrder.id, sellerName: "Store" }],
     };
   }
 
@@ -103,6 +212,7 @@ export async function placeOrderAction({
               store: {
                 select: {
                   id: true,
+                  name: true,
                   userId: true,
                   shippingRatePerMile: true,
                   latitude: true,
@@ -128,12 +238,6 @@ export async function placeOrderAction({
     }
   }
 
-  const storeTypes = new Set(cart.items.map((i) => i.product.store.type));
-  const isFoodOrder = storeTypes.has("FOOD");
-  if (isFoodOrder && storeTypes.size > 1) {
-    return { error: "Food orders cannot be mixed with non-food items" };
-  }
-
   const itemsByStore = new Map<string, typeof cart.items>();
 
   for (const item of cart.items) {
@@ -142,25 +246,20 @@ export async function placeOrderAction({
     itemsByStore.get(storeId)!.push(item);
   }
 
-  const subtotal = cart.items.reduce(
+  const checkoutSubtotal = cart.items.reduce(
     (s, i) => s + i.quantity * i.variant!.priceUSD,
     0,
   );
   const snapshotCartItemIds = cart.items.map((item) => item.id);
 
   let address: Awaited<ReturnType<typeof prisma.address.findFirst>>;
-  let storeMetrics = new Map<
-    string,
-    {
-      shippingFee: number;
-      distanceInMiles: number;
-    }
-  >();
-  let shippingFee = 0;
-  let avgDistanceInMiles = 0;
+  let storeGroups: StoreGroup[] = [];
+  let orderGroups: InternalOrderGroup[] = [];
+  let checkoutShippingFee = 0;
+  let checkoutDistanceInMiles = 0;
   let couponResult: Awaited<ReturnType<typeof resolveCouponForOrder>>;
-  let discountAmount = 0;
-  let totalAmount = 0;
+  let checkoutDiscountAmount = 0;
+  let checkoutTotalAmount = 0;
 
   try {
     address = await prisma.address.findFirst({
@@ -192,7 +291,7 @@ export async function placeOrderAction({
     const expressMultiplier =
       deliveryType === "EXPRESS" ? (siteConfig?.expressMultiplier ?? 1) : 1;
 
-    const storeMetricsEntries = await Promise.all(
+    const storeEntries = await Promise.all(
       Array.from(itemsByStore.entries()).map(async ([storeId, items]) => {
         const store = items[0].product.store;
         if (store.latitude == null || store.longitude == null) {
@@ -212,51 +311,99 @@ export async function placeOrderAction({
           },
         );
 
-        const groupShippingFee = calculateShippingFee({
+        const shippingFee = calculateShippingFee({
           distanceInMiles: distance.distanceInMiles,
           ratePerMile: store.shippingRatePerMile ?? 0,
           baseFee,
           expressMultiplier,
         });
 
-        return [
+        return {
           storeId,
-          {
-            shippingFee: groupShippingFee,
-            distanceInMiles: distance.distanceInMiles,
-          },
-        ] as const;
+          sellerId: store.userId,
+          storeName: store.name,
+          storeType: store.type,
+          items: items.map((item) => ({
+            id: item.id,
+            productId: item.productId,
+            variantId: item.variantId!,
+            quantity: item.quantity,
+            priceUSD: item.variant!.priceUSD,
+          })),
+          subtotal: items.reduce(
+            (sum, item) => sum + item.quantity * item.variant!.priceUSD,
+            0,
+          ),
+          shippingFee,
+          distanceInMiles: distance.distanceInMiles,
+        } satisfies StoreGroup;
       }),
     );
 
-    storeMetrics = new Map(storeMetricsEntries);
-    shippingFee = Array.from(storeMetrics.values()).reduce(
-      (sum, item) => sum + item.shippingFee,
-      0,
-    );
+    storeGroups = storeEntries;
 
-    // Order-level distance is stored as average route distance across seller groups.
-    avgDistanceInMiles =
-      storeMetrics.size > 0
-        ? Array.from(storeMetrics.values()).reduce(
-            (sum, item) => sum + item.distanceInMiles,
-            0,
-          ) / storeMetrics.size
-        : 0;
+    const foodStoreGroups = storeGroups.filter((group) => group.storeType === "FOOD");
+    const nonFoodStoreGroups = storeGroups.filter((group) => group.storeType !== "FOOD");
+
+    orderGroups = [
+      ...foodStoreGroups.map((storeGroup) => ({
+        isFoodOrder: true,
+        stores: [storeGroup],
+        subtotal: storeGroup.subtotal,
+        shippingFee: storeGroup.shippingFee,
+        distanceInMiles: storeGroup.distanceInMiles,
+        totalAmount: 0,
+      })),
+      ...(nonFoodStoreGroups.length
+        ? [
+            {
+              isFoodOrder: false,
+              stores: nonFoodStoreGroups,
+              subtotal: nonFoodStoreGroups.reduce((sum, group) => sum + group.subtotal, 0),
+              shippingFee: nonFoodStoreGroups.reduce((sum, group) => sum + group.shippingFee, 0),
+              distanceInMiles:
+                nonFoodStoreGroups.reduce((sum, group) => sum + group.distanceInMiles, 0) /
+                nonFoodStoreGroups.length,
+              totalAmount: 0,
+            } satisfies InternalOrderGroup,
+          ]
+        : []),
+    ];
+
+    if (orderGroups.length === 0) {
+      return { error: "No valid order groups were found in cart." };
+    }
+
+    checkoutShippingFee = orderGroups.reduce((sum, group) => sum + group.shippingFee, 0);
+    checkoutDistanceInMiles =
+      orderGroups.reduce((sum, group) => sum + group.distanceInMiles, 0) / orderGroups.length;
 
     couponResult = await resolveCouponForOrder({
       userId,
       couponId,
-      subtotalUSD: subtotal,
-      shippingUSD: shippingFee,
+      subtotalUSD: checkoutSubtotal,
+      shippingUSD: checkoutShippingFee,
     });
 
     if ("error" in couponResult) {
       return { error: couponResult.error };
     }
 
-    discountAmount = couponResult.discountAmount ?? 0;
-    totalAmount = Math.max(0, subtotal + shippingFee - discountAmount);
+    checkoutDiscountAmount = couponResult.discountAmount ?? 0;
+    checkoutTotalAmount = Math.max(
+      0,
+      checkoutSubtotal + checkoutShippingFee - checkoutDiscountAmount,
+    );
+
+    const discountAllocations = splitDiscountAcrossGroups(
+      orderGroups.map((group) => ({ baseAmount: group.subtotal + group.shippingFee })),
+      checkoutDiscountAmount,
+    );
+
+    orderGroups = orderGroups.map((group, index) => ({
+      ...group,
+      totalAmount: Math.max(0, group.subtotal + group.shippingFee - discountAllocations[index]),
+    }));
 
     if (paymentMethod === "WALLET") {
       const wallet = await prisma.wallet.findUnique({
@@ -273,7 +420,7 @@ export async function placeOrderAction({
 
       const availableWalletBalance = await calculateWalletBalance(wallet.id);
 
-      if (availableWalletBalance < totalAmount) {
+      if (availableWalletBalance < checkoutTotalAmount) {
         return {
           error:
             "Insufficient wallet balance. Please choose another payment method.",
@@ -295,83 +442,83 @@ export async function placeOrderAction({
 
   const validatedCouponResult = couponResult;
 
-  const trackingNumber = generateTrackingNumber();
   const systemEscrowWalletId =
     paymentMethod === "WALLET" ? await getOrCreateSystemEscrowWallet() : null;
 
-  let order: Order;
+  let createdOrders: Array<{
+    id: string;
+    status: string;
+    trackingNumber: string | null;
+    isFoodOrder: boolean;
+    sellerGroups: Array<{
+      id: string;
+      sellerId: string;
+      storeId: string;
+      subtotal: number;
+      shippingFee: number;
+      storeName: string;
+    }>;
+  }> = [];
+  let checkoutGroupId: string | null = null;
   let walletJustPaid = false;
-  let walletPaidOrderId: string | null = null;
+  const paidOrderIds: string[] = [];
+  let postCommitLedgerRows: Prisma.LedgerEntryCreateManyInput[] = [];
 
   try {
-    order = await prisma.$transaction(async (tx) => {
-      let walletForPayment: { id: string; balance: number } | null = null;
+    await prisma.$transaction(async (tx) => {
+      let checkoutGroup: { id: string } | null = null;
 
-      if (paymentMethod === "WALLET") {
-        walletForPayment = await tx.wallet.upsert({
-          where: { userId },
-          update: {},
-          create: { userId },
-          select: { id: true, balance: true },
+      if (orderGroups.length > 1) {
+        checkoutGroup = await tx.checkoutGroup.create({
+          data: {
+            userId,
+            total: checkoutTotalAmount,
+          },
+          select: { id: true },
         });
-
-        if (walletForPayment.balance < totalAmount) {
-          throw new PlaceOrderError(
-            "Insufficient wallet balance. Please choose another payment method.",
-          );
-        }
       }
 
-      const createdOrder = await tx.order.create({
-        data: {
-          userId,
+      checkoutGroupId = checkoutGroup?.id ?? null;
 
-          deliveryFullName: address.fullName,
-          deliveryPhone: address.phone,
-          deliveryStreet: address.street,
-          deliveryCity: address.city,
-          deliveryState: address.state ?? "",
-          deliveryCountry: address.country,
-          deliveryPostal: address.postalCode ?? "",
+      for (const group of orderGroups) {
+        const createdOrder = await tx.order.create({
+          data: {
+            userId,
+            checkoutGroupId: checkoutGroup?.id ?? null,
+            deliveryFullName: address.fullName,
+            deliveryPhone: address.phone,
+            deliveryStreet: address.street,
+            deliveryCity: address.city,
+            deliveryState: address.state ?? "",
+            deliveryCountry: address.country,
+            deliveryPostal: address.postalCode ?? "",
+            paymentMethod,
+            deliveryType,
+            distanceInMiles: group.distanceInMiles || checkoutDistanceInMiles,
+            shippingFee: group.shippingFee,
+            totalAmount: group.totalAmount,
+            isPaid: false,
+            isFoodOrder: group.isFoodOrder,
+            couponId: validatedCouponResult.coupon?.id ?? null,
+            discountAmount:
+              group.subtotal + group.shippingFee - group.totalAmount > 0
+                ? group.subtotal + group.shippingFee - group.totalAmount
+                : null,
+            trackingNumber: generateTrackingNumber(),
+            status: "PENDING_PAYMENT",
+          },
+        });
 
-          paymentMethod,
-          deliveryType,
-          distanceInMiles: avgDistanceInMiles,
-          shippingFee,
-          totalAmount,
-          isPaid: false,
-          isFoodOrder,
-          couponId: validatedCouponResult.coupon?.id ?? null,
-          discountAmount: discountAmount || null,
-          trackingNumber,
-          status: "PENDING",
-        },
-      });
-
-      const createdSellerGroups = await Promise.all(
-        Array.from(itemsByStore.entries()).map(async ([storeId, items]) => {
-          const sellerId = items[0].product.store.userId;
-
-          const groupSubtotal = items.reduce(
-            (s, i) => s + i.quantity * i.variant!.priceUSD,
-            0,
-          );
-
-          const groupMetrics = storeMetrics.get(storeId);
-          if (!groupMetrics) {
-            throw new PlaceOrderError(
-              `Shipping metrics missing for store ${storeId}.`,
-            );
-          }
-
-          const group = await tx.orderSellerGroup.create({
+        const sellerGroups = [];
+        for (const storeGroup of group.stores) {
+          const createdSellerGroup = await tx.orderSellerGroup.create({
             data: {
               orderId: createdOrder.id,
-              storeId,
-              sellerId,
-              subtotal: groupSubtotal,
-              shippingFee: groupMetrics.shippingFee,
-              ...buildSellerGroupCodes(createdOrder.id, storeId),
+              storeId: storeGroup.storeId,
+              sellerId: storeGroup.sellerId,
+              subtotal: storeGroup.subtotal,
+              shippingFee: storeGroup.shippingFee,
+              ...buildSellerGroupCodes(createdOrder.id, storeGroup.storeId),
             },
             select: {
               id: true,
@@ -383,26 +530,55 @@ export async function placeOrderAction({
           });
 
           await tx.orderItem.createMany({
-            data: items.map((i) => ({
+            data: storeGroup.items.map((item) => ({
               orderId: createdOrder.id,
-              sellerGroupId: group.id,
-              productId: i.productId,
-              variantId: i.variantId,
-              quantity: i.quantity,
-              price: i.variant!.priceUSD,
+              sellerGroupId: createdSellerGroup.id,
+              productId: item.productId,
+              variantId: item.variantId,
+              quantity: item.quantity,
+              price: item.priceUSD,
             })),
           });
 
-          return group;
-        }),
-      );
+          sellerGroups.push({
+            ...createdSellerGroup,
+            storeName: storeGroup.storeName,
+          });
+        }
+
+        await tx.delivery.create({
+          data: {
+            orderId: createdOrder.id,
+            status: "PENDING_ASSIGNMENT",
+            fee: group.shippingFee,
+            deliveryAddress: [
+              createdOrder.deliveryStreet,
+              createdOrder.deliveryCity,
+              createdOrder.deliveryState,
+              createdOrder.deliveryCountry,
+              createdOrder.deliveryPostal,
+            ]
+              .filter((part) => Boolean(part && part.trim()))
+              .join(", "),
+            distance: group.distanceInMiles || checkoutDistanceInMiles,
+          },
+        });
+
+        createdOrders.push({
+          id: createdOrder.id,
+          status: createdOrder.status,
+          trackingNumber: createdOrder.trackingNumber,
+          isFoodOrder: createdOrder.isFoodOrder,
+          sellerGroups,
+        });
+      }
 
       if (validatedCouponResult.coupon?.id) {
         await tx.couponUsage.create({
           data: {
             couponId: validatedCouponResult.coupon.id,
             userId,
-            orderId: createdOrder.id,
+            orderId: createdOrders[0]?.id,
           },
         });
 
@@ -426,14 +602,14 @@ export async function placeOrderAction({
       if (keyRecord) {
         await tx.idempotencyKey.update({
           where: { key: idempotencyKey },
-          data: { orderId: createdOrder.id },
+          data: { orderId: createdOrders[0]?.id ?? null },
         });
       } else {
         await tx.idempotencyKey.create({
           data: {
             key: idempotencyKey,
             userId,
-            orderId: createdOrder.id,
+            orderId: createdOrders[0]?.id ?? null,
           },
         });
       }
@@ -441,37 +617,6 @@ export async function placeOrderAction({
       await tx.cartItem.deleteMany({
         where: { id: { in: snapshotCartItemIds } },
       });
-
-      if (paymentMethod === "WALLET") {
-        if (!systemEscrowWalletId) {
-          throw new PlaceOrderError("Wallet payment setup failed.");
-        }
-
-        const paymentResult = await completeOrderPaymentCore({
-          tx,
-          orderId: createdOrder.id,
-          paymentReference: `wallet-order-${createdOrder.id}`,
-          method: "WALLET",
-          systemEscrowWalletId,
-          preloadedOrder: {
-            id: createdOrder.id,
-            userId: createdOrder.userId,
-            paymentMethod: (createdOrder.paymentMethod ??
-              paymentMethod) as PaymentMethod,
-            isPaid: createdOrder.isPaid,
-            postPaymentFinalized: createdOrder.postPaymentFinalized,
-            totalAmount: createdOrder.totalAmount,
-            sellerGroups: createdSellerGroups,
-          },
-          preloadedWallet: walletForPayment,
-          assumePaymentReferenceFresh: true,
-        });
-
-        walletJustPaid = paymentResult.justPaid;
-        walletPaidOrderId = paymentResult.order.id;
-      }
-
-      return createdOrder;
     });
   } catch (error) {
     if (error instanceof PlaceOrderError) {
@@ -482,13 +627,165 @@ export async function placeOrderAction({
     return { error: "Checkout failed. Please try again." };
   }
 
+  if (paymentMethod === "WALLET") {
+    if (!systemEscrowWalletId) {
+      return { error: "Wallet payment setup failed." };
+    }
+
+    const parentReference = `wallet-checkout-${checkoutGroupId ?? createdOrders[0]?.id}`;
+    const createdOrderIds = createdOrders.map((order) => order.id);
+
+    const existingParentTransaction = await prisma.transaction.findUnique({
+      where: { reference: parentReference },
+      select: { id: true },
+    });
+
+    if (existingParentTransaction) {
+      const alreadyPaid = await prisma.order.findMany({
+        where: { id: { in: createdOrderIds }, isPaid: true },
+        select: { id: true },
+      });
+
+      if (alreadyPaid.length !== createdOrderIds.length) {
+        return {
+          error:
+            "Checkout payment is processing. Please retry in a moment.",
+        };
+      }
+
+      paidOrderIds.push(...alreadyPaid.map((order) => order.id));
+    } else {
+      try {
+        await prisma.$transaction(async (tx) => {
+          const ordersForSettlement = await tx.order.findMany({
+            where: { id: { in: createdOrderIds } },
+            select: {
+              id: true,
+              userId: true,
+              status: true,
+              isPaid: true,
+              paymentMethod: true,
+              postPaymentFinalized: true,
+              totalAmount: true,
+              sellerGroups: {
+                select: {
+                  id: true,
+                  sellerId: true,
+                  storeId: true,
+                  subtotal: true,
+                  shippingFee: true,
+                },
+              },
+            },
+          });
+
+          if (ordersForSettlement.length !== createdOrderIds.length) {
+            throw new PlaceOrderError("Order settlement payload is incomplete.");
+          }
+
+          for (const order of ordersForSettlement) {
+            if (order.isPaid || order.status !== "PENDING_PAYMENT") {
+              throw new PlaceOrderError(
+                "Order already settled or in invalid status for payment.",
+              );
+            }
+          }
+
+          const walletForPayment = await tx.wallet.upsert({
+            where: { userId },
+            update: {},
+            create: { userId },
+            select: { id: true, balance: true },
+          });
+
+          if (walletForPayment.balance < checkoutTotalAmount) {
+            throw new PlaceOrderError(
+              "Insufficient wallet balance. Please choose another payment method.",
+            );
+          }
+
+          await tx.transaction.create({
+            data: {
+              orderId: null,
+              userId,
+              walletId: walletForPayment.id,
+              type: "ORDER_PAYMENT",
+              amount: checkoutTotalAmount,
+              status: "SUCCESS",
+              reference: parentReference,
+              description: "Wallet checkout parent transaction",
+            },
+          });
+
+          await Promise.all([
+            tx.wallet.update({
+              where: { id: walletForPayment.id },
+              data: { balance: { decrement: checkoutTotalAmount } },
+            }),
+            tx.wallet.update({
+              where: { id: systemEscrowWalletId },
+              data: { balance: { increment: checkoutTotalAmount } },
+            }),
+          ]);
+
+          const preparedLedger = buildDoubleEntryLedgerRows({
+            fromUserId: userId,
+            fromWalletId: walletForPayment.id,
+            toWalletId: systemEscrowWalletId,
+            entryType: "ESCROW_DEPOSIT",
+            amount: checkoutTotalAmount,
+            reference: `escrow-fund-${checkoutGroupId ?? createdOrderIds[0]}`,
+          });
+          postCommitLedgerRows = preparedLedger.rows;
+
+          for (const order of ordersForSettlement) {
+            const orderPaymentReference = `${parentReference}-order-${order.id}`;
+            const paymentResult = await completeOrderPaymentCore({
+              tx,
+              orderId: order.id,
+              checkoutGroupId,
+              paymentReference: orderPaymentReference,
+              method: "WALLET",
+              systemEscrowWalletId,
+              preloadedOrder: {
+                id: order.id,
+                userId: order.userId,
+                paymentMethod: (order.paymentMethod ?? "WALLET") as PaymentMethod,
+                status: order.status,
+                isPaid: order.isPaid,
+                postPaymentFinalized: order.postPaymentFinalized,
+                totalAmount: order.totalAmount,
+                sellerGroups: order.sellerGroups,
+              },
+              preloadedWallet: walletForPayment,
+              assumePaymentReferenceFresh: true,
+              skipWalletBalanceCheck: true,
+              skipWalletLedgerTransfer: true,
+            });
+
+            if (paymentResult.justPaid) {
+              walletJustPaid = true;
+              paidOrderIds.push(paymentResult.order.id);
+            }
+          }
+        });
+      } catch (error) {
+        if (error instanceof PlaceOrderError) {
+          return { error: error.message };
+        }
+        console.error("Wallet settlement transaction failed:", error);
+        return { error: "Wallet payment failed. Please try again." };
+      }
+    }
+  }
+
   try {
-    await prisma.orderTimeline.create({
-      data: {
+    await prisma.orderTimeline.createMany({
+      data: createdOrders.map((order) => ({
         orderId: order.id,
-        status: "PENDING",
+        status: "PENDING_PAYMENT",
         message: "Order placed successfully",
-      },
+      })),
     });
 
     await prisma.notification.createMany({
@@ -496,10 +793,13 @@ export async function placeOrderAction({
         {
           userId,
           title: "Order Confirmed",
-          message: `Your order ${order.trackingNumber} was placed successfully`,
+          message:
+            createdOrders.length > 1
+              ? `Your ${createdOrders.length} orders were placed successfully`
+              : `Your order ${createdOrders[0]?.trackingNumber ?? ""} was placed successfully`,
         },
-        ...Array.from(itemsByStore.values()).map((items) => ({
-          userId: items[0].product.store.userId,
+        ...storeGroups.map((group) => ({
+          userId: group.sellerId,
           title: "New Order Received",
           message: `You have a new order to fulfill`,
         })),
@@ -511,14 +811,29 @@ export async function placeOrderAction({
 
   if (paymentMethod === "WALLET") {
     try {
-      if (walletPaidOrderId !== order.id) {
+      if (paidOrderIds.length !== createdOrders.length) {
         return { error: "Wallet payment validation failed. Please try again." };
       }
 
-      await completeOrderPaymentSideEffects(order.id);
+      if (postCommitLedgerRows.length) {
+        try {
+          await prisma.ledgerEntry.createMany({
+            data: postCommitLedgerRows,
+            skipDuplicates: true,
+          });
+        } catch (error) {
+          console.error("Post-commit ledger write failed:", error);
+        }
+      }
+
+      for (const order of createdOrders) {
+        await completeOrderPaymentSideEffects(order.id);
+      }
 
       if (walletJustPaid) {
-        await applyReferralRewardsForPaidOrder(order.id);
+        for (const orderId of paidOrderIds) {
+          await applyReferralRewardsForPaidOrder(orderId);
+        }
       }
     } catch (error) {
       console.error("Failed to complete wallet order payment:", error);
@@ -528,7 +843,13 @@ export async function placeOrderAction({
 
   return {
     success: true,
-    orderId: order.id,
-    trackingNumber: order.trackingNumber,
+    orderId: createdOrders[0]?.id,
+    trackingNumber: createdOrders[0]?.trackingNumber,
+    checkoutGroupId,
+    totalAmount: checkoutTotalAmount,
+    orders: createdOrders.map((order) => ({
+      orderId: order.id,
+      sellerName: order.sellerGroups.map((group) => group.storeName).join(", "),
+    })),
   };
 }

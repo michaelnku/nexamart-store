@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
 import { OrderStatus, Prisma } from "@/generated/prisma/client";
+import { assertValidTransition, normalizeOrderStatus } from "@/lib/order/orderLifecycle";
 
 type AdvanceOrderInput = {
   orderId: string;
@@ -30,21 +31,13 @@ export async function advanceOrderStatusAction({
 
   if (!order) return { error: "Order not found" };
 
-  const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-    PENDING: ["ACCEPTED", "CANCELLED"],
-    ACCEPTED: ["SHIPPED", "OUT_FOR_DELIVERY", "CANCELLED"],
-    SHIPPED: ["OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"],
-    OUT_FOR_DELIVERY: ["DELIVERED", "CANCELLED"],
-    DELIVERED: ["COMPLETED", "RETURN_REQUESTED"],
-    COMPLETED: ["COMPLETED"],
-    RETURN_REQUESTED: ["RETURNED"],
-    RETURNED: ["REFUNDED"],
-    REFUNDED: ["REFUNDED"],
-    CANCELLED: ["CANCELLED"],
-  };
-
-  if (!VALID_TRANSITIONS[order.status]?.includes(nextStatus)) {
-    return { error: `Invalid transition from ${order.status} → ${nextStatus}` };
+  const normalizedCurrent = normalizeOrderStatus(order.status);
+  try {
+    assertValidTransition(normalizedCurrent, nextStatus);
+  } catch {
+    return {
+      error: `Invalid transition from ${normalizedCurrent} -> ${nextStatus}`,
+    };
   }
 
   const operations: Prisma.PrismaPromise<unknown>[] = [
@@ -52,7 +45,6 @@ export async function advanceOrderStatusAction({
       where: { id: orderId },
       data: { status: nextStatus },
     }),
-
     prisma.orderTimeline.create({
       data: {
         orderId,
@@ -65,9 +57,14 @@ export async function advanceOrderStatusAction({
   if (
     nextStatus === "CANCELLED" &&
     order.isPaid &&
-    ["SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "COMPLETED"].includes(
-      order.status,
-    )
+    [
+      "READY",
+      "IN_DELIVERY",
+      "DELIVERED",
+      "COMPLETED",
+      "SHIPPED",
+      "OUT_FOR_DELIVERY",
+    ].includes(order.status as string)
   ) {
     const variantQuantities = new Map<string, number>();
     for (const item of order.items) {
@@ -93,12 +90,18 @@ export async function advanceOrderStatusAction({
 
 function defaultTimelineMessage(status: OrderStatus) {
   switch (status) {
+    case "PENDING_PAYMENT":
+      return "Order created and awaiting payment";
+    case "PAID":
+      return "Payment confirmed";
     case "ACCEPTED":
       return "Seller accepted your order";
-    case "SHIPPED":
-      return "Order has been shipped";
-    case "OUT_FOR_DELIVERY":
-      return "Order is out for delivery";
+    case "PREPARING":
+      return "Order is being prepared";
+    case "READY":
+      return "Order is ready for pickup";
+    case "IN_DELIVERY":
+      return "Order is in delivery";
     case "DELIVERED":
       return "Order delivered successfully";
     case "COMPLETED":
@@ -115,3 +118,4 @@ function defaultTimelineMessage(status: OrderStatus) {
       return "Order updated";
   }
 }
+

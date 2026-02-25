@@ -403,7 +403,7 @@ export const DashboardMenuItems = {
           name: "Pending Reviews",
         },
         {
-          href: "/customer/history",
+          href: "/history",
           icon: HistoryIcon,
           name: "Browsing History",
         },

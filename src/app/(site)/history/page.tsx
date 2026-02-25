@@ -81,7 +81,7 @@ export default function HistoryPage() {
     <main className="max-w-7xl mx-auto px-6 py-10 space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Recently Viewed</h1>
+          <h1 className="text-2xl font-semibold">Last Viewed</h1>
           <p className="text-sm text-muted-foreground">
             {products.length} product{products.length > 1 ? "s" : ""} viewed
           </p>

@@ -8,6 +8,7 @@ import { Truck, Store, ChevronRight, Copy } from "lucide-react";
 import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
 import { OrderDetailDTO } from "@/lib/types";
 import { toast } from "sonner";
+import { getOrderStatusLabel } from "@/lib/order/statusLabel";
 
 type Props = {
   order: OrderDetailDTO;
@@ -20,6 +21,8 @@ const OrderCard = ({ order }: Props) => {
   const statusColor: Record<string, string> = {
     PENDING: "bg-yellow-500",
     ACCEPTED: "bg-blue-500",
+    READY: "bg-emerald-600",
+    IN_DELIVERY: "bg-indigo-500",
     SHIPPED: "bg-purple-500",
     DELIVERED: "bg-green-600",
     COMPLETED: "bg-green-700",
@@ -71,7 +74,7 @@ const OrderCard = ({ order }: Props) => {
             statusColor[order.status]
           } text-white text-sm px-3 py-1 rounded-full`}
         >
-          {order.status.replaceAll("_", " ")}
+          {getOrderStatusLabel(order.status)}
         </Badge>
       </div>
 

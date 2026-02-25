@@ -155,6 +155,8 @@ export type OrderHistoryItemDTO = {
   status: string;
   totalAmount: number;
   trackingNumber: string | null;
+  isFoodOrder?: boolean;
+  prepTimeMinutes?: number | null;
 
   items: {
     id: string;
@@ -478,16 +480,21 @@ export type BuyerWallet = {
 };
 
 export type OrderStatus =
-  | "PENDING"
+  | "PENDING_PAYMENT"
+  | "PAID"
   | "ACCEPTED"
-  | "SHIPPED"
-  | "OUT_FOR_DELIVERY"
+  | "PREPARING"
+  | "READY"
+  | "IN_DELIVERY"
   | "DELIVERED"
   | "COMPLETED"
   | "CANCELLED"
   | "RETURN_REQUESTED"
   | "RETURNED"
-  | "REFUNDED";
+  | "REFUNDED"
+  | "PENDING"
+  | "SHIPPED"
+  | "OUT_FOR_DELIVERY";
 
 export type DeliveryType =
   | "HOME_DELIVERY"

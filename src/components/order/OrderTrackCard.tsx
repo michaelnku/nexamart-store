@@ -10,6 +10,7 @@ import { OrderTrackDTO } from "@/lib/types";
 import OrderTimeline from "./OrderTimeline";
 import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";
+import { getOrderStatusLabel } from "@/lib/order/statusLabel";
 
 type Props = {
   order: OrderTrackDTO;
@@ -21,6 +22,8 @@ export default function OrderTrackCard({ order }: Props) {
   const statusColors: Record<string, string> = {
     PENDING: "bg-yellow-500",
     ACCEPTED: "bg-blue-500",
+    READY: "bg-emerald-600",
+    IN_DELIVERY: "bg-indigo-500",
     SHIPPED: "bg-purple-500",
     OUT_FOR_DELIVERY: "bg-indigo-500",
     DELIVERED: "bg-green-600",
@@ -77,7 +80,7 @@ export default function OrderTrackCard({ order }: Props) {
         <Badge
           className={`${statusColors[order.status]} px-3 py-1 text-xs font-semibold capitalize`}
         >
-          {order.status.replaceAll("_", " ")}
+          {getOrderStatusLabel(order.status)}
         </Badge>
       </header>
 

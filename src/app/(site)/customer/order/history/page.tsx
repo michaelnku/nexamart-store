@@ -18,6 +18,11 @@ export default async function OrdersPage() {
     where: { userId },
     orderBy: { createdAt: "desc" },
     include: {
+      sellerGroups: {
+        select: {
+          prepTimeMinutes: true,
+        },
+      },
       items: {
         include: {
           product: { include: { images: true } },
@@ -43,9 +48,15 @@ export default async function OrdersPage() {
     );
 
   const ordersDTO: OrderHistoryDTO = orders.map((order) => ({
+    prepTimeMinutes:
+      order.sellerGroups
+        .map((group) => group.prepTimeMinutes)
+        .filter((value): value is number => typeof value === "number")
+        .reduce((max, value) => Math.max(max, value), 0) || null,
     id: order.id,
     createdAt: order.createdAt.toISOString(),
     status: order.status,
+    isFoodOrder: order.isFoodOrder,
     totalAmount: order.totalAmount,
     trackingNumber: order.trackingNumber,
 

@@ -4,8 +4,9 @@ import { ServiceContext } from "@/lib/system/serviceContext";
 import { markSellerGroupReady } from "@/lib/order/markSellerGroupReady";
 
 const FINALIZE_ORDER_JOB_TYPE = "FINALIZE_ORDER";
-const MARK_SELLER_GROUP_READY_JOB_TYPE = "MARK_SELLER_GROUP_READY";
-const DEFAULT_JOB_BATCH_LIMIT = 10;
+const MARK_READY_JOB_TYPE = "MARK_READY";
+const LEGACY_MARK_SELLER_GROUP_READY_JOB_TYPE = "MARK_SELLER_GROUP_READY";
+const DEFAULT_JOB_BATCH_LIMIT = 20;
 const DEFAULT_MAX_RETRIES = 5;
 const BACKOFF_BASE_SECONDS = 30;
 
@@ -41,11 +42,15 @@ export async function processPendingJobs(
     where: {
       status: "PENDING",
       type: {
-        in: [FINALIZE_ORDER_JOB_TYPE, MARK_SELLER_GROUP_READY_JOB_TYPE],
+        in: [
+          FINALIZE_ORDER_JOB_TYPE,
+          MARK_READY_JOB_TYPE,
+          LEGACY_MARK_SELLER_GROUP_READY_JOB_TYPE,
+        ],
       },
       runAt: { lte: now },
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ runAt: "asc" }, { createdAt: "asc" }],
     take: limit,
   });
 
@@ -74,10 +79,11 @@ export async function processPendingJobs(
       ) {
         await finalizePostPayment(job.payload.orderId, context);
       } else if (
-        job.type === MARK_SELLER_GROUP_READY_JOB_TYPE &&
+        (job.type === MARK_READY_JOB_TYPE ||
+          job.type === LEGACY_MARK_SELLER_GROUP_READY_JOB_TYPE) &&
         isMarkSellerGroupReadyPayload(job.payload)
       ) {
-        await markSellerGroupReady(job.payload.sellerGroupId);
+        await markSellerGroupReady(job.payload.sellerGroupId, "AUTO");
       } else {
         throw new Error("Invalid job payload");
       }

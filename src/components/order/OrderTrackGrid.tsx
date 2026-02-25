@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OrderTrackDTO } from "@/lib/types";
 import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
+import { getOrderStatusLabel } from "@/lib/order/statusLabel";
 
 type Props = {
   orders: OrderTrackDTO[];
@@ -14,6 +15,8 @@ type Props = {
 const statusColors: Record<string, string> = {
   PENDING: "bg-yellow-500",
   ACCEPTED: "bg-blue-500",
+  READY: "bg-emerald-600",
+  IN_DELIVERY: "bg-indigo-500",
   SHIPPED: "bg-purple-500",
 };
 
@@ -37,7 +40,7 @@ export default function OrderTrackGrid({ orders }: Props) {
               <Badge
                 className={`${statusColors[order.status]} self-start text-xs capitalize`}
               >
-                {order.status.replaceAll("_", " ")}
+                {getOrderStatusLabel(order.status)}
               </Badge>
 
               {/* PRODUCT */}

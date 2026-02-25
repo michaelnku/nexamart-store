@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import { OrderStatus } from "@/generated/prisma/client";
 import { hashOtp } from "@/lib/otp";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
+import { assertValidTransition, normalizeOrderStatus } from "@/lib/order/orderLifecycle";
 
 export async function verifyDeliveryOtp(deliveryId: string, otpInput: string) {
   const delivery = await prisma.delivery.findUnique({
@@ -14,7 +16,7 @@ export async function verifyDeliveryOtp(deliveryId: string, otpInput: string) {
     throw new Error("Delivery locked. Admin verification required.");
   }
 
-  if (delivery.status !== "IN_TRANSIT") {
+  if (!["PICKED_UP", "IN_TRANSIT"].includes(delivery.status)) {
     throw new Error("Delivery not in transit");
   }
 
@@ -67,7 +69,14 @@ export async function verifyDeliveryOtp(deliveryId: string, otpInput: string) {
     await tx.order.update({
       where: { id: delivery.orderId },
       data: {
-        status: "DELIVERED",
+        status: (() => {
+          const nextStatus: OrderStatus = "DELIVERED";
+          assertValidTransition(
+            normalizeOrderStatus(delivery.order.status),
+            nextStatus,
+          );
+          return nextStatus;
+        })(),
         customerConfirmedAt: deliveredAt,
       },
     });

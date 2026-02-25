@@ -19,6 +19,52 @@ type CreateDoubleEntryLedgerInput = {
   context?: ServiceContext;
 };
 
+type DoubleEntryLedgerRowsInput = {
+  orderId?: string;
+  fromUserId?: string;
+  toUserId?: string;
+  fromWalletId?: string;
+  toWalletId?: string;
+  amount: number;
+  entryType: LedgerEntryTypeValue;
+  reference: string;
+};
+
+export function buildDoubleEntryLedgerRows(input: DoubleEntryLedgerRowsInput) {
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Invalid amount for double-entry ledger");
+  }
+
+  const debitRef = `${input.reference}-debit`;
+  const creditRef = `${input.reference}-credit`;
+
+  return {
+    debitRef,
+    creditRef,
+    rows: [
+      {
+        orderId: input.orderId,
+        userId: input.fromUserId,
+        walletId: input.fromWalletId,
+        entryType: input.entryType,
+        direction: "DEBIT" as const,
+        amount,
+        reference: debitRef,
+      },
+      {
+        orderId: input.orderId,
+        userId: input.toUserId,
+        walletId: input.toWalletId,
+        entryType: input.entryType,
+        direction: "CREDIT" as const,
+        amount,
+        reference: creditRef,
+      },
+    ],
+  };
+}
+
 async function ensureWalletId(
   tx: Tx,
   walletId: string | undefined,
@@ -45,11 +91,6 @@ export async function createDoubleEntryLedger(
     throw new Error("Reference is required for ledger idempotency");
   }
 
-  const amount = Number(input.amount);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new Error("Invalid amount for double-entry ledger");
-  }
-
   const [fromWalletId, toWalletId] = await Promise.all([
     input.resolveFromWallet === false
       ? input.fromWalletId
@@ -59,29 +100,20 @@ export async function createDoubleEntryLedger(
       : ensureWalletId(tx, input.toWalletId, input.toUserId),
   ]);
 
-  const debitRef = `${input.reference}-debit`;
-  const creditRef = `${input.reference}-credit`;
+  const { debitRef, creditRef, rows } = buildDoubleEntryLedgerRows({
+    orderId: input.orderId,
+    fromUserId: input.fromUserId,
+    toUserId: input.toUserId,
+    fromWalletId,
+    toWalletId,
+    amount: input.amount,
+    entryType: input.entryType,
+    reference: input.reference,
+  });
+
+  const amount = Number(input.amount);
   const inserted = await tx.ledgerEntry.createMany({
-    data: [
-      {
-        orderId: input.orderId,
-        userId: input.fromUserId,
-        walletId: fromWalletId,
-        entryType: input.entryType,
-        direction: "DEBIT",
-        amount,
-        reference: debitRef,
-      },
-      {
-        orderId: input.orderId,
-        userId: input.toUserId,
-        walletId: toWalletId,
-        entryType: input.entryType,
-        direction: "CREDIT",
-        amount,
-        reference: creditRef,
-      },
-    ],
+    data: rows,
     skipDuplicates: true,
   });
 

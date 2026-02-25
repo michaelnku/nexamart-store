@@ -3,6 +3,7 @@
 import {
   getRiderDeliveriesAction,
   riderAcceptDeliveryAction,
+  riderCancelAssignedDeliveryAction,
   riderVerifyDeliveryOtpAction,
 } from "@/actions/rider/riderActions";
 import { Spinner } from "@/components/ui/spinner";
@@ -12,25 +13,26 @@ import { Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-
-const STATUS_TABS = [
-  { key: "pending", label: "Pending" },
-  { key: "assigned", label: "Assigned" },
-  { key: "ongoing", label: "Ongoing" },
-  { key: "delivered", label: "Delivered" },
-  { key: "cancelled", label: "Cancelled" },
-] as const;
-
-type StatusKey = (typeof STATUS_TABS)[number]["key"];
+import {
+  canVerifyClientDeliveryStatus,
+  parseRiderDeliveryStatusKey,
+  RIDER_CLIENT_STATUS_LABELS,
+  RIDER_CLIENT_STATUS_STYLES,
+  RIDER_DELIVERY_STATUS_TABS,
+  RiderDeliveryStatusKey,
+} from "@/lib/rider/types";
 
 export default function RiderDeliveriesClient() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
-  const status = (searchParams.get("status") ?? "assigned") as StatusKey;
+  const status = parseRiderDeliveryStatusKey(searchParams.get("status") ?? "");
   const [acceptingDeliveryId, setAcceptingDeliveryId] = useState<string | null>(
     null,
   );
+  const [cancellingDeliveryId, setCancellingDeliveryId] = useState<
+    string | null
+  >(null);
   const [verifyingDeliveryId, setVerifyingDeliveryId] = useState<string | null>(
     null,
   );
@@ -41,6 +43,7 @@ export default function RiderDeliveriesClient() {
     Record<string, string>
   >({});
   const [isAcceptPending, startAcceptTransition] = useTransition();
+  const [isCancelPending, startCancelTransition] = useTransition();
   const [isVerifyPending, startVerifyTransition] = useTransition();
 
   const { data, isLoading, isError } = useQuery({
@@ -58,7 +61,9 @@ export default function RiderDeliveriesClient() {
       ? data.counts
       : { pending: 0, assigned: 0, ongoing: 0, delivered: 0, cancelled: 0 };
   const activeKey =
-    !isLoading && !isFailure ? data.activeKey : (status as StatusKey);
+    !isLoading && !isFailure
+      ? data.activeKey
+      : (status as RiderDeliveryStatusKey);
   const currency = "USD";
 
   const handleAccept = (deliveryId: string) => {
@@ -140,6 +145,32 @@ export default function RiderDeliveriesClient() {
     });
   };
 
+  const handleCancelAssigned = (deliveryId: string) => {
+    setCancellingDeliveryId(deliveryId);
+
+    startCancelTransition(async () => {
+      try {
+        const res = await riderCancelAssignedDeliveryAction(deliveryId);
+
+        if ("error" in res) {
+          toast.error(res.error);
+          return;
+        }
+
+        toast.success("Delivery assignment cancelled");
+        await queryClient.invalidateQueries({
+          queryKey: ["rider-deliveries"],
+        });
+        router.push("/marketplace/dashboard/rider/deliveries?status=pending");
+      } catch (error) {
+        console.error("Failed to cancel assigned delivery:", error);
+        toast.error("Failed to cancel assigned delivery");
+      } finally {
+        setCancellingDeliveryId(null);
+      }
+    });
+  };
+
   return (
     <main className="max-w-5xl mx-auto py-6 px-4 space-y-6">
       <div>
@@ -150,7 +181,7 @@ export default function RiderDeliveriesClient() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {STATUS_TABS.map((tab) => {
+        {RIDER_DELIVERY_STATUS_TABS.map((tab) => {
           const isActive = activeKey === tab.key;
           const count = counts[tab.key as keyof typeof counts] ?? 0;
           return (
@@ -238,12 +269,13 @@ export default function RiderDeliveriesClient() {
 
                   <div>
                     <p className="text-sm text-gray-500">Status</p>
-                    <p className="font-medium">
-                      {delivery.status
-                        .replaceAll("_", " ")
-                        .toLowerCase()
-                        .replace(/\b\w/g, (c) => c.toUpperCase())}
-                    </p>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        RIDER_CLIENT_STATUS_STYLES[delivery.clientStatus]
+                      }`}
+                    >
+                      {RIDER_CLIENT_STATUS_LABELS[delivery.clientStatus]}
+                    </span>
                   </div>
                 </div>
 
@@ -252,12 +284,15 @@ export default function RiderDeliveriesClient() {
                   {order?.deliveryAddress ?? "-"}
                 </div>
 
-                {delivery.status === "ASSIGNED" && (
-                  <div className="mt-4">
+                {delivery.clientStatus === "ASSIGNED" && (
+                  <div className="mt-4 flex flex-wrap gap-2">
                     <Button
                       onClick={() => handleAccept(delivery.id)}
                       disabled={
-                        isAcceptPending && acceptingDeliveryId === delivery.id
+                        (isAcceptPending &&
+                          acceptingDeliveryId === delivery.id) ||
+                        (isCancelPending &&
+                          cancellingDeliveryId === delivery.id)
                       }
                       className="bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white"
                     >
@@ -271,10 +306,30 @@ export default function RiderDeliveriesClient() {
                         "Accept Delivery"
                       )}
                     </Button>
+
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleCancelAssigned(delivery.id)}
+                      disabled={
+                        (isCancelPending &&
+                          cancellingDeliveryId === delivery.id) ||
+                        (isAcceptPending && acceptingDeliveryId === delivery.id)
+                      }
+                    >
+                      {isCancelPending &&
+                      cancellingDeliveryId === delivery.id ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Cancelling...
+                        </span>
+                      ) : (
+                        "Cancel Delivery"
+                      )}
+                    </Button>
                   </div>
                 )}
 
-                {delivery.status === "IN_TRANSIT" && (
+                {canVerifyClientDeliveryStatus(delivery.clientStatus) && (
                   <div className="mt-4 space-y-2">
                     <label
                       htmlFor={`otp-${delivery.id}`}
@@ -353,4 +408,3 @@ export default function RiderDeliveriesClient() {
     </main>
   );
 }
-

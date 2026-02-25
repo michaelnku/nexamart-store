@@ -43,6 +43,7 @@ model User {
   deliveries          Delivery[]         @relation("RiderDeliveries")
   Notification        Notification[]
   customerOrders      Order[]            @relation("CustomerOrders")
+  checkoutGroups      CheckoutGroup[]
   sellerGroups        OrderSellerGroup[] @relation("SellerGroupBySeller")
   referralsReceived   Referral?          @relation("Referred")
   referralsMade       Referral[]         @relation("Referrer")
@@ -299,7 +300,7 @@ model WishlistItem {
 model Order {
   id                      String             @id @default(cuid())
   userId                  String
-  status                  OrderStatus        @default(PENDING)
+  status                  OrderStatus        @default(PENDING_PAYMENT)
   deliveryType            DeliveryType       @default(HOME_DELIVERY)
   shippingFee             Float              @default(0)
   totalAmount             Float
@@ -329,8 +330,10 @@ model Order {
   postPaymentFinalized    Boolean            @default(false)
   arrivedAtHubConfirmedAt DateTime?
   arrivedAtHubConfirmedBy String?
+  checkoutGroupId         String?
   couponUsages            CouponUsage[]
   delivery                Delivery?          @relation("OrderDelivery")
+  checkoutGroup           CheckoutGroup?     @relation(fields: [checkoutGroupId], references: [id])
   coupon                  Coupon?            @relation(fields: [couponId], references: [id])
   customer                User               @relation("CustomerOrders", fields: [userId], references: [id], onDelete: Cascade)
   items                   OrderItem[]
@@ -343,6 +346,7 @@ model Order {
   @@index([status])
   @@index([createdAt])
   @@index([couponId])
+  @@index([checkoutGroupId])
 }
 
 model OrderTimeline {
@@ -366,7 +370,7 @@ model OrderSellerGroup {
   subtotal               Float
   shippingFee            Float
   payoutStatus           PayoutStatus      @default(PENDING)
-  status                 SellerGroupStatus @default(PENDING_PICKUP)
+  status                 SellerGroupStatus @default(PENDING)
   expectedAtHub          DateTime?
   arrivedAtHub           DateTime?
   prepTimeMinutes        Int?
@@ -399,6 +403,18 @@ model OrderItem {
   product       Product           @relation(fields: [productId], references: [id])
   sellerGroup   OrderSellerGroup? @relation("GroupItems", fields: [sellerGroupId], references: [id])
   variant       ProductVariant?   @relation(fields: [variantId], references: [id])
+}
+
+model CheckoutGroup {
+  id        String   @id @default(cuid())
+  userId    String
+  total     Float
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders    Order[]
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 /// *
@@ -560,7 +576,7 @@ model Delivery {
   id               String         @id @default(cuid())
   orderId          String         @unique
   riderId          String?
-  status           DeliveryStatus @default(PENDING)
+  status           DeliveryStatus @default(PENDING_ASSIGNMENT)
   deliveryAddress  String?
   distance         Float?
   fee              Float
@@ -919,27 +935,31 @@ enum PaymentMethod {
 }
 
 enum OrderStatus {
-  PENDING
+  PENDING_PAYMENT
+  PAID
   ACCEPTED
-  SHIPPED
+  PREPARING
+  READY
+  IN_DELIVERY
   DELIVERED
   COMPLETED
   CANCELLED
   RETURN_REQUESTED
   RETURNED
   REFUNDED
-  OUT_FOR_DELIVERY
 }
 
 enum SellerGroupStatus {
-  PENDING_PICKUP
-  IN_TRANSIT_TO_HUB
-  ARRIVED_AT_HUB
-  VERIFIED
-  CANCELLED
+  PENDING
   ACCEPTED
   PREPARING
   READY
+
+  DISPATCHED_TO_HUB
+  ARRIVED_AT_HUB
+  VERIFIED_AT_HUB
+
+  CANCELLED
 }
 
 enum DeliveryType {
@@ -958,9 +978,9 @@ enum PayoutStatus {
 }
 
 enum DeliveryStatus {
-  PENDING
+  PENDING_ASSIGNMENT
   ASSIGNED
-  IN_TRANSIT
+  PICKED_UP
   DELIVERED
   CANCELLED
 }

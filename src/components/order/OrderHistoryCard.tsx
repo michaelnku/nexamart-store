@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
 import { OrderHistoryDTO } from "@/lib/types";
+import { getOrderStatusLabel } from "@/lib/order/statusLabel";
 
 type Props = {
   orders: OrderHistoryDTO;
@@ -52,6 +53,15 @@ const OrderHistoryCard = ({ orders }: Props) => {
                       {""} {formatBaseUSD(order.totalAmount)}
                     </span>
                   </p>
+                  {order.isFoodOrder && order.prepTimeMinutes ? (
+                    <p className="text-sm text-gray-500">
+                      PREPARATION TIME:
+                      <span className="font-medium text-gray-900 dark:text-gray-400">
+                        {" "}
+                        {order.prepTimeMinutes} min
+                      </span>
+                    </p>
+                  ) : null}
                   <p className="text-sm text-gray-500">
                     ORDER ID:
                     <span className="text-[13px] font-mono">
@@ -66,6 +76,10 @@ const OrderHistoryCard = ({ orders }: Props) => {
                       ? "bg-green-600"
                       : order.status === "COMPLETED"
                         ? "bg-green-700"
+                        : order.status === "READY"
+                          ? "bg-emerald-600"
+                          : order.status === "IN_DELIVERY"
+                            ? "bg-indigo-600"
                         : order.status === "SHIPPED"
                           ? "bg-purple-600"
                           : order.status === "ACCEPTED"
@@ -77,7 +91,7 @@ const OrderHistoryCard = ({ orders }: Props) => {
                                 : "bg-gray-500"
                   }`}
                 >
-                  {order.status.replaceAll("_", " ")}
+                  {getOrderStatusLabel(order.status)}
                 </Badge>
               </div>
 

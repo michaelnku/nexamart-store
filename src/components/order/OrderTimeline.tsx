@@ -1,5 +1,6 @@
 "use client";
 
+import type { ElementType } from "react";
 import {
   CheckCircle,
   CheckCircle2,
@@ -8,70 +9,90 @@ import {
   Truck,
   XCircle,
 } from "lucide-react";
+import { OrderStatus as DbOrderStatus } from "@/generated/prisma/client";
 import { cn } from "@/lib/utils";
-import { OrderStatus } from "@/generated/prisma/client";
-import { OrderTrackDTO } from "@/lib/types";
+import { normalizeOrderStatus } from "@/lib/order/orderLifecycle";
+import { getOrderStatusLabel } from "@/lib/order/statusLabel";
+import { OrderStatus as ClientOrderStatus, OrderTrackDTO } from "@/lib/types";
 
 type TimelineItem = {
   id: string;
-  status: OrderStatus;
+  status: ClientOrderStatus;
   message?: string | null;
   createdAt: string;
 };
 
 const NON_FOOD_ORDER_STEPS = [
-  "PENDING",
+  "PENDING_PAYMENT",
+  "PAID",
   "ACCEPTED",
-  "SHIPPED",
-  "OUT_FOR_DELIVERY",
+  "READY",
+  "IN_DELIVERY",
   "DELIVERED",
   "COMPLETED",
-] as const;
+] as const satisfies readonly DbOrderStatus[];
 
 const FOOD_ORDER_STEPS = [
-  "PENDING",
+  "PENDING_PAYMENT",
+  "PAID",
   "ACCEPTED",
-  "OUT_FOR_DELIVERY",
+  "PREPARING",
+  "READY",
+  "IN_DELIVERY",
   "DELIVERED",
   "COMPLETED",
-] as const;
+] as const satisfies readonly DbOrderStatus[];
+
+type StepStatus =
+  | (typeof NON_FOOD_ORDER_STEPS)[number]
+  | (typeof FOOD_ORDER_STEPS)[number];
 
 const STEP_CONFIG: Record<
-  (typeof NON_FOOD_ORDER_STEPS)[number],
+  StepStatus,
   {
     label: string;
     description: string;
-    icon: React.ElementType;
+    icon: ElementType;
   }
 > = {
-  PENDING: {
+  PENDING_PAYMENT: {
     label: "Order Placed",
-    description: "We've received your order",
+    description: "We have received your order.",
     icon: Package,
+  },
+  PAID: {
+    label: "Paid",
+    description: "Payment confirmed.",
+    icon: CheckCircle2,
   },
   ACCEPTED: {
     label: "Accepted",
-    description: "Payment confirmed and order is being prepared",
+    description: "Seller accepted your order.",
     icon: Clock,
   },
-  SHIPPED: {
-    label: "Hub Processing",
-    description: "Seller shipments are being consolidated at the hub",
+  PREPARING: {
+    label: "Preparing",
+    description: "Your food is being prepared.",
+    icon: Clock,
+  },
+  READY: {
+    label: "Ready for Pickup",
+    description: "Order is ready and waiting for rider pickup.",
     icon: Truck,
   },
-  OUT_FOR_DELIVERY: {
-    label: "Out for Delivery",
-    description: "Rider is on the way with your order",
+  IN_DELIVERY: {
+    label: "In Transit",
+    description: "Rider is on the way with your order.",
     icon: Truck,
   },
   DELIVERED: {
     label: "Delivered",
-    description: "Order delivered successfully",
+    description: "Order delivered successfully.",
     icon: CheckCircle2,
   },
   COMPLETED: {
     label: "Completed",
-    description: "Order completed",
+    description: "Order completed.",
     icon: CheckCircle2,
   },
 };
@@ -82,7 +103,8 @@ type Props = {
 };
 
 export default function OrderTimeline({ order, timeline }: Props) {
-  const isCancelled = order.status === "CANCELLED";
+  const normalizedOrderStatus = normalizeOrderStatus(order.status);
+  const isCancelled = normalizedOrderStatus === "CANCELLED";
   const isFoodOrder = Boolean(order.isFoodOrder);
   const orderSteps = isFoodOrder ? FOOD_ORDER_STEPS : NON_FOOD_ORDER_STEPS;
 
@@ -97,25 +119,24 @@ export default function OrderTimeline({ order, timeline }: Props) {
       second: "2-digit",
     });
 
-  /**
-   * Latest known status (timeline is the source of truth)
-   */
-  const reachedStatuses = new Set<OrderStatus>(timeline.map((t) => t.status));
-  reachedStatuses.add(order.status);
+  const reachedStatuses = new Set<DbOrderStatus>(
+    timeline.map((item) => normalizeOrderStatus(item.status)),
+  );
+  reachedStatuses.add(normalizedOrderStatus);
 
-  const latestStatus: OrderStatus =
-    timeline.length > 0 ? timeline[timeline.length - 1].status : order.status;
+  const latestStatus: DbOrderStatus =
+    timeline.length > 0
+      ? normalizeOrderStatus(timeline[timeline.length - 1].status)
+      : normalizedOrderStatus;
 
   return (
     <>
-      {/* ================= STEPPER ================= */}
       <section className="border rounded-xl p-5 bg-white dark:bg-background shadow-sm">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Clock className="w-5 h-5 text-[var(--brand-blue)]" />
           Order Progress
         </h2>
 
-        {/* CANCELLED STATE */}
         {isCancelled && (
           <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             <XCircle className="w-4 h-4" />
@@ -127,7 +148,6 @@ export default function OrderTimeline({ order, timeline }: Props) {
           {orderSteps.map((stepKey, index) => {
             const step = STEP_CONFIG[stepKey];
             const Icon = step.icon;
-
             const completed = reachedStatuses.has(stepKey);
             const active =
               !isCancelled &&
@@ -136,7 +156,6 @@ export default function OrderTimeline({ order, timeline }: Props) {
 
             return (
               <li key={stepKey} className="ml-5 space-y-1">
-                {/* STEP DOT */}
                 <span
                   className={cn(
                     "absolute -left-[11px] flex h-6 w-6 items-center justify-center rounded-full border-2 text-xs font-semibold transition",
@@ -149,10 +168,9 @@ export default function OrderTimeline({ order, timeline }: Props) {
                       "bg-white dark:bg-background border-gray-300 text-gray-400",
                   )}
                 >
-                  {completed ? "✓" : index + 1}
+                  {completed ? "OK" : index + 1}
                 </span>
 
-                {/* LABEL */}
                 <div className="flex items-center gap-2">
                   <Icon
                     className={cn(
@@ -174,7 +192,6 @@ export default function OrderTimeline({ order, timeline }: Props) {
                   </span>
                 </div>
 
-                {/* DESCRIPTION */}
                 <p className="text-xs text-gray-500">{step.description}</p>
               </li>
             );
@@ -182,7 +199,6 @@ export default function OrderTimeline({ order, timeline }: Props) {
         </ol>
       </section>
 
-      {/* ================= TIMELINE ================= */}
       <section className="border rounded-xl bg-white dark:bg-background p-6 space-y-5">
         <h3 className="font-semibold text-lg">Order Status</h3>
 
@@ -192,7 +208,6 @@ export default function OrderTimeline({ order, timeline }: Props) {
 
             return (
               <li key={item.id} className="flex gap-4">
-                {/* ICON */}
                 <div className="flex flex-col items-center">
                   <div
                     className={cn(
@@ -209,16 +224,11 @@ export default function OrderTimeline({ order, timeline }: Props) {
                     )}
                   </div>
 
-                  {!isLatest && (
-                    <div className="w-px h-full bg-gray-200 mt-1" />
-                  )}
+                  {!isLatest && <div className="w-px h-full bg-gray-200 mt-1" />}
                 </div>
 
-                {/* CONTENT */}
                 <div className="flex-1">
-                  <p className="font-medium ">
-                    {item.status.replaceAll("_", " ")}
-                  </p>
+                  <p className="font-medium">{getOrderStatusLabel(item.status)}</p>
 
                   {item.message && (
                     <p className="text-sm text-gray-600">{item.message}</p>

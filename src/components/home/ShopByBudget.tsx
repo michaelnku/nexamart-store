@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 
 const BUDGETS = [
-  { key: "budget-25-50", minUSD: 25, maxUSD: 50 },
-  { key: "budget-50-100", minUSD: 50, maxUSD: 100 },
-  { key: "budget-101-500", minUSD: 150, maxUSD: 500 },
+  { key: "budget-25-49", minUSD: 25, maxUSD: 49 },
+  { key: "budget-50-99", minUSD: 50, maxUSD: 99 },
+  { key: "budget-100-499", minUSD: 100, maxUSD: 499 },
   { key: "budget-500-plus", minUSD: 500 },
 ];
 

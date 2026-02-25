@@ -7,25 +7,25 @@ const COLLECTIONS = [
   {
     title: "Trending Now",
     icon: Flame,
-    href: "/products?sort=Trending",
+    href: "#trending-now",
     description: "Popular this week",
   },
   {
     title: "New Arrivals",
     icon: Sparkles,
-    href: "/products?sort=New",
+    href: "#new-arrivals",
     description: "Just added",
   },
   {
     title: "Best Deals",
     icon: BadgePercent,
-    href: "/products?sort=discount",
+    href: "#deals-and-discounts",
     description: "Save more today",
   },
   {
     title: "Top Rated",
     icon: Star,
-    href: "/products?sort=Top_Rated",
+    href: "#top-rated",
     description: "Loved by buyers",
   },
 ];

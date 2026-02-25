@@ -7,6 +7,7 @@ import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import { markSellerGroupReady } from "@/lib/order/markSellerGroupReady";
+import { assertValidTransition, normalizeOrderStatus } from "@/lib/order/orderLifecycle";
 
 export const markSellerDispatchedToHubAction = async (
   sellerGroupId: string,
@@ -29,14 +30,17 @@ export const markSellerDispatchedToHubAction = async (
           select: { name: true },
         },
         order: {
-          select: { isFoodOrder: true },
+          select: { isFoodOrder: true, status: true },
         },
       },
     });
 
     if (!sellerGroup) return { error: "Order group not found" };
     if (sellerGroup.sellerId !== userId) return { error: "Forbidden" };
-    if (sellerGroup.status === "ARRIVED_AT_HUB") {
+    if (
+      sellerGroup.status === "ARRIVED_AT_HUB" ||
+      sellerGroup.status === "VERIFIED_AT_HUB"
+    ) {
       return { error: "Group already marked as arrived at hub." };
     }
     if (sellerGroup.status === "CANCELLED") {
@@ -44,7 +48,7 @@ export const markSellerDispatchedToHubAction = async (
     }
 
     if (sellerGroup.order.isFoodOrder) {
-      const readyResult = await markSellerGroupReady(sellerGroupId);
+      const readyResult = await markSellerGroupReady(sellerGroupId, "MANUAL");
 
       if (readyResult.reason === "ALREADY_READY") {
         return { error: "Food order is already marked as ready." };
@@ -65,11 +69,21 @@ export const markSellerDispatchedToHubAction = async (
       return { success: "Food order marked ready for rider pickup" };
     }
 
-    await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx) => {
+      const normalizedOrderStatus = normalizeOrderStatus(sellerGroup.order.status);
+      if (normalizedOrderStatus !== "ACCEPTED") {
+        assertValidTransition(normalizedOrderStatus, "ACCEPTED");
+      }
+
+      await tx.order.update({
+        where: { id: sellerGroup.orderId },
+        data: { status: "ACCEPTED" },
+      });
+
       await tx.orderSellerGroup.update({
         where: { id: sellerGroupId },
         data: {
-          status: "IN_TRANSIT_TO_HUB",
+          status: "DISPATCHED_TO_HUB",
           expectedAtHub: new Date(Date.now() + 2 * 60 * 60 * 1000),
         },
       });
@@ -77,7 +91,7 @@ export const markSellerDispatchedToHubAction = async (
       await createOrderTimelineIfMissing(
         {
           orderId: sellerGroup.orderId,
-          status: "SHIPPED",
+          status: "ACCEPTED",
           message: `Seller ${sellerGroup.store.name} has dispatched items to our hub.`,
         },
         tx,
@@ -122,6 +136,7 @@ export const acceptOrderAction = async (
         order: {
           select: {
             isFoodOrder: true,
+            status: true,
           },
         },
       },
@@ -130,7 +145,7 @@ export const acceptOrderAction = async (
     if (!group) return { error: "Order group not found" };
     if (group.sellerId !== userId) return { error: "Forbidden" };
 
-    if (group.status !== "PENDING_PICKUP") {
+    if (group.status !== "PENDING") {
       return { error: "Order already processed." };
     }
 
@@ -149,10 +164,20 @@ export const acceptOrderAction = async (
       : null;
 
     await prisma.$transaction(async (tx) => {
+      const normalizedOrderStatus = normalizeOrderStatus(group.order.status);
+      if (normalizedOrderStatus !== "ACCEPTED") {
+        assertValidTransition(normalizedOrderStatus, "ACCEPTED");
+      }
+
+      await tx.order.update({
+        where: { id: group.orderId },
+        data: { status: "ACCEPTED" },
+      });
+
       await tx.orderSellerGroup.update({
         where: { id: sellerGroupId },
         data: {
-          status: group.order.isFoodOrder ? "PREPARING" : "ACCEPTED",
+          status: group.order.isFoodOrder ? "PREPARING" : "DISPATCHED_TO_HUB",
           prepTimeMinutes: group.order.isFoodOrder
             ? (prepTimeMinutes as number)
             : null,
@@ -173,7 +198,7 @@ export const acceptOrderAction = async (
         await tx.job.upsert({
           where: { id: `mark-ready-${sellerGroupId}` },
           update: {
-            type: "MARK_SELLER_GROUP_READY",
+            type: "MARK_READY",
             status: "PENDING",
             runAt: prepReadyAt,
             attempts: 0,
@@ -185,7 +210,7 @@ export const acceptOrderAction = async (
           },
           create: {
             id: `mark-ready-${sellerGroupId}`,
-            type: "MARK_SELLER_GROUP_READY",
+            type: "MARK_READY",
             status: "PENDING",
             runAt: prepReadyAt,
             attempts: 0,
@@ -233,7 +258,7 @@ export const cancelOrderAction = async (sellerGroupId: string) => {
     }
 
     if (
-      !["PENDING_PICKUP", "ACCEPTED", "PREPARING", "IN_TRANSIT_TO_HUB"].includes(
+      !["PENDING", "ACCEPTED", "PREPARING", "DISPATCHED_TO_HUB"].includes(
         group.status,
       )
     ) {

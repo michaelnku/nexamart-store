@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma";
 import { CurrentUser } from "@/lib/currentUser";
 import {
   createCouponSchema,
@@ -28,13 +29,15 @@ export async function createCouponAction(data: createCouponSchemaType) {
 
   const payload = parsed.data;
 
-  if (payload.validFrom && payload.validTo && payload.validFrom > payload.validTo)
+  if (
+    payload.validFrom &&
+    payload.validTo &&
+    payload.validFrom > payload.validTo
+  )
     return { error: "Valid from must be before valid to" };
 
   const value =
-    payload.type === "PERCENTAGE"
-      ? clampPercent(payload.value)
-      : payload.value;
+    payload.type === "PERCENTAGE" ? clampPercent(payload.value) : payload.value;
 
   try {
     const coupon = await prisma.coupon.create({
@@ -56,7 +59,12 @@ export async function createCouponAction(data: createCouponSchemaType) {
 
     return { coupon };
   } catch (err: any) {
-    if (err?.code === "P2002") return { error: "Coupon code already exists" };
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      return { error: "Coupon code already exists" };
+    }
     return { error: "Failed to create coupon" };
   }
 }
@@ -70,13 +78,15 @@ export async function updateCouponAction(data: updateCouponSchemaType) {
 
   const payload = parsed.data;
 
-  if (payload.validFrom && payload.validTo && payload.validFrom > payload.validTo)
+  if (
+    payload.validFrom &&
+    payload.validTo &&
+    payload.validFrom > payload.validTo
+  )
     return { error: "Valid from must be before valid to" };
 
   const value =
-    payload.type === "PERCENTAGE"
-      ? clampPercent(payload.value)
-      : payload.value;
+    payload.type === "PERCENTAGE" ? clampPercent(payload.value) : payload.value;
 
   const isDeleted = payload.isDeleted ?? false;
 

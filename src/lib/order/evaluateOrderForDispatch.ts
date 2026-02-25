@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { autoAssignRider } from "@/lib/rider/logistics";
 import { addOrderTimelineOnce } from "@/lib/order/timeline";
+import { assertValidTransition, normalizeOrderStatus } from "@/lib/order/orderLifecycle";
 
 export async function evaluateOrderForDispatch(orderId: string) {
   const order = await prisma.order.findUnique({
@@ -8,6 +9,7 @@ export async function evaluateOrderForDispatch(orderId: string) {
     select: {
       id: true,
       isFoodOrder: true,
+      status: true,
       sellerGroups: {
         select: { status: true },
       },
@@ -34,14 +36,24 @@ export async function evaluateOrderForDispatch(orderId: string) {
   }
 
   const arrivedCount = activeGroups.filter(
-    (group) => group.status === "ARRIVED_AT_HUB",
+    (group) =>
+      group.status === "VERIFIED_AT_HUB" || group.status === "ARRIVED_AT_HUB",
   ).length;
   const totalCount = activeGroups.length;
 
   if (arrivedCount === totalCount) {
+    const normalizedOrderStatus = normalizeOrderStatus(order.status);
+    if (normalizedOrderStatus !== "READY") {
+      assertValidTransition(normalizedOrderStatus, "READY");
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { status: "READY" },
+      });
+    }
+
     await addOrderTimelineOnce({
       orderId,
-      status: "SHIPPED",
+      status: "READY",
       message: "All available items have arrived. Preparing for delivery.",
     });
     await autoAssignRider(orderId);
@@ -50,7 +62,7 @@ export async function evaluateOrderForDispatch(orderId: string) {
 
   await addOrderTimelineOnce({
     orderId,
-    status: "SHIPPED",
+    status: "ACCEPTED",
     message: `${arrivedCount} of ${totalCount} seller shipments have arrived at the hub.`,
   });
 }

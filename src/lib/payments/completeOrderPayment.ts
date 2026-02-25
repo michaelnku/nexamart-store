@@ -1,12 +1,12 @@
 import { PaymentMethod, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { autoAssignRider } from "@/lib/rider/logistics";
 import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
 import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { ServiceContext } from "@/lib/system/serviceContext";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import { processPendingJobs } from "@/worker";
+import { assertValidTransition } from "@/lib/order/orderLifecycle";
 
 const PLATFORM_COMMISSION_PERCENT = 15;
 //const PLATFORM_COMMISSION_PERCENT = 12;
@@ -84,10 +84,12 @@ export interface CompleteOrderPaymentParams {
 export interface CompleteOrderPaymentCoreParams extends CompleteOrderPaymentParams {
   tx: Prisma.TransactionClient;
   systemEscrowWalletId: string;
+  checkoutGroupId?: string | null;
   preloadedOrder?: {
     id: string;
     userId: string;
     paymentMethod: PaymentMethod;
+    status?: string;
     isPaid: boolean;
     postPaymentFinalized: boolean;
     totalAmount: number;
@@ -104,6 +106,8 @@ export interface CompleteOrderPaymentCoreParams extends CompleteOrderPaymentPara
     balance: number;
   } | null;
   assumePaymentReferenceFresh?: boolean;
+  skipWalletBalanceCheck?: boolean;
+  skipWalletLedgerTransfer?: boolean;
 }
 
 type CompleteOrderPaymentResult = {
@@ -219,7 +223,7 @@ export async function finalizePostPayment(
     await createOrderTimelineIfMissing(
       {
         orderId: freshOrder.id,
-        status: "ACCEPTED",
+        status: "PAID",
         message: freshOrder.isFoodOrder
           ? "Payment confirmed. Restaurant is preparing your order."
           : "Payment confirmed. Waiting for sellers to dispatch items to the hub.",
@@ -233,9 +237,6 @@ export async function finalizePostPayment(
     });
   });
 
-  if (freshOrder.isFoodOrder) {
-    await autoAssignRider(orderId);
-  }
 }
 
 export async function completeOrderPaymentCore({
@@ -245,9 +246,12 @@ export async function completeOrderPaymentCore({
   method,
   context,
   systemEscrowWalletId,
+  checkoutGroupId,
   preloadedOrder,
   preloadedWallet,
   assumePaymentReferenceFresh = false,
+  skipWalletBalanceCheck = false,
+  skipWalletLedgerTransfer = false,
 }: CompleteOrderPaymentCoreParams): Promise<CompleteOrderPaymentResult> {
   if (!orderId || !paymentReference) {
     throw new Error("orderId and paymentReference are required");
@@ -261,6 +265,7 @@ export async function completeOrderPaymentCore({
         id: true,
         userId: true,
         paymentMethod: true,
+        status: true,
         isPaid: true,
         postPaymentFinalized: true,
         totalAmount: true,
@@ -288,6 +293,10 @@ export async function completeOrderPaymentCore({
     throw new Error("Order not properly initialized via placeOrderAction");
   }
 
+  if (!order.status) {
+    throw new Error("Order status is missing");
+  }
+
   let transactionRow = assumePaymentReferenceFresh
     ? null
     : await tx.transaction.findUnique({
@@ -308,17 +317,19 @@ export async function completeOrderPaymentCore({
       : null;
 
   if (method === "WALLET" && buyerWallet) {
-    const availableBalance =
-      preloadedWallet && preloadedWallet.id === buyerWallet.id
-        ? preloadedWallet.balance
-        : (
-            await tx.wallet.findUnique({
-              where: { id: buyerWallet.id },
-              select: { balance: true },
-            })
-          )?.balance ?? 0;
-    if (availableBalance < order.totalAmount) {
-      throw new Error("Insufficient wallet balance");
+    if (!skipWalletBalanceCheck) {
+      const availableBalance =
+        preloadedWallet && preloadedWallet.id === buyerWallet.id
+          ? preloadedWallet.balance
+          : (
+              await tx.wallet.findUnique({
+                where: { id: buyerWallet.id },
+                select: { balance: true },
+              })
+            )?.balance ?? 0;
+      if (availableBalance < order.totalAmount) {
+        throw new Error("Insufficient wallet balance");
+      }
     }
   }
 
@@ -343,19 +354,28 @@ export async function completeOrderPaymentCore({
   }
 
   if (transactionRow.orderId !== order.id) {
-    throw new Error("Wallet transaction validation failed");
+    if (transactionRow.orderId !== null) {
+      throw new Error("Wallet transaction validation failed");
+    }
   }
 
   if (order.paymentMethod === "WALLET" && !transactionRow) {
     throw new Error("Invariant violation: WALLET order without transaction.");
   }
 
+  const escrowReference =
+    checkoutGroupId && method === "WALLET"
+      ? `escrow-fund-${checkoutGroupId}-${order.id}`
+      : `escrow-fund-${order.id}`;
+
+  assertValidTransition(order.status, "PAID");
+
   await Promise.all([
     tx.order.update({
       where: { id: order.id },
       data: {
         isPaid: true,
-        status: "ACCEPTED",
+        status: "PAID",
         paymentMethod: method as PaymentMethod,
       },
     }),
@@ -366,21 +386,25 @@ export async function completeOrderPaymentCore({
       entryType: "FUND",
       amount: order.totalAmount,
       status: "HELD",
-      reference: `escrow-fund-${order.id}`,
+      reference: escrowReference,
       context,
     }),
-    createDoubleEntryLedger(tx, {
-      orderId: order.id,
-      fromUserId: order.userId,
-      fromWalletId: buyerWallet?.id,
-      toWalletId: systemEscrowWalletId,
-      entryType: "ESCROW_DEPOSIT",
-      amount: order.totalAmount,
-      reference: `escrow-fund-${order.id}`,
-      resolveFromWallet: method === "WALLET",
-      resolveToWallet: false,
-      context,
-    }),
+    ...(method === "WALLET" && skipWalletLedgerTransfer
+      ? []
+      : [
+          createDoubleEntryLedger(tx, {
+            orderId: order.id,
+            fromUserId: order.userId,
+            fromWalletId: buyerWallet?.id,
+            toWalletId: systemEscrowWalletId,
+            entryType: "ESCROW_DEPOSIT",
+            amount: order.totalAmount,
+            reference: escrowReference,
+            resolveFromWallet: method === "WALLET",
+            resolveToWallet: false,
+            context,
+          }),
+        ]),
     ensureFinalizeOrderJob(tx, order.id, order.postPaymentFinalized),
   ]);
 

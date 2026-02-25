@@ -37,7 +37,7 @@ export async function confirmSellerGroupArrivedAtHubAction(
   if (group.order.isFoodOrder) {
     return { error: "Food orders do not use hub intake flow." };
   }
-  if (group.status !== "IN_TRANSIT_TO_HUB") {
+  if (group.status !== "DISPATCHED_TO_HUB") {
     return { error: "Only in-transit hub shipments can be confirmed." };
   }
 
@@ -45,7 +45,7 @@ export async function confirmSellerGroupArrivedAtHubAction(
     await tx.orderSellerGroup.update({
       where: { id: group.id },
       data: {
-        status: "ARRIVED_AT_HUB",
+        status: "VERIFIED_AT_HUB",
         verified: true,
         arrivedAtHub: new Date(),
       },
@@ -54,7 +54,7 @@ export async function confirmSellerGroupArrivedAtHubAction(
     await addOrderTimelineOnce(
       {
         orderId: group.orderId,
-        status: "SHIPPED",
+        status: "READY",
         message: `Items from ${group.store.name} have arrived at our fulfillment hub.`,
       },
       tx,

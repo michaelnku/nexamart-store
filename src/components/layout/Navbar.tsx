@@ -65,7 +65,7 @@ export default function SiteNavbar({
      dark:bg-neutral-950
   "
       >
-        <div className="flex items-center justify-between gap-6 h-16 px-4 md:px-8 lg:px-12">
+        <div className="flex items-center justify-between gap-2 sm:gap-4 h-16 px-3 sm:px-4 lg:px-8 xl:px-12">
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="https://ijucjait38.ufs.sh/f/rO7LkXAj4RVlnNw2KuOByscQRmqV3jX4rStz8G2Mv0IpxKJA"
@@ -80,27 +80,27 @@ export default function SiteNavbar({
             </span>
           </Link>
 
-          <div className="hidden md:block flex-1 max-w-3xl mx-5">
+          <div className="hidden lg:block flex-1 max-w-3xl mx-4 xl:mx-6">
             <SiteSearch />
           </div>
-          <div className="flex md:hidden items-center gap-2">
+          <div className="flex lg:hidden items-center gap-2">
             <MobileSearchSheet variant="site" />
           </div>
 
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden lg:flex items-center gap-3 xl:gap-6">
             <DropdownMenu
               open={accountMenuOpen}
               onOpenChange={setAccountMenuOpen}
             >
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 text-left hover:text-[#3c9ee0] transition-colors duration-200">
+                <button aria-label="Open account menu" className="flex items-center gap-2 text-left hover:text-[#3c9ee0] transition-colors duration-200">
                   <Avatar size="sm">
                     {avatarUrl ? (
                       <AvatarImage src={avatarUrl} alt="Profile" />
                     ) : null}
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
-                  <span className="flex flex-col leading-tight">
+                  <span className="hidden xl:flex flex-col leading-tight">
                     <span className="text-xs text-gray-400">
                       {user
                         ? `Welcome back, ${user.name?.split(" ")[0] || user.username}`
@@ -112,6 +112,7 @@ export default function SiteNavbar({
                       <ChevronDown className="w-4 h-4 opacity-70" />
                     </span>
                   </span>
+                  <ChevronDown className="w-4 h-4 opacity-70 xl:hidden" />
                 </button>
               </DropdownMenuTrigger>
 
@@ -144,7 +145,7 @@ export default function SiteNavbar({
                         href="/profile"
                         className={` flex gap-2 w-full px-2 py-1.5 rounded-md transition
         ${
-          pathname === "/customer/account"
+          pathname === "/profile"
             ? "bg-[#3c9ee0]/15 text-[#3c9ee0] font-medium"
             : "hover:bg-muted hover:text-foreground"
         }
@@ -189,7 +190,7 @@ export default function SiteNavbar({
                     href="/inbox"
                     className={`flex gap-2 w-full px-2 py-1.5 rounded-md transition
       ${
-        pathname === "/customer/inbox"
+        pathname === "/inbox"
           ? "bg-[#3c9ee0]/15 text-[#3c9ee0] font-semibold"
           : "hover:bg-muted hover:text-foreground"
       }
@@ -261,7 +262,7 @@ export default function SiteNavbar({
 
             <Link
               href="/customer/order/history"
-              className="flex flex-col leading-tight hover:text-[#3c9ee0] transition"
+              className="hidden xl:flex flex-col leading-tight hover:text-[#3c9ee0] transition"
             >
               <span className="text-xs text-gray-400">Orders</span>
               <span className="font-semibold">Returns & History</span>
@@ -278,7 +279,7 @@ export default function SiteNavbar({
             <ModeToggle />
           </div>
 
-          <div className="flex md:hidden items-center gap-3">
+          <div className="flex lg:hidden items-center gap-3">
             <CurrencySelector />
 
             {user?.role === "USER" && (
@@ -302,7 +303,7 @@ export default function SiteNavbar({
 
               <SheetContent
                 side="right"
-                className="w-80 p-0 overflow-y-auto bg-background"
+                className="w-[85vw] max-w-80 p-0 overflow-y-auto bg-background"
               >
                 <DialogHeader>
                   <VisuallyHidden>
@@ -365,3 +366,5 @@ export default function SiteNavbar({
     </nav>
   );
 }
+
+

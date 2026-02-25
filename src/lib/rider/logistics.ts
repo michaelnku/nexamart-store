@@ -3,6 +3,7 @@ import { pusherServer } from "../pusher";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import { generateDeliveryOTP } from "@/lib/delivery/generateDeliveryOtp";
 import { sendDeliveryOtpToCustomer } from "@/lib/delivery/sendDeliveryOtpToCustomer";
+import { DeliveryStatus } from "@/generated/prisma/edge";
 
 export async function autoAssignRider(orderId: string) {
   console.log("AUTO ASSIGN CALLED", orderId);
@@ -47,7 +48,13 @@ export async function autoAssignRider(orderId: string) {
       (group) => group.status !== "CANCELLED",
     );
     if (!activeGroups.length) return;
-    if (activeGroups.some((group) => group.status !== "ARRIVED_AT_HUB")) {
+    if (
+      activeGroups.some(
+        (group) =>
+          group.status !== "VERIFIED_AT_HUB" &&
+          group.status !== "ARRIVED_AT_HUB",
+      )
+    ) {
       return;
     }
   }
@@ -82,7 +89,7 @@ export async function autoAssignRider(orderId: string) {
       const deliveryAssigned = await tx.delivery.updateMany({
         where: {
           id: order.delivery.id,
-          status: "PENDING",
+          status: { in: ["PENDING_ASSIGNMENT"] as DeliveryStatus[] },
           riderId: null,
         },
         data: {
@@ -136,26 +143,13 @@ export async function autoAssignRider(orderId: string) {
       throw new Error("Failed to reserve rider");
     }
 
-    const orderLocked = await tx.order.updateMany({
-      where: {
-        id: orderId,
-        status: { not: "OUT_FOR_DELIVERY" },
-      },
-      data: { status: "OUT_FOR_DELIVERY" },
-    });
-
-    if (orderLocked.count !== 1) {
-      throw new Error("Order already out for delivery");
-    }
-
     generatedOtp = await generateDeliveryOTP(tx, assignedDeliveryId);
 
     await createOrderTimelineIfMissing(
       {
         orderId,
-        status: "OUT_FOR_DELIVERY",
-        message:
-          "Rider has picked up your order. Delivery OTP has been generated.",
+        status: "READY",
+        message: "Rider assigned. Delivery OTP has been generated.",
       },
       tx,
     );
@@ -185,7 +179,7 @@ export async function autoAssignRider(orderId: string) {
 
     await createOrderTimelineIfMissing({
       orderId,
-      status: "OUT_FOR_DELIVERY",
+      status: "READY",
       message: "Delivery OTP has been sent to customer.",
     });
   }

@@ -4,10 +4,22 @@ import { prisma } from "@/lib/prisma";
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { autoAssignRider } from "@/lib/rider/logistics";
 import { completeDeliveryAndPayRider } from "@/lib/rider/completeDeliveryPayout";
-import { DeliveryStatus } from "@/generated/prisma/client";
+import { DeliveryStatus, OrderStatus } from "@/generated/prisma/client";
 import { hashOtp } from "@/lib/otp";
 import { moveOrderEarningsToPending } from "@/lib/payout/moveToPendingOnDelivery";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
+import {
+  assertValidTransition,
+  normalizeOrderStatus,
+} from "@/lib/order/orderLifecycle";
+import {
+  parseRiderDeliveryStatusKey,
+  RIDER_DELIVERY_STATUS_FILTERS,
+  RiderDeliveryCounts,
+  canAutoAssignForOrderStatus,
+  canVerifyDeliveryStatus,
+  toRiderClientDeliveryStatus,
+} from "@/lib/rider/types";
 
 export async function autoAssignRiderForPaidOrderAction(orderId: string) {
   const userId = await CurrentUserId();
@@ -29,7 +41,7 @@ export async function autoAssignRiderForPaidOrderAction(orderId: string) {
   if (!order) return { error: "Order not found" };
   if (!order.isPaid) return { error: "Order is not paid" };
   if (order.delivery) return { error: "Delivery already exists" };
-  if (!["ACCEPTED", "SHIPPED"].includes(order.status)) {
+  if (!canAutoAssignForOrderStatus(order.status)) {
     return { error: `Order status ${order.status} cannot be assigned` };
   }
 
@@ -47,7 +59,13 @@ export async function riderAcceptDeliveryAction(deliveryId: string) {
 
   const delivery = await prisma.delivery.findUnique({
     where: { id: deliveryId },
-    select: { id: true, riderId: true, status: true, orderId: true },
+    select: {
+      id: true,
+      riderId: true,
+      status: true,
+      orderId: true,
+      order: { select: { status: true } },
+    },
   });
 
   if (!delivery) return { error: "Delivery not found" };
@@ -59,27 +77,97 @@ export async function riderAcceptDeliveryAction(deliveryId: string) {
   await prisma.$transaction([
     prisma.delivery.update({
       where: { id: deliveryId },
-      data: { status: "IN_TRANSIT" },
+      data: { status: "PICKED_UP" },
     }),
     prisma.order.update({
       where: { id: delivery.orderId },
-      data: { status: "OUT_FOR_DELIVERY" },
+      data: {
+        status: (() => {
+          const nextStatus: OrderStatus = "IN_DELIVERY";
+          assertValidTransition(
+            normalizeOrderStatus(delivery.order.status),
+            nextStatus,
+          );
+          return nextStatus;
+        })(),
+      },
     }),
   ]);
 
   await createOrderTimelineIfMissing({
     orderId: delivery.orderId,
-    status: "OUT_FOR_DELIVERY",
+    status: "IN_DELIVERY",
     message: "Rider is currently delivering your order.",
   });
 
   return { success: true };
 }
 
-export async function verifyDeliveryOTPAction(
-  deliveryId: string,
-  otp: string,
-) {
+export async function riderCancelAssignedDeliveryAction(deliveryId: string) {
+  const userId = await CurrentUserId();
+  if (!userId) return { error: "Unauthorized" };
+
+  const role = await CurrentRole();
+  if (role !== "RIDER") return { error: "Forbidden" };
+
+  const delivery = await prisma.delivery.findUnique({
+    where: { id: deliveryId },
+    select: {
+      id: true,
+      riderId: true,
+      status: true,
+      orderId: true,
+    },
+  });
+
+  if (!delivery) return { error: "Delivery not found" };
+  if (delivery.riderId !== userId) return { error: "Not assigned to rider" };
+  if (delivery.status !== "ASSIGNED") {
+    return { error: `Delivery status ${delivery.status} cannot be cancelled` };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const releasedDelivery = await tx.delivery.updateMany({
+      where: {
+        id: deliveryId,
+        riderId: userId,
+        status: "ASSIGNED",
+      },
+      data: {
+        riderId: null,
+        status: "PENDING_ASSIGNMENT",
+        assignedAt: null,
+        otpAttempts: 0,
+        otpExpiresAt: null,
+        otpHash: null,
+        isLocked: false,
+        lockedAt: null,
+      },
+    });
+
+    if (releasedDelivery.count !== 1) {
+      throw new Error("Failed to release assigned delivery.");
+    }
+
+    await tx.riderProfile.updateMany({
+      where: { userId, isAvailable: false },
+      data: { isAvailable: true },
+    });
+
+    await createOrderTimelineIfMissing(
+      {
+        orderId: delivery.orderId,
+        status: "READY",
+        message: "Rider cancelled assigned delivery. Reassignment pending.",
+      },
+      tx,
+    );
+  });
+
+  return { success: true };
+}
+
+export async function verifyDeliveryOTPAction(deliveryId: string, otp: string) {
   const MAX_OTP_ATTEMPTS = 5;
   const ESCROW_DELAY_MS = 24 * 60 * 60 * 1000;
 
@@ -98,7 +186,7 @@ export async function verifyDeliveryOTPAction(
 
   if (!delivery) return { error: "Delivery not found" };
   if (delivery.riderId !== userId) return { error: "Not assigned to rider" };
-  if (delivery.status !== "IN_TRANSIT") {
+  if (!canVerifyDeliveryStatus(delivery.status)) {
     return { error: `Delivery status ${delivery.status} cannot be verified` };
   }
   if (delivery.isLocked) {
@@ -168,7 +256,14 @@ export async function verifyDeliveryOTPAction(
     await tx.order.update({
       where: { id: delivery.orderId },
       data: {
-        status: "DELIVERED",
+        status: (() => {
+          const nextStatus: OrderStatus = "DELIVERED";
+          assertValidTransition(
+            normalizeOrderStatus(delivery.order.status),
+            nextStatus,
+          );
+          return nextStatus;
+        })(),
         customerConfirmedAt: confirmedAt,
       },
     });
@@ -214,21 +309,6 @@ export async function completeDeliveryAndPayRiderAction(orderId: string) {
   }
 }
 
-type RiderDeliveryStatusKey =
-  | "pending"
-  | "assigned"
-  | "ongoing"
-  | "delivered"
-  | "cancelled";
-
-const STATUS_KEY_MAP: Record<RiderDeliveryStatusKey, DeliveryStatus[]> = {
-  pending: ["PENDING"],
-  assigned: ["ASSIGNED"],
-  ongoing: ["IN_TRANSIT"],
-  delivered: ["DELIVERED"],
-  cancelled: ["CANCELLED"],
-};
-
 export async function getRiderDeliveriesAction(statusKey?: string) {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
@@ -236,10 +316,7 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
   const role = await CurrentRole();
   if (role !== "RIDER") return { error: "Forbidden" };
 
-  const key = (statusKey ?? "assigned").toLowerCase();
-  const activeKey = (
-    Object.keys(STATUS_KEY_MAP).includes(key) ? key : "assigned"
-  ) as RiderDeliveryStatusKey;
+  const activeKey = parseRiderDeliveryStatusKey(statusKey);
 
   const countsRaw = await prisma.delivery.groupBy({
     by: ["status"],
@@ -251,30 +328,38 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
     await Promise.all([
       prisma.delivery.count({
         where: {
-          status: "PENDING",
+          status: { in: ["PENDING_ASSIGNMENT"] as DeliveryStatus[] },
           riderId: null,
         },
       }),
       prisma.order.count({
         where: {
           isPaid: true,
-          status: { in: ["ACCEPTED", "SHIPPED"] },
+          status: { in: ["READY", "ACCEPTED"] },
           delivery: null,
           sellerGroups: {
             some: {},
-            every: { OR: [{ status: "ARRIVED_AT_HUB" }, { status: "CANCELLED" }] },
+            every: {
+              OR: [
+                { status: "VERIFIED_AT_HUB" },
+                { status: "ARRIVED_AT_HUB" },
+                { status: "READY" },
+                { status: "CANCELLED" },
+              ],
+            },
           },
         },
       }),
     ]);
 
-  const counts = {
+  const counts: RiderDeliveryCounts = {
     pending:
-      (countsRaw.find((c) => c.status === "PENDING")?._count._all ?? 0) +
+      (countsRaw.find((c) => c.status === "PENDING_ASSIGNMENT")?._count._all ??
+        0) +
       pendingUnassignedDeliveriesCount +
       pendingReadyOrdersCount,
     assigned: countsRaw.find((c) => c.status === "ASSIGNED")?._count._all ?? 0,
-    ongoing: countsRaw.find((c) => c.status === "IN_TRANSIT")?._count._all ?? 0,
+    ongoing: countsRaw.find((c) => c.status === "PICKED_UP")?._count._all ?? 0,
     delivered:
       countsRaw.find((c) => c.status === "DELIVERED")?._count._all ?? 0,
     cancelled:
@@ -285,12 +370,16 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
     where:
       activeKey === "pending"
         ? {
-            status: { in: STATUS_KEY_MAP[activeKey] },
+            status: {
+              in: RIDER_DELIVERY_STATUS_FILTERS[activeKey],
+            },
             OR: [{ riderId: userId }, { riderId: null }],
           }
         : {
             riderId: userId,
-            status: { in: STATUS_KEY_MAP[activeKey] },
+            status: {
+              in: RIDER_DELIVERY_STATUS_FILTERS[activeKey],
+            },
           },
     orderBy: { assignedAt: "desc" },
     include: {
@@ -327,6 +416,7 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
 
     return {
       ...delivery,
+      clientStatus: toRiderClientDeliveryStatus(delivery.status),
       order: {
         ...order,
         deliveryAddress,
@@ -339,12 +429,17 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
       ? await prisma.order.findMany({
           where: {
             isPaid: true,
-            status: { in: ["ACCEPTED", "SHIPPED"] },
+            status: { in: ["READY", "ACCEPTED"] },
             delivery: null,
             sellerGroups: {
               some: {},
               every: {
-                OR: [{ status: "ARRIVED_AT_HUB" }, { status: "CANCELLED" }],
+                OR: [
+                  { status: "VERIFIED_AT_HUB" },
+                  { status: "ARRIVED_AT_HUB" },
+                  { status: "READY" },
+                  { status: "CANCELLED" },
+                ],
               },
             },
           },
@@ -386,7 +481,8 @@ export async function getRiderDeliveriesAction(statusKey?: string) {
       otpAttempts: 0,
       isLocked: false,
       lockedAt: null,
-      status: "PENDING" as DeliveryStatus,
+      status: "PENDING_ASSIGNMENT" as DeliveryStatus,
+      clientStatus: toRiderClientDeliveryStatus("PENDING_ASSIGNMENT"),
       deliveryAddress: null,
       distance: null,
       fee: order.shippingFee,
