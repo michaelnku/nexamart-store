@@ -26,10 +26,10 @@ export default function ForgotPasswordPage() {
           className="text-xl sm:text-2xl font-semibold"
           style={{ color: "var(--brand-blue)" }}
         >
-          Forgot password
+          Forgot your password?
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground">
-          Enter your email and weâ€™ll send you a reset link.
+          Enter your email and we'll send you a reset link.
         </p>
 
         <form onSubmit={onSubmit} className="space-y-5">
@@ -65,4 +65,3 @@ export default function ForgotPasswordPage() {
     </main>
   );
 }
-

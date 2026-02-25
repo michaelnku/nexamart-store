@@ -6,19 +6,19 @@ import "swiper/css";
 import "swiper/css/pagination";
 
 import PublicProductCard from "@/components/product/PublicProductCard";
-import { ProductCardType } from "@/lib/types";
+import { FullProduct } from "@/lib/types";
 import { FadeIn } from "../animations/FadeIn";
 
 type Props = {
-  products: ProductCardType[];
+  products: FullProduct[];
 };
 
-export default function RecentlyViewedPaginationSwiper({ products }: Props) {
+export default function TopRatedPaginationSwiper({ products }: Props) {
   return (
     <div className="space-y-4">
       <Swiper
         modules={[Pagination]}
-        slidesPerView={"auto"}
+        slidesPerView="auto"
         spaceBetween={16}
         grabCursor
         pagination={{
@@ -26,25 +26,23 @@ export default function RecentlyViewedPaginationSwiper({ products }: Props) {
         }}
         className="w-full recently-swiper"
       >
-        <>
-          {products.map((product, index) => (
-            <SwiperSlide key={product.id} className="!w-auto">
-              <FadeIn delay={Math.min(index * 0.03, 0.24)}>
-                <div
-                  className="
+        {products.map((product, index) => (
+          <SwiperSlide key={product.id} className="!w-auto">
+            <FadeIn delay={Math.min(index * 0.03, 0.24)}>
+              <div
+                className="
                   w-[160px]
                   sm:w-[180px]
                   md:w-[200px]
                   lg:w-[220px]
                   pb-10
                 "
-                >
-                  <PublicProductCard product={product} />
-                </div>
-              </FadeIn>
-            </SwiperSlide>
-          ))}
-        </>
+              >
+                <PublicProductCard product={product} isWishlisted={false} />
+              </div>
+            </FadeIn>
+          </SwiperSlide>
+        ))}
       </Swiper>
     </div>
   );

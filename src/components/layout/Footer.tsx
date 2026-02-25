@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FaWhatsapp } from "react-icons/fa";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import {
   Mail,
   ShieldCheck,
@@ -19,7 +20,13 @@ const Footer = () => {
   const [currency, setCurrency] = useState("USD");
 
   return (
-    <footer className="bg-[#232F3E] text-white mt-10 pt-10 w-full">
+    <motion.footer
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.1 }}
+      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+      className="bg-[#232F3E] text-white mt-10 pt-10 w-full"
+    >
       {/* ================= TRUST + CTA ================= */}
       <div className="bg-[#37475A] py-10 px-6 text-center space-y-6">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-8 text-sm font-medium">
@@ -156,7 +163,7 @@ const Footer = () => {
         © {new Date().getFullYear()}{" "}
         <span className="font-semibold">Nexamart</span>. All rights reserved.
       </div>
-    </footer>
+    </motion.footer>
   );
 };
 

@@ -38,7 +38,7 @@ export default function RecentlyViewedRow() {
   if (!products.length) return null;
 
   return (
-    <section className="py-6">
+    <section>
       <div className="mx-auto w-full max-w-7xl space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Last Viewed</h2>

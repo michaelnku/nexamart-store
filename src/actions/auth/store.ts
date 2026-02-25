@@ -243,11 +243,13 @@ export const deleteStoreAction = async (storeId: string) => {
           where: {
             status: {
               in: [
-                "PENDING_PICKUP",
-                "IN_TRANSIT_TO_HUB",
+                "PENDING",
+                "ACCEPTED",
+                "PREPARING",
+                "READY",
+                "DISPATCHED_TO_HUB",
                 "ARRIVED_AT_HUB",
-                "VERIFIED",
-                "CANCELLED",
+                "VERIFIED_AT_HUB",
               ],
             },
           },

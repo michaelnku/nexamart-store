@@ -8,82 +8,100 @@ import FeaturedCollections from "@/components/home/FeaturedCollections";
 import RecentlyViewedRow from "@/components/home/RecentlyViewedRow";
 import RecommendedPreviewRow from "@/components/home/RecommendedPreviewRow";
 import TopRatedProductRow from "@/components/home/TopRatedProductRow";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
 export default async function HomeContent() {
   const user = await CurrentUser();
 
   return (
     <>
-      <Hero />
+      <ScrollReveal y={26} duration={0.7} amount={0.15}>
+        <Hero />
+      </ScrollReveal>
 
       <div className="h-px bg-border my-6" />
 
-      <section id="new-arrivals" className="scroll-mt-24">
-        <Suspense fallback={<ProductRowSkeleton title="New Arrivals" />}>
-          <ProductRow title="New Arrivals" type="New" autoplay />
-        </Suspense>
-      </section>
+      <ScrollReveal delay={0.07}>
+        <FeaturedCollections />
+      </ScrollReveal>
 
       <div className="h-px bg-border my-6" />
 
-      <ShopByBudget />
+      <ScrollReveal delay={0.03}>
+        <section id="new-arrivals" className="scroll-mt-24">
+          <Suspense fallback={<ProductRowSkeleton title="New Arrivals" />}>
+            <ProductRow title="New Arrivals" type="New" autoplay />
+          </Suspense>
+        </section>
+      </ScrollReveal>
+
+      <div className="h-px bg-border my-6" />
+
+      <ScrollReveal delay={0.04}>
+        <ShopByBudget />
+      </ScrollReveal>
+
+      <div className="h-px bg-border my-6" />
+
+      <ScrollReveal delay={0.05}>
+        <section id="deals-and-discounts" className="scroll-mt-24">
+          <Suspense fallback={<ProductRowSkeleton title="Deals & Discounts" />}>
+            <ProductRow
+              title="Deals & Discounts"
+              type="Discounts"
+              autoplay={false}
+            />
+          </Suspense>
+        </section>
+      </ScrollReveal>
 
       <section id="recently-viewed" className="scroll-mt-24">
         {user && (
-          <>
+          <ScrollReveal delay={0.06}>
             <div className="h-px bg-border my-6" />
             <Suspense fallback={null}>
               <RecentlyViewedRow />
             </Suspense>
-          </>
+          </ScrollReveal>
         )}
-      </section>
-
-      <div className="h-px bg-border my-6" />
-
-      <FeaturedCollections />
-
-      <div className="h-px bg-border my-6" />
-
-      <section id="trending-now" className="scroll-mt-24">
-        <Suspense fallback={<ProductRowSkeleton title="Trending Now" />}>
-          <ProductRow title="Trending Now" type="Trending" autoplay={false} />
-        </Suspense>
-      </section>
-
-      <div className="h-px bg-border my-6" />
-
-      <section id="top-rated" className="scroll-mt-24">
-        <Suspense fallback={<ProductRowSkeleton title="Top Rated" />}>
-          <TopRatedProductRow />
-        </Suspense>
-      </section>
-
-      <div className="h-px bg-border my-6" />
-
-      <section id="deals-and-discounts" className="scroll-mt-24">
-        <Suspense fallback={<ProductRowSkeleton title="Deals & Discounts" />}>
-          <ProductRow
-            title="Deals & Discounts"
-            type="Discounts"
-            autoplay={false}
-          />
-        </Suspense>
       </section>
 
       <section id="recommended-for-you" className="scroll-mt-24">
         {user && (
-          <Suspense
-            fallback={
-              <ProductRowSkeleton
-                title="Recommended For You"
-                showExplore={false}
-              />
-            }
-          >
-            <RecommendedPreviewRow />
-          </Suspense>
+          <ScrollReveal delay={0.1}>
+            <div className="h-px bg-border my-6" />
+            <Suspense
+              fallback={
+                <ProductRowSkeleton
+                  title="Recommended For You"
+                  showExplore={false}
+                />
+              }
+            >
+              <RecommendedPreviewRow />
+            </Suspense>
+          </ScrollReveal>
         )}
       </section>
+
+      <div className="h-px bg-border my-6" />
+
+      <ScrollReveal delay={0.08}>
+        <section id="trending-now" className="scroll-mt-24">
+          <Suspense fallback={<ProductRowSkeleton title="Trending Now" />}>
+            <ProductRow title="Trending Now" type="Trending" autoplay={false} />
+          </Suspense>
+        </section>
+      </ScrollReveal>
+
+      <div className="h-px bg-border my-6" />
+
+      <ScrollReveal delay={0.09}>
+        <section id="top-rated" className="scroll-mt-24">
+          <Suspense fallback={<ProductRowSkeleton title="Top Rated" />}>
+            <TopRatedProductRow />
+          </Suspense>
+        </section>
+      </ScrollReveal>
     </>
   );
 }
