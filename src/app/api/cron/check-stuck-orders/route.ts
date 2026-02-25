@@ -18,7 +18,7 @@ export async function GET() {
 
     const stuckOrders = await prisma.order.findMany({
       where: {
-        status: "PENDING",
+        status: "PENDING_PAYMENT",
         createdAt: {
           lt: new Date(now.getTime() - HOURS(24)),
         },

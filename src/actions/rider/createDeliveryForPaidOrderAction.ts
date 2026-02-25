@@ -42,7 +42,7 @@ export async function createDeliveryForPaidOrderAction(orderId: string) {
   await prisma.delivery.create({
     data: {
       orderId,
-      status: "PENDING",
+      status: "PENDING_ASSIGNMENT",
       fee: order.shippingFee,
       deliveryAddress,
       distance: order.distanceInMiles,
