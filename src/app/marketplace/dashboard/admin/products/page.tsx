@@ -1,7 +1,14 @@
 import { redirect } from "next/navigation";
 import { getCategoriesAction } from "@/actions/category/categories";
 import { CurrentUser } from "@/lib/currentUser";
-import CategoryPageClient from "../../../../marketplace/dashboard/admin/categories/page";
+import CategoryPageClient from "@/components/categories/CategoryPageClient";
+
+type CategoriesResult = Awaited<ReturnType<typeof getCategoriesAction>>;
+type CategoryFromAction = NonNullable<CategoriesResult["categories"]>[number];
+type CategoryWithMedia = CategoryFromAction & {
+  iconUrl?: string | null;
+  bannerUrl?: string | null;
+};
 
 const AdminCategoriesPage = async () => {
   const user = await CurrentUser();
@@ -12,7 +19,13 @@ const AdminCategoriesPage = async () => {
 
   const res = await getCategoriesAction();
 
-  return <CategoryPageClient categories={res.categories ?? []} />;
+  const categories: CategoryWithMedia[] = (res.categories ?? []).map((cat) => ({
+    ...cat,
+    iconUrl: cat.iconImage ?? null,
+    bannerUrl: cat.bannerImage ?? null,
+  }));
+
+  return <CategoryPageClient categories={categories} />;
 };
 
 export default AdminCategoriesPage;

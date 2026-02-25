@@ -40,7 +40,7 @@ const AdminPage = ({ stats }: { stats: AdminStats }) => {
   ];
 
   return (
-    <div className="bg-gray-50 dark:bg-zinc-900 px-6 py-4">
+    <div className="px-6 py-8 dark:bg-gray-900 rounded-lg">
       {/* Header */}
       <header className="mb-8">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">

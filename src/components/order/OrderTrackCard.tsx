@@ -136,29 +136,31 @@ export default function OrderTrackCard({ order }: Props) {
         </div>
 
         {/* DELIVERY INFO */}
-        <div className="border rounded-xl p-4 text-sm bg-white dark:text-gray-400 dark:bg-background shadow-sm space-y-2">
-          <div className="flex items-center gap-2 font-semibold ">
-            <MapPin className="w-4 h-4 text-[var(--brand-blue)] " />
-            <strong>Delivery Address: </strong>{" "}
-            <p>{order.deliveryAddress ?? "—"}</p>
+        <div className="border rounded-xl p-4 text-sm bg-white dark:text-gray-400 dark:bg-background shadow-sm space-y-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 font-semibold">
+              <MapPin className="w-4 h-4 text-[var(--brand-blue)]" />
+              <span>Delivery Address</span>
+            </div>
+            <p className="pl-6 break-words">{order.deliveryAddress ?? "-"}</p>
           </div>
 
-          <div className="space-y-2 px-6 ">
-            <p>
-              <strong>Paid With:</strong> {order.paymentMethod ?? "—"}
+          <div className="grid gap-2 pl-6 sm:grid-cols-2">
+            <p className="min-w-0">
+              <strong>Paid With:</strong> {order.paymentMethod ?? "-"}
             </p>
 
-            <p>
+            <p className="min-w-0">
               <strong>Delivery Type:</strong>{" "}
               {order.deliveryType.replaceAll("_", " ")}
             </p>
 
-            <p>
+            <p className="min-w-0 sm:col-span-2">
               <strong>Shipping Fee:</strong> {formatBaseUSD(order.shippingFee)}
             </p>
 
             {delivery?.rider && (
-              <div className="pt-3 border-t text-xs">
+              <div className="pt-3 border-t text-xs sm:col-span-2">
                 <p className="font-semibold">Assigned Rider</p>
                 <p>{delivery.rider.name}</p>
                 <p className="text-gray-500">{delivery.rider.email}</p>
@@ -187,5 +189,3 @@ export default function OrderTrackCard({ order }: Props) {
     </main>
   );
 }
-
-

@@ -131,20 +131,20 @@ export default function OrderTimeline({ order, timeline }: Props) {
 
   return (
     <>
-      <section className="border rounded-xl p-5 bg-white dark:bg-background shadow-sm">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+      <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
           <Clock className="w-5 h-5 text-[var(--brand-blue)]" />
           Order Progress
         </h2>
 
         {isCancelled && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
             <XCircle className="w-4 h-4" />
             This order was cancelled.
           </div>
         )}
 
-        <ol className="relative ml-4 border-l border-gray-200 space-y-6">
+        <ol className="relative ml-4 space-y-6 border-l border-border">
           {orderSteps.map((stepKey, index) => {
             const step = STEP_CONFIG[stepKey];
             const Icon = step.icon;
@@ -160,12 +160,12 @@ export default function OrderTimeline({ order, timeline }: Props) {
                   className={cn(
                     "absolute -left-[11px] flex h-6 w-6 items-center justify-center rounded-full border-2 text-xs font-semibold transition",
                     completed &&
-                      "bg-[var(--brand-blue)] dark:bg-background border-[var(--brand-blue)] text-white",
+                      "border-[var(--brand-blue)] bg-[var(--brand-blue)] text-white",
                     active &&
-                      "bg-[#318bc4] dark:bg-background border-[#318bc4] text-white",
+                      "border-[#318bc4] bg-[#318bc4] text-white",
                     !completed &&
                       !active &&
-                      "bg-white dark:bg-background border-gray-300 text-gray-400",
+                      "border-border bg-background text-muted-foreground",
                   )}
                 >
                   {completed ? "OK" : index + 1}
@@ -177,30 +177,32 @@ export default function OrderTimeline({ order, timeline }: Props) {
                       "w-4 h-4",
                       completed || active
                         ? "text-[var(--brand-blue)]"
-                        : "text-gray-400",
+                        : "text-muted-foreground",
                     )}
                   />
                   <span
                     className={cn(
                       "text-sm font-medium",
                       completed || active
-                        ? "text-gray-900 dark:text-gray-400"
-                        : "text-gray-500 dark:text-gray-400",
+                        ? "text-foreground"
+                        : "text-muted-foreground",
                     )}
                   >
                     {step.label}
                   </span>
                 </div>
 
-                <p className="text-xs text-gray-500">{step.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {step.description}
+                </p>
               </li>
             );
           })}
         </ol>
       </section>
 
-      <section className="border rounded-xl bg-white dark:bg-background p-6 space-y-5">
-        <h3 className="font-semibold text-lg">Order Status</h3>
+      <section className="space-y-5 rounded-xl border border-border bg-card p-6">
+        <h3 className="text-lg font-semibold text-foreground">Order Status</h3>
 
         <ol className="space-y-6">
           {timeline.map((item, index) => {
@@ -211,10 +213,10 @@ export default function OrderTimeline({ order, timeline }: Props) {
                 <div className="flex flex-col items-center">
                   <div
                     className={cn(
-                      "h-8 w-8 rounded-full flex items-center justify-center",
+                      "flex h-8 w-8 items-center justify-center rounded-full border",
                       isLatest
-                        ? "bg-[var(--brand-blue)] dark:bg-background text-white"
-                        : "bg-gray-200 dark:bg-background text-gray-600",
+                        ? "border-[var(--brand-blue)] bg-[var(--brand-blue)] text-white"
+                        : "border-border bg-muted text-muted-foreground",
                     )}
                   >
                     {isLatest ? (
@@ -224,17 +226,23 @@ export default function OrderTimeline({ order, timeline }: Props) {
                     )}
                   </div>
 
-                  {!isLatest && <div className="w-px h-full bg-gray-200 mt-1" />}
+                  {!isLatest && (
+                    <div className="mt-1 h-full w-px bg-border" />
+                  )}
                 </div>
 
                 <div className="flex-1">
-                  <p className="font-medium">{getOrderStatusLabel(item.status)}</p>
+                  <p className="font-medium text-foreground">
+                    {getOrderStatusLabel(item.status)}
+                  </p>
 
                   {item.message && (
-                    <p className="text-sm text-gray-600">{item.message}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {item.message}
+                    </p>
                   )}
 
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {formatTimelineDate(item.createdAt)}
                   </p>
                 </div>

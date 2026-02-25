@@ -3,7 +3,7 @@
 import { LogOut, ChevronDown, ChevronRight } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
@@ -26,9 +26,51 @@ function SidebarContent({
   isMobile?: boolean;
   onNavigate?: () => void;
 }) {
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const role = user?.role as "SELLER" | "RIDER" | "ADMIN" | "MODERATOR";
   const menu = DashboardMenu[role] || [];
+
+  const normalizePath = (value: string) => value.replace(/\/$/, "");
+
+  const getActiveSectionTitle = useMemo(() => {
+    const p = normalizePath(pathname);
+    let matchedTitle: string | null = null;
+    let matchedLength = -1;
+
+    for (const section of menu) {
+      for (const link of section.links) {
+        const h = normalizePath(link.href);
+        const isMatch = p === h || p.startsWith(`${h}/`);
+        if (isMatch && h.length > matchedLength) {
+          matchedTitle = section.title;
+          matchedLength = h.length;
+        }
+      }
+    }
+
+    if (matchedTitle) return matchedTitle;
+
+    if (p.startsWith("/marketplace/dashboard")) {
+      const dashboardSection = menu.find((section) =>
+        section.links.some((link) => normalizePath(link.href) === "/marketplace/dashboard"),
+      );
+      return dashboardSection?.title ?? null;
+    }
+
+    return null;
+  }, [menu, pathname]);
+
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
+    getActiveSectionTitle ? { [getActiveSectionTitle]: true } : {},
+  );
+
+  useEffect(() => {
+    if (!getActiveSectionTitle) return;
+
+    setOpenSections((prev) => ({
+      ...prev,
+      [getActiveSectionTitle]: true,
+    }));
+  }, [getActiveSectionTitle]);
 
   const toggle = (title: string) =>
     setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));

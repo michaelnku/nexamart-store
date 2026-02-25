@@ -60,7 +60,6 @@ export default function MarketPlaceNavbar({
   const { data: user, isLoading, isError } = useCurrentUserQuery(initialUser);
   const currentUser = user ?? initialUser;
   const [hasNewAlert, setHasNewAlert] = useState(false);
-
   const [open, setOpen] = useState(false);
 
   useDashboardEvents(currentUser?.id, currentUser?.role, setHasNewAlert);
@@ -116,7 +115,7 @@ export default function MarketPlaceNavbar({
     {
       icon: MessageSquare,
       label: "Tickets",
-      href: "/marketplace/dashboard/admin/tickets",
+      href: "/marketplace/dashboard/admin/support",
     },
   ];
 
@@ -136,8 +135,8 @@ export default function MarketPlaceNavbar({
 
   const isActive = (href: string) => pathname.startsWith(href);
 
-  const getHomePath = (role?: string) => {
-    switch (role) {
+  const getHomePath = (userRole?: string) => {
+    switch (userRole) {
       case "MODERATOR":
         return "/marketplace/dashboard/moderator";
       case "ADMIN":
@@ -169,12 +168,12 @@ export default function MarketPlaceNavbar({
           : null;
 
   return (
-    <header className="sticky top-0 z-50 light:bg-white/90 backdrop-blur border-b shadow-sm">
-      <div className="flex items-center justify-between h-16 px-4 md:px-8">
-        <div className="flex items-center gap-3 cursor-pointer">
+    <header className="sticky top-0 z-50 border-b shadow-sm backdrop-blur light:bg-white/90">
+      <div className="flex h-14 items-center justify-between gap-2 px-3 sm:h-16 sm:px-4 lg:px-6 xl:px-8">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Link
             href={getHomePath(currentUser?.role)}
-            className="flex items-center gap-2"
+            className="flex shrink-0 items-center gap-2"
           >
             <Image
               src="https://ijucjait38.ufs.sh/f/rO7LkXAj4RVlnNw2KuOByscQRmqV3jX4rStz8G2Mv0IpxKJA"
@@ -184,31 +183,33 @@ export default function MarketPlaceNavbar({
               className="object-contain"
             />
           </Link>
-          <div className="flex flex-col leading-tight">
-            <span className="font-semibold text-[18px] tracking-tight">
+
+          <div className="hidden min-w-0 flex-col leading-tight sm:flex">
+            <span className="truncate text-base font-semibold tracking-tight lg:text-[18px]">
               {dashboardTitle}
             </span>
-            <span className="text-xs bg-[var(--brand-blue-light)] text-[var(--brand-blue)] font-semibold px-2 py-[2px] rounded">
+            <span className="inline-flex w-fit rounded bg-[var(--brand-blue-light)] px-2 py-[2px] text-xs font-semibold text-[var(--brand-blue)]">
               {role}
             </span>
           </div>
         </div>
 
-        <div className="hidden md:flex flex-1 max-w-2xl mx-6">
+        <div className="hidden min-w-0 flex-1 lg:mx-3 lg:flex lg:max-w-xl xl:mx-6 xl:max-w-2xl">
           <MarketplaceSearch />
         </div>
-        <div className="flex md:hidden items-center gap-2">
+
+        <div className="flex items-center gap-2 lg:hidden">
           <MobileSearchSheet variant="marketplace" />
         </div>
 
-        <div className="hidden md:flex items-center gap-7">
+        <div className="hidden items-center gap-3 lg:flex xl:gap-5">
           {quickNav.map((item) => {
             const active = item.onClick
               ? (item.isActive?.() ?? false)
               : item.href
                 ? isActive(item.href)
                 : false;
-            const className = `relative text-sm font-medium transition flex flex-col items-center ${
+            const className = `relative flex flex-col items-center text-sm font-medium transition dark:text-gray-400 ${
               active
                 ? "text-[var(--brand-blue)]"
                 : "text-gray-600 hover:text-[var(--brand-blue)]"
@@ -234,8 +235,8 @@ export default function MarketPlaceNavbar({
                   onClick={item.onClick}
                   className={className}
                 >
-                  <item.icon className="w-5 h-5" />
-                  <span className="text-[11px] hidden lg:block mt-[2px]">
+                  <item.icon className="h-5 w-5" />
+                  <span className="mt-[2px] hidden text-[11px] xl:block">
                     {item.label}
                   </span>
                 </button>
@@ -244,8 +245,8 @@ export default function MarketPlaceNavbar({
 
             return item.href ? (
               <Link key={item.label} href={item.href} className={className}>
-                <item.icon className="w-5 h-5" />
-                <span className="text-[11px] hidden lg:block mt-[2px]">
+                <item.icon className="h-5 w-5" />
+                <span className="mt-[2px] hidden text-[11px] xl:block">
                   {item.label}
                 </span>
               </Link>
@@ -254,7 +255,7 @@ export default function MarketPlaceNavbar({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 hover:text-[var(--brand-blue)] transition">
+              <button className="flex items-center gap-2 transition hover:text-[var(--brand-blue)]">
                 {currentUser?.image ? (
                   <Image
                     src={currentUser.image}
@@ -264,13 +265,13 @@ export default function MarketPlaceNavbar({
                     className="rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-300">
                     <span className="text-xs font-semibold text-gray-700">
                       {getUserInitials(currentUser)}
                     </span>
                   </div>
                 )}
-                <span className="hidden lg:block font-semibold">
+                <span className="hidden font-semibold xl:block text-gray-700 dark:text-gray-400">
                   {currentUser
                     ? `Hi, ${currentUser?.name?.split(" ")[0] || currentUser.username}`
                     : "Account"}
@@ -288,11 +289,9 @@ export default function MarketPlaceNavbar({
                 <Link
                   href={accountSettingsHref}
                   className="flex gap-2"
-                  onClick={() => {
-                    setOpen(false);
-                  }}
+                  onClick={() => setOpen(false)}
                 >
-                  <User className="w-4 h-4" /> Account Settings
+                  <User className="h-4 w-4" /> Account Settings
                 </Link>
               </DropdownMenuItem>
 
@@ -301,11 +300,9 @@ export default function MarketPlaceNavbar({
                   <Link
                     href={walletHref}
                     className="flex gap-2"
-                    onClick={() => {
-                      setOpen(false);
-                    }}
+                    onClick={() => setOpen(false)}
                   >
-                    <Wallet className="w-4 h-4" /> Wallet
+                    <Wallet className="h-4 w-4" /> Wallet
                   </Link>
                 </DropdownMenuItem>
               )}
@@ -315,11 +312,9 @@ export default function MarketPlaceNavbar({
                   <Link
                     href={supportHref}
                     className="flex gap-2"
-                    onClick={() => {
-                      setOpen(false);
-                    }}
+                    onClick={() => setOpen(false)}
                   >
-                    <HelpCircle className="w-4 h-4" /> Support Center
+                    <HelpCircle className="h-4 w-4" /> Support Center
                   </Link>
                 </DropdownMenuItem>
               )}
@@ -329,33 +324,39 @@ export default function MarketPlaceNavbar({
               <DropdownMenuItem>
                 <Button
                   variant="ghost"
-                  className="w-full flex gap-2 text-red-500 hover:text-red-600"
+                  className="flex w-full gap-2 text-red-500 hover:text-red-600"
                   onClick={() => {
                     logout();
                     setOpen(false);
                   }}
                 >
-                  <LogOut className="w-4 h-4" /> Logout
+                  <LogOut className="h-4 w-4" /> Logout
                 </Button>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <CurrencySelector />
+          <div className="hidden xl:block">
+            <CurrencySelector />
+          </div>
           <ModeToggle />
         </div>
 
-        <div className="flex md:hidden items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 lg:hidden">
           <ModeToggle />
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="w-6 h-6" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 sm:h-10 sm:w-10"
+              >
+                <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
 
-            <SheetContent side="right" className="w-80 p-0 overflow-y-auto">
+            <SheetContent side="right" className="w-80 overflow-y-auto p-0">
               <DialogHeader>
                 <VisuallyHidden>
                   <DialogTitle>Menu</DialogTitle>
@@ -370,19 +371,19 @@ export default function MarketPlaceNavbar({
                       width={48}
                       height={48}
                       alt="avatar"
-                      className="rounded-full object-cover border shadow-sm shrink-0"
+                      className="shrink-0 rounded-full border object-cover shadow-sm"
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center border shadow-sm shrink-0">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border bg-gray-200 shadow-sm">
                       <span className="text-sm font-semibold text-gray-700">
                         {getUserInitials(currentUser)}
                       </span>
                     </div>
                   )}
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-[15px] truncate">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-[15px] font-semibold">
                         {currentUser
                           ? `Hi, ${currentUser?.name?.split(" ")[0] || currentUser?.username}`
                           : "Welcome"}
@@ -391,12 +392,12 @@ export default function MarketPlaceNavbar({
                       <VerifiedBadge />
                     </div>
 
-                    <p className="text-sm text-gray-500 truncate">
+                    <p className="truncate text-sm text-gray-500">
                       {currentUser?.email}
                     </p>
 
                     {currentUser?.role && (
-                      <span className="inline-block mt-1 text-[10px] bg-[var(--brand-blue-light)] text-[var(--brand-blue)] px-2 py-[2px] rounded uppercase font-semibold">
+                      <span className="mt-1 inline-block rounded bg-[var(--brand-blue-light)] px-2 py-[2px] text-[10px] font-semibold uppercase text-[var(--brand-blue)]">
                         {currentUser.role}
                       </span>
                     )}
@@ -404,8 +405,7 @@ export default function MarketPlaceNavbar({
                 </div>
               </div>
 
-              {/* Drawer Side Nav */}
-              <div className="py-2 px-2">
+              <div className="px-2 py-2">
                 <MobileSideNav
                   initialUser={currentUser ?? null}
                   onNavigate={() => setOpen(false)}
@@ -413,7 +413,7 @@ export default function MarketPlaceNavbar({
               </div>
 
               <Separator />
-              <div className="p-5 flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-3 p-5">
                 <span className="text-sm text-gray-600">Currency</span>
                 <CurrencySelector />
               </div>
@@ -422,13 +422,13 @@ export default function MarketPlaceNavbar({
               <div className="p-5">
                 <Button
                   variant="destructive"
-                  className="w-full flex gap-2"
+                  className="flex w-full gap-2"
                   onClick={() => {
                     logout();
                     setOpen(false);
                   }}
                 >
-                  <LogOut className="w-4 h-4" /> Logout
+                  <LogOut className="h-4 w-4" /> Logout
                 </Button>
               </div>
             </SheetContent>
@@ -436,9 +436,8 @@ export default function MarketPlaceNavbar({
         </div>
       </div>
 
-      {/* ─────────────────── CLICKABLE BREADCRUMB ─────────────────── */}
       <div className="w-full border-t light:bg-white">
-        <div className="px-4 md:px-8 py-2 flex items-center gap-2 text-sm overflow-x-auto whitespace-nowrap">
+        <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap px-3 py-2 text-sm sm:px-4 lg:px-6 xl:px-8">
           {(() => {
             const segments = pathname.split("/").filter(Boolean);
             if (!pathname.startsWith("/marketplace/dashboard")) return null;
@@ -455,7 +454,6 @@ export default function MarketPlaceNavbar({
 
             const crumbs = [dashboardTitle, ...readable];
 
-            // Build URLs progressively -> each crumb points to its parent level
             let linkPath = basePath;
             const paths = crumbs.map((_, i) => {
               if (i === 0) return linkPath;
@@ -476,13 +474,13 @@ export default function MarketPlaceNavbar({
                   ) : (
                     <Link
                       href={href}
-                      className="text-gray-600 hover:text-[var(--brand-blue)] transition"
+                      className="text-gray-600 transition hover:text-[var(--brand-blue)]"
                     >
                       {item}
                     </Link>
                   )}
 
-                  {!isLast && <span className="text-gray-400">›</span>}
+                  {!isLast && <span className="text-gray-400">{">"}</span>}
                 </div>
               );
             });

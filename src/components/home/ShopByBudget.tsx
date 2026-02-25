@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
+import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
 
 const BUDGETS = [
   { key: "budget-25-49", minUSD: 25, maxUSD: 49 },
@@ -12,6 +14,11 @@ const BUDGETS = [
 
 export default function ShopByBudget() {
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   return (
     <section className="space-y-3">
@@ -39,8 +46,12 @@ export default function ShopByBudget() {
             "
           >
             {b.maxUSD
-              ? `${formatMoneyFromUSD(b.minUSD)} - ${formatMoneyFromUSD(b.maxUSD)}`
-              : `${formatMoneyFromUSD(b.minUSD)}+`}
+              ? isHydrated
+                ? `${formatMoneyFromUSD(b.minUSD)} - ${formatMoneyFromUSD(b.maxUSD)}`
+                : `${formatBaseUSD(b.minUSD)} - ${formatBaseUSD(b.maxUSD)}`
+              : isHydrated
+                ? `${formatMoneyFromUSD(b.minUSD)}+`
+                : `${formatBaseUSD(b.minUSD)}+`}
           </Link>
         ))}
       </div>

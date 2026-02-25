@@ -98,7 +98,7 @@ export const DashboardMenu = {
         },
         {
           name: "Profile",
-          href: "/marketplace/dashboard/profile",
+          href: "/profile",
           icon: User,
         },
         {
@@ -155,7 +155,7 @@ export const DashboardMenu = {
         },
         {
           name: "Profile",
-          href: "/marketplace/dashboard/profile",
+          href: "/profile",
           icon: User,
         },
         {
@@ -271,7 +271,7 @@ export const DashboardMenu = {
         },
         {
           name: "Profile",
-          href: "/marketplace/dashboard/profile",
+          href: "/profile",
           icon: User,
         },
         {
@@ -327,7 +327,7 @@ export const DashboardMenu = {
         },
         {
           name: "Profile",
-          href: "/marketplace/dashboard/profile",
+          href: "/profile",
           icon: User,
         },
         {

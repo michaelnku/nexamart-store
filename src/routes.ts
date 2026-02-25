@@ -12,8 +12,6 @@ export const publicRoutes = [
   "/terms-of-service",
   "/cookies",
   "/help",
-  "/cart",
-  "/wishlist",
 ];
 
 export const authRoutes = [
@@ -27,22 +25,21 @@ export const authRoutes = [
   "/auth/rider/register",
   "/auth/admin/register",
   "/auth/redirecting",
-  "/test",
 ];
 
 export const apiAuthPrefix = "/api/auth";
 
 export const DEFAULT_LOGIN_REDIRECT = "/";
 
-export const SELLER_LOGIN_REDIRECT = "/marketplace/dashboard/seller";
-
-export const RIDER_LOGIN_REDIRECT = "/marketplace/dashboard/rider";
-
-export const MODERATOR_LOGIN_REDIRECT = "/marketplace/dashboard/moderator";
-
-export const ADMIN_LOGIN_REDIRECT = "/marketplace/dashboard/admin";
-
 export const MARKET_PLACE_LOGIN_REDIRECT = "/marketplace/dashboard";
+
+export const SELLER_LOGIN_REDIRECT = MARKET_PLACE_LOGIN_REDIRECT;
+
+export const RIDER_LOGIN_REDIRECT = MARKET_PLACE_LOGIN_REDIRECT;
+
+export const MODERATOR_LOGIN_REDIRECT = MARKET_PLACE_LOGIN_REDIRECT;
+
+export const ADMIN_LOGIN_REDIRECT = MARKET_PLACE_LOGIN_REDIRECT;
 
 export const customerRoutePrefix = "/customer";
 

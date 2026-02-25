@@ -20,24 +20,12 @@ export default async function HomeContent() {
 
       <div className="h-px bg-border my-6" />
 
-      <ScrollReveal delay={0.07}>
-        <FeaturedCollections />
-      </ScrollReveal>
-
-      <div className="h-px bg-border my-6" />
-
       <ScrollReveal delay={0.03}>
         <section id="new-arrivals" className="scroll-mt-24">
           <Suspense fallback={<ProductRowSkeleton title="New Arrivals" />}>
             <ProductRow title="New Arrivals" type="New" autoplay />
           </Suspense>
         </section>
-      </ScrollReveal>
-
-      <div className="h-px bg-border my-6" />
-
-      <ScrollReveal delay={0.04}>
-        <ShopByBudget />
       </ScrollReveal>
 
       <div className="h-px bg-border my-6" />
@@ -54,6 +42,12 @@ export default async function HomeContent() {
         </section>
       </ScrollReveal>
 
+      <div className="h-px bg-border my-6" />
+
+      <ScrollReveal delay={0.07}>
+        <FeaturedCollections />
+      </ScrollReveal>
+
       <section id="recently-viewed" className="scroll-mt-24">
         {user && (
           <ScrollReveal delay={0.06}>
@@ -64,6 +58,14 @@ export default async function HomeContent() {
           </ScrollReveal>
         )}
       </section>
+
+      <ScrollReveal delay={0.08}>
+        <section id="trending-now" className="scroll-mt-24">
+          <Suspense fallback={<ProductRowSkeleton title="Trending Now" />}>
+            <ProductRow title="Trending Now" type="Trending" autoplay={false} />
+          </Suspense>
+        </section>
+      </ScrollReveal>
 
       <section id="recommended-for-you" className="scroll-mt-24">
         {user && (
@@ -85,12 +87,8 @@ export default async function HomeContent() {
 
       <div className="h-px bg-border my-6" />
 
-      <ScrollReveal delay={0.08}>
-        <section id="trending-now" className="scroll-mt-24">
-          <Suspense fallback={<ProductRowSkeleton title="Trending Now" />}>
-            <ProductRow title="Trending Now" type="Trending" autoplay={false} />
-          </Suspense>
-        </section>
+      <ScrollReveal delay={0.04}>
+        <ShopByBudget />
       </ScrollReveal>
 
       <div className="h-px bg-border my-6" />

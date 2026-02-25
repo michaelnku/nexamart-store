@@ -1,14 +1,8 @@
-import { getRiderStats } from "@/actions/dashboardState";
-import RiderPage from "../../_components/RiderPage";
+import { MARKET_PLACE_LOGIN_REDIRECT } from "@/routes";
+import { redirect } from "next/navigation";
 
-const page = async () => {
-  const stats = await getRiderStats();
-
-  return (
-    <div>
-      <RiderPage stats={stats} />
-    </div>
-  );
+const page = () => {
+  redirect(MARKET_PLACE_LOGIN_REDIRECT);
 };
 
 export default page;

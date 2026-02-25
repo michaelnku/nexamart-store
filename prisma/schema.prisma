@@ -36,6 +36,7 @@ model User {
   Account             Account[]
   addresses           Address[]
   agentProfile        AgentProfile?
+  staffProfile        StaffProfile?
   cart                Cart?
   agentConversations  Conversation[]     @relation("ConversationAgent")
   couponClaims        CouponClaim[]
@@ -851,6 +852,32 @@ model ReferralReward {
 
 /// *
 /// * ===========================
+/// * STAFF
+/// * ===========================
+model StaffProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  staffId   String  @unique
+  firstName String
+  lastName  String
+  phone     String?
+  avatar    String?
+
+  department     String?
+  employmentType EmploymentType?
+  status         StaffStatus     @default(ACTIVE)
+
+  joinedAt     DateTime  @default(now())
+  lastActiveAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// *
+/// * ===========================
 /// * ADDRESS & SITE CONFIG
 /// * ===========================
 model Address {
@@ -914,6 +941,18 @@ model Notification {
 /// * ===========================
 /// * ENUMS
 /// * ===========================
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+}
+
+enum StaffStatus {
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
 enum AddressLabel {
   HOME
   OFFICE

@@ -66,10 +66,13 @@ const SellerSettingsPage = () => {
 
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
+    null,
+  );
   const [addressSelectionValid, setAddressSelectionValid] = useState(true);
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
-  const { suggestions, loading, error, search, clear } = useAddressAutocomplete();
+  const { suggestions, loading, error, search, clear } =
+    useAddressAutocomplete();
 
   useEffect(() => {
     if (!user?.id) return;
@@ -511,7 +514,8 @@ const SellerSettingsPage = () => {
                     }}
                     appearance={{
                       button: "bg-transparent text-white",
-                      container: "flex items-center justify-center w-full h-full",
+                      container:
+                        "flex items-center justify-center w-full h-full",
                     }}
                     content={{
                       button() {
@@ -876,7 +880,7 @@ const AdminSettingsPage = () => {
   };
 
   return (
-    <main className="p-4 md:ml-62 py-12 space-y-8">
+    <main className="p-4 py-12 space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Site Settings</h1>
         <Button size="lg" onClick={handleSave}>
@@ -1171,4 +1175,3 @@ const ModeratorSettingsPage = () => {
 };
 
 export { AdminSettingsPage, SellerSettingsPage, ModeratorSettingsPage };
-

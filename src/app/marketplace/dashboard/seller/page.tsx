@@ -1,14 +1,8 @@
-import { getSellerStats } from "@/actions/dashboardState";
-import SellerPage from "../../_components/SellerPage";
+import { MARKET_PLACE_LOGIN_REDIRECT } from "@/routes";
+import { redirect } from "next/navigation";
 
-const page = async () => {
-  const stats = await getSellerStats();
-
-  return (
-    <div>
-      <SellerPage stats={stats} />
-    </div>
-  );
+const page = () => {
+  redirect(MARKET_PLACE_LOGIN_REDIRECT);
 };
 
 export default page;
