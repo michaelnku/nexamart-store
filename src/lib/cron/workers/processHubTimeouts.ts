@@ -21,12 +21,12 @@ export async function processHubTimeouts() {
 
     const timedOutGroups = await prisma.orderSellerGroup.findMany({
       where: {
-        status: "IN_TRANSIT_TO_HUB",
+        status: "DISPATCHED_TO_HUB",
         expectedAtHub: { lte: cutoff },
         order: {
           isFoodOrder: false,
           isPaid: true,
-          status: { in: ["ACCEPTED", "SHIPPED", "OUT_FOR_DELIVERY"] },
+          status: { in: ["ACCEPTED", "PREPARING", "READY", "IN_DELIVERY"] },
         },
       },
       orderBy: { expectedAtHub: "asc" },
@@ -60,7 +60,7 @@ export async function processHubTimeouts() {
         });
 
         if (!group) return;
-        if (group.status !== "IN_TRANSIT_TO_HUB") return;
+        if (group.status !== "DISPATCHED_TO_HUB") return;
         if (!group.expectedAtHub || group.expectedAtHub > cutoff) return;
 
         await tx.orderSellerGroup.update({
@@ -71,7 +71,7 @@ export async function processHubTimeouts() {
         await addOrderTimelineOnce(
           {
             orderId: group.orderId,
-            status: "SHIPPED",
+            status: "IN_DELIVERY",
             message: `Shipment from ${group.store.name} did not arrive at the hub in time and has been cancelled.`,
           },
           tx,
@@ -144,7 +144,7 @@ export async function processHubTimeouts() {
         await addOrderTimelineOnce(
           {
             orderId: group.orderId,
-            status: "SHIPPED",
+            status: "IN_DELIVERY",
             message:
               "A refund for missing items has been issued to your wallet.",
           },

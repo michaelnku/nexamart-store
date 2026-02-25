@@ -5,7 +5,14 @@ export default async function TrackAllActiveOrdersPage() {
   const orders = await prisma.order.findMany({
     where: {
       status: {
-        in: ["PENDING", "ACCEPTED", "SHIPPED"],
+        in: [
+          "PENDING_PAYMENT",
+          "PAID",
+          "ACCEPTED",
+          "PREPARING",
+          "READY",
+          "IN_DELIVERY",
+        ],
       },
     },
     orderBy: { createdAt: "desc" },

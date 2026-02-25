@@ -1,6 +1,6 @@
 import { OrderStatus } from "@/generated/prisma/client";
 
-export type LegacyOrderStatus = "SHIPPED" | "OUT_FOR_DELIVERY" | "PENDING";
+export type LegacyOrderStatus = "PENDING";
 export type AnyOrderStatus = OrderStatus | LegacyOrderStatus | string;
 
 const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -19,8 +19,6 @@ const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 };
 
 export function normalizeOrderStatus(status: AnyOrderStatus): OrderStatus {
-  if (status === "OUT_FOR_DELIVERY") return "IN_DELIVERY";
-  if (status === "SHIPPED") return "IN_DELIVERY";
   if (status === "PENDING") return "PENDING_PAYMENT";
   return status as OrderStatus;
 }
@@ -37,4 +35,3 @@ export function assertValidTransition(
     );
   }
 }
-

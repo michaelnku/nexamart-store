@@ -13,11 +13,11 @@ type Props = {
 };
 
 const statusColors: Record<string, string> = {
-  PENDING: "bg-yellow-500",
+  PENDING_PAYMENT: "bg-yellow-500",
+  PAID: "bg-emerald-500",
   ACCEPTED: "bg-blue-500",
   READY: "bg-emerald-600",
   IN_DELIVERY: "bg-indigo-500",
-  SHIPPED: "bg-purple-500",
 };
 
 export default function OrderTrackGrid({ orders }: Props) {
@@ -96,3 +96,4 @@ export default function OrderTrackGrid({ orders }: Props) {
     </main>
   );
 }
+

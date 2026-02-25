@@ -491,10 +491,7 @@ export type OrderStatus =
   | "CANCELLED"
   | "RETURN_REQUESTED"
   | "RETURNED"
-  | "REFUNDED"
-  | "PENDING"
-  | "SHIPPED"
-  | "OUT_FOR_DELIVERY";
+  | "REFUNDED";
 
 export type DeliveryType =
   | "HOME_DELIVERY"

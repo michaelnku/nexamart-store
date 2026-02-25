@@ -270,7 +270,7 @@ export async function getRiderStats() {
     prisma.delivery.count({
       where: {
         riderId: user.id,
-        status: { in: ["ASSIGNED", "IN_TRANSIT"] },
+        status: { in: ["ASSIGNED", "PICKED_UP"] },
       },
     }),
     prisma.delivery.count({
@@ -315,7 +315,7 @@ export async function getRiderStats() {
     prisma.delivery.findFirst({
       where: {
         riderId: user.id,
-        status: { in: ["ASSIGNED", "IN_TRANSIT"] },
+        status: { in: ["ASSIGNED", "PICKED_UP"] },
       },
       orderBy: {
         assignedAt: "asc",

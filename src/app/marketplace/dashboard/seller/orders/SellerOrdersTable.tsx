@@ -118,11 +118,6 @@ export default function SellerOrdersTable({
     RETURN_REQUESTED: "bg-orange-200 text-orange-800",
     RETURNED: "bg-red-200 text-red-800",
     REFUNDED: "bg-gray-200 text-gray-800",
-
-    // legacy fallback
-    PENDING: "bg-yellow-200 text-yellow-800",
-    SHIPPED: "bg-purple-100 text-purple-700",
-    OUT_FOR_DELIVERY: "bg-indigo-100 text-indigo-700",
   };
 
   const handleAcceptClick = (state: SellerRowState) => {
@@ -393,3 +388,4 @@ export default function SellerOrdersTable({
     </div>
   );
 }
+

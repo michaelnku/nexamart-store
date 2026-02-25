@@ -37,11 +37,11 @@ export function parseRiderDeliveryStatusKey(
 }
 
 export function canAutoAssignForOrderStatus(status: string): boolean {
-  return status === "READY" || status === "ACCEPTED" || status === "SHIPPED";
+  return status === "READY" || status === "ACCEPTED" || status === "IN_DELIVERY";
 }
 
 export function canVerifyDeliveryStatus(status: string): boolean {
-  return status === "PICKED_UP" || status === "IN_TRANSIT";
+  return status === "PICKED_UP";
 }
 
 export const RIDER_CLIENT_STATUS_LABELS = {
@@ -75,7 +75,7 @@ export function toRiderClientDeliveryStatus(
 ): RiderClientDeliveryStatus {
   if (status === "PENDING_ASSIGNMENT" || status === "PENDING") return "PENDING";
   if (status === "ASSIGNED") return "ASSIGNED";
-  if (status === "PICKED_UP" || status === "IN_TRANSIT") return "ONGOING";
+  if (status === "PICKED_UP") return "ONGOING";
   if (status === "DELIVERED") return "DELIVERED";
   return "CANCELLED";
 }

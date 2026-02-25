@@ -20,12 +20,11 @@ export default function OrderTrackCard({ order }: Props) {
   const delivery = order.delivery;
 
   const statusColors: Record<string, string> = {
-    PENDING: "bg-yellow-500",
+    PENDING_PAYMENT: "bg-yellow-500",
+    PAID: "bg-emerald-500",
     ACCEPTED: "bg-blue-500",
     READY: "bg-emerald-600",
     IN_DELIVERY: "bg-indigo-500",
-    SHIPPED: "bg-purple-500",
-    OUT_FOR_DELIVERY: "bg-indigo-500",
     DELIVERED: "bg-green-600",
     COMPLETED: "bg-green-700",
     CANCELLED: "bg-red-600",
@@ -188,4 +187,5 @@ export default function OrderTrackCard({ order }: Props) {
     </main>
   );
 }
+
 

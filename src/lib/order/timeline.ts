@@ -3,15 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 
 type TimelineStatus =
-  | "PENDING"
   | "PENDING_PAYMENT"
   | "PAID"
   | "ACCEPTED"
   | "PREPARING"
   | "READY"
   | "IN_DELIVERY"
-  | "SHIPPED"
-  | "OUT_FOR_DELIVERY"
   | "DELIVERED"
   | "COMPLETED"
   | "CANCELLED"
@@ -22,10 +19,6 @@ type TimelineStatus =
 type Tx = Prisma.TransactionClient;
 
 function normalizeTimelineStatus(status: TimelineStatus): OrderStatus {
-  if (status === "PENDING") return "PENDING_PAYMENT";
-  if (status === "SHIPPED" || status === "OUT_FOR_DELIVERY") {
-    return "IN_DELIVERY";
-  }
   return status as OrderStatus;
 }
 

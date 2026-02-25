@@ -7,7 +7,7 @@ export async function checkStuckOrders() {
 
   const pendingOrders = await prisma.order.findMany({
     where: {
-      status: "PENDING",
+      status: "PENDING_PAYMENT",
       createdAt: {
         lt: new Date(now.getTime() - HOURS(24)),
       },
@@ -41,7 +41,7 @@ export async function checkStuckOrders() {
 
   const stuckSellerGroups = await prisma.orderSellerGroup.findMany({
     where: {
-      status: "PENDING_PICKUP",
+      status: "PENDING",
       createdAt: {
         lt: new Date(now.getTime() - HOURS(24)),
       },
@@ -78,7 +78,7 @@ export async function checkStuckOrders() {
 
   const stuckDeliveries = await prisma.delivery.findMany({
     where: {
-      status: "IN_TRANSIT",
+      status: "PICKED_UP",
       assignedAt: {
         lt: new Date(now.getTime() - HOURS(72)),
       },
@@ -97,13 +97,13 @@ export async function checkStuckOrders() {
 
       await tx.order.update({
         where: { id: delivery.orderId },
-        data: { status: "SHIPPED" },
+        data: { status: "IN_DELIVERY" },
       });
 
       await tx.orderTimeline.create({
         data: {
           orderId: delivery.orderId,
-          status: "SHIPPED",
+          status: "IN_DELIVERY",
           message: "Delivery reassignment required due to rider inactivity",
         },
       });

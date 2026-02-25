@@ -80,11 +80,11 @@ const OrderHistoryCard = ({ orders }: Props) => {
                           ? "bg-emerald-600"
                           : order.status === "IN_DELIVERY"
                             ? "bg-indigo-600"
-                        : order.status === "SHIPPED"
+                        : order.status === "PAID"
                           ? "bg-purple-600"
                           : order.status === "ACCEPTED"
                             ? "bg-blue-600"
-                            : order.status === "PENDING"
+                            : order.status === "PENDING_PAYMENT"
                               ? "bg-yellow-600"
                               : order.status === "CANCELLED"
                                 ? "bg-red-600"
@@ -176,3 +176,4 @@ const OrderHistoryCard = ({ orders }: Props) => {
 };
 
 export default OrderHistoryCard;
+

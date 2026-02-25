@@ -5,15 +5,15 @@ import { Package, Clock, Truck, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ORDER_STEPS = [
-  "PENDING",
+  "PENDING_PAYMENT",
   "ACCEPTED",
-  "SHIPPED",
+  "IN_DELIVERY",
   "DELIVERED",
   "COMPLETED",
 ] as const;
 
 const STEP_CONFIG = {
-  PENDING: {
+  PENDING_PAYMENT: {
     label: "Order Placed",
     description: "We've received your order",
     icon: Package,
@@ -23,9 +23,9 @@ const STEP_CONFIG = {
     description: "Seller accepted your order",
     icon: Clock,
   },
-  SHIPPED: {
-    label: "Shipped",
-    description: "Your order has been shipped",
+  IN_DELIVERY: {
+    label: "In Delivery",
+    description: "Your order is on the way",
     icon: Truck,
   },
   DELIVERED: {
@@ -134,3 +134,4 @@ export default function OrderStepper({ status, timelines }: Props) {
     </section>
   );
 }
+

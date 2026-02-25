@@ -57,14 +57,9 @@ export async function advanceOrderStatusAction({
   if (
     nextStatus === "CANCELLED" &&
     order.isPaid &&
-    [
-      "READY",
-      "IN_DELIVERY",
-      "DELIVERED",
-      "COMPLETED",
-      "SHIPPED",
-      "OUT_FOR_DELIVERY",
-    ].includes(order.status as string)
+    ["READY", "IN_DELIVERY", "DELIVERED", "COMPLETED"].includes(
+      order.status as string,
+    )
   ) {
     const variantQuantities = new Map<string, number>();
     for (const item of order.items) {
@@ -118,4 +113,3 @@ function defaultTimelineMessage(status: OrderStatus) {
       return "Order updated";
   }
 }
-
