@@ -1,7 +1,17 @@
 ﻿"use client";
 
 import Image from "next/image";
-import { X, ShieldCheck, Truck } from "lucide-react";
+import {
+  X,
+  ShieldCheck,
+  Truck,
+  AlertTriangle,
+  CalendarDays,
+  Clock,
+  Flame,
+  Leaf,
+  Utensils,
+} from "lucide-react";
 import {
   Dialog,
   DialogClose,
@@ -129,6 +139,16 @@ export default function ProductPublicDetail({
       }
     };
   }, [activeIndex]);
+
+  const hasFoodDetails =
+    foodDetails &&
+    (foodDetails.ingredients?.length ||
+      foodDetails.preparationTimeMinutes ||
+      foodDetails.portionSize ||
+      foodDetails.spiceLevel ||
+      foodDetails.dietaryTags?.length ||
+      foodDetails.isPerishable ||
+      foodDetails.expiresAt);
 
   return (
     <main className="w-full max-w-[1200px] mx-auto space-y-10 py-8 px-3 sm:px-6 lg:px-4">
@@ -378,62 +398,109 @@ export default function ProductPublicDetail({
         </section>
       )}
 
-      {isFoodProduct && foodDetails && (
-        <div className="mt-8 space-y-6 border-t pt-6">
-          <h3 className="text-lg font-semibold">Food Information</h3>
+      {isFoodProduct && (
+        <section className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm">
+          <h2 className="font-semibold text-lg p-4">Food Information</h2>
+          <Separator />
 
-          {foodDetails.preparationTimeMinutes && (
-            <p className="text-sm text-gray-700">
-              ⏱ Ready in {foodDetails.preparationTimeMinutes} minutes
-            </p>
-          )}
+          <div className="p-6 space-y-6">
+            {hasFoodDetails ? (
+              <>
+                <div className="flex flex-wrap gap-3">
+                  {foodDetails?.preparationTimeMinutes && (
+                    <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-2 rounded-full text-sm">
+                      <Clock className="w-4 h-4" />
+                      Ready in {foodDetails.preparationTimeMinutes} mins
+                    </div>
+                  )}
 
-          {foodDetails.portionSize && (
-            <p className="text-sm text-gray-700">
-              🍽 Portion: {foodDetails.portionSize}
-            </p>
-          )}
+                  {foodDetails?.portionSize && (
+                    <div className="flex items-center gap-2 bg-purple-50 text-purple-700 px-3 py-2 rounded-full text-sm">
+                      <Utensils className="w-4 h-4" />
+                      {foodDetails.portionSize}
+                    </div>
+                  )}
 
-          {foodDetails.spiceLevel && (
-            <p className="text-sm text-gray-700">
-              🌶 Spice Level: {foodDetails.spiceLevel}
-            </p>
-          )}
+                  {foodDetails?.spiceLevel && (
+                    <div className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-2 rounded-full text-sm">
+                      <Flame className="w-4 h-4" />
+                      {foodDetails.spiceLevel}
+                    </div>
+                  )}
 
-          {foodDetails.dietaryTags?.length ? (
-            <div className="flex flex-wrap gap-2">
-              {foodDetails.dietaryTags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-md"
+                  {foodDetails?.isPerishable && (
+                    <div className="flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-2 rounded-full text-sm">
+                      <AlertTriangle className="w-4 h-4" />
+                      Perishable
+                    </div>
+                  )}
+
+                  {foodDetails?.expiresAt && (
+                    <div className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-full text-sm">
+                      <CalendarDays className="w-4 h-4" />
+                      Expires{" "}
+                      {new Date(foodDetails.expiresAt).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+
+                {foodDetails?.dietaryTags?.length ? (
+                  <div>
+                    <p className="text-sm font-medium mb-2">Dietary Tags</p>
+                    <div className="flex flex-wrap gap-2">
+                      {foodDetails.dietaryTags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full"
+                        >
+                          <Leaf className="w-3 h-3" />
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {foodDetails?.ingredients?.length ? (
+                  <div>
+                    <p className="text-sm font-medium mb-2">Ingredients</p>
+                    <div className="flex flex-wrap gap-2">
+                      {foodDetails.ingredients.map((ingredient) => (
+                        <span
+                          key={ingredient}
+                          className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full"
+                        >
+                          {ingredient}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="text-center py-8 space-y-3">
+                <div className="flex justify-center">
+                  <Utensils className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-sm text-gray-500">
+                  No food information has been provided.
+                </p>
+                <p className="text-xs text-gray-400">
+                  Please contact the store for preparation or ingredient
+                  details.
+                </p>
+                <Link
+                  href={`/messages/new?storeId=${data.store.id}&productId=${data.id}`}
+                  className="inline-block"
                 >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          ) : null}
-
-          {foodDetails.ingredients?.length ? (
-            <div>
-              <p className="text-sm font-medium mb-2">Ingredients</p>
-              <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                {foodDetails.ingredients.map((ingredient) => (
-                  <li key={ingredient}>{ingredient}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {foodDetails.isPerishable && (
-            <p className="text-xs text-red-600">⚠ This item is perishable.</p>
-          )}
-
-          {foodDetails.expiresAt && (
-            <p className="text-xs text-gray-500">
-              Expires on {new Date(foodDetails.expiresAt).toLocaleDateString()}
-            </p>
-          )}
-        </div>
+                  <button className="mt-2 bg-[#3c9ee0] hover:bg-[#318bc4] text-white text-sm font-semibold px-4 py-2 rounded-lg transition shadow-sm">
+                    Ask Store a Question
+                  </button>
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

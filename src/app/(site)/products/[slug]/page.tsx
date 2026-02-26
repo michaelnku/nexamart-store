@@ -1,4 +1,3 @@
-// /products/[slug]/page.tsx
 import ProductPublicDetail from "@/components/product/PublicProductDetail";
 import ReviewList from "@/components/reviews/ReviewList";
 import { CurrentUserId } from "@/lib/currentUser";
@@ -74,7 +73,7 @@ export async function generateMetadata({
 
   const canonicalSlug = createProductSlug(product.name, product.id);
   const url = absoluteUrl(`/products/${canonicalSlug}`);
-  const title = `${product.name} | ${APP_NAME}`;
+  const title = `${product.name}`;
   const description = toSeoDescription(product.description, APP_DESCRIPTION);
   const image = product.images[0]?.imageUrl ?? APP_LOGO;
 

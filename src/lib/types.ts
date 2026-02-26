@@ -300,8 +300,7 @@ export type ProductCardType = Product & {
   basePriceUSD: number;
   oldPriceUSD?: number | null;
   images: { imageUrl: string }[];
-  store: { name: string; slug: string; type: "FOOD" | "GENERAL" };
-  prepTimeMinutes?: number | null;
+  store: { name: string; slug: string };
   variants: {
     id: string;
     color: string | null;

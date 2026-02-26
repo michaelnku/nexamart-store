@@ -414,7 +414,7 @@ export const DashboardMenuItems = {
       title: "COMMUNICATION",
       links: [
         {
-          href: "/inbox",
+          href: "/messages",
           icon: Mail,
           name: "Messages",
         },
