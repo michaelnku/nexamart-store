@@ -10,7 +10,7 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FullProduct } from "@/lib/types";
+import { FoodDetails, FullProduct } from "@/lib/types";
 import { useState, useEffect, useRef } from "react";
 import WishlistButton from "./WishlistButton";
 import AddToCartControl from "./AddtoCartButton";
@@ -41,6 +41,8 @@ type Props = {
   }[];
   isWishlisted: boolean;
   userId?: string | null;
+  isFoodProduct?: boolean;
+  foodDetails?: FoodDetails | null;
 };
 
 export default function ProductPublicDetail({
@@ -49,6 +51,8 @@ export default function ProductPublicDetail({
   cartItems,
   isWishlisted,
   userId,
+  isFoodProduct,
+  foodDetails,
 }: Props) {
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
 
@@ -305,72 +309,132 @@ export default function ProductPublicDetail({
         </section>
       )}
 
-      <section className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm">
-        <h2 className="font-semibold text-lg p-4">
-          Specifications Information
-        </h2>
-        <Separator />
+      {!isFoodProduct && (
+        <section className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm">
+          <h2 className="font-semibold text-lg p-4">
+            Specifications Information
+          </h2>
+          <Separator />
 
-        <div className="p-6 grid grid-cols-1 gap-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-6 grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="border rounded-lg shadow-sm">
+                <h3 className="font-semibold text-lg p-4 border-b">
+                  Key Features
+                </h3>
+                <div className="p-4">
+                  {Array.isArray(data.specifications) &&
+                  data.specifications.length > 0 ? (
+                    <ul className="list-disc pl-6 space-y-1 text-sm text-gray-700">
+                      {data.specifications.map((s, i) => (
+                        <li key={i}>{s}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-500 text-sm">No data available</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="border rounded-lg shadow-sm">
+                <h3 className="font-semibold text-lg p-4 border-b">
+                  What's in the box
+                </h3>
+                <div className="p-4">
+                  <p className="text-gray-500 text-sm">No data available</p>
+                </div>
+              </div>
+            </div>
+
             <div className="border rounded-lg shadow-sm">
               <h3 className="font-semibold text-lg p-4 border-b">
-                Key Features
+                Technical Details
               </h3>
               <div className="p-4">
-                {Array.isArray(data.specifications) &&
-                data.specifications.length > 0 ? (
-                  <ul className="list-disc pl-6 space-y-1 text-sm text-gray-700">
-                    {data.specifications.map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ul>
+                {Array.isArray(data.technicalDetails) &&
+                data.technicalDetails.length > 0 ? (
+                  <dl className="space-y-3">
+                    {data.technicalDetails.map((item, i) => {
+                      const t = item as { key: string; value: string };
+                      return (
+                        <span
+                          key={i}
+                          className="grid grid-cols-1 sm:grid-cols-[1fr_3fr] gap-2 "
+                        >
+                          <span className="font-semibold">{t.key}:</span>
+                          <span className="text-gray-600 text-sm break-words">
+                            {t.value}
+                          </span>
+                        </span>
+                      );
+                    })}
+                  </dl>
                 ) : (
                   <p className="text-gray-500 text-sm">No data available</p>
                 )}
               </div>
             </div>
-
-            <div className="border rounded-lg shadow-sm">
-              <h3 className="font-semibold text-lg p-4 border-b">
-                What's in the box
-              </h3>
-              <div className="p-4">
-                <p className="text-gray-500 text-sm">No data available</p>
-              </div>
-            </div>
           </div>
+        </section>
+      )}
 
-          <div className="border rounded-lg shadow-sm">
-            <h3 className="font-semibold text-lg p-4 border-b">
-              Technical Details
-            </h3>
-            <div className="p-4">
-              {Array.isArray(data.technicalDetails) &&
-              data.technicalDetails.length > 0 ? (
-                <dl className="space-y-3">
-                  {data.technicalDetails.map((item, i) => {
-                    const t = item as { key: string; value: string };
-                    return (
-                      <span
-                        key={i}
-                        className="grid grid-cols-1 sm:grid-cols-[1fr_3fr] gap-2 "
-                      >
-                        <span className="font-semibold">{t.key}:</span>
-                        <span className="text-gray-600 text-sm break-words">
-                          {t.value}
-                        </span>
-                      </span>
-                    );
-                  })}
-                </dl>
-              ) : (
-                <p className="text-gray-500 text-sm">No data available</p>
-              )}
+      {isFoodProduct && foodDetails && (
+        <div className="mt-8 space-y-6 border-t pt-6">
+          <h3 className="text-lg font-semibold">Food Information</h3>
+
+          {foodDetails.preparationTimeMinutes && (
+            <p className="text-sm text-gray-700">
+              ⏱ Ready in {foodDetails.preparationTimeMinutes} minutes
+            </p>
+          )}
+
+          {foodDetails.portionSize && (
+            <p className="text-sm text-gray-700">
+              🍽 Portion: {foodDetails.portionSize}
+            </p>
+          )}
+
+          {foodDetails.spiceLevel && (
+            <p className="text-sm text-gray-700">
+              🌶 Spice Level: {foodDetails.spiceLevel}
+            </p>
+          )}
+
+          {foodDetails.dietaryTags?.length ? (
+            <div className="flex flex-wrap gap-2">
+              {foodDetails.dietaryTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-md"
+                >
+                  {tag}
+                </span>
+              ))}
             </div>
-          </div>
+          ) : null}
+
+          {foodDetails.ingredients?.length ? (
+            <div>
+              <p className="text-sm font-medium mb-2">Ingredients</p>
+              <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                {foodDetails.ingredients.map((ingredient) => (
+                  <li key={ingredient}>{ingredient}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {foodDetails.isPerishable && (
+            <p className="text-xs text-red-600">⚠ This item is perishable.</p>
+          )}
+
+          {foodDetails.expiresAt && (
+            <p className="text-xs text-gray-500">
+              Expires on {new Date(foodDetails.expiresAt).toLocaleDateString()}
+            </p>
+          )}
         </div>
-      </section>
+      )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogPortal>

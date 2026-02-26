@@ -9,11 +9,9 @@ import {
 } from "@/lib/ledger/types";
 
 function isUniqueConstraintError(error: unknown): boolean {
-  const knownError = error as Prisma.PrismaClientKnownRequestError;
-  return (
-    knownError instanceof Prisma.PrismaClientKnownRequestError &&
-    knownError.code === "P2002"
-  );
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown };
+  return candidate.code === "P2002";
 }
 
 type TxLike = Prisma.TransactionClient;
@@ -57,20 +55,19 @@ export async function createEscrowEntryIdempotent(
 ) {
   const { context, ...escrowInput } = input;
 
-  try {
-    const metadataWithContext =
-      context
-        ? ({
-            ...(typeof escrowInput.metadata === "object" &&
-            escrowInput.metadata !== null
-              ? (escrowInput.metadata as Record<string, unknown>)
-              : {}),
-            executedBy: context.type,
-            service: context.service,
-            executedAt: context.executedAt.toISOString(),
-          } satisfies Record<string, unknown>)
-        : escrowInput.metadata;
+  const metadataWithContext = context
+    ? ({
+        ...(typeof escrowInput.metadata === "object" &&
+        escrowInput.metadata !== null
+          ? (escrowInput.metadata as Record<string, unknown>)
+          : {}),
+        executedBy: context.type,
+        service: context.service,
+        executedAt: context.executedAt.toISOString(),
+      } satisfies Record<string, unknown>)
+    : escrowInput.metadata;
 
+  try {
     await tx.escrowLedger.create({
       data: {
         ...escrowInput,
@@ -79,7 +76,9 @@ export async function createEscrowEntryIdempotent(
     });
     return { created: true };
   } catch (error) {
-    if (isUniqueConstraintError(error)) return { created: false };
+    if (isUniqueConstraintError(error)) {
+      return { created: false };
+    }
     throw error;
   }
 }

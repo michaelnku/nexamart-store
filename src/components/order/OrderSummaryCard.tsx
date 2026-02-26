@@ -19,17 +19,50 @@ const OrderSummaryCard = ({ order }: Props) => {
     ? order.deliveryType.replaceAll("_", " ")
     : "N/A";
 
-  // ETA window between 4 and 10 days from order creation
   const orderCreatedAt = new Date(order.createdAt);
-  const min = new Date(orderCreatedAt.getTime() + 4 * 24 * 60 * 60 * 1000);
-  const max = new Date(orderCreatedAt.getTime() + 10 * 24 * 60 * 60 * 1000);
-  const eta = `${min.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  })} - ${max.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  })}`;
+
+  const formatDateTime = (date: Date) =>
+    date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+
+  const formatDateOnly = (date: Date) =>
+    date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+
+  let eta: string;
+
+  const isFoodOrder = order.isFoodOrder;
+
+  if (isFoodOrder) {
+    const now = new Date();
+
+    const readyAt = order.readyAt ? new Date(order.readyAt) : null;
+
+    if (order.status === "IN_DELIVERY") {
+      const deliveryEta = new Date(now.getTime() + 20 * 60 * 1000);
+      eta = `~ ${formatDateTime(deliveryEta)}`;
+    } else if (order.status === "READY") {
+      const pickupEta = new Date(now.getTime() + 30 * 60 * 1000);
+      eta = `~ ${formatDateTime(pickupEta)}`;
+    } else if (readyAt) {
+      const estimatedArrival = new Date(readyAt.getTime() + 45 * 60 * 1000);
+      eta = `~ ${formatDateTime(estimatedArrival)}`;
+    } else {
+      eta = "Today";
+    }
+  } else {
+    const generalEta = new Date(
+      orderCreatedAt.getTime() + 14 * 24 * 60 * 60 * 1000,
+    );
+
+    eta = `~ ${formatDateOnly(generalEta)}`;
+  }
 
   const trackingUrl =
     typeof window !== "undefined"
@@ -40,7 +73,7 @@ const OrderSummaryCard = ({ order }: Props) => {
     try {
       await navigator.clipboard.writeText(trackingUrl);
       toast.success("Tracking number copied");
-    } catch {
+    } catch (error) {
       toast.error("Failed to copy tracking number");
     }
   };
@@ -89,7 +122,7 @@ const OrderSummaryCard = ({ order }: Props) => {
 
       <div className="bg-white border rounded-xl p-5 shadow-sm space-y-8">
         <p className="text-lg font-semibold">
-          Estimated Arrival:{" "}
+          {isFoodOrder ? "Estimated Delivery Time:" : "Estimated Arrival:"}{" "}
           <span className="text-[#3c9ee0] font-bold">{eta}</span>
         </p>
 

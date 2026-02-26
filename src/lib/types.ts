@@ -145,6 +145,9 @@ export type OrderSummaryDTO = {
   trackingNumber: string | null;
   totalAmount: number;
   shippingFee: number;
+  status: string;
+  isFoodOrder?: boolean;
+  readyAt: string | null;
 
   items: OrderItemDTO[];
 };
@@ -297,7 +300,8 @@ export type ProductCardType = Product & {
   basePriceUSD: number;
   oldPriceUSD?: number | null;
   images: { imageUrl: string }[];
-  store: { name: string; slug: string };
+  store: { name: string; slug: string; type: "FOOD" | "GENERAL" };
+  prepTimeMinutes?: number | null;
   variants: {
     id: string;
     color: string | null;
@@ -632,5 +636,5 @@ export type FoodDetails = {
   spiceLevel?: "MILD" | "MEDIUM" | "HOT";
   dietaryTags?: string[];
   isPerishable?: boolean;
-  expiresAt?: string;
+  expiresAt?: string | Date;
 };

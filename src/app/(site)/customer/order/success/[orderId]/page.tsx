@@ -43,6 +43,8 @@ export default async function OrderSuccessPage({
       </p>
     );
 
+  const firstSellerGroup = order.sellerGroups[0];
+
   const orderDTO: OrderSummaryDTO = {
     id: order.id,
     createdAt: order.createdAt.toISOString(),
@@ -50,6 +52,11 @@ export default async function OrderSuccessPage({
     trackingNumber: order.trackingNumber,
     totalAmount: order.totalAmount,
     shippingFee: order.shippingFee,
+    status: order.status,
+    isFoodOrder: order.isFoodOrder,
+    readyAt: firstSellerGroup?.readyAt
+      ? firstSellerGroup.readyAt.toISOString()
+      : null,
 
     items: order.items.map((item) => ({
       id: item.id,

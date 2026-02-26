@@ -9,15 +9,17 @@ import { useMemo } from "react";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import StarRating from "@/components/reviews/StarRating";
 
+type Props = {
+  product: ProductCardType;
+  userId?: string | null;
+  isWishlisted?: boolean;
+};
+
 export default function PublicProductCard({
   product,
   userId,
   isWishlisted,
-}: {
-  product: ProductCardType;
-  userId?: string | null;
-  isWishlisted?: boolean;
-}) {
+}: Props) {
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
 
   const cheapestVariant = useMemo(() => {
@@ -107,5 +109,3 @@ export default function PublicProductCard({
     </div>
   );
 }
-
-

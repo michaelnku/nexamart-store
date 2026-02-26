@@ -1,3 +1,4 @@
+// /products/[slug]/page.tsx
 import ProductPublicDetail from "@/components/product/PublicProductDetail";
 import ReviewList from "@/components/reviews/ReviewList";
 import { CurrentUserId } from "@/lib/currentUser";
@@ -13,6 +14,7 @@ import {
   absoluteUrl,
   toSeoDescription,
 } from "@/lib/seo";
+import { FoodDetails } from "@/lib/types";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -27,8 +29,16 @@ const getProductById = cache(async (productId: string) => {
         orderBy: { priceUSD: "asc" },
       },
       store: {
-        select: { id: true, userId: true, name: true, slug: true, logo: true },
+        select: {
+          id: true,
+          userId: true,
+          name: true,
+          slug: true,
+          logo: true,
+          type: true,
+        },
       },
+
       reviews: {
         include: {
           user: { select: { id: true, name: true, image: true } },
@@ -128,6 +138,12 @@ export default async function Page({ params }: PageProps) {
 
   const defaultVariant = product.variants[0];
 
+  const isFoodProduct = product.store?.type === "FOOD";
+
+  const foodDetails = isFoodProduct
+    ? (product.foodDetails as FoodDetails | null)
+    : null;
+
   return (
     <>
       <ProductPublicDetail
@@ -136,11 +152,13 @@ export default async function Page({ params }: PageProps) {
         isWishlisted={isWishlisted}
         cartItems={cart?.items ?? []}
         userId={userId}
+        isFoodProduct={isFoodProduct}
+        foodDetails={foodDetails}
       />
 
       <section className="max-w-[1200px] mx-auto px-3 sm:px-6 lg:px-4 pb-10">
         <div className="bg-white border rounded-xl shadow-sm p-6 space-y-4">
-          <h2 className="text-xl font-semibold">Customer Reviews</h2>
+          <h2 className="text-xl font-semibold">Verified Reviews</h2>
           <ReviewList productId={product.id} />
         </div>
       </section>
