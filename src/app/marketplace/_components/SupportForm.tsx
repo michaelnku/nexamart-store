@@ -42,14 +42,14 @@ const SupportPage = ({ role }: SupportProps) => {
 
     setTimeout(() => {
       toast.success(
-        "Support request submitted — our team will reach out shortly."
+        "Support request submitted — our team will reach out shortly.",
       );
       setIsSubmitting(false);
     }, 800);
   };
 
   return (
-    <main className="max-w-3xl mx-auto space-y-8">
+    <main className="max-w-3xl mx-auto space-y-8 py-10 px-4">
       {/* Header */}
       <div className="text-center space-y-1">
         <h1 className="text-3xl font-bold flex items-center gap-2 justify-center">
