@@ -1,7 +1,11 @@
-import React from "react";
+import SupportForm from "@/app/marketplace/_components/SupportForm";
 
 const page = () => {
-  return <div>page</div>;
+  return (
+    <div>
+      <SupportForm role="buyer" />
+    </div>
+  );
 };
 
 export default page;
