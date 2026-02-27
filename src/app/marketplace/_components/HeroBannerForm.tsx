@@ -89,6 +89,7 @@ export default function HeroBannerForm() {
                   <Textarea
                     placeholder="Up to 50% off limited time"
                     {...field}
+                    value={field.value ?? ""}
                   />
                 </FormControl>
                 <FormMessage />
@@ -104,7 +105,11 @@ export default function HeroBannerForm() {
               <FormItem>
                 <FormLabel>CTA Text</FormLabel>
                 <FormControl>
-                  <Input placeholder="Shop Now" {...field} />
+                  <Input
+                    placeholder="Shop Now"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
                 </FormControl>
               </FormItem>
             )}
@@ -118,7 +123,11 @@ export default function HeroBannerForm() {
               <FormItem>
                 <FormLabel>CTA Link</FormLabel>
                 <FormControl>
-                  <Input placeholder="/sale" {...field} />
+                  <Input
+                    placeholder="/sale"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
                 </FormControl>
               </FormItem>
             )}
