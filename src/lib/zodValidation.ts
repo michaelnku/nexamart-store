@@ -372,3 +372,31 @@ export const updateCouponSchema = createCouponSchema.extend({
 });
 
 export type updateCouponSchemaType = z.infer<typeof updateCouponSchema>;
+
+//hero banner schema
+export const heroBannerSchema = z
+  .object({
+    title: z.string().min(3, "Title is required"),
+    subtitle: z.string().optional().nullable(),
+    ctaText: z.string().optional().nullable(),
+    ctaLink: z.string().optional().nullable(),
+    backgroundImage: z.string().url("Background image required"),
+    productImage: z.string().optional().nullable(),
+    lottieUrl: z.string().optional().nullable(),
+    position: z.number().min(0),
+    placement: z.enum(["HOMEPAGE", "CATEGORY", "FOOD", "GLOBAL"]),
+    isActive: z.boolean(),
+    startsAt: z.date().optional().nullable(),
+    endsAt: z.date().optional().nullable(),
+  })
+  .refine(
+    (data) => {
+      if (data.startsAt && data.endsAt) {
+        return data.endsAt > data.startsAt;
+      }
+      return true;
+    },
+    { message: "End date must be after start date", path: ["endsAt"] },
+  );
+
+export type HeroBannerInput = z.output<typeof heroBannerSchema>;

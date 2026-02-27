@@ -8,6 +8,7 @@ body {
 @source "../node_modules/@uploadthing/react/dist"
 
 
+
 @import "tw-animate-css";
 @import "tailwindcss";
 
@@ -198,4 +199,22 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* hero animation*/
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradientShift {
+  background-size: 200% 200%;
+  animation: gradientShift 12s ease infinite;
 }

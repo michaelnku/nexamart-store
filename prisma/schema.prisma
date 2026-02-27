@@ -943,8 +943,55 @@ model Notification {
 
 /// *
 /// * ===========================
+/// *  MARKETING
+/// * ===========================
+model HeroBanner {
+  id String @id @default(cuid())
+
+  title    String
+  subtitle String?
+  ctaText  String?
+  ctaLink  String?
+
+  backgroundImage String
+  backgroundKey   String?
+
+  productImage String?
+  productKey   String?
+
+  lottieUrl String?
+
+  position Int     @default(0)
+  isActive Boolean @default(true)
+
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deletedAt DateTime?
+  isDeleted Boolean         @default(false)
+  placement BannerPlacement @default(HOMEPAGE)
+
+  @@index([placement])
+  @@index([isActive])
+  @@index([position])
+  @@index([startsAt])
+  @@index([endsAt])
+}
+
+/// *
+/// * ===========================
 /// * ENUMS
 /// * ===========================
+enum BannerPlacement {
+  HOMEPAGE
+  CATEGORY
+  FOOD
+  GLOBAL
+}
+
 enum EmploymentType {
   FULL_TIME
   PART_TIME

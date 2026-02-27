@@ -2,15 +2,36 @@ import ProductRow from "@/components/home/ProductRow";
 import { CurrentUser } from "@/lib/currentUser";
 import { Suspense } from "react";
 import ProductRowSkeleton from "@/components/skeletons/ProductRowSkeleton";
-import Hero from "@/components/hero/Hero";
+import Hero from "@/app/(home)/Hero";
 import ShopByBudget from "@/components/home/ShopByBudget";
 import FeaturedCollections from "@/components/home/FeaturedCollections";
 import RecentlyViewedRow from "@/components/home/RecentlyViewedRow";
 import RecommendedPreviewRow from "@/components/home/RecommendedPreviewRow";
 import TopRatedProductRow from "@/components/home/TopRatedProductRow";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { prisma } from "@/lib/prisma";
 export default async function HomeContent() {
   const user = await CurrentUser();
+
+  const now = new Date();
+
+  const banners = await prisma.heroBanner.findMany({
+    where: {
+      isActive: true,
+      isDeleted: false,
+      placement: "HOMEPAGE",
+      OR: [
+        {
+          startsAt: null,
+          endsAt: null,
+        },
+        {
+          AND: [{ startsAt: { lte: now } }, { endsAt: { gte: now } }],
+        },
+      ],
+    },
+    orderBy: { position: "asc" },
+  });
 
   return (
     <>
