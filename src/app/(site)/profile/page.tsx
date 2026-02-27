@@ -66,7 +66,7 @@ export default async function ProfilePage() {
                 asChild
                 className="w-full bg-[var(--brand-blue)] text-white hover:bg-[var(--brand-blue-hover)] sm:w-auto"
               >
-                <Link href="/profile/update">Update Profile & Password</Link>
+                <Link href="/profile/update">Update Profile</Link>
               </Button>
 
               <DeleteAcountModal userId={profileUser.id} />

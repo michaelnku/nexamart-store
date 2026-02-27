@@ -37,7 +37,8 @@ import {
   useAddressAutocomplete,
 } from "@/hooks/useAddressAutocomplete";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, LocateFixed, MapPin } from "lucide-react";
+import { reverseGeocodeFromCoords } from "@/actions/location/reverseGeocode";
 
 type AddressLabel = "HOME" | "OFFICE" | "OTHER";
 
@@ -75,6 +76,7 @@ export default function AddressForm({
   onBackToSelection,
 }: Props) {
   const { data: user } = useCurrentUserQuery();
+  const [locating, setLocating] = useState(false);
   const [pending, startTransition] = useTransition();
   const [addressQuery, setAddressQuery] = useState("");
   const [selectedSuggestion, setSelectedSuggestion] =
@@ -223,6 +225,58 @@ export default function AddressForm({
     setSelectedSuggestion(null);
     setSelectedCoordinates(null);
     setSelectedPlaceName(null);
+  };
+
+  const handleUseCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setLocating(true);
+    setSelectionError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+
+          const feature = await reverseGeocodeFromCoords({
+            latitude,
+            longitude,
+          });
+
+          if (!feature) {
+            toast.error("Could not determine address from location.");
+            return;
+          }
+
+          const typedSuggestion: AddressSuggestion = {
+            id: feature.id ?? "current-location",
+            place_name: feature.place_name,
+            text: feature.text ?? "",
+            address: feature.address ?? "",
+            center: feature.center as [number, number],
+            context: feature.context ?? [],
+          };
+
+          onSelectSuggestion(typedSuggestion);
+        } catch (err) {
+          console.error(err);
+          toast.error("Failed to fetch address from location.");
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => {
+        toast.error("Permission denied or location unavailable.");
+        setLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+      },
+    );
   };
 
   const onAddressInputChange = (value: string) => {
@@ -440,7 +494,26 @@ export default function AddressForm({
 
         {/* STREET */}
         <div className="space-y-2 relative" ref={wrapperRef}>
-          <Label htmlFor="address-autocomplete">Search Address</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="address-autocomplete">Search Address</Label>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleUseCurrentLocation}
+              disabled={locating}
+              className="text-[var(--brand-blue)] flex items-center gap-1"
+            >
+              {locating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <LocateFixed className="h-4 w-4" />
+              )}
+              Use my location
+            </Button>
+          </div>
+
           <div className="relative">
             <Input
               id="address-autocomplete"

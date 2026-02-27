@@ -3,11 +3,13 @@ export function calculateShippingFee({
   ratePerMile,
   baseFee,
   expressMultiplier = 1,
+  minimumFee = 0,
 }: {
   distanceInMiles: number;
   ratePerMile: number;
   baseFee: number;
   expressMultiplier?: number;
+  minimumFee?: number;
 }) {
   const safeDistance = Math.max(0, distanceInMiles);
   const safeRate = Math.max(0, ratePerMile);
@@ -17,5 +19,7 @@ export function calculateShippingFee({
   const distanceCharge = safeDistance * safeRate;
   const total = (safeBase + distanceCharge) * safeExpress;
 
-  return Math.max(0, Math.round(total * 100) / 100);
+  const rounded = Math.round(total * 100) / 100;
+
+  return Math.max(minimumFee, rounded);
 }

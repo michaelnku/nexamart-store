@@ -611,7 +611,7 @@ model Store {
   location                  String?
   address                   String?
   logoKey                   String?
-  shippingRatePerMile       Float              @default(1.5)
+  shippingRatePerMile       Float              @default(0.8)
   latitude                  Float?
   longitude                 Float?
   isActive                  Boolean            @default(false)
@@ -900,17 +900,21 @@ model Address {
 }
 
 model SiteConfiguration {
-  id                String   @id @default(cuid())
-  siteName          String
-  siteEmail         String
-  sitePhone         String?
-  siteLogo          String?
-  baseDeliveryRate  Float    @default(2)
-  ratePerMile       Float    @default(1)
-  expressMultiplier Float    @default(1.5)
-  pickupFee         Float    @default(0)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                        String   @id @default(cuid())
+  siteName                  String
+  siteEmail                 String
+  sitePhone                 String?
+  siteLogo                  String?
+  foodMinimumDeliveryFee    Float    @default(2)
+  generalMinimumDeliveryFee Float    @default(5)
+  foodBaseDeliveryRate      Float    @default(1.5)
+  foodRatePerMile           Float    @default(0.7)
+  generalBaseDeliveryRate   Float    @default(2)
+  generalRatePerMile        Float    @default(1)
+  expressMultiplier         Float    @default(1.5)
+  pickupFee                 Float    @default(0)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 }
 
 model UserPreference {

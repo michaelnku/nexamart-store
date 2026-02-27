@@ -14,7 +14,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Camera, Loader2, Save } from "lucide-react";
+import { Camera, Loader2, LocateFixed, Save } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import Image from "next/image";
@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { reverseGeocodeFromCoords } from "@/actions/location/reverseGeocode";
 
 type StoreState =
   | { status: "loading" }
@@ -50,6 +51,9 @@ const SellerSettingsPage = () => {
   const user = useCurrentUser();
   const router = useRouter();
 
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+
+  const [locating, setLocating] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [storeState, setStoreState] = useState<StoreState>({
     status: "loading",
@@ -192,7 +196,7 @@ const SellerSettingsPage = () => {
         </div>
 
         <Button variant="outline" asChild>
-          <a href="mailto:support@nexamart.com">Contact Support</a>
+          <a href="mailto:support@shopnexamart.com">Contact Support</a>
         </Button>
       </main>
     );
@@ -318,6 +322,57 @@ const SellerSettingsPage = () => {
     });
   };
 
+  const handleUseCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setLocating(true);
+    setSelectionError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+
+          const feature = await reverseGeocodeFromCoords({
+            latitude,
+            longitude,
+          });
+
+          if (!feature) {
+            toast.error("Could not determine address from location.");
+            return;
+          }
+
+          const typedSuggestion: AddressSuggestion = {
+            id: feature.id ?? "current-location",
+            place_name: feature.place_name,
+            text: feature.text ?? "",
+            address: feature.address ?? "",
+            center: feature.center as [number, number],
+            context: feature.context ?? [],
+          };
+          handleSelectStoreAddress(typedSuggestion);
+        } catch (err) {
+          console.error(err);
+          toast.error("Failed to fetch address from location.");
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => {
+        toast.error("Permission denied or location unavailable.");
+        setLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+      },
+    );
+  };
+
   return (
     <main className="space-y-6 sm:space-y-8 max-w-4xl mx-auto px-4 sm:px-6 pb-8">
       <h1 className="text-2xl sm:text-3xl font-semibold">Store Settings</h1>
@@ -403,11 +458,29 @@ const SellerSettingsPage = () => {
           </div>
 
           <div className="space-y-2 relative">
-            <Label>
-              {store.fulfillmentType === "DIGITAL"
-                ? "Store Address (Optional)"
-                : "Store Address"}
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label>
+                {store.fulfillmentType === "DIGITAL"
+                  ? "Store Address (Optional)"
+                  : "Store Address"}
+              </Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleUseCurrentLocation}
+                disabled={locating}
+                className="text-[var(--brand-blue)] flex items-center gap-1"
+              >
+                {locating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <LocateFixed className="h-4 w-4" />
+                )}
+                Use my location
+              </Button>
+            </div>
+
             <Input
               value={store.address || ""}
               onFocus={() => setShowAddressSuggestions(true)}

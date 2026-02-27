@@ -1,18 +1,27 @@
 "use server";
 
-import { DeliveryType } from "@/generated/prisma/client";
+import { DeliveryType, StoreType } from "@/generated/prisma/client";
 import { CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
 import { calculateDrivingDistance } from "@/lib/shipping/mapboxDistance";
 import { calculateShippingFee } from "@/lib/shipping/shippingCalculator";
 
+export type StoreShippingBreakdown = {
+  storeId: string;
+  distanceInMiles: number;
+  shippingFeeUSD: number;
+  //storeName: string;
+  //storeType: StoreType;
+};
+
 export type CheckoutPreviewSuccess = {
   subtotalUSD: number;
   shippingFeeUSD: number;
   discountUSD: number;
   totalUSD: number;
-  distanceInMiles: number;
+  totalDistanceInMiles: number;
+  storeBreakdown: StoreShippingBreakdown[];
 };
 
 export type CheckoutPreviewResult = CheckoutPreviewSuccess | { error: string };
@@ -92,6 +101,31 @@ export async function getCheckoutPreviewAction({
     0,
   );
 
+  if (deliveryType === "STORE_PICKUP" || deliveryType === "STATION_PICKUP") {
+    const couponResult = await resolveCouponForOrder({
+      userId,
+      couponId,
+      subtotalUSD,
+      shippingUSD: 0,
+    });
+
+    if ("error" in couponResult) {
+      return { error: couponResult.error };
+    }
+
+    const discountUSD = couponResult.discountAmount ?? 0;
+    const totalUSD = Math.max(0, subtotalUSD - discountUSD);
+
+    return {
+      subtotalUSD,
+      shippingFeeUSD: 0,
+      discountUSD,
+      totalUSD,
+      totalDistanceInMiles: 0,
+      storeBreakdown: [],
+    };
+  }
+
   const itemsByStore = new Map<string, typeof cart.items>();
   for (const item of cart.items) {
     const storeId = item.product.store.id;
@@ -102,14 +136,16 @@ export async function getCheckoutPreviewAction({
   const siteConfig = await prisma.siteConfiguration.findFirst({
     orderBy: { updatedAt: "desc" },
     select: {
-      baseDeliveryRate: true,
+      foodBaseDeliveryRate: true,
+      foodRatePerMile: true,
+      generalBaseDeliveryRate: true,
+      generalRatePerMile: true,
       expressMultiplier: true,
     },
   });
 
-  const baseFee = siteConfig?.baseDeliveryRate ?? 0;
   const expressMultiplier =
-    deliveryType === "EXPRESS" ? (siteConfig?.expressMultiplier ?? 1) : 1;
+    deliveryType === "EXPRESS" ? (siteConfig?.expressMultiplier ?? 1.5) : 1;
 
   let storeMetricsEntries: ReadonlyArray<
     readonly [string, { shippingFee: number; distanceInMiles: number }]
@@ -120,7 +156,9 @@ export async function getCheckoutPreviewAction({
       Array.from(itemsByStore.entries()).map(async ([storeId, items]) => {
         const store = items[0].product.store;
         if (store.latitude == null || store.longitude == null) {
-          throw new Error(`Store coordinates are missing for store ${storeId}.`);
+          throw new Error(
+            `Store coordinates are missing for store ${storeId}.`,
+          );
         }
 
         const distance = await calculateDrivingDistance(
@@ -134,17 +172,48 @@ export async function getCheckoutPreviewAction({
           },
         );
 
-        const shippingFee = calculateShippingFee({
+        const isFood = store.type === "FOOD";
+
+        // const minimumFee = isFood
+        //   ? (siteConfig?.foodMinimumDeliveryFee ?? 2)
+        //   : (siteConfig?.generalMinimumDeliveryFee ?? 5);
+
+        const siteBase = isFood
+          ? (siteConfig?.foodBaseDeliveryRate ?? 0)
+          : (siteConfig?.generalBaseDeliveryRate ?? 0);
+
+        const siteRate = isFood
+          ? (siteConfig?.foodRatePerMile ?? 0)
+          : (siteConfig?.generalRatePerMile ?? 0);
+
+        const effectiveRatePerMile =
+          store.shippingRatePerMile && store.shippingRatePerMile > 0
+            ? store.shippingRatePerMile
+            : siteRate;
+
+        const effectiveBaseFee = siteBase;
+
+        const normalFee = calculateShippingFee({
           distanceInMiles: distance.distanceInMiles,
-          ratePerMile: store.shippingRatePerMile ?? 0,
-          baseFee,
-          expressMultiplier,
+          ratePerMile: effectiveRatePerMile,
+          baseFee: effectiveBaseFee,
+          expressMultiplier: 1,
+          //  minimumFee,
         });
+
+        const maxCap = isFood ? 7.99 : 25;
+
+        const cappedNormal = Math.min(normalFee, maxCap);
+
+        const finalShippingFee =
+          deliveryType === "EXPRESS"
+            ? cappedNormal * expressMultiplier
+            : cappedNormal;
 
         return [
           storeId,
           {
-            shippingFee,
+            shippingFee: finalShippingFee,
             distanceInMiles: distance.distanceInMiles,
           },
         ] as const;
@@ -158,18 +227,23 @@ export async function getCheckoutPreviewAction({
 
   const storeMetrics = new Map(storeMetricsEntries);
 
-  const shippingFeeUSD = Array.from(storeMetrics.values()).reduce(
-    (sum, item) => sum + item.shippingFee,
+  const storeBreakdown: StoreShippingBreakdown[] = Array.from(
+    storeMetrics.entries(),
+  ).map(([storeId, metrics]) => ({
+    storeId,
+    distanceInMiles: metrics.distanceInMiles,
+    shippingFeeUSD: metrics.shippingFee,
+  }));
+
+  const shippingFeeUSD = storeBreakdown.reduce(
+    (sum, item) => sum + item.shippingFeeUSD,
     0,
   );
 
-  const distanceInMiles =
-    storeMetrics.size > 0
-      ? Array.from(storeMetrics.values()).reduce(
-          (sum, item) => sum + item.distanceInMiles,
-          0,
-        ) / storeMetrics.size
-      : 0;
+  const totalDistanceInMiles = storeBreakdown.reduce(
+    (sum, item) => sum + item.distanceInMiles,
+    0,
+  );
 
   const couponResult = await resolveCouponForOrder({
     userId,
@@ -190,6 +264,7 @@ export async function getCheckoutPreviewAction({
     shippingFeeUSD,
     discountUSD,
     totalUSD,
-    distanceInMiles,
+    totalDistanceInMiles,
+    storeBreakdown,
   };
 }

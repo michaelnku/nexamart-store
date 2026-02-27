@@ -70,7 +70,7 @@ export async function calculateDrivingDistance(
     const distanceInMeters = route.distance ?? 0;
     const durationInSeconds = route.duration ?? 0;
 
-    if (distanceInMeters <= 0) {
+    if (distanceInMeters == null) {
       throw new Error("Invalid driving distance returned by Mapbox");
     }
 
