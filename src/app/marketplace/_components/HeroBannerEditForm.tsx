@@ -218,6 +218,17 @@ export default function HeroBannerEditForm({ banner }: Props) {
 
                         toast.success("Background replaced");
                       }}
+                      className="
+    ut-button:bg-blue-500/10
+    ut-button:text-blue-600
+    ut-button:border
+    ut-button:border-blue-500/30
+    ut-button:rounded-full
+    ut-button:px-5
+    ut-button:py-2
+    ut-button:text-sm
+    hover:ut-button:bg-blue-500/20
+  "
                     />
 
                     {backgroundImage?.key && (
@@ -271,6 +282,16 @@ export default function HeroBannerEditForm({ banner }: Props) {
 
                         toast.success("Product image replaced");
                       }}
+                      className="
+    ut-button:bg-black
+    ut-button:text-white
+    ut-button:rounded-lg
+    ut-button:px-6
+    ut-button:py-3
+    ut-button:text-sm
+    ut-button:font-medium
+    hover:ut-button:bg-black/90
+  "
                     />
 
                     {productImage?.key && (
