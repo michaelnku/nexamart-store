@@ -47,10 +47,10 @@ function CategoryMiniList({ categories }: Props) {
       <div
         className="
   grid grid-cols-2 gap-3
-  lg:grid-cols-1 lg:gap-2
+  lg:grid-cols-1 lg:gap-5
 "
       >
-        {categories.slice(0, 3).map((cat) => {
+        {categories.slice(0, 4).map((cat) => {
           const CardContent = (
             <div
               className="
@@ -88,7 +88,6 @@ function CategoryMiniList({ categories }: Props) {
             </div>
           );
 
-          // 👉 Desktop: hover shows subcategories
           if (isDesktop && cat.children?.length) {
             return (
               <HoverCard key={cat.id} openDelay={150} closeDelay={100}>
@@ -137,7 +136,6 @@ function CategoryMiniList({ categories }: Props) {
             );
           }
 
-          // 👉 Mobile: simple navigation (no hover)
           return (
             <Link key={cat.id} href={`/category/${cat.slug}`}>
               {CardContent}
