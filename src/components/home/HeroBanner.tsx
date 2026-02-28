@@ -4,32 +4,34 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { HeroBannerWithFiles } from "@/lib/types";
 
-type Banner = {
-  id: string;
-  title: string;
-  subtitle?: string | null;
-  ctaText?: string | null;
-  ctaLink?: string | null;
-  backgroundImage: string;
-  productImage?: string | null;
-  lottieUrl?: string | null;
-};
-
-export default function HeroBanner({ banners }: { banners: Banner[] }) {
+export default function HeroBanner({
+  banners,
+}: {
+  banners: HeroBannerWithFiles[];
+}) {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
     if (banners.length <= 1) return;
+
     const id = setInterval(() => {
       setIndex((prev) => (prev + 1) % banners.length);
     }, 8000);
+
     return () => clearInterval(id);
   }, [banners.length]);
 
   if (!banners.length) return null;
 
   const banner = banners[index];
+
+  const backgroundUrl = banner.backgroundImage?.url;
+  const productUrl = banner.productImage?.url ?? null;
+
+  // Safety guard — prevents Next.js empty string error
+  if (!backgroundUrl) return null;
 
   return (
     <div className="relative w-full h-[260px] sm:h-[340px] lg:h-full rounded-2xl overflow-hidden">
@@ -43,7 +45,7 @@ export default function HeroBanner({ banners }: { banners: Banner[] }) {
           className="absolute inset-0"
         >
           <Image
-            src={banner.backgroundImage}
+            src={backgroundUrl}
             alt={banner.title}
             fill
             priority
@@ -52,9 +54,11 @@ export default function HeroBanner({ banners }: { banners: Banner[] }) {
         </motion.div>
       </AnimatePresence>
 
+      {/* NexaMart Brand Overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#3c9ee0]/90 via-[#1f6fb2]/80 to-black/70" />
 
-      <div className="relative z-10 h-full flex items-center px-8">
+      <div className="relative z-10 h-full flex items-center justify-between px-8">
+        {/* LEFT TEXT */}
         <div className="max-w-xl text-white space-y-4">
           <motion.h1
             key={banner.title}
@@ -79,6 +83,24 @@ export default function HeroBanner({ banners }: { banners: Banner[] }) {
             </Link>
           )}
         </div>
+
+        {/* RIGHT PRODUCT IMAGE */}
+        {productUrl && (
+          <motion.div
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="hidden lg:block"
+          >
+            <Image
+              src={productUrl}
+              alt="Product"
+              width={320}
+              height={320}
+              className="object-contain drop-shadow-2xl"
+            />
+          </motion.div>
+        )}
       </div>
     </div>
   );

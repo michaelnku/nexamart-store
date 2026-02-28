@@ -1,27 +1,39 @@
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { getStructuredCategories } from "@/components/helper/getCategories";
+import CategoryMiniList from "@/components/home/CategoryMiniList";
+import HeroBanner from "@/components/home/HeroBanner";
 import { prisma } from "@/lib/prisma";
-import { getStructuredCategories } from "../../components/helper/getCategories";
-import CategoryMiniList from "../../components/home/CategoryMiniList";
-import HeroBanner from "../../components/home/HeroBanner";
-import { ScrollReveal } from "../../components/animations/ScrollReveal";
+import { HeroBannerWithFiles } from "@/lib/types";
 
 export default async function Hero() {
   const categories = await getStructuredCategories();
 
-  const banners = await prisma.heroBanner.findMany({
+  const now = new Date();
+
+  const bannersRaw = await prisma.heroBanner.findMany({
     where: {
       isActive: true,
       isDeleted: false,
       placement: "HOMEPAGE",
       OR: [
-        { startsAt: null, endsAt: null },
         {
-          startsAt: { lte: new Date() },
-          endsAt: { gte: new Date() },
+          AND: [{ startsAt: null }, { endsAt: null }],
+        },
+        {
+          AND: [{ startsAt: { lte: now } }, { endsAt: { gte: now } }],
         },
       ],
     },
     orderBy: { position: "asc" },
   });
+
+  // Properly type JSON fields
+  const banners: HeroBannerWithFiles[] = bannersRaw.map((banner) => ({
+    ...banner,
+    backgroundImage:
+      banner.backgroundImage as HeroBannerWithFiles["backgroundImage"],
+    productImage: banner.productImage as HeroBannerWithFiles["productImage"],
+  }));
 
   return (
     <section className="space-y-3 lg:space-y-0">

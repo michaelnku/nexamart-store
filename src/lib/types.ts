@@ -12,6 +12,7 @@ import {
   TransactionType,
   UserRole,
   WithdrawalStatus,
+  HeroBanner,
 } from "@/generated/prisma/client";
 
 export type FullProductVariant = ProductVariant & {
@@ -334,6 +335,14 @@ export type HeroBannerImage = {
 export type JsonFile = {
   url: string;
   key: string;
+};
+
+export type HeroBannerWithFiles = Omit<
+  HeroBanner,
+  "backgroundImage" | "productImage"
+> & {
+  backgroundImage: JsonFile;
+  productImage: JsonFile | null;
 };
 
 export type UserDTO = {
