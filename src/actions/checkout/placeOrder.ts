@@ -2,11 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
-import {
-  DeliveryType,
-  PaymentMethod,
-  Prisma,
-} from "@/generated/prisma/client";
+import { DeliveryType, PaymentMethod, Prisma } from "@/generated/prisma/client";
 import { generateTrackingNumber } from "@/components/helper/generateTrackingNumber";
 import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
 import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
@@ -83,7 +79,9 @@ function splitDiscountAcrossGroups(
     return groups.map(() => 0);
   }
 
-  const rawDiscounts = groups.map((group) => (group.baseAmount / totalBase) * totalDiscount);
+  const rawDiscounts = groups.map(
+    (group) => (group.baseAmount / totalBase) * totalDiscount,
+  );
   const floored = rawDiscounts.map((value) => Math.floor(value * 100) / 100);
   const flooredTotal = floored.reduce((sum, value) => sum + value, 0);
   let remainder = Math.round((totalDiscount - flooredTotal) * 100);
@@ -282,12 +280,12 @@ export async function placeOrderAction({
     const siteConfig = await prisma.siteConfiguration.findFirst({
       orderBy: { updatedAt: "desc" },
       select: {
-        baseDeliveryRate: true,
+        generalBaseDeliveryRate: true,
         expressMultiplier: true,
       },
     });
 
-    const baseFee = siteConfig?.baseDeliveryRate ?? 0;
+    const baseFee = siteConfig?.generalBaseDeliveryRate ?? 0;
     const expressMultiplier =
       deliveryType === "EXPRESS" ? (siteConfig?.expressMultiplier ?? 1) : 1;
 
@@ -342,8 +340,12 @@ export async function placeOrderAction({
 
     storeGroups = storeEntries;
 
-    const foodStoreGroups = storeGroups.filter((group) => group.storeType === "FOOD");
-    const nonFoodStoreGroups = storeGroups.filter((group) => group.storeType !== "FOOD");
+    const foodStoreGroups = storeGroups.filter(
+      (group) => group.storeType === "FOOD",
+    );
+    const nonFoodStoreGroups = storeGroups.filter(
+      (group) => group.storeType !== "FOOD",
+    );
 
     orderGroups = [
       ...foodStoreGroups.map((storeGroup) => ({
@@ -359,11 +361,19 @@ export async function placeOrderAction({
             {
               isFoodOrder: false,
               stores: nonFoodStoreGroups,
-              subtotal: nonFoodStoreGroups.reduce((sum, group) => sum + group.subtotal, 0),
-              shippingFee: nonFoodStoreGroups.reduce((sum, group) => sum + group.shippingFee, 0),
+              subtotal: nonFoodStoreGroups.reduce(
+                (sum, group) => sum + group.subtotal,
+                0,
+              ),
+              shippingFee: nonFoodStoreGroups.reduce(
+                (sum, group) => sum + group.shippingFee,
+                0,
+              ),
               distanceInMiles:
-                nonFoodStoreGroups.reduce((sum, group) => sum + group.distanceInMiles, 0) /
-                nonFoodStoreGroups.length,
+                nonFoodStoreGroups.reduce(
+                  (sum, group) => sum + group.distanceInMiles,
+                  0,
+                ) / nonFoodStoreGroups.length,
               totalAmount: 0,
             } satisfies InternalOrderGroup,
           ]
@@ -374,9 +384,13 @@ export async function placeOrderAction({
       return { error: "No valid order groups were found in cart." };
     }
 
-    checkoutShippingFee = orderGroups.reduce((sum, group) => sum + group.shippingFee, 0);
+    checkoutShippingFee = orderGroups.reduce(
+      (sum, group) => sum + group.shippingFee,
+      0,
+    );
     checkoutDistanceInMiles =
-      orderGroups.reduce((sum, group) => sum + group.distanceInMiles, 0) / orderGroups.length;
+      orderGroups.reduce((sum, group) => sum + group.distanceInMiles, 0) /
+      orderGroups.length;
 
     couponResult = await resolveCouponForOrder({
       userId,
@@ -396,13 +410,18 @@ export async function placeOrderAction({
     );
 
     const discountAllocations = splitDiscountAcrossGroups(
-      orderGroups.map((group) => ({ baseAmount: group.subtotal + group.shippingFee })),
+      orderGroups.map((group) => ({
+        baseAmount: group.subtotal + group.shippingFee,
+      })),
       checkoutDiscountAmount,
     );
 
     orderGroups = orderGroups.map((group, index) => ({
       ...group,
-      totalAmount: Math.max(0, group.subtotal + group.shippingFee - discountAllocations[index]),
+      totalAmount: Math.max(
+        0,
+        group.subtotal + group.shippingFee - discountAllocations[index],
+      ),
     }));
 
     if (paymentMethod === "WALLET") {
@@ -648,8 +667,7 @@ export async function placeOrderAction({
 
       if (alreadyPaid.length !== createdOrderIds.length) {
         return {
-          error:
-            "Checkout payment is processing. Please retry in a moment.",
+          error: "Checkout payment is processing. Please retry in a moment.",
         };
       }
 
@@ -680,7 +698,9 @@ export async function placeOrderAction({
           });
 
           if (ordersForSettlement.length !== createdOrderIds.length) {
-            throw new PlaceOrderError("Order settlement payload is incomplete.");
+            throw new PlaceOrderError(
+              "Order settlement payload is incomplete.",
+            );
           }
 
           for (const order of ordersForSettlement) {
@@ -750,7 +770,8 @@ export async function placeOrderAction({
               preloadedOrder: {
                 id: order.id,
                 userId: order.userId,
-                paymentMethod: (order.paymentMethod ?? "WALLET") as PaymentMethod,
+                paymentMethod: (order.paymentMethod ??
+                  "WALLET") as PaymentMethod,
                 status: order.status,
                 isPaid: order.isPaid,
                 postPaymentFinalized: order.postPaymentFinalized,

@@ -35,7 +35,8 @@ import Image from "next/image";
 export default function HeroBannerForm() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [uploading, setUploading] = useState(false);
+  const [uploadingBg, setUploadingBg] = useState(false);
+  const [uploadingProduct, setUploadingProduct] = useState(false);
 
   const form = useForm<HeroBannerInput>({
     resolver: zodResolver(heroBannerSchema),
@@ -44,7 +45,8 @@ export default function HeroBannerForm() {
       subtitle: null,
       ctaText: null,
       ctaLink: null,
-      backgroundImage: undefined as any,
+      backgroundImage:
+        undefined as unknown as HeroBannerInput["backgroundImage"],
       productImage: null,
       lottieUrl: null,
       position: 0,
@@ -64,19 +66,21 @@ export default function HeroBannerForm() {
         return;
       }
 
-      toast.success("Banner created");
+      toast.success("Banner created successfully");
       form.reset();
       router.refresh();
     });
   };
 
   const backgroundImage = form.watch("backgroundImage");
+  const productImage = form.watch("productImage");
 
   return (
-    <div className="max-w-3xl space-y-8">
+    <div className="max-w-3xl mx-auto space-y-8">
+      <h1 className="text-2xl font-semibold">Create Hero Banner</h1>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Title */}
+          {/* TITLE */}
           <FormField
             control={form.control}
             name="title"
@@ -91,7 +95,7 @@ export default function HeroBannerForm() {
             )}
           />
 
-          {/* Subtitle */}
+          {/* SUBTITLE */}
           <FormField
             control={form.control}
             name="subtitle"
@@ -105,31 +109,59 @@ export default function HeroBannerForm() {
             )}
           />
 
-          {/* Upload Background */}
+          {/* CTA TEXT */}
+          <FormField
+            control={form.control}
+            name="ctaText"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>CTA Text</FormLabel>
+                <FormControl>
+                  <Input {...field} value={field.value ?? ""} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* CTA LINK */}
+          <FormField
+            control={form.control}
+            name="ctaLink"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>CTA Link</FormLabel>
+                <FormControl>
+                  <Input {...field} value={field.value ?? ""} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* BACKGROUND IMAGE */}
           <FormField
             control={form.control}
             name="backgroundImage"
             render={() => (
               <FormItem>
-                <FormLabel>Background Image</FormLabel>
+                <FormLabel>Background Image (Required)</FormLabel>
                 <FormControl>
                   <div className="space-y-4">
                     {backgroundImage?.url && (
                       <Image
                         src={backgroundImage.url}
-                        alt="Preview"
-                        width={600}
-                        height={300}
+                        alt="Background Preview"
+                        width={800}
+                        height={400}
                         className="rounded-xl border"
                       />
                     )}
 
                     <UploadButton
                       endpoint="heroBanner"
-                      onUploadBegin={() => setUploading(true)}
+                      onUploadBegin={() => setUploadingBg(true)}
                       onClientUploadComplete={(res) => {
-                        setUploading(false);
-                        const file = res[0];
+                        setUploadingBg(false);
+                        const file = res?.[0];
                         if (!file) {
                           toast.error("Upload failed");
                           return;
@@ -140,8 +172,19 @@ export default function HeroBannerForm() {
                           key: file.key,
                         });
 
-                        toast.success("Uploaded successfully");
+                        toast.success("Background uploaded");
                       }}
+                      className="
+    ut-button:bg-blue-500/10
+    ut-button:text-blue-600
+    ut-button:border
+    ut-button:border-blue-500/30
+    ut-button:rounded-full
+    ut-button:px-5
+    ut-button:py-2
+    ut-button:text-sm
+    hover:ut-button:bg-blue-500/20
+  "
                     />
                   </div>
                 </FormControl>
@@ -150,7 +193,71 @@ export default function HeroBannerForm() {
             )}
           />
 
-          {/* Placement */}
+          {/* PRODUCT IMAGE */}
+          <FormField
+            control={form.control}
+            name="productImage"
+            render={() => (
+              <FormItem>
+                <FormLabel>Product Image (Optional)</FormLabel>
+                <FormControl>
+                  <div className="space-y-4">
+                    {productImage?.url && (
+                      <Image
+                        src={productImage.url}
+                        alt="Product Preview"
+                        width={300}
+                        height={300}
+                        className="rounded-xl border"
+                      />
+                    )}
+
+                    <UploadButton
+                      endpoint="heroBanner"
+                      onUploadBegin={() => setUploadingProduct(true)}
+                      onClientUploadComplete={(res) => {
+                        setUploadingProduct(false);
+                        const file = res?.[0];
+                        if (!file) {
+                          toast.error("Upload failed");
+                          return;
+                        }
+
+                        form.setValue("productImage", {
+                          url: file.url,
+                          key: file.key,
+                        });
+
+                        toast.success("Product image uploaded");
+                      }}
+                      className="
+    ut-button:bg-black
+    ut-button:text-white
+    ut-button:rounded-lg
+    ut-button:px-6
+    ut-button:py-3
+    ut-button:text-sm
+    ut-button:font-medium
+    hover:ut-button:bg-black/90
+  "
+                    />
+
+                    {productImage && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => form.setValue("productImage", null)}
+                      >
+                        Remove Product Image
+                      </Button>
+                    )}
+                  </div>
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* PLACEMENT */}
           <FormField
             control={form.control}
             name="placement"
@@ -177,7 +284,79 @@ export default function HeroBannerForm() {
             )}
           />
 
-          {/* Active */}
+          {/* POSITION */}
+          <FormField
+            control={form.control}
+            name="position"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Position (Order)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    value={field.value}
+                    onChange={(e) => field.onChange(Number(e.target.value))}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* START & END DATES */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="startsAt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Start Date</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      value={
+                        field.value
+                          ? new Date(field.value).toISOString().split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? new Date(e.target.value) : null,
+                        )
+                      }
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="endsAt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>End Date</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      value={
+                        field.value
+                          ? new Date(field.value).toISOString().split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? new Date(e.target.value) : null,
+                        )
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {/* ACTIVE TOGGLE */}
           <FormField
             control={form.control}
             name="isActive"
