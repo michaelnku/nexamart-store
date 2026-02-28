@@ -27,16 +27,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { createHeroBannerAction } from "@/actions/hero-banners";
+import {
+  createHeroBannerAction,
+  deleteHeroBannerImageAction,
+} from "@/actions/banners";
 import { UploadButton } from "@/utils/uploadthing";
 import { toast } from "sonner";
 import Image from "next/image";
+import { Loader2 } from "lucide-react";
 
 export default function HeroBannerForm() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [uploadingBg, setUploadingBg] = useState(false);
   const [uploadingProduct, setUploadingProduct] = useState(false);
+
+  const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
 
   const form = useForm<HeroBannerInput>({
     resolver: zodResolver(heroBannerSchema),
@@ -72,12 +78,39 @@ export default function HeroBannerForm() {
     });
   };
 
+  const { control, handleSubmit, setValue, getValues, reset } = form;
+
+  const deleteSingleImage = async (
+    field: "backgroundImage" | "productImage",
+  ) => {
+    const file = getValues(field);
+    if (!file || !file?.key) return;
+
+    if (deletingKeys.has(file.key)) return;
+
+    setDeletingKeys((prev) => new Set(prev).add(file.key));
+
+    try {
+      await deleteHeroBannerImageAction(file.key);
+      setValue(field, undefined);
+      toast.success("File deleted");
+    } catch {
+      toast.error("Failed to delete file");
+    } finally {
+      setDeletingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(file.key);
+        return next;
+      });
+    }
+  };
+
   const backgroundImage = form.watch("backgroundImage");
   const productImage = form.watch("productImage");
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
-      <h1 className="text-2xl font-semibold">Create Hero Banner</h1>
+      <h1 className="text-2xl font-semibold">Create Banner</h1>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* TITLE */}
@@ -143,7 +176,7 @@ export default function HeroBannerForm() {
             name="backgroundImage"
             render={() => (
               <FormItem>
-                <FormLabel>Background Image (Required)</FormLabel>
+                <FormLabel>Background Image </FormLabel>
                 <FormControl>
                   <div className="space-y-4">
                     {backgroundImage?.url && (
@@ -186,6 +219,20 @@ export default function HeroBannerForm() {
     hover:ut-button:bg-blue-500/20
   "
                     />
+
+                    {backgroundImage?.url && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => deleteSingleImage("backgroundImage")}
+                      >
+                        {deletingKeys.has(backgroundImage.key) ? (
+                          <Loader2 className="animate-spin w-4 h-4" />
+                        ) : (
+                          <p>Remove Background Image</p>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </FormControl>
                 <FormMessage />
@@ -246,9 +293,13 @@ export default function HeroBannerForm() {
                       <Button
                         type="button"
                         variant="destructive"
-                        onClick={() => form.setValue("productImage", null)}
+                        onClick={() => deleteSingleImage("productImage")}
                       >
-                        Remove Product Image
+                        {deletingKeys.has(productImage.key) ? (
+                          <Loader2 className="animate-spin w-4 h-4" />
+                        ) : (
+                          <p>Remove Product Image</p>
+                        )}
                       </Button>
                     )}
                   </div>

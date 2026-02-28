@@ -44,7 +44,7 @@ export const createHeroBannerAction = async (values: HeroBannerInput) => {
   });
 
   revalidatePath("/");
-  revalidatePath("/admin/marketing/hero-banners");
+  revalidatePath("/admin/marketing/banners");
 
   return { success: "Hero banner created successfully!" };
 };
@@ -85,7 +85,7 @@ export const updateHeroBannerAction = async (
     key: string;
   } | null;
 
-  if (existingBg?.key && existingBg.key !== data.backgroundImage.key) {
+  if (existingBg?.key && existingBg.key !== data.backgroundImage?.key) {
     await utapi.deleteFiles(existingBg.key);
   }
 
@@ -110,7 +110,7 @@ export const updateHeroBannerAction = async (
   });
 
   revalidatePath("/");
-  revalidatePath("/admin/marketing/hero-banners");
+  revalidatePath("/admin/marketing/banners");
 
   return { success: "Hero banner updated successfully!" };
 };

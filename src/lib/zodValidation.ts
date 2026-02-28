@@ -381,7 +381,7 @@ export const heroBannerSchema = z
     ctaText: z.string().optional().nullable(),
     ctaLink: z.string().optional().nullable(),
 
-    backgroundImage: fileSchema,
+    backgroundImage: fileSchema.optional().nullable(),
 
     productImage: fileSchema.optional().nullable(),
 
