@@ -169,39 +169,45 @@ export default function HeroBanner({
       {bannerCount > 1 && (
         <>
           <motion.button
+            type="button"
             initial={{ opacity: 0 }}
             animate={{ opacity: hovered ? 1 : 0 }}
             transition={{ duration: 0.3 }}
             onClick={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               paginate(-1);
             }}
             className="
-              hidden lg:flex
-              absolute left-4 top-1/2 -translate-y-1/2
-              bg-white/80 backdrop-blur-sm
-              p-3 rounded-full shadow-md
-              hover:bg-white
-            "
+        hidden lg:flex
+        absolute left-4 top-1/2 -translate-y-1/2
+        bg-white/80 backdrop-blur-sm
+        p-3 rounded-full shadow-md
+        hover:bg-white
+        z-20
+      "
           >
             <ChevronLeft size={22} />
           </motion.button>
 
           <motion.button
+            type="button"
             initial={{ opacity: 0 }}
             animate={{ opacity: hovered ? 1 : 0 }}
             transition={{ duration: 0.3 }}
             onClick={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               paginate(1);
             }}
             className="
-              hidden lg:flex
-              absolute right-4 top-1/2 -translate-y-1/2
-              bg-white/80 backdrop-blur-sm
-              p-3 rounded-full shadow-md
-              hover:bg-white
-            "
+        hidden lg:flex
+        absolute right-4 top-1/2 -translate-y-1/2
+        bg-white/80 backdrop-blur-sm
+        p-3 rounded-full shadow-md
+        hover:bg-white
+        z-20
+      "
           >
             <ChevronRight size={22} />
           </motion.button>
