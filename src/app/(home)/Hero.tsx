@@ -27,13 +27,20 @@ export default async function Hero() {
     orderBy: { position: "asc" },
   });
 
-  // Properly type JSON fields
-  const banners: HeroBannerWithFiles[] = bannersRaw.map((banner) => ({
-    ...banner,
-    backgroundImage:
-      banner.backgroundImage as HeroBannerWithFiles["backgroundImage"],
-    productImage: banner.productImage as HeroBannerWithFiles["productImage"],
-  }));
+  const banners: HeroBannerWithFiles[] = bannersRaw
+    .map((banner) => ({
+      ...banner,
+      backgroundImage:
+        banner.backgroundImage as HeroBannerWithFiles["backgroundImage"],
+      productImage: banner.productImage as HeroBannerWithFiles["productImage"],
+    }))
+    .filter(
+      (banner) =>
+        banner.backgroundImage &&
+        typeof banner.backgroundImage === "object" &&
+        "url" in banner.backgroundImage &&
+        banner.backgroundImage.url,
+    );
 
   return (
     <section className="space-y-3 lg:space-y-0">

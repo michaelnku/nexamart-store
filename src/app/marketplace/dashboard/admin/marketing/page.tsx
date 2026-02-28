@@ -7,8 +7,8 @@ const page = () => {
       <h1>Marketing</h1>
       <p>Coming soon</p>
       <Button variant={"outline"} className="">
-        <Link href={"/marketplace/dashboard/admin/marketing/hero-banners"}>
-          Hero Banner Settings
+        <Link href={"/marketplace/dashboard/admin/marketing/banners"}>
+          Banner Settings
         </Link>
       </Button>
     </div>

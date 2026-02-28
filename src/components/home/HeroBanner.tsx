@@ -27,11 +27,8 @@ export default function HeroBanner({
 
   const banner = banners[index];
 
-  const backgroundUrl = banner.backgroundImage?.url;
   const productUrl = banner.productImage?.url ?? null;
-
-  // Safety guard — prevents Next.js empty string error
-  if (!backgroundUrl) return null;
+  const backgroundUrl = banner.backgroundImage?.url || "/fallback-banner.jpg";
 
   return (
     <div className="relative w-full h-[260px] sm:h-[340px] lg:h-full rounded-2xl overflow-hidden">
