@@ -326,6 +326,15 @@ export type ProfileImage = {
   url: string;
   key: string;
 };
+export type HeroBannerImage = {
+  url: string;
+  key: string;
+};
+
+export type JsonFile = {
+  url: string;
+  key: string;
+};
 
 export type UserDTO = {
   id: string;
