@@ -27,11 +27,12 @@ export default function HeroBanner({
 
   const banner = banners[index];
 
-  const productUrl = banner.productImage?.url ?? null;
   const backgroundUrl = banner.backgroundImage?.url || "/fallback-banner.jpg";
 
-  return (
-    <div className="relative w-full h-[260px] sm:h-[340px] lg:h-full rounded-2xl overflow-hidden">
+  const productUrl = banner.productImage?.url ?? null;
+
+  const BannerContent = (
+    <div className="relative w-full h-[260px] sm:h-[340px] lg:h-full rounded-2xl overflow-hidden cursor-pointer group">
       <AnimatePresence mode="wait">
         <motion.div
           key={banner.id}
@@ -46,42 +47,38 @@ export default function HeroBanner({
             alt={banner.title}
             fill
             priority
-            className="object-cover"
+            className="object-cover transition-transform duration-700 group-hover:scale-105"
           />
         </motion.div>
       </AnimatePresence>
 
-      {/* NexaMart Brand Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#3c9ee0]/90 via-[#1f6fb2]/80 to-black/70" />
+      <div className="absolute inset-0 bg-black/35" />
 
       <div className="relative z-10 h-full flex items-center justify-between px-8">
-        {/* LEFT TEXT */}
         <div className="max-w-xl text-white space-y-4">
           <motion.h1
             key={banner.title}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-3xl font-bold"
+            className="text-3xl sm:text-4xl font-bold leading-tight"
           >
             {banner.title}
           </motion.h1>
 
           {banner.subtitle && (
-            <p className="text-white/90">{banner.subtitle}</p>
+            <p className="text-white/90 text-sm sm:text-base">
+              {banner.subtitle}
+            </p>
           )}
 
-          {banner.ctaText && banner.ctaLink && (
-            <Link
-              href={banner.ctaLink}
-              className="inline-block bg-white text-[#3c9ee0] font-semibold px-6 py-2 rounded-xl hover:scale-105 transition"
-            >
+          {banner.ctaText && (
+            <span className="inline-block bg-white text-[#3c9ee0] font-semibold px-6 py-2 rounded-xl transition group-hover:scale-105">
               {banner.ctaText}
-            </Link>
+            </span>
           )}
         </div>
 
-        {/* RIGHT PRODUCT IMAGE */}
         {productUrl && (
           <motion.div
             initial={{ opacity: 0, x: 40 }}
@@ -101,138 +98,17 @@ export default function HeroBanner({
       </div>
     </div>
   );
+
+  if (banner.ctaLink) {
+    return (
+      <Link
+        href={banner.ctaLink}
+        className="block focus:outline-none focus:ring-2 focus:ring-[#3c9ee0] rounded-2xl"
+      >
+        {BannerContent}
+      </Link>
+    );
+  }
+
+  return BannerContent;
 }
-
-// "use client";
-
-// import { useEffect, useState } from "react";
-// import Image from "next/image";
-// import Link from "next/link";
-// import { motion, AnimatePresence } from "framer-motion";
-// import { ChevronLeft, ChevronRight } from "lucide-react";
-// import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-
-// type Banner = {
-//   id: string;
-//   title: string;
-//   subtitle: string;
-//   ctaText: string;
-//   ctaLink: string;
-//   backgroundImage: string;
-//   productImage?: string;
-//   lottieUrl?: string;
-// };
-
-// const banners: Banner[] = [
-//   {
-//     id: "1",
-//     title: "NexaMart Seasonal Sale",
-//     subtitle: "Up to 50% Off • Limited Time Only",
-//     ctaText: "Shop Now",
-//     ctaLink: "/sale",
-//     backgroundImage:
-//       "https://ijucjait38.ufs.sh/f/rO7LkXAj4RVlsVxoglS5IKehmVlg9HB2w0foaERyvYWz8TpM",
-//     lottieUrl: "",
-//   },
-// ];
-
-// export default function HeroBanner() {
-//   const [index, setIndex] = useState(0);
-
-//   const next = () => setIndex((prev) => (prev + 1) % banners.length);
-
-//   const prev = () =>
-//     setIndex((prev) => (prev - 1 + banners.length) % banners.length);
-
-//   useEffect(() => {
-//     if (banners.length <= 1) return;
-//     const id = setInterval(next, 8000);
-//     return () => clearInterval(id);
-//   }, []);
-
-//   const banner = banners[index];
-
-//   return (
-//     <div className="relative w-full h-[260px] sm:h-[340px] lg:h-full rounded-2xl overflow-hidden shadow-sm">
-//       {/* Animated Gradient Layer */}
-//       <div className="absolute inset-0 bg-gradient-to-br from-[#3c9ee0]/90 via-[#1f6fb2]/80 to-black/70 animate-gradientShift z-10" />
-
-//       {/* Background Image */}
-//       <AnimatePresence mode="wait">
-//         <motion.div
-//           key={banner.id}
-//           initial={{ opacity: 0, scale: 1.02 }}
-//           animate={{ opacity: 1, scale: 1 }}
-//           exit={{ opacity: 0 }}
-//           transition={{ duration: 0.8 }}
-//           className="absolute inset-0"
-//         >
-//           <Image
-//             src={banner.backgroundImage}
-//             alt={banner.title}
-//             fill
-//             priority
-//             className="object-cover"
-//           />
-//         </motion.div>
-//       </AnimatePresence>
-
-//       {/* Content */}
-//       <div className="relative z-20 h-full flex items-center px-6 md:px-10">
-//         <div className="max-w-xl text-white space-y-4">
-//           <AnimatePresence mode="wait">
-//             <motion.div
-//               key={banner.title}
-//               initial={{ opacity: 0, y: 25 }}
-//               animate={{ opacity: 1, y: 0 }}
-//               exit={{ opacity: 0 }}
-//               transition={{ duration: 0.6 }}
-//               className="space-y-3"
-//             >
-//               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight">
-//                 {banner.title}
-//               </h1>
-
-//               <p className="text-sm sm:text-base text-white/90">
-//                 {banner.subtitle}
-//               </p>
-
-//               <Link
-//                 href={banner.ctaLink}
-//                 className="inline-block bg-white text-[#3c9ee0] font-semibold px-6 py-2.5 rounded-xl shadow-md hover:scale-105 transition"
-//               >
-//                 {banner.ctaText}
-//               </Link>
-//             </motion.div>
-//           </AnimatePresence>
-//         </div>
-
-//         {/* Optional Lottie Accent */}
-//         {banner.lottieUrl && (
-//           <div className="absolute right-6 bottom-6 w-24 h-24 opacity-80 hidden md:block">
-//             <DotLottieReact src={banner.lottieUrl} loop autoplay />
-//           </div>
-//         )}
-//       </div>
-
-//       {/* Controls */}
-//       {banners.length > 1 && (
-//         <>
-//           <button
-//             onClick={prev}
-//             className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/40 text-white hover:bg-black/60"
-//           >
-//             <ChevronLeft />
-//           </button>
-
-//           <button
-//             onClick={next}
-//             className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/40 text-white hover:bg-black/60"
-//           >
-//             <ChevronRight />
-//           </button>
-//         </>
-//       )}
-//     </div>
-//   );
-// }

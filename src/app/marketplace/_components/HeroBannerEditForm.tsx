@@ -1,25 +1,43 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { heroBannerSchema, HeroBannerInput } from "@/lib/zodValidation";
-import { updateHeroBannerAction } from "@/actions/banners";
-import { UploadButton } from "@/utils/uploadthing";
-import Image from "next/image";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { HeroBannerImage } from "@/lib/types";
-import { HeroBanner } from "@/generated/prisma";
+import { HeroBannerWithFiles } from "@/lib/types";
 
-type HeroBannerWithFiles = Omit<
-  HeroBanner,
-  "backgroundImage" | "productImage"
-> & {
-  backgroundImage: HeroBannerImage;
-  productImage: HeroBannerImage | null;
-};
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+
+import {
+  updateHeroBannerAction,
+  deleteHeroBannerImageAction,
+  deleteHeroBannerAction,
+} from "@/actions/banners";
+
+import { UploadButton } from "@/utils/uploadthing";
+import { toast } from "sonner";
+import Image from "next/image";
+import { Loader2 } from "lucide-react";
 
 type Props = {
   banner: HeroBannerWithFiles;
@@ -28,15 +46,50 @@ type Props = {
 export default function HeroBannerEditForm({ banner }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
 
   const form = useForm<HeroBannerInput>({
     resolver: zodResolver(heroBannerSchema),
     defaultValues: {
-      ...banner,
+      title: banner.title,
+      subtitle: banner.subtitle,
+      ctaText: banner.ctaText,
+      ctaLink: banner.ctaLink,
+      backgroundImage: banner.backgroundImage,
+      productImage: banner.productImage,
+      lottieUrl: banner.lottieUrl,
+      position: banner.position,
+      placement: banner.placement,
+      isActive: banner.isActive,
+      startsAt: banner.startsAt,
+      endsAt: banner.endsAt,
     },
   });
 
-  const bgImage = form.watch("backgroundImage");
+  const { getValues, setValue } = form;
+
+  const deleteSingleImage = async (
+    field: "backgroundImage" | "productImage",
+  ) => {
+    const file = getValues(field);
+    if (!file?.key) return;
+
+    setDeletingKeys((prev) => new Set(prev).add(file.key));
+
+    try {
+      await deleteHeroBannerImageAction(file.key);
+      setValue(field, null);
+      toast.success("File deleted");
+    } catch {
+      toast.error("Failed to delete file");
+    } finally {
+      setDeletingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(file.key);
+        return next;
+      });
+    }
+  };
 
   const onSubmit = (values: HeroBannerInput) => {
     startTransition(async () => {
@@ -47,38 +100,324 @@ export default function HeroBannerEditForm({ banner }: Props) {
         return;
       }
 
-      toast.success("Updated successfully");
+      toast.success("Banner updated successfully");
       router.refresh();
     });
   };
 
+  const deleteBanner = () => {
+    startTransition(async () => {
+      const res = await deleteHeroBannerAction(banner.id);
+
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
+
+      toast.success("Banner deleted");
+      router.push("/admin/marketing/banners");
+      router.refresh();
+    });
+  };
+
+  const backgroundImage = form.watch("backgroundImage");
+  const productImage = form.watch("productImage");
+
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-      {bgImage?.url && (
-        <Image
-          src={bgImage.url}
-          alt="Preview"
-          width={600}
-          height={300}
-          className="rounded-xl border"
-        />
-      )}
+    <div className="max-w-3xl mx-auto space-y-8">
+      <h1 className="text-2xl font-semibold">Edit Banner</h1>
 
-      <UploadButton
-        endpoint="heroBanner"
-        onClientUploadComplete={(res) => {
-          const file = res[0];
-          form.setValue("backgroundImage", {
-            url: file.url,
-            key: file.key,
-          });
-          toast.success("New image uploaded");
-        }}
-      />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* TITLE */}
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Banner Title</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-      <Button type="submit" disabled={isPending}>
-        {isPending ? "Updating..." : "Update Banner"}
-      </Button>
-    </form>
+          {/* SUBTITLE */}
+          <FormField
+            control={form.control}
+            name="subtitle"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Subtitle</FormLabel>
+                <FormControl>
+                  <Textarea {...field} value={field.value ?? ""} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* CTA TEXT */}
+          <FormField
+            control={form.control}
+            name="ctaText"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>CTA Text</FormLabel>
+                <FormControl>
+                  <Input {...field} value={field.value ?? ""} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* CTA LINK */}
+          <FormField
+            control={form.control}
+            name="ctaLink"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>CTA Link</FormLabel>
+                <FormControl>
+                  <Input {...field} value={field.value ?? ""} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* BACKGROUND IMAGE */}
+          <FormField
+            control={form.control}
+            name="backgroundImage"
+            render={() => (
+              <FormItem>
+                <FormLabel>Background Image</FormLabel>
+                <FormControl>
+                  <div className="space-y-4">
+                    {backgroundImage?.url && (
+                      <Image
+                        src={backgroundImage.url}
+                        alt="Preview"
+                        width={800}
+                        height={400}
+                        className="rounded-xl border"
+                      />
+                    )}
+
+                    <UploadButton
+                      endpoint="heroBanner"
+                      onClientUploadComplete={(res) => {
+                        const file = res?.[0];
+                        if (!file) return;
+
+                        form.setValue("backgroundImage", {
+                          url: file.url,
+                          key: file.key,
+                        });
+
+                        toast.success("Background replaced");
+                      }}
+                    />
+
+                    {backgroundImage?.key && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => deleteSingleImage("backgroundImage")}
+                      >
+                        {deletingKeys.has(backgroundImage.key) ? (
+                          <Loader2 className="animate-spin w-4 h-4" />
+                        ) : (
+                          "Remove Background"
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* PRODUCT IMAGE */}
+          <FormField
+            control={form.control}
+            name="productImage"
+            render={() => (
+              <FormItem>
+                <FormLabel>Product Image</FormLabel>
+                <FormControl>
+                  <div className="space-y-4">
+                    {productImage?.url && (
+                      <Image
+                        src={productImage.url}
+                        alt="Product"
+                        width={300}
+                        height={300}
+                        className="rounded-xl border"
+                      />
+                    )}
+
+                    <UploadButton
+                      endpoint="heroBanner"
+                      onClientUploadComplete={(res) => {
+                        const file = res?.[0];
+                        if (!file) return;
+
+                        form.setValue("productImage", {
+                          url: file.url,
+                          key: file.key,
+                        });
+
+                        toast.success("Product image replaced");
+                      }}
+                    />
+
+                    {productImage?.key && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => deleteSingleImage("productImage")}
+                      >
+                        {deletingKeys.has(productImage.key) ? (
+                          <Loader2 className="animate-spin w-4 h-4" />
+                        ) : (
+                          "Remove Product Image"
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* PLACEMENT */}
+          <FormField
+            control={form.control}
+            name="placement"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Placement</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="HOMEPAGE">Homepage</SelectItem>
+                    <SelectItem value="CATEGORY">Category</SelectItem>
+                    <SelectItem value="FOOD">Food</SelectItem>
+                    <SelectItem value="GLOBAL">Global</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            )}
+          />
+
+          {/* POSITION */}
+          <FormField
+            control={form.control}
+            name="position"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Position</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    value={field.value}
+                    onChange={(e) => field.onChange(Number(e.target.value))}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* DATES */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="startsAt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Start Date</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      value={
+                        field.value
+                          ? new Date(field.value).toISOString().split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? new Date(e.target.value) : null,
+                        )
+                      }
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="endsAt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>End Date</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      value={
+                        field.value
+                          ? new Date(field.value).toISOString().split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? new Date(e.target.value) : null,
+                        )
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {/* ACTIVE */}
+          <FormField
+            control={form.control}
+            name="isActive"
+            render={({ field }) => (
+              <FormItem className="flex items-center gap-3">
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+                <FormLabel>Active</FormLabel>
+              </FormItem>
+            )}
+          />
+
+          {/* ACTION BUTTONS */}
+          <div className="flex justify-between pt-6">
+            <Button type="button" variant="destructive" onClick={deleteBanner}>
+              Delete Banner
+            </Button>
+
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Updating..." : "Update Banner"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
   );
 }

@@ -114,3 +114,36 @@ export const updateHeroBannerAction = async (
 
   return { success: "Hero banner updated successfully!" };
 };
+
+export const deleteHeroBannerAction = async (id: string) => {
+  const user = await CurrentUser();
+  if (!user || user.role !== "ADMIN") {
+    return { error: "Unauthorized access" };
+  }
+
+  const banner = await prisma.heroBanner.findUnique({
+    where: { id },
+  });
+
+  if (!banner) return { error: "Banner not found" };
+
+  const bg = banner.backgroundImage as { key?: string } | null;
+  const product = banner.productImage as { key?: string } | null;
+
+  if (bg?.key) {
+    await utapi.deleteFiles(bg.key);
+  }
+
+  if (product?.key) {
+    await utapi.deleteFiles(product.key);
+  }
+
+  await prisma.heroBanner.delete({
+    where: { id },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/admin/marketing/banners");
+
+  return { success: "Banner deleted successfully" };
+};

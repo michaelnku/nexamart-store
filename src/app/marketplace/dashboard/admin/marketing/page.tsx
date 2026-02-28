@@ -1,7 +1,12 @@
 import { Button } from "@/components/ui/button";
+import { CurrentUser } from "@/lib/currentUser";
 import Link from "next/link";
 
-const page = () => {
+const page = async () => {
+  const user = await CurrentUser();
+  if (!user || user.role !== "ADMIN") {
+    return;
+  }
   return (
     <div>
       <h1>Marketing</h1>
