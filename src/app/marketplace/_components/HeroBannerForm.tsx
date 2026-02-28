@@ -19,7 +19,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-
 import {
   Select,
   SelectTrigger,
@@ -27,26 +26,27 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+
 import { createHeroBannerAction } from "@/actions/hero-banners";
 import { UploadButton } from "@/utils/uploadthing";
 import { toast } from "sonner";
+import Image from "next/image";
 
 export default function HeroBannerForm() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-
   const [uploading, setUploading] = useState(false);
 
   const form = useForm<HeroBannerInput>({
     resolver: zodResolver(heroBannerSchema),
     defaultValues: {
       title: "",
-      subtitle: "",
-      ctaText: "",
-      ctaLink: "",
-      backgroundImage: "",
-      productImage: "",
-      lottieUrl: "",
+      subtitle: null,
+      ctaText: null,
+      ctaLink: null,
+      backgroundImage: undefined as any,
+      productImage: null,
+      lottieUrl: null,
       position: 0,
       placement: "HOMEPAGE",
       isActive: true,
@@ -55,16 +55,22 @@ export default function HeroBannerForm() {
     },
   });
 
-  const { control, handleSubmit, setValue, getValues } = form;
   const onSubmit = (values: HeroBannerInput) => {
     startTransition(async () => {
-      await createHeroBannerAction(values);
+      const res = await createHeroBannerAction(values);
+
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
+
+      toast.success("Banner created");
       form.reset();
       router.refresh();
     });
   };
 
-  const heroBannerImage = form.watch("backgroundImage");
+  const backgroundImage = form.watch("backgroundImage");
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -78,7 +84,7 @@ export default function HeroBannerForm() {
               <FormItem>
                 <FormLabel>Banner Title</FormLabel>
                 <FormControl>
-                  <Input placeholder="NexaMart Mega Sale" {...field} />
+                  <Input {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -93,101 +99,55 @@ export default function HeroBannerForm() {
               <FormItem>
                 <FormLabel>Subtitle</FormLabel>
                 <FormControl>
-                  <Textarea
-                    placeholder="Up to 50% off limited time"
-                    {...field}
-                    value={field.value ?? ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* CTA Text */}
-          <FormField
-            control={form.control}
-            name="ctaText"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>CTA Text</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Shop Now"
-                    {...field}
-                    value={field.value ?? ""}
-                  />
+                  <Textarea {...field} value={field.value ?? ""} />
                 </FormControl>
               </FormItem>
             )}
           />
 
-          {/* CTA Link */}
-          <FormField
-            control={form.control}
-            name="ctaLink"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>CTA Link</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="/sale"
-                    {...field}
-                    value={field.value ?? ""}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-
-          {/* Background Image */}
+          {/* Upload Background */}
           <FormField
             control={form.control}
             name="backgroundImage"
-            render={({ field }) => (
+            render={() => (
               <FormItem>
-                <FormLabel>Background Image URL</FormLabel>
+                <FormLabel>Background Image</FormLabel>
                 <FormControl>
-                  <Input placeholder="https://..." {...field} />
+                  <div className="space-y-4">
+                    {backgroundImage?.url && (
+                      <Image
+                        src={backgroundImage.url}
+                        alt="Preview"
+                        width={600}
+                        height={300}
+                        className="rounded-xl border"
+                      />
+                    )}
+
+                    <UploadButton
+                      endpoint="heroBanner"
+                      onUploadBegin={() => setUploading(true)}
+                      onClientUploadComplete={(res) => {
+                        setUploading(false);
+                        const file = res[0];
+                        if (!file) {
+                          toast.error("Upload failed");
+                          return;
+                        }
+
+                        form.setValue("backgroundImage", {
+                          url: file.url,
+                          key: file.key,
+                        });
+
+                        toast.success("Uploaded successfully");
+                      }}
+                    />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
-          />
-          <UploadButton
-            endpoint="heroBanner"
-            onUploadBegin={() => setUploading(true)}
-            onClientUploadComplete={(res) => {
-              setUploading(false);
-
-              const file = res[0];
-              if (!file) {
-                toast.error("Upload failed");
-                return;
-              }
-
-              setValue(
-                "backgroundImage",
-                {
-                  url: file.url,
-                  key: file.key,
-                },
-                { shouldDirty: true },
-              );
-
-              toast.success("Hero banner image uploaded");
-            }}
-            className="
-     ut-button:bg-[var(--brand-blue)]
-        ut-button:text-white
-        ut-button:border
-        ut-button:border-blue-500/30
-        ut-button:rounded-full
-        ut-button:px-6
-        ut-button:py-2
-        ut-button:text-sm
-        hover:ut-button:bg-blue-500/20
-      "
           />
 
           {/* Placement */}
@@ -203,7 +163,7 @@ export default function HeroBannerForm() {
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select placement" />
+                      <SelectValue />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -217,100 +177,22 @@ export default function HeroBannerForm() {
             )}
           />
 
-          {/* Position */}
-          <FormField
-            control={form.control}
-            name="position"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Position</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    {...field}
-                    onChange={(e) => field.onChange(Number(e.target.value))}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="startsAt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Start Date</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      value={
-                        field.value
-                          ? new Date(field.value).toISOString().split("T")[0]
-                          : ""
-                      }
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? new Date(e.target.value) : null,
-                        )
-                      }
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="endsAt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>End Date</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      value={
-                        field.value
-                          ? new Date(field.value).toISOString().split("T")[0]
-                          : ""
-                      }
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? new Date(e.target.value) : null,
-                        )
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
           {/* Active */}
           <FormField
             control={form.control}
             name="isActive"
             render={({ field }) => (
               <FormItem className="flex items-center gap-3">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
                 <FormLabel>Active</FormLabel>
               </FormItem>
             )}
           />
 
-          <Button
-            type="submit"
-            disabled={isPending}
-            className="bg-[#3c9ee0] hover:bg-[#3389c5]"
-          >
+          <Button type="submit" disabled={isPending}>
             {isPending ? "Saving..." : "Create Banner"}
           </Button>
         </form>

@@ -8,48 +8,6 @@ import { revalidatePath } from "next/cache";
 import { UTApi } from "uploadthing/server";
 
 const utapi = new UTApi();
-export const deleteHeroBannerImageAvatarAction = async () => {
-  const user = await CurrentUser();
-  if (!user) return { error: "Unauthorized" };
-
-  try {
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { profileAvatar: true },
-    });
-
-    if (!dbUser?.profileAvatar) return { error: "No profile avatar to delete" };
-
-    const avatar = dbUser.profileAvatar as {
-      key?: string;
-    };
-
-    if (!avatar.key) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          profileAvatar: Prisma.JsonNull,
-        },
-      });
-
-      return { success: true };
-    }
-
-    await utapi.deleteFiles([avatar.key]);
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        profileAvatar: Prisma.JsonNull,
-      },
-    });
-
-    return { success: true };
-  } catch (err) {
-    console.error(err);
-    return { error: "Could not delete profile image" };
-  }
-};
 
 export const createHeroBannerAction = async (values: HeroBannerInput) => {
   const user = await CurrentUser();
@@ -57,50 +15,31 @@ export const createHeroBannerAction = async (values: HeroBannerInput) => {
     return { error: "Unauthorized access" };
   }
 
-  const normalizedValues: HeroBannerInput = {
-    ...values,
-    subtitle: values.subtitle?.trim() || "",
-    ctaText: values.ctaText?.trim() || "",
-    ctaLink: values.ctaLink?.trim() || "",
-    productImage: values.productImage || "",
-    lottieUrl: values.lottieUrl || "",
-  };
-
-  const parsed = heroBannerSchema.safeParse(normalizedValues);
-
+  const parsed = heroBannerSchema.safeParse(values);
   if (!parsed.success) {
     return { error: "Invalid banner data" };
   }
 
-  const {
-    title,
-    subtitle,
-    ctaText,
-    ctaLink,
-    backgroundImage,
-    productImage,
-    lottieUrl,
-    position,
-    placement,
-    isActive,
-    startsAt,
-    endsAt,
-  } = parsed.data;
+  const data = parsed.data;
 
   await prisma.heroBanner.create({
     data: {
-      title,
-      subtitle: subtitle || null,
-      ctaText: ctaText || null,
-      ctaLink: ctaLink || null,
-      backgroundImage,
-      productImage: productImage || null,
-      lottieUrl: lottieUrl || null,
-      position,
-      placement,
-      isActive,
-      startsAt: startsAt ?? null,
-      endsAt: endsAt ?? null,
+      title: data.title,
+      subtitle: data.subtitle || null,
+      ctaText: data.ctaText || null,
+      ctaLink: data.ctaLink || null,
+
+      backgroundImage: data.backgroundImage as Prisma.JsonObject,
+      productImage: data.productImage
+        ? (data.productImage as Prisma.JsonObject)
+        : Prisma.JsonNull,
+
+      lottieUrl: data.lottieUrl || null,
+      position: data.position,
+      placement: data.placement,
+      isActive: data.isActive,
+      startsAt: data.startsAt ?? null,
+      endsAt: data.endsAt ?? null,
     },
   });
 
@@ -109,6 +48,18 @@ export const createHeroBannerAction = async (values: HeroBannerInput) => {
 
   return { success: "Hero banner created successfully!" };
 };
+
+export const deleteHeroBannerImageAction = async (key: string) => {
+  const user = await CurrentUser();
+  if (!user || user.role !== "ADMIN") {
+    return { error: "Unauthorized access" };
+  }
+
+  await utapi.deleteFiles(key);
+
+  return { success: true };
+};
+
 export const updateHeroBannerAction = async (
   id: string,
   values: HeroBannerInput,
@@ -118,23 +69,41 @@ export const updateHeroBannerAction = async (
     return { error: "Unauthorized access" };
   }
 
-  const parsed = heroBannerSchema.safeParse(values);
+  const existing = await prisma.heroBanner.findUnique({
+    where: { id },
+  });
 
-  if (!parsed.success) {
-    return { error: "Invalid banner data" };
-  }
+  if (!existing) return { error: "Banner not found" };
+
+  const parsed = heroBannerSchema.safeParse(values);
+  if (!parsed.success) return { error: "Invalid banner data" };
 
   const data = parsed.data;
+
+  const existingBg = existing.backgroundImage as {
+    url: string;
+    key: string;
+  } | null;
+
+  if (existingBg?.key && existingBg.key !== data.backgroundImage.key) {
+    await utapi.deleteFiles(existingBg.key);
+  }
 
   await prisma.heroBanner.update({
     where: { id },
     data: {
-      ...data,
+      title: data.title,
       subtitle: data.subtitle || null,
       ctaText: data.ctaText || null,
       ctaLink: data.ctaLink || null,
-      productImage: data.productImage || null,
+      backgroundImage: data.backgroundImage as Prisma.JsonObject,
+      productImage: data.productImage
+        ? (data.productImage as Prisma.JsonObject)
+        : Prisma.JsonNull,
       lottieUrl: data.lottieUrl || null,
+      position: data.position,
+      placement: data.placement,
+      isActive: data.isActive,
       startsAt: data.startsAt ?? null,
       endsAt: data.endsAt ?? null,
     },
@@ -144,24 +113,4 @@ export const updateHeroBannerAction = async (
   revalidatePath("/admin/marketing/hero-banners");
 
   return { success: "Hero banner updated successfully!" };
-};
-
-export const deleteHeroBannerAction = async (id: string) => {
-  const user = await CurrentUser();
-  if (!user || user.role !== "ADMIN") {
-    return { error: "Unauthorized access" };
-  }
-
-  await prisma.heroBanner.update({
-    where: { id },
-    data: {
-      isDeleted: true,
-      isActive: false,
-    },
-  });
-
-  revalidatePath("/");
-  revalidatePath("/admin/marketing/hero-banners");
-
-  return { success: "Hero banner deleted successfully!" };
 };
