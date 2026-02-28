@@ -380,9 +380,13 @@ export const heroBannerSchema = z
     subtitle: z.string().optional().nullable(),
     ctaText: z.string().optional().nullable(),
     ctaLink: z.string().optional().nullable(),
-    backgroundImage: z.string().url("Background image required"),
-    productImage: z.string().optional().nullable(),
+
+    backgroundImage: fileSchema,
+
+    productImage: fileSchema.optional().nullable(),
+
     lottieUrl: z.string().optional().nullable(),
+
     position: z.number().min(0),
     placement: z.enum(["HOMEPAGE", "CATEGORY", "FOOD", "GLOBAL"]),
     isActive: z.boolean(),

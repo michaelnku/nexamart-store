@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,10 +28,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createHeroBannerAction } from "@/actions/hero-banners";
+import { UploadButton } from "@/utils/uploadthing";
+import { toast } from "sonner";
 
 export default function HeroBannerForm() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  const [uploading, setUploading] = useState(false);
 
   const form = useForm<HeroBannerInput>({
     resolver: zodResolver(heroBannerSchema),
@@ -51,6 +55,7 @@ export default function HeroBannerForm() {
     },
   });
 
+  const { control, handleSubmit, setValue, getValues } = form;
   const onSubmit = (values: HeroBannerInput) => {
     startTransition(async () => {
       await createHeroBannerAction(values);
@@ -58,6 +63,8 @@ export default function HeroBannerForm() {
       router.refresh();
     });
   };
+
+  const heroBannerImage = form.watch("backgroundImage");
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -146,6 +153,41 @@ export default function HeroBannerForm() {
                 <FormMessage />
               </FormItem>
             )}
+          />
+          <UploadButton
+            endpoint="heroBanner"
+            onUploadBegin={() => setUploading(true)}
+            onClientUploadComplete={(res) => {
+              setUploading(false);
+
+              const file = res[0];
+              if (!file) {
+                toast.error("Upload failed");
+                return;
+              }
+
+              setValue(
+                "backgroundImage",
+                {
+                  url: file.url,
+                  key: file.key,
+                },
+                { shouldDirty: true },
+              );
+
+              toast.success("Hero banner image uploaded");
+            }}
+            className="
+     ut-button:bg-[var(--brand-blue)]
+        ut-button:text-white
+        ut-button:border
+        ut-button:border-blue-500/30
+        ut-button:rounded-full
+        ut-button:px-6
+        ut-button:py-2
+        ut-button:text-sm
+        hover:ut-button:bg-blue-500/20
+      "
           />
 
           {/* Placement */}

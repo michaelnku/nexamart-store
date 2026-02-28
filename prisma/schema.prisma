@@ -953,11 +953,9 @@ model HeroBanner {
   ctaText  String?
   ctaLink  String?
 
-  backgroundImage String
-  backgroundKey   String?
+  backgroundImage Json
 
-  productImage String?
-  productKey   String?
+  productImage Json?
 
   lottieUrl String?
 

@@ -1,9 +1,55 @@
 "use server";
 
+import { Prisma } from "@/generated/prisma";
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { heroBannerSchema, HeroBannerInput } from "@/lib/zodValidation";
 import { revalidatePath } from "next/cache";
+import { UTApi } from "uploadthing/server";
+
+const utapi = new UTApi();
+export const deleteHeroBannerImageAvatarAction = async () => {
+  const user = await CurrentUser();
+  if (!user) return { error: "Unauthorized" };
+
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { profileAvatar: true },
+    });
+
+    if (!dbUser?.profileAvatar) return { error: "No profile avatar to delete" };
+
+    const avatar = dbUser.profileAvatar as {
+      key?: string;
+    };
+
+    if (!avatar.key) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          profileAvatar: Prisma.JsonNull,
+        },
+      });
+
+      return { success: true };
+    }
+
+    await utapi.deleteFiles([avatar.key]);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        profileAvatar: Prisma.JsonNull,
+      },
+    });
+
+    return { success: true };
+  } catch (err) {
+    console.error(err);
+    return { error: "Could not delete profile image" };
+  }
+};
 
 export const createHeroBannerAction = async (values: HeroBannerInput) => {
   const user = await CurrentUser();

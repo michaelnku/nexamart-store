@@ -30,6 +30,7 @@ import {
   MessageSquareOffIcon,
   ShoppingCartIcon,
   StoreIcon,
+  Award,
 } from "lucide-react";
 
 export const DashboardMenu = {
@@ -243,6 +244,11 @@ export const DashboardMenu = {
           name: "Disputes",
           href: "/marketplace/dashboard/admin/disputes",
           icon: Scale,
+        },
+        {
+          name: "Marketing",
+          href: "/marketplace/dashboard/admin/marketing",
+          icon: Award,
         },
       ],
     },
