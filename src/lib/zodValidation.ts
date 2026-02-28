@@ -376,7 +376,7 @@ export type updateCouponSchemaType = z.infer<typeof updateCouponSchema>;
 //hero banner schema
 export const heroBannerSchema = z
   .object({
-    title: z.string().min(3, "Title is required"),
+    title: z.string().optional().nullable(),
     subtitle: z.string().optional().nullable(),
     ctaText: z.string().optional().nullable(),
     ctaLink: z.string().optional().nullable(),

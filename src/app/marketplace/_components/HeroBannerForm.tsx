@@ -47,7 +47,7 @@ export default function HeroBannerForm() {
   const form = useForm<HeroBannerInput>({
     resolver: zodResolver(heroBannerSchema),
     defaultValues: {
-      title: "",
+      title: null,
       subtitle: null,
       ctaText: null,
       ctaLink: null,
@@ -121,7 +121,7 @@ export default function HeroBannerForm() {
               <FormItem>
                 <FormLabel>Banner Title</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input {...field} value={field.value ?? ""} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

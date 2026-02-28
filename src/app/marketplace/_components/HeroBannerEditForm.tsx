@@ -38,6 +38,7 @@ import { UploadButton } from "@/utils/uploadthing";
 import { toast } from "sonner";
 import Image from "next/image";
 import { Loader2 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 type Props = {
   banner: HeroBannerWithFiles;
@@ -115,7 +116,7 @@ export default function HeroBannerEditForm({ banner }: Props) {
       }
 
       toast.success("Banner deleted");
-      router.push("/admin/marketing/banners");
+      router.push("/marketplace/dashboard/admin/marketing/banners");
       router.refresh();
     });
   };
@@ -137,7 +138,7 @@ export default function HeroBannerEditForm({ banner }: Props) {
               <FormItem>
                 <FormLabel>Banner Title</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input {...field} value={field.value ?? ""} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -430,7 +431,7 @@ export default function HeroBannerEditForm({ banner }: Props) {
           {/* ACTION BUTTONS */}
           <div className="flex justify-between pt-6">
             <Button type="button" variant="destructive" onClick={deleteBanner}>
-              Delete Banner
+              {isPending ? <Spinner /> : "Delete Banner"}
             </Button>
 
             <Button type="submit" disabled={isPending}>

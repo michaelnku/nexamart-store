@@ -44,7 +44,7 @@ export default function HeroBanner({
         >
           <Image
             src={backgroundUrl}
-            alt={banner.title}
+            alt={banner.title || "Banner"}
             fill
             priority
             className="object-cover transition-transform duration-700 group-hover:scale-105"

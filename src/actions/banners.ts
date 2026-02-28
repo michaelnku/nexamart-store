@@ -44,7 +44,7 @@ export const createHeroBannerAction = async (values: HeroBannerInput) => {
   });
 
   revalidatePath("/");
-  revalidatePath("/admin/marketing/banners");
+  revalidatePath("/marketplace/dashboard/admin/marketing/banners");
 
   return { success: "Hero banner created successfully!" };
 };
@@ -110,7 +110,7 @@ export const updateHeroBannerAction = async (
   });
 
   revalidatePath("/");
-  revalidatePath("/admin/marketing/banners");
+  revalidatePath("/marketplace/dashboard/admin/marketing/banners");
 
   return { success: "Hero banner updated successfully!" };
 };
@@ -143,7 +143,7 @@ export const deleteHeroBannerAction = async (id: string) => {
   });
 
   revalidatePath("/");
-  revalidatePath("/admin/marketing/banners");
+  revalidatePath("/marketplace/dashboard/admin/marketing/banners");
 
   return { success: "Banner deleted successfully" };
 };

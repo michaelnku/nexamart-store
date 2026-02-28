@@ -948,7 +948,7 @@ model Notification {
 model HeroBanner {
   id String @id @default(cuid())
 
-  title    String
+  title    String?
   subtitle String?
   ctaText  String?
   ctaLink  String?
