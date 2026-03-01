@@ -47,10 +47,10 @@ function CategoryMiniList({ categories }: Props) {
       <div
         className="
   grid grid-cols-2 gap-3
-  lg:grid-cols-1 lg:gap-5
+  lg:grid-cols-1 lg:gap-4
 "
       >
-        {categories.slice(0, 4).map((cat) => {
+        {categories.slice(0, 3).map((cat) => {
           const CardContent = (
             <div
               className="
