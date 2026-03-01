@@ -13,26 +13,6 @@ import { prisma } from "@/lib/prisma";
 export default async function HomeContent() {
   const user = await CurrentUser();
 
-  const now = new Date();
-
-  const banners = await prisma.heroBanner.findMany({
-    where: {
-      isActive: true,
-      isDeleted: false,
-      placement: "HOMEPAGE",
-      OR: [
-        {
-          startsAt: null,
-          endsAt: null,
-        },
-        {
-          AND: [{ startsAt: { lte: now } }, { endsAt: { gte: now } }],
-        },
-      ],
-    },
-    orderBy: { position: "asc" },
-  });
-
   return (
     <>
       <ScrollReveal y={26} duration={0.7} amount={0.15}>
