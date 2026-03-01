@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, memo } from "react";
+import { useEffect, useState, memo, useMemo } from "react";
 import { Category } from "@/lib/types";
 import Link from "next/link";
 import Image from "next/image";
@@ -13,25 +13,38 @@ import { LayoutGrid } from "lucide-react";
 
 type Props = { categories: Category[] };
 
-/** Simple media query hook */
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(false);
+/* ---------------------------------- */
+/* Breakpoint Hook */
+/* ---------------------------------- */
+function useIsLargeScreen() {
+  const [isLarge, setIsLarge] = useState(false);
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 1024px)");
-    setIsDesktop(media.matches);
+    setIsLarge(media.matches);
 
-    const listener = () => setIsDesktop(media.matches);
+    const listener = () => setIsLarge(media.matches);
     media.addEventListener?.("change", listener);
     media.addListener?.(listener);
+
     return () => media.removeEventListener("change", listener);
   }, []);
 
-  return isDesktop;
+  return isLarge;
 }
 
 function CategoryMiniList({ categories }: Props) {
-  const isDesktop = useIsDesktop();
+  const isLargeScreen = useIsLargeScreen();
+
+  /* ---------------------------------- */
+  /* Hero Display Logic */
+  /* ---------------------------------- */
+  const visibleCategories = useMemo(() => {
+    if (!categories?.length) return [];
+
+    const maxCount = isLargeScreen ? 3 : 3;
+    return categories.slice(0, maxCount);
+  }, [categories, isLargeScreen]);
 
   if (!categories?.length) {
     return (
@@ -46,11 +59,11 @@ function CategoryMiniList({ categories }: Props) {
     <section className="bg-card border h-full rounded-xl p-4">
       <div
         className="
-  grid grid-cols-2 gap-3
-  lg:grid-cols-1 lg:gap-4
-"
+          grid grid-cols-2 gap-3
+          lg:grid-cols-1 lg:gap-5
+        "
       >
-        {categories.slice(0, 4).map((cat) => {
+        {visibleCategories.map((cat) => {
           const CardContent = (
             <div
               className="
@@ -88,7 +101,7 @@ function CategoryMiniList({ categories }: Props) {
             </div>
           );
 
-          if (isDesktop && cat.children?.length) {
+          if (isLargeScreen && cat.children?.length) {
             return (
               <HoverCard key={cat.id} openDelay={150} closeDelay={100}>
                 <HoverCardTrigger asChild>
@@ -142,24 +155,26 @@ function CategoryMiniList({ categories }: Props) {
             </Link>
           );
         })}
+
+        {/* Always Show */}
         <Link
           href="/category"
           className="
-    group flex min-h-[110px] flex-col items-center justify-center gap-2
-    lg:min-h-[64px] lg:flex-row lg:justify-start
-    rounded-xl border bg-background p-4
-    transition-colors hover:bg-muted
-  "
+            group flex min-h-[110px] flex-col items-center justify-center gap-2
+            lg:min-h-[64px] lg:flex-row lg:justify-start
+            rounded-xl border bg-background p-4
+            transition-colors hover:bg-muted
+          "
         >
           <div
             className="
-      flex items-center justify-center
-      w-12 h-12 rounded-full
-      border border-dashed
-      text-muted-foreground
-      group-hover:text-[var(--brand-blue)]
-      transition-colors
-    "
+              flex items-center justify-center
+              w-12 h-12 rounded-full
+              border border-dashed
+              text-muted-foreground
+              group-hover:text-[var(--brand-blue)]
+              transition-colors
+            "
           >
             <LayoutGrid className="w-5 h-5" />
           </div>

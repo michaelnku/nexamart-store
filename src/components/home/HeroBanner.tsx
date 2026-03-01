@@ -59,7 +59,8 @@ export default function HeroBanner({
         2xl:h-[58vh]
         rounded-2xl overflow-hidden
         group
-      "
+              "
+      style={{ touchAction: "pan-y" }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -68,48 +69,41 @@ export default function HeroBanner({
         <motion.div
           key={index}
           custom={direction}
-          initial={{
-            x: direction > 0 ? 200 : -200,
-            opacity: 0,
-            scale: 1.02,
-          }}
-          animate={{
-            x: 0,
-            opacity: 1,
-            scale: 1,
-          }}
-          exit={{
-            x: direction < 0 ? 200 : -200,
-            opacity: 0,
-            scale: 1.02,
-          }}
+          initial={{ x: direction > 0 ? 200 : -200, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: direction < 0 ? 200 : -200, opacity: 0 }}
           transition={{
             x: { type: "spring", stiffness: 260, damping: 30 },
             opacity: { duration: 0.35 },
-            scale: { duration: 0.35 },
           }}
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.25}
           onDragStart={() => setIsDragging(true)}
-          onDragEnd={(_, info: PanInfo) => {
+          onDragEnd={(_, info) => {
             const offset = info.offset.x;
 
-            if (offset < -swipeThreshold) paginate(1);
-            else if (offset > swipeThreshold) paginate(-1);
+            if (offset < -80) paginate(1);
+            else if (offset > 80) paginate(-1);
 
-            setTimeout(() => setIsDragging(false), 120);
+            setTimeout(() => setIsDragging(false), 100);
           }}
-          className="absolute inset-0 cursor-grab active:cursor-grabbing"
+          className="absolute inset-0"
         >
-          <Image
-            src={backgroundUrl}
-            alt={banner.title || "Banner"}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
+          <Link
+            href={banner.ctaLink || "#"}
+            className="absolute inset-0 block"
+            style={{ pointerEvents: isDragging ? "none" : "auto" }}
+          >
+            <Image
+              src={backgroundUrl}
+              alt={banner.title || "Banner"}
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover cursor-grab active:cursor-grabbing"
+            />
+          </Link>
         </motion.div>
       </AnimatePresence>
 
