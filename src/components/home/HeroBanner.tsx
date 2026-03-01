@@ -4,9 +4,8 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Autoplay, EffectFade } from "swiper/modules";
+import { Autoplay, EffectFade } from "swiper/modules";
 import "swiper/css";
-import "swiper/css/navigation";
 import "swiper/css/effect-fade";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -27,12 +26,11 @@ export default function HeroBanner({
     <div
       className="
         relative w-full
-        h-[260px]
-        sm:h-[340px]
-        lg:h-[45vh]
-        xl:h-[50vh]
-        2xl:h-[55vh]
         rounded-2xl overflow-hidden
+        min-h-[260px]
+        sm:min-h-[340px]
+        lg:min-h-[420px]
+        xl:min-h-[500px]
       "
       onMouseEnter={() => {
         setShowNav(true);
@@ -43,10 +41,11 @@ export default function HeroBanner({
         swiperRef.current?.autoplay?.start();
       }}
     >
-      {/* Desktop Navigation Buttons */}
+      {/* Navigation Buttons (Desktop Only) */}
       {showNav && banners.length > 1 && (
         <>
           <button
+            type="button"
             onClick={() => swiperRef.current?.slidePrev()}
             className="
               hidden lg:flex
@@ -60,6 +59,7 @@ export default function HeroBanner({
           </button>
 
           <button
+            type="button"
             onClick={() => swiperRef.current?.slideNext()}
             className="
               hidden lg:flex
@@ -75,7 +75,7 @@ export default function HeroBanner({
       )}
 
       <Swiper
-        modules={[Navigation, Autoplay, EffectFade]}
+        modules={[Autoplay, EffectFade]}
         effect="fade"
         fadeEffect={{ crossFade: true }}
         onSwiper={(swiper) => (swiperRef.current = swiper)}
@@ -85,7 +85,6 @@ export default function HeroBanner({
         }}
         loop={banners.length > 1}
         speed={900}
-        grabCursor
         className="h-full"
       >
         {banners.map((banner) => {
@@ -94,25 +93,28 @@ export default function HeroBanner({
 
           const productUrl = banner.productImage?.url ?? null;
 
-          const SlideContent = (
-            <div className="relative w-full h-full">
-              {/* Background */}
-              <Image
-                src={backgroundUrl}
-                alt={banner.title || "Banner"}
-                fill
-                priority
-                sizes="(max-width: 768px) 100vw, 70vw"
-                className="object-cover"
-              />
+          const SlideInner = (
+            <div className="relative w-full h-full min-h-inherit">
+              {/* Background Image */}
+              <div className="absolute inset-0">
+                <Image
+                  src={backgroundUrl}
+                  alt={banner.title || "Banner"}
+                  fill
+                  priority
+                  sizes="100vw"
+                  className="object-cover"
+                />
+              </div>
 
-              {/* Overlay */}
-              <div className="absolute inset-0 bg-black/25" />
+              {/* Subtle Overlay */}
+              <div className="absolute inset-0 bg-black/30" />
 
               {/* Content */}
-              <div className="relative z-20 h-full flex items-center justify-between px-6 sm:px-8 lg:px-12">
-                <div className="max-w-xl text-white space-y-5">
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold leading-tight">
+              <div className="relative z-20 h-full flex flex-col lg:flex-row items-center justify-between px-6 sm:px-8 lg:px-12 py-8 gap-6">
+                {/* Text */}
+                <div className="max-w-xl text-white space-y-4 text-center lg:text-left">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl xl:text-5xl font-bold leading-tight">
                     {banner.title}
                   </h1>
 
@@ -129,14 +131,15 @@ export default function HeroBanner({
                   )}
                 </div>
 
+                {/* Product Image */}
                 {productUrl && (
-                  <div className="hidden lg:flex items-center justify-center">
+                  <div className="hidden lg:flex items-center justify-center flex-1">
                     <Image
                       src={productUrl}
                       alt="Product"
                       width={420}
                       height={420}
-                      className="object-contain drop-shadow-2xl"
+                      className="object-contain drop-shadow-2xl max-h-[420px] w-auto h-auto"
                     />
                   </div>
                 )}
@@ -145,13 +148,13 @@ export default function HeroBanner({
           );
 
           return (
-            <SwiperSlide key={banner.id}>
+            <SwiperSlide key={banner.id} className="!h-full">
               {banner.ctaLink ? (
                 <Link href={banner.ctaLink} className="block h-full">
-                  {SlideContent}
+                  {SlideInner}
                 </Link>
               ) : (
-                SlideContent
+                SlideInner
               )}
             </SwiperSlide>
           );
