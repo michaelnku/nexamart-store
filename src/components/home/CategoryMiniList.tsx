@@ -60,7 +60,7 @@ function CategoryMiniList({ categories }: Props) {
       <div
         className="
           grid grid-cols-2 gap-3
-          lg:grid-cols-1 lg:gap-5
+          lg:grid-cols-1 lg:gap-8
         "
       >
         {visibleCategories.map((cat) => {
