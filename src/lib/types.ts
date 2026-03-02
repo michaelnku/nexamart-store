@@ -327,22 +327,28 @@ export type ProfileImage = {
   url: string;
   key: string;
 };
-export type HeroBannerImage = {
-  url: string;
-  key: string;
-};
 
 export type JsonFile = {
   url: string;
   key: string;
 };
 
-export type HeroBannerWithFiles = Omit<
-  HeroBanner,
-  "backgroundImage" | "productImage"
-> & {
-  backgroundImage: JsonFile;
-  productImage: JsonFile | null;
+export type BannerFile = {
+  url: string;
+  key: string;
+  width?: number;
+  height?: number;
+  blurDataURL?: string;
+};
+
+export type HeroBannerWithFiles = {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  ctaText?: string | null;
+  ctaLink?: string | null;
+  backgroundImage: BannerFile;
+  productImage?: BannerFile | null;
 };
 
 export type UserDTO = {

@@ -112,7 +112,7 @@ export default function HeroBannerForm() {
     <div className="max-w-3xl mx-auto space-y-8">
       <h1 className="text-2xl font-semibold">Create Banner</h1>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* TITLE */}
           <FormField
             control={form.control}
@@ -194,15 +194,22 @@ export default function HeroBannerForm() {
                       onUploadBegin={() => setUploadingBg(true)}
                       onClientUploadComplete={(res) => {
                         setUploadingBg(false);
+
                         const file = res?.[0];
-                        if (!file) {
+                        if (!file || !file.serverData) {
                           toast.error("Upload failed");
                           return;
                         }
 
-                        form.setValue("backgroundImage", {
-                          url: file.url,
-                          key: file.key,
+                        const { url, key, width, height, blurDataURL } =
+                          file.serverData;
+
+                        setValue("backgroundImage", {
+                          url,
+                          key,
+                          width,
+                          height: height ?? undefined,
+                          blurDataURL,
                         });
 
                         toast.success("Background uploaded");
@@ -264,15 +271,22 @@ export default function HeroBannerForm() {
                       onUploadBegin={() => setUploadingProduct(true)}
                       onClientUploadComplete={(res) => {
                         setUploadingProduct(false);
+
                         const file = res?.[0];
-                        if (!file) {
+                        if (!file || !file.serverData) {
                           toast.error("Upload failed");
                           return;
                         }
 
-                        form.setValue("productImage", {
-                          url: file.url,
-                          key: file.key,
+                        const { url, key, width, height, blurDataURL } =
+                          file.serverData;
+
+                        setValue("productImage", {
+                          url,
+                          key,
+                          width,
+                          height: height ?? undefined,
+                          blurDataURL,
                         });
 
                         toast.success("Product image uploaded");

@@ -99,7 +99,12 @@ export default function HeroBanner({
               src={backgroundUrl}
               alt={banner.title || "Banner"}
               fill
-              priority
+              priority={index === 0}
+              quality={75}
+              placeholder={
+                banner.backgroundImage?.blurDataURL ? "blur" : "empty"
+              }
+              blurDataURL={banner.backgroundImage?.blurDataURL}
               sizes="100vw"
               className="object-cover cursor-grab active:cursor-grabbing"
             />
