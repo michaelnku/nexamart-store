@@ -6,7 +6,6 @@ export const fileSchema = z.object({
   key: z.string(),
   width: z.number().optional(),
   height: z.number().optional(),
-  blurDataURL: z.string().optional(),
 });
 
 //register a user

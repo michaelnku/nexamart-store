@@ -1,446 +1,232 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { heroBannerSchema, HeroBannerInput } from "@/lib/zodValidation";
-
-import {
-  Form,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
-} from "@/components/ui/form";
-
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
-
-import {
-  createHeroBannerAction,
-  deleteHeroBannerImageAction,
-} from "@/actions/banners";
-import { UploadButton } from "@/utils/uploadthing";
-import { toast } from "sonner";
+import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
-import { Loader2 } from "lucide-react";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { HeroBannerWithFiles } from "@/lib/types";
 
-export default function HeroBannerForm() {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [uploadingBg, setUploadingBg] = useState(false);
-  const [uploadingProduct, setUploadingProduct] = useState(false);
+const AUTO_PLAY_DELAY = 8000;
 
-  const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
+export default function HeroBanner({
+  banners,
+}: {
+  banners: HeroBannerWithFiles[];
+}) {
+  const [[index, direction], setIndex] = useState<[number, number]>([0, 0]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  const form = useForm<HeroBannerInput>({
-    resolver: zodResolver(heroBannerSchema),
-    defaultValues: {
-      title: null,
-      subtitle: null,
-      ctaText: null,
-      ctaLink: null,
-      backgroundImage:
-        undefined as unknown as HeroBannerInput["backgroundImage"],
-      productImage: null,
-      lottieUrl: null,
-      position: 0,
-      placement: "HOMEPAGE",
-      isActive: true,
-      startsAt: null,
-      endsAt: null,
+  const bannerCount = banners.length;
+
+  const paginate = useCallback(
+    (newDirection: number) => {
+      setIndex(([prev]) => [
+        (prev + newDirection + bannerCount) % bannerCount,
+        newDirection,
+      ]);
+      setIsLoaded(false);
     },
-  });
+    [bannerCount],
+  );
 
-  const onSubmit = (values: HeroBannerInput) => {
-    startTransition(async () => {
-      const res = await createHeroBannerAction(values);
+  useEffect(() => {
+    if (bannerCount <= 1 || isHovered || isDragging) return;
 
-      if (res?.error) {
-        toast.error(res.error);
-        return;
-      }
+    const interval = setInterval(() => {
+      paginate(1);
+    }, AUTO_PLAY_DELAY);
 
-      toast.success("Banner created successfully");
-      form.reset();
-      router.refresh();
-    });
-  };
+    return () => clearInterval(interval);
+  }, [bannerCount, isHovered, isDragging, paginate]);
 
-  const { control, handleSubmit, setValue, getValues, reset } = form;
+  if (!bannerCount) return null;
 
-  const deleteSingleImage = async (
-    field: "backgroundImage" | "productImage",
-  ) => {
-    const file = getValues(field);
-    if (!file || !file?.key) return;
-
-    if (deletingKeys.has(file.key)) return;
-
-    setDeletingKeys((prev) => new Set(prev).add(file.key));
-
-    try {
-      await deleteHeroBannerImageAction(file.key);
-      setValue(field, undefined);
-      toast.success("File deleted");
-    } catch {
-      toast.error("Failed to delete file");
-    } finally {
-      setDeletingKeys((prev) => {
-        const next = new Set(prev);
-        next.delete(file.key);
-        return next;
-      });
-    }
-  };
-
-  const backgroundImage = form.watch("backgroundImage");
-  const productImage = form.watch("productImage");
+  const banner = banners[index];
+  const backgroundUrl = banner.backgroundImage?.url || "/fallback-banner.jpg";
+  const productUrl = banner.productImage?.url ?? null;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
-      <h1 className="text-2xl font-semibold">Create Banner</h1>
-      <Form {...form}>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* TITLE */}
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Banner Title</FormLabel>
-                <FormControl>
-                  <Input {...field} value={field.value ?? ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+    <div
+      className="
+        relative w-full
+        h-[260px]
+        sm:h-[360px]
+        lg:h-[48vh]
+        xl:h-[52vh]
+        2xl:h-[58vh]
+        rounded-2xl overflow-hidden
+        group
+      "
+      style={{ touchAction: "pan-y" }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Skeleton */}
+      {!isLoaded && (
+        <div className="absolute inset-0 bg-gray-200 animate-pulse z-0" />
+      )}
+
+      <AnimatePresence initial={false} custom={direction} mode="wait">
+        <motion.div
+          key={index}
+          custom={direction}
+          initial={{ x: direction > 0 ? 200 : -200, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: direction < 0 ? 200 : -200, opacity: 0 }}
+          transition={{
+            x: { type: "spring", stiffness: 260, damping: 30 },
+            opacity: { duration: 0.35 },
+          }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.25}
+          onDragStart={() => setIsDragging(true)}
+          onDragEnd={(_, info) => {
+            if (info.offset.x < -80) paginate(1);
+            else if (info.offset.x > 80) paginate(-1);
+
+            setTimeout(() => setIsDragging(false), 100);
+          }}
+          className="absolute inset-0"
+        >
+          <Image
+            src={backgroundUrl}
+            alt={banner.title || "Banner"}
+            fill
+            priority={index === 0}
+            quality={75}
+            sizes="100vw"
+            onLoadingComplete={() => setIsLoaded(true)}
+            className="object-cover"
           />
+        </motion.div>
+      </AnimatePresence>
 
-          {/* SUBTITLE */}
-          <FormField
-            control={form.control}
-            name="subtitle"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Subtitle</FormLabel>
-                <FormControl>
-                  <Textarea {...field} value={field.value ?? ""} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-black/10" />
 
-          {/* CTA TEXT */}
-          <FormField
-            control={form.control}
-            name="ctaText"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>CTA Text</FormLabel>
-                <FormControl>
-                  <Input {...field} value={field.value ?? ""} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+      {/* Click Layer */}
+      {banner.ctaLink && !isDragging && (
+        <Link href={banner.ctaLink} className="absolute inset-0 z-10" />
+      )}
 
-          {/* CTA LINK */}
-          <FormField
-            control={form.control}
-            name="ctaLink"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>CTA Link</FormLabel>
-                <FormControl>
-                  <Input {...field} value={field.value ?? ""} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+      {/* Content */}
+      <div className="relative z-20 h-full flex items-center justify-between px-6 sm:px-10 lg:px-16">
+        <div className="max-w-xl text-white space-y-5">
+          <motion.h1
+            key={`title-${index}`}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold leading-tight"
+          >
+            {banner.title}
+          </motion.h1>
 
-          {/* BACKGROUND IMAGE */}
-          <FormField
-            control={form.control}
-            name="backgroundImage"
-            render={() => (
-              <FormItem>
-                <FormLabel>Background Image </FormLabel>
-                <FormControl>
-                  <div className="space-y-4">
-                    {backgroundImage?.url && (
-                      <Image
-                        src={backgroundImage.url}
-                        alt="Background Preview"
-                        width={800}
-                        height={400}
-                        className="rounded-xl border"
-                      />
-                    )}
+          {banner.subtitle && (
+            <motion.p
+              key={`subtitle-${index}`}
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="text-white/90 text-sm sm:text-base lg:text-lg"
+            >
+              {banner.subtitle}
+            </motion.p>
+          )}
 
-                    <UploadButton
-                      endpoint="heroBanner"
-                      onUploadBegin={() => setUploadingBg(true)}
-                      onClientUploadComplete={(res) => {
-                        setUploadingBg(false);
+          {banner.ctaText && (
+            <motion.span
+              key={`cta-${index}`}
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="
+                inline-block
+                bg-white
+                text-[#3c9ee0]
+                font-semibold
+                px-6 py-2.5
+                rounded-xl
+                shadow-lg
+              "
+            >
+              {banner.ctaText}
+            </motion.span>
+          )}
+        </div>
 
-                        const file = res?.[0];
-                        if (!file || !file.serverData) {
-                          toast.error("Upload failed");
-                          return;
-                        }
-
-                        const { url, key, width, height, blurDataURL } =
-                          file.serverData;
-
-                        setValue("backgroundImage", {
-                          url,
-                          key,
-                          width,
-                          height: height ?? undefined,
-                          blurDataURL,
-                        });
-
-                        toast.success("Background uploaded");
-                      }}
-                      className="
-    ut-button:bg-blue-500/10
-    ut-button:text-blue-600
-    ut-button:border
-    ut-button:border-blue-500/30
-    ut-button:rounded-full
-    ut-button:px-5
-    ut-button:py-2
-    ut-button:text-sm
-    hover:ut-button:bg-blue-500/20
-  "
-                    />
-
-                    {backgroundImage?.url && (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={() => deleteSingleImage("backgroundImage")}
-                      >
-                        {deletingKeys.has(backgroundImage.key) ? (
-                          <Loader2 className="animate-spin w-4 h-4" />
-                        ) : (
-                          <p>Remove Background Image</p>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* PRODUCT IMAGE */}
-          <FormField
-            control={form.control}
-            name="productImage"
-            render={() => (
-              <FormItem>
-                <FormLabel>Product Image (Optional)</FormLabel>
-                <FormControl>
-                  <div className="space-y-4">
-                    {productImage?.url && (
-                      <Image
-                        src={productImage.url}
-                        alt="Product Preview"
-                        width={300}
-                        height={300}
-                        className="rounded-xl border"
-                      />
-                    )}
-
-                    <UploadButton
-                      endpoint="heroBanner"
-                      onUploadBegin={() => setUploadingProduct(true)}
-                      onClientUploadComplete={(res) => {
-                        setUploadingProduct(false);
-
-                        const file = res?.[0];
-                        if (!file || !file.serverData) {
-                          toast.error("Upload failed");
-                          return;
-                        }
-
-                        const { url, key, width, height, blurDataURL } =
-                          file.serverData;
-
-                        setValue("productImage", {
-                          url,
-                          key,
-                          width,
-                          height: height ?? undefined,
-                          blurDataURL,
-                        });
-
-                        toast.success("Product image uploaded");
-                      }}
-                      className="
-    ut-button:bg-black
-    ut-button:text-white
-    ut-button:rounded-lg
-    ut-button:px-6
-    ut-button:py-3
-    ut-button:text-sm
-    ut-button:font-medium
-    hover:ut-button:bg-black/90
-  "
-                    />
-
-                    {productImage && (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={() => deleteSingleImage("productImage")}
-                      >
-                        {deletingKeys.has(productImage.key) ? (
-                          <Loader2 className="animate-spin w-4 h-4" />
-                        ) : (
-                          <p>Remove Product Image</p>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </FormControl>
-              </FormItem>
-            )}
-          />
-
-          {/* PLACEMENT */}
-          <FormField
-            control={form.control}
-            name="placement"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Placement</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="HOMEPAGE">Homepage</SelectItem>
-                    <SelectItem value="CATEGORY">Category</SelectItem>
-                    <SelectItem value="FOOD">Food</SelectItem>
-                    <SelectItem value="GLOBAL">Global</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )}
-          />
-
-          {/* POSITION */}
-          <FormField
-            control={form.control}
-            name="position"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Position (Order)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    value={field.value}
-                    onChange={(e) => field.onChange(Number(e.target.value))}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-
-          {/* START & END DATES */}
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="startsAt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Start Date</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      value={
-                        field.value
-                          ? new Date(field.value).toISOString().split("T")[0]
-                          : ""
-                      }
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? new Date(e.target.value) : null,
-                        )
-                      }
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
+        {productUrl && (
+          <motion.div
+            key={`product-${index}`}
+            initial={{ opacity: 0, x: 80 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            className="hidden lg:flex items-center justify-center"
+          >
+            <Image
+              src={productUrl}
+              alt="Product"
+              width={460}
+              height={460}
+              quality={75}
+              className="object-contain drop-shadow-2xl"
             />
+          </motion.div>
+        )}
+      </div>
 
-            <FormField
-              control={form.control}
-              name="endsAt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>End Date</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      value={
-                        field.value
-                          ? new Date(field.value).toISOString().split("T")[0]
-                          : ""
-                      }
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? new Date(e.target.value) : null,
-                        )
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+      {/* Desktop Arrows */}
+      {bannerCount > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              paginate(-1);
+            }}
+            className="
+              hidden lg:flex
+              absolute left-6 top-1/2 -translate-y-1/2
+              bg-white/80 backdrop-blur-md
+              p-3 rounded-full
+              shadow-md
+              hover:bg-white
+              transition-all
+              z-30
+              opacity-0 group-hover:opacity-100
+            "
+          >
+            <ChevronLeft size={22} />
+          </button>
 
-          {/* ACTIVE TOGGLE */}
-          <FormField
-            control={form.control}
-            name="isActive"
-            render={({ field }) => (
-              <FormItem className="flex items-center gap-3">
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-                <FormLabel>Active</FormLabel>
-              </FormItem>
-            )}
-          />
-
-          <Button type="submit" disabled={isPending}>
-            {isPending ? "Saving..." : "Create Banner"}
-          </Button>
-        </form>
-      </Form>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              paginate(1);
+            }}
+            className="
+              hidden lg:flex
+              absolute right-6 top-1/2 -translate-y-1/2
+              bg-white/80 backdrop-blur-md
+              p-3 rounded-full
+              shadow-md
+              hover:bg-white
+              transition-all
+              z-30
+              opacity-0 group-hover:opacity-100
+            "
+          >
+            <ChevronRight size={22} />
+          </button>
+        </>
+      )}
     </div>
   );
 }

@@ -338,7 +338,6 @@ export type BannerFile = {
   key: string;
   width?: number;
   height?: number;
-  blurDataURL?: string;
 };
 
 export type HeroBannerWithFiles = {

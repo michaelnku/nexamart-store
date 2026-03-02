@@ -64,6 +64,8 @@ export default function HeroBanner({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+
       {/* Slides */}
       <AnimatePresence initial={false} custom={direction} mode="wait">
         <motion.div

@@ -1,8 +1,6 @@
 import { CurrentUser } from "@/lib/currentUser";
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
-import sharp from "sharp";
-import { getPlaiceholder } from "plaiceholder";
 
 const f = createUploadthing();
 
@@ -87,32 +85,11 @@ export const ourFileRouter = {
     .middleware(() => handleAuth())
 
     .onUploadComplete(async ({ metadata, file }) => {
-      // Fetch file buffer
-      const response = await fetch(file.ufsUrl);
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-
-      // Resize + Convert to WebP
-      const resized = await sharp(buffer)
-        .resize(1600) // max width
-        .webp({ quality: 80 })
-        .toBuffer();
-
-      // Generate blur
-      const { base64 } = await getPlaiceholder(resized);
-
       console.log("Upload complete for userId:", metadata.user.id);
 
       console.log("file url", file.ufsUrl);
 
-      return {
-        uploadedBy: metadata.user.id,
-        url: file.url,
-        key: file.key,
-        width: 1600,
-        height: null,
-        blurDataURL: base64,
-      };
+      return { uploadedBy: metadata.user.id };
     }),
 
   categoryIcon: f({
