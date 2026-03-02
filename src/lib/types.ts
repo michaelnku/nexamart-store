@@ -343,7 +343,7 @@ export type BannerFile = {
 
 export type HeroBannerWithFiles = {
   id: string;
-  title: string;
+  title?: string | null;
   subtitle?: string | null;
   ctaText?: string | null;
   ctaLink?: string | null;
