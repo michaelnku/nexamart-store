@@ -349,6 +349,12 @@ export type HeroBannerWithFiles = {
   ctaLink?: string | null;
   backgroundImage: BannerFile;
   productImage?: BannerFile | null;
+  lottieUrl?: string | null;
+  position: number;
+  placement?: "FOOD" | "CATEGORY" | "HOMEPAGE" | "GLOBAL";
+  isActive?: boolean;
+  startsAt?: Date | null;
+  endsAt?: Date | null;
 };
 
 export type UserDTO = {
