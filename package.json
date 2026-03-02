@@ -91,8 +91,7 @@
     ],
     "onlyBuiltDependencies": [
       "@prisma/engines",
-      "prisma",
-      "sharp"
+      "prisma"
     ]
   }
 }
