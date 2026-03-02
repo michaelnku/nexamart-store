@@ -336,24 +336,17 @@ export type JsonFile = {
 export type BannerFile = {
   url: string;
   key: string;
-  width?: number;
-  height?: number;
+  width?: number | null;
+  height?: number | null;
+  blurDataURL?: string | null;
 };
 
-export type HeroBannerWithFiles = {
-  id: string;
-  title?: string | null;
-  subtitle?: string | null;
-  ctaText?: string | null;
-  ctaLink?: string | null;
+export type HeroBannerWithFiles = Omit<
+  HeroBanner,
+  "backgroundImage" | "productImage"
+> & {
   backgroundImage: BannerFile;
-  productImage?: BannerFile | null;
-  lottieUrl?: string | null;
-  position: number;
-  placement?: "FOOD" | "CATEGORY" | "HOMEPAGE" | "GLOBAL";
-  isActive?: boolean;
-  startsAt?: Date | null;
-  endsAt?: Date | null;
+  productImage: BannerFile | null;
 };
 
 export type UserDTO = {

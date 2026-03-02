@@ -4,8 +4,6 @@ import z from "zod";
 export const fileSchema = z.object({
   url: z.string().url(),
   key: z.string(),
-  width: z.number().optional(),
-  height: z.number().optional(),
 });
 
 //register a user

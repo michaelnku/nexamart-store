@@ -3,6 +3,7 @@ import HeroBannerEditForm from "@/app/marketplace/_components/HeroBannerEditForm
 import { prisma } from "@/lib/prisma";
 import { HeroBannerWithFiles } from "@/lib/types";
 import { CurrentUser } from "@/lib/currentUser";
+import { mapHeroBanner } from "@/lib/mappers/heroBanners";
 
 type Props = {
   params: Promise<{
@@ -30,15 +31,10 @@ export default async function Page({ params }: Props) {
     notFound();
   }
 
-  const banner: HeroBannerWithFiles = {
-    ...bannerRaw,
-    backgroundImage:
-      bannerRaw.backgroundImage as HeroBannerWithFiles["backgroundImage"],
-    productImage: bannerRaw.productImage as HeroBannerWithFiles["productImage"],
-  };
+  const banner = mapHeroBanner(bannerRaw);
 
   return (
-    <div className="p-6">
+    <div>
       <HeroBannerEditForm banner={banner} />
     </div>
   );

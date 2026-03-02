@@ -2,6 +2,7 @@ import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { getStructuredCategories } from "@/components/helper/getCategories";
 import CategoryMiniList from "@/components/home/CategoryMiniList";
 import HeroBanner from "@/components/home/HeroBanner";
+//import { mapHeroBanners } from "@/lib/mappers/heroBanners";
 import { prisma } from "@/lib/prisma";
 import { HeroBannerWithFiles } from "@/lib/types";
 
@@ -41,6 +42,8 @@ export default async function Hero() {
         "url" in banner.backgroundImage &&
         banner.backgroundImage.url,
     );
+
+  //const banners = mapHeroBanners(bannersRaw);
 
   return (
     <section className="space-y-3 lg:space-y-0">
