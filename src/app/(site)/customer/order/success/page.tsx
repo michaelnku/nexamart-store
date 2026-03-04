@@ -4,6 +4,7 @@ import { CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { Button } from "@/components/ui/button";
+import { AutoRefreshOrderStatus } from "./AutoRefreshOrderStatus";
 
 export default async function OrderSuccessSessionPage({
   searchParams,
@@ -14,7 +15,7 @@ export default async function OrderSuccessSessionPage({
 
   if (!sessionId) {
     return (
-      <div className="mx-auto max-w-2xl py-16 text-center">
+      <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-4 text-center">
         <p className="text-red-600">Missing Stripe session id.</p>
       </div>
     );
@@ -23,7 +24,7 @@ export default async function OrderSuccessSessionPage({
   const userId = await CurrentUserId();
   if (!userId) {
     return (
-      <div className="mx-auto max-w-2xl py-16 text-center">
+      <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-4 text-center">
         <p className="text-red-600">Unauthorized access.</p>
       </div>
     );
@@ -34,7 +35,7 @@ export default async function OrderSuccessSessionPage({
     session = await stripe.checkout.sessions.retrieve(sessionId);
   } catch {
     return (
-      <div className="mx-auto max-w-2xl py-16 text-center">
+      <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-4 text-center">
         <p className="text-red-600">Invalid Stripe session.</p>
       </div>
     );
@@ -44,7 +45,7 @@ export default async function OrderSuccessSessionPage({
 
   if (!sessionUserId || sessionUserId !== userId) {
     return (
-      <div className="mx-auto max-w-2xl py-16 text-center">
+      <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-4 text-center">
         <p className="text-red-600">Unauthorized checkout session.</p>
       </div>
     );
@@ -52,7 +53,7 @@ export default async function OrderSuccessSessionPage({
 
   if (!idempotencyKey) {
     return (
-      <div className="mx-auto max-w-2xl py-16 text-center">
+      <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-4 text-center">
         <p className="text-red-600">Invalid checkout session metadata.</p>
       </div>
     );
@@ -65,37 +66,46 @@ export default async function OrderSuccessSessionPage({
 
   if (!keyRecord?.orderId) {
     return (
-      <div className="mx-auto max-w-2xl space-y-3 py-16 flex justify-center items-center">
-        <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
-        <h1 className="text-xl font-semibold">Payment received</h1>
-        <p className="text-sm text-gray-600">
-          Your order is being finalized. This can take a few seconds.
-        </p>
-        <Button disabled className="w-full sm:w-auto">
-          Order Slip
-        </Button>
-        <Link href={`/customer/order/success?session_id=${sessionId}`}>
-          Refresh
-        </Link>
+      <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-4">
+        <AutoRefreshOrderStatus />
+        <div className="space-y-3 text-center">
+          <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
+          <h1 className="text-xl font-semibold">Payment received</h1>
+          <div>
+            <p className="text-sm text-gray-600">
+              Your order is being finalized. This can take a few seconds.
+            </p>
+            <p className="text-sm text-gray-600">
+              You can wait here while we prepare your order slip, do not refresh
+              or close this tab.
+            </p>
+          </div>
+
+          <Link href={`/customer/order/success?session_id=${sessionId}`}>
+            Refresh
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-3 py-16 text-center">
-      <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
-      <h1 className="text-xl font-semibold">Payment received</h1>
-      <p className="text-sm text-gray-600">
-        Your order is ready. Open your order slip to view tracking details.
-      </p>
-      <Button asChild className="w-full sm:w-auto">
-        <Link href={`/customer/order/success/${keyRecord.orderId}`}>
-          Order Slip
+    <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-4">
+      <div className="space-y-3 text-center">
+        <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
+        <h1 className="text-xl font-semibold">Payment received</h1>
+        <p className="text-sm text-gray-600">
+          Your order is ready. Open your order slip to view tracking details.
+        </p>
+        <Button asChild className="w-full sm:w-auto">
+          <Link href={`/customer/order/success/${keyRecord.orderId}`}>
+            Order Slip
+          </Link>
+        </Button>
+        <Link href={`/customer/order/success?session_id=${sessionId}`}>
+          Refresh
         </Link>
-      </Button>
-      <Link href={`/customer/order/success?session_id=${sessionId}`}>
-        Refresh
-      </Link>
+      </div>
     </div>
   );
 }
