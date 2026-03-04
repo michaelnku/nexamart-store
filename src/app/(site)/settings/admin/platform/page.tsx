@@ -53,15 +53,6 @@ export default async function PlatformSettingsPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="siteLogo">Site Logo URL</Label>
-              <Input
-                id="siteLogo"
-                name="siteLogo"
-                defaultValue={config?.siteLogo ?? ""}
-              />
-            </div>
-
             <Button type="submit">Save Platform Settings</Button>
           </form>
         </CardContent>

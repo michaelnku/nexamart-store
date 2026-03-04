@@ -32,14 +32,6 @@ export default async function MarketingSettingsPage() {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="siteLogo">Brand Logo URL</Label>
-              <Input
-                id="siteLogo"
-                name="siteLogo"
-                defaultValue={config?.siteLogo ?? ""}
-              />
-            </div>
             <Button type="submit">Save Marketing Settings</Button>
           </form>
         </CardContent>
