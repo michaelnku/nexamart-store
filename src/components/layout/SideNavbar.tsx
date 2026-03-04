@@ -78,7 +78,7 @@ function SidebarContent({
   const isActive = (href: string) => {
     const p = pathname.replace(/\/$/, "");
     const h = href.replace(/\/$/, "");
-    return p === h;
+    return p === h || p.startsWith(`${h}/`);
   };
 
   const logout = useLogout();

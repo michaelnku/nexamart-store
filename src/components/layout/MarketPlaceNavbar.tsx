@@ -133,7 +133,11 @@ export default function MarketPlaceNavbar({
   if (role === "ADMIN") quickNav = adminNav;
   if (role === "MODERATOR") quickNav = moderatorNav;
 
-  const isActive = (href: string) => pathname.startsWith(href);
+  const isActivePath = (href: string) => {
+    const p = pathname.replace(/\/$/, "");
+    const h = href.replace(/\/$/, "");
+    return p === h || p.startsWith(`${h}/`);
+  };
 
   const getHomePath = (userRole?: string) => {
     switch (userRole) {
@@ -151,7 +155,7 @@ export default function MarketPlaceNavbar({
   };
 
   const avatarUrl = currentUser?.image || currentUser?.profileAvatar?.url;
-  const accountSettingsHref = "/marketplace/dashboard/settings";
+  const accountSettingsHref = "/settings";
   const walletHref =
     role === "SELLER"
       ? "/marketplace/dashboard/seller/wallet"
@@ -166,6 +170,84 @@ export default function MarketPlaceNavbar({
         : role === "ADMIN"
           ? "/marketplace/dashboard/admin/support"
           : null;
+
+  const dashboardHomePath = getHomePath(currentUser?.role);
+
+  const breadcrumbItems = (() => {
+    const toLabel = (segment: string) =>
+      segment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+    if (pathname.startsWith("/marketplace/dashboard")) {
+      const segments = pathname.split("/").filter(Boolean);
+      const roleSegment = segments[2];
+      if (!roleSegment) return [];
+
+      const dynamicParts = segments.slice(3);
+      const basePath = `/marketplace/dashboard/${roleSegment}`;
+      const labels = [dashboardTitle ?? "Dashboard", ...dynamicParts.map(toLabel)];
+
+      let runningPath = basePath;
+      const paths = labels.map((_, index) => {
+        if (index === 0) return basePath;
+        runningPath += `/${dynamicParts[index - 1]}`;
+        return runningPath;
+      });
+
+      return labels.map((label, index) => ({
+        label,
+        href: paths[index],
+        isLast: index === labels.length - 1,
+      }));
+    }
+
+    if (pathname.startsWith("/settings")) {
+      const segments = pathname.split("/").filter(Boolean).slice(1);
+      const labels = [
+        dashboardTitle ?? "Dashboard",
+        "Settings",
+        ...segments.map(toLabel),
+      ];
+
+      let runningPath = "/settings";
+      const paths = labels.map((_, index) => {
+        if (index === 0) return dashboardHomePath;
+        if (index === 1) return "/settings";
+        runningPath += `/${segments[index - 2]}`;
+        return runningPath;
+      });
+
+      return labels.map((label, index) => ({
+        label,
+        href: paths[index],
+        isLast: index === labels.length - 1,
+      }));
+    }
+
+    if (pathname.startsWith("/profile")) {
+      const segments = pathname.split("/").filter(Boolean).slice(1);
+      const labels = [
+        dashboardTitle ?? "Dashboard",
+        "Profile",
+        ...segments.map(toLabel),
+      ];
+
+      let runningPath = "/profile";
+      const paths = labels.map((_, index) => {
+        if (index === 0) return dashboardHomePath;
+        if (index === 1) return "/profile";
+        runningPath += `/${segments[index - 2]}`;
+        return runningPath;
+      });
+
+      return labels.map((label, index) => ({
+        label,
+        href: paths[index],
+        isLast: index === labels.length - 1,
+      }));
+    }
+
+    return [];
+  })();
 
   return (
     <header className="sticky top-0 z-50 border-b shadow-sm backdrop-blur light:bg-white/90">
@@ -203,12 +285,12 @@ export default function MarketPlaceNavbar({
         </div>
 
         <div className="hidden items-center gap-3 lg:flex xl:gap-5">
-          {quickNav.map((item) => {
-            const active = item.onClick
-              ? (item.isActive?.() ?? false)
-              : item.href
-                ? isActive(item.href)
-                : false;
+              {quickNav.map((item) => {
+                const active = item.onClick
+                  ? (item.isActive?.() ?? false)
+                  : item.href
+                    ? isActivePath(item.href)
+                    : false;
             const className = `relative flex flex-col items-center text-sm font-medium transition dark:text-gray-400 ${
               active
                 ? "text-[var(--brand-blue)]"
@@ -438,53 +520,24 @@ export default function MarketPlaceNavbar({
 
       <div className="w-full border-t light:bg-white">
         <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap px-3 py-2 text-sm sm:px-4 lg:px-6 xl:px-8">
-          {(() => {
-            const segments = pathname.split("/").filter(Boolean);
-            if (!pathname.startsWith("/marketplace/dashboard")) return null;
+          {breadcrumbItems.map((item, index) => (
+            <div key={`${item.href}-${index}`} className="flex items-center gap-2">
+              {item.isLast ? (
+                <span className="font-semibold text-[var(--brand-blue)]">
+                  {item.label}
+                </span>
+              ) : (
+                <Link
+                  href={item.href}
+                  className="text-gray-600 transition hover:text-[var(--brand-blue)]"
+                >
+                  {item.label}
+                </Link>
+              )}
 
-            const roleSegment = segments[2];
-            if (!roleSegment) return null;
-
-            const dynamicParts = segments.slice(3);
-            const basePath = `/marketplace/dashboard/${roleSegment}`;
-
-            const readable = dynamicParts.map((seg) =>
-              seg.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-            );
-
-            const crumbs = [dashboardTitle, ...readable];
-
-            let linkPath = basePath;
-            const paths = crumbs.map((_, i) => {
-              if (i === 0) return linkPath;
-              linkPath += "/" + dynamicParts[i - 1];
-              return linkPath;
-            });
-
-            return crumbs.map((item, index) => {
-              const isLast = index === crumbs.length - 1;
-              const href = paths[index];
-
-              return (
-                <div key={index} className="flex items-center gap-2">
-                  {isLast ? (
-                    <span className="font-semibold text-[var(--brand-blue)]">
-                      {item}
-                    </span>
-                  ) : (
-                    <Link
-                      href={href}
-                      className="text-gray-600 transition hover:text-[var(--brand-blue)]"
-                    >
-                      {item}
-                    </Link>
-                  )}
-
-                  {!isLast && <span className="text-gray-400">{">"}</span>}
-                </div>
-              );
-            });
-          })()}
+              {!item.isLast && <span className="text-gray-400">{">"}</span>}
+            </div>
+          ))}
         </div>
       </div>
     </header>

@@ -2,55 +2,26 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Shield,
-  Store,
-  Bike,
-  ShieldCheck,
-  Globe,
-  Truck,
-  CreditCard,
-  Megaphone,
-  Lock,
-} from "lucide-react";
+  MarketplaceSettingsModules,
+  MarketplaceSettingsRole,
+} from "@/constants/settings-modules";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type MarketplaceRole = "ADMIN" | "SELLER" | "RIDER" | "MODERATOR";
-
-type NavItem = {
-  label: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-};
-
-const roleNavMap: Record<MarketplaceRole, NavItem[]> = {
-  ADMIN: [
-    { label: "Admin", href: "/settings/admin", icon: Shield },
-    { label: "Platform", href: "/settings/admin/platform", icon: Globe },
-    { label: "Shipping", href: "/settings/admin/shipping", icon: Truck },
-    { label: "Payments", href: "/settings/admin/payments", icon: CreditCard },
-    { label: "Marketing", href: "/settings/admin/marketing", icon: Megaphone },
-    { label: "Security", href: "/settings/admin/security", icon: Lock },
-  ],
-  SELLER: [{ label: "Seller", href: "/settings/seller", icon: Store }],
-  RIDER: [{ label: "Rider", href: "/settings/rider", icon: Bike }],
-  MODERATOR: [
-    { label: "Moderator", href: "/settings/moderator", icon: ShieldCheck },
-  ],
-};
-
 function isActivePath(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
+  const p = pathname.replace(/\/$/, "");
+  const h = href.replace(/\/$/, "");
+  return p === h;
 }
 
 type Props = {
-  role: MarketplaceRole;
+  role: MarketplaceSettingsRole;
   children: React.ReactNode;
 };
 
 export default function MarketplaceSettingsShell({ role, children }: Props) {
   const pathname = usePathname();
-  const navItems = roleNavMap[role];
+  const navItems = MarketplaceSettingsModules[role].nav;
 
   return (
     <div className="min-h-full bg-background py-4">
