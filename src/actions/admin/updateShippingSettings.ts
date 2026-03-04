@@ -58,8 +58,7 @@ export async function updateShippingSettings(
 
   await updateSiteConfigurationFields(parsed.data);
 
-  revalidatePath("/marketplace/dashboard/settings");
-  revalidatePath("/marketplace/dashboard/settings/shipping");
-  revalidatePath("/marketplace/dashboard/settings/site");
+  revalidatePath("/settings/admin");
+  revalidatePath("/settings/admin/shipping");
   revalidatePath("/");
 }

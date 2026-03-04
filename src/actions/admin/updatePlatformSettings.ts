@@ -73,11 +73,10 @@ export async function updatePlatformSettings(
 
   await updateSiteConfigurationFields(updates);
 
-  revalidatePath("/marketplace/dashboard/settings");
-  revalidatePath("/marketplace/dashboard/settings/platform");
-  revalidatePath("/marketplace/dashboard/settings/payments");
-  revalidatePath("/marketplace/dashboard/settings/marketing");
-  revalidatePath("/marketplace/dashboard/settings/security");
-  revalidatePath("/marketplace/dashboard/settings/site");
+  revalidatePath("/settings/admin");
+  revalidatePath("/settings/admin/platform");
+  revalidatePath("/settings/admin/payments");
+  revalidatePath("/settings/admin/marketing");
+  revalidatePath("/settings/admin/security");
   revalidatePath("/");
 }

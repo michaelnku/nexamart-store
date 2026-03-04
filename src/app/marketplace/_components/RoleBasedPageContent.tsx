@@ -18,7 +18,7 @@ const RoleBasedSettingsPage = ({ initialUser }: Props) => {
       {user?.role === "SELLER" && <SellerSettingsPage />}
 
       {user?.role === "ADMIN" && (
-        <Link href="/marketplace/dashboard/settings">Open Admin Settings</Link>
+        <Link href="/settings">Open Admin Settings</Link>
       )}
     </div>
   );

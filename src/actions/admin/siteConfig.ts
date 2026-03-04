@@ -99,7 +99,7 @@ export async function updateSiteConfiguration(
 
   await updateSiteConfigurationFields(normalized);
 
-  revalidatePath("/marketplace/dashboard/settings/site");
+  revalidatePath("/settings/admin");
   revalidatePath("/");
 
   const updated = await getSiteConfiguration();
