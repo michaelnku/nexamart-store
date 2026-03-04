@@ -30,26 +30,43 @@ async function updateSellerStoreFields(
     address: string | null;
     tagline: string | null;
     logo: string | null;
+    logoKey: string | null;
     bannerImage: string | null;
+    bannerKey: string | null;
     isActive: boolean;
     emailNotificationsEnabled: boolean;
   }>,
 ) {
   const store = await getCurrentSellerStoreForUpdate();
 
+  const has = <K extends keyof typeof patch>(key: K) =>
+    Object.prototype.hasOwnProperty.call(patch, key);
+
   const result = await UpdateStoreAction({
     id: store.id,
-    name: patch.name ?? store.name,
-    description: patch.description ?? (store.description ?? ""),
-    location: patch.location ?? (store.location ?? ""),
-    address: patch.address ?? (store.address ?? undefined),
-    tagline: patch.tagline ?? (store.tagline ?? undefined),
+    name: has("name") ? (patch.name ?? store.name) : store.name,
+    description: has("description")
+      ? (patch.description ?? "")
+      : (store.description ?? ""),
+    location: has("location") ? (patch.location ?? "") : (store.location ?? ""),
+    address: has("address")
+      ? (patch.address ?? undefined)
+      : (store.address ?? undefined),
+    tagline: has("tagline")
+      ? (patch.tagline ?? undefined)
+      : (store.tagline ?? undefined),
     type: store.type,
     fulfillmentType: store.fulfillmentType,
-    logo: patch.logo ?? (store.logo ?? undefined),
-    logoKey: store.logoKey ?? undefined,
-    bannerImage: patch.bannerImage ?? (store.bannerImage ?? undefined),
-    bannerKey: store.bannerKey ?? undefined,
+    logo: has("logo") ? (patch.logo ?? undefined) : (store.logo ?? undefined),
+    logoKey: has("logoKey")
+      ? (patch.logoKey ?? undefined)
+      : (store.logoKey ?? undefined),
+    bannerImage: has("bannerImage")
+      ? (patch.bannerImage ?? undefined)
+      : (store.bannerImage ?? undefined),
+    bannerKey: has("bannerKey")
+      ? (patch.bannerKey ?? undefined)
+      : (store.bannerKey ?? undefined),
     isActive: patch.isActive ?? store.isActive,
     emailNotificationsEnabled:
       patch.emailNotificationsEnabled ?? store.emailNotificationsEnabled,
@@ -60,7 +77,7 @@ async function updateSellerStoreFields(
   }
 
   revalidatePath("/settings/seller");
-  revalidatePath("/settings/seller/profile");
+  revalidatePath("/settings/seller/store");
   revalidatePath("/settings/seller/storefront");
   revalidatePath("/settings/seller/preferences");
 }
@@ -75,17 +92,31 @@ export async function updateSellerProfileModule(formData: FormData) {
 }
 
 export async function updateSellerStorefrontModule(formData: FormData) {
+  const taglineValue = formData.get("tagline")?.toString();
+  const logoValue = formData.get("logo")?.toString();
+  const logoKeyValue = formData.get("logoKey")?.toString();
+  const bannerValue = formData.get("bannerImage")?.toString();
+  const bannerKeyValue = formData.get("bannerKey")?.toString();
+
+  const normalizeOptional = (value?: string) => {
+    const trimmed = value?.trim();
+    return trimmed && trimmed.length > 0 ? trimmed : null;
+  };
+
   await updateSellerStoreFields({
-    tagline: formData.get("tagline")?.toString() || undefined,
-    logo: formData.get("logo")?.toString() || undefined,
-    bannerImage: formData.get("bannerImage")?.toString() || undefined,
+    tagline: normalizeOptional(taglineValue),
+    logo: normalizeOptional(logoValue),
+    logoKey: normalizeOptional(logoKeyValue),
+    bannerImage: normalizeOptional(bannerValue),
+    bannerKey: normalizeOptional(bannerKeyValue),
   });
 }
 
 export async function updateSellerPreferencesModule(formData: FormData) {
   await updateSellerStoreFields({
     isActive: formData.get("isActive") === "on",
-    emailNotificationsEnabled: formData.get("emailNotificationsEnabled") === "on",
+    emailNotificationsEnabled:
+      formData.get("emailNotificationsEnabled") === "on",
   });
 }
 

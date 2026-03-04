@@ -28,6 +28,10 @@ export default async function SettingsPage() {
     redirect("/settings/moderator");
   }
 
+  if (user.role === "USER") {
+    redirect("/settings/user/profile");
+  }
+
   const addresses = await getUserAddresses();
   const preferences = await getUserPreferences();
 

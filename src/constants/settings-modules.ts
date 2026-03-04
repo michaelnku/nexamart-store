@@ -48,7 +48,11 @@ export const MarketplaceSettingsModules: Record<
       { label: "Platform", href: "/settings/admin/platform", icon: Globe },
       { label: "Shipping", href: "/settings/admin/shipping", icon: Truck },
       { label: "Payments", href: "/settings/admin/payments", icon: CreditCard },
-      { label: "Marketing", href: "/settings/admin/marketing", icon: Megaphone },
+      {
+        label: "Marketing",
+        href: "/settings/admin/marketing",
+        icon: Megaphone,
+      },
       { label: "Security", href: "/settings/admin/security", icon: Lock },
     ],
     cards: [
@@ -75,14 +79,15 @@ export const MarketplaceSettingsModules: Record<
       {
         href: "/settings/admin/security",
         title: "Security Settings",
-        description: "Security contact and administrative communication channels.",
+        description:
+          "Security contact and administrative communication channels.",
       },
     ],
   },
   SELLER: {
     nav: [
       { label: "Seller", href: "/settings/seller", icon: Store },
-      { label: "Profile", href: "/settings/seller/profile", icon: User },
+      { label: "My Store", href: "/settings/seller/store", icon: User },
       {
         label: "Storefront",
         href: "/settings/seller/storefront",
@@ -99,7 +104,8 @@ export const MarketplaceSettingsModules: Record<
       {
         href: "/settings/seller/profile",
         title: "Store Profile",
-        description: "Manage your store business identity and location details.",
+        description:
+          "Manage your store business identity and location details.",
       },
       {
         href: "/settings/seller/storefront",
@@ -109,12 +115,14 @@ export const MarketplaceSettingsModules: Record<
       {
         href: "/settings/seller/preferences",
         title: "Preferences",
-        description: "Configure storefront visibility and notification options.",
+        description:
+          "Configure storefront visibility and notification options.",
       },
       {
         href: "/settings/seller/danger",
         title: "Danger Zone",
-        description: "Delete your store and permanently remove it from listing.",
+        description:
+          "Delete your store and permanently remove it from listing.",
       },
     ],
   },

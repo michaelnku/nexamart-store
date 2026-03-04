@@ -24,7 +24,7 @@ export default function MarketplaceSettingsShell({ role, children }: Props) {
   const navItems = MarketplaceSettingsModules[role].nav;
 
   return (
-    <div className="min-h-full bg-background py-4">
+    <div className="h-full min-h-full bg-background py-4 flex flex-col">
       <div className="px-2 md:hidden sticky top-0 z-20 bg-background border-b">
         <div className="flex gap-2 overflow-x-auto px-2 py-3 scrollbar-hide">
           {navItems.map((item) => {
@@ -47,7 +47,7 @@ export default function MarketplaceSettingsShell({ role, children }: Props) {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto flex gap-8 px-4 py-8">
+      <div className="max-w-6xl w-full mx-auto flex-1 flex gap-8 px-4 py-8">
         <aside className="hidden md:block w-64 shrink-0 border-r bg-background">
           <ul className="p-4 space-y-1">
             {navItems.map((item) => {

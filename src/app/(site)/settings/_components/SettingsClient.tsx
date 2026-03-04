@@ -27,10 +27,10 @@ export default function SettingsClient({ addresses, preferences }: Props) {
   const [active, setActive] = useState("account");
 
   return (
-    <div className="min-h-full bg-background py-4">
+    <div className="h-full min-h-full bg-background py-4 flex flex-col">
       <SettingsMobileNav active={active} onChange={setActive} />
 
-      <div className="max-w-6xl mx-auto flex gap-8 px-4 py-12">
+      <div className="max-w-6xl w-full mx-auto flex-1 flex gap-8 px-4 py-12">
         <SettingsSidebar active={active} onChange={setActive} />
 
         <main className="flex-1 min-w-0">
