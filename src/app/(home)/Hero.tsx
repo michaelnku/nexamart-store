@@ -2,9 +2,8 @@ import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { getStructuredCategories } from "@/components/helper/getCategories";
 import CategoryMiniList from "@/components/home/CategoryMiniList";
 import HeroBanner from "@/components/home/HeroBanner";
-//import { mapHeroBanners } from "@/lib/mappers/heroBanners";
+import { mapHeroBanners } from "@/lib/mappers/heroBanners";
 import { prisma } from "@/lib/prisma";
-import { HeroBannerWithFiles } from "@/lib/types";
 
 export default async function Hero() {
   const categories = await getStructuredCategories();
@@ -28,22 +27,9 @@ export default async function Hero() {
     orderBy: { position: "asc" },
   });
 
-  const banners: HeroBannerWithFiles[] = bannersRaw
-    .map((banner) => ({
-      ...banner,
-      backgroundImage:
-        banner.backgroundImage as HeroBannerWithFiles["backgroundImage"],
-      productImage: banner.productImage as HeroBannerWithFiles["productImage"],
-    }))
-    .filter(
-      (banner) =>
-        banner.backgroundImage &&
-        typeof banner.backgroundImage === "object" &&
-        "url" in banner.backgroundImage &&
-        banner.backgroundImage.url,
-    );
-
-  //const banners = mapHeroBanners(bannersRaw);
+  const banners = mapHeroBanners(bannersRaw).filter(
+    (banner) => !!banner.backgroundImage?.url,
+  );
 
   return (
     <section className="space-y-3 lg:space-y-0">

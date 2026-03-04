@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma";
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
+import { JsonFile } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { UTApi } from "uploadthing/server";
 
@@ -18,7 +19,7 @@ export const removeHeroBannerBackgroundImageAction = async (id: string) => {
 
   if (!banner) return { error: "Banner not found" };
 
-  const bg = banner.backgroundImage as { url: string; key: string } | null;
+  const bg = banner.backgroundImage as JsonFile | null;
 
   if (bg?.key) {
     await utapi.deleteFiles(bg.key);

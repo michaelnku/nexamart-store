@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import ogImage from "./opengraph-image.webp";
 
 import { auth } from "@/auth/auth";
 import QueryProvider from "@/providers/queryProvider";
@@ -11,7 +12,6 @@ import { ourFileRouter } from "./api/uploadthing/core";
 import { CartHydrator } from "@/components/marketplace/CartHydrator";
 import {
   APP_DESCRIPTION,
-  APP_LOGO,
   APP_NAME,
   APP_TWITTER,
   APP_URL,
@@ -88,7 +88,7 @@ export const metadata: Metadata = {
     description: APP_DESCRIPTION,
     images: [
       {
-        url: APP_LOGO,
+        url: ogImage.src,
         width: 1200,
         height: 630,
         alt: "NexaMart Online Marketplace",
@@ -100,8 +100,9 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `${APP_NAME} | Smart Online Marketplace`,
     description: APP_DESCRIPTION,
-    images: [APP_LOGO],
+    images: [ogImage.src],
     creator: APP_TWITTER,
+    site: APP_TWITTER,
   },
 
   icons: {

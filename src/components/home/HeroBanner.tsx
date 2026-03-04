@@ -3,11 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { HeroBannerWithFiles } from "@/lib/types";
 
-const swipeThreshold = 80;
+const SWIPE_THRESHOLD = 80;
 const AUTO_PLAY_DELAY = 8000;
 
 export default function HeroBanner({
@@ -18,6 +18,7 @@ export default function HeroBanner({
   const [[index, direction], setIndex] = useState<[number, number]>([0, 0]);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [showControls, setShowControls] = useState(false);
 
   const bannerCount = banners.length;
 
@@ -29,6 +30,15 @@ export default function HeroBanner({
       ]);
     },
     [bannerCount],
+  );
+
+  const goTo = useCallback(
+    (nextIndex: number) => {
+      if (nextIndex === index) return;
+      const nextDirection = nextIndex > index ? 1 : -1;
+      setIndex([nextIndex, nextDirection]);
+    },
+    [index],
   );
 
   // Smart autoplay (pause on hover or drag)
@@ -61,8 +71,14 @@ export default function HeroBanner({
         group
               "
       style={{ touchAction: "pan-y" }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        setShowControls(true);
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setShowControls(false);
+      }}
     >
       <div className="absolute inset-0 bg-gray-200 animate-pulse" />
 
@@ -85,28 +101,22 @@ export default function HeroBanner({
           onDragEnd={(_, info) => {
             const offset = info.offset.x;
 
-            if (offset < -80) paginate(1);
-            else if (offset > 80) paginate(-1);
+            if (offset < -SWIPE_THRESHOLD) paginate(1);
+            else if (offset > SWIPE_THRESHOLD) paginate(-1);
 
             setTimeout(() => setIsDragging(false), 100);
           }}
           className="absolute inset-0"
         >
-          <Link
-            href={banner.ctaLink || "#"}
-            className="absolute inset-0 block"
-            style={{ pointerEvents: isDragging ? "none" : "auto" }}
-          >
-            <Image
-              src={backgroundUrl}
-              alt={banner.title || "Banner"}
-              fill
-              priority={index === 0}
-              quality={75}
-              sizes="100vw"
-              className="object-cover cursor-grab active:cursor-grabbing"
-            />
-          </Link>
+          <Image
+            src={backgroundUrl}
+            alt={banner.title || "Banner"}
+            fill
+            priority={index === 0}
+            quality={75}
+            sizes="100vw"
+            className="object-cover cursor-grab active:cursor-grabbing"
+          />
         </motion.div>
       </AnimatePresence>
 
@@ -205,8 +215,12 @@ export default function HeroBanner({
               hover:scale-105
               transition-all
               z-30
-              opacity-0 group-hover:opacity-100
+              pointer-events-none
             "
+            style={{
+              opacity: showControls ? 1 : 0,
+              pointerEvents: showControls ? "auto" : "none",
+            }}
           >
             <ChevronLeft size={22} />
           </button>
@@ -228,11 +242,46 @@ export default function HeroBanner({
               hover:scale-105
               transition-all
               z-30
-              opacity-0 group-hover:opacity-100
+              pointer-events-none
             "
+            style={{
+              opacity: showControls ? 1 : 0,
+              pointerEvents: showControls ? "auto" : "none",
+            }}
           >
             <ChevronRight size={22} />
           </button>
+
+          <div
+            className="
+              absolute bottom-4 left-1/2 -translate-x-1/2
+              flex items-center gap-2
+              z-30
+            "
+          >
+            {banners.map((_, dotIndex) => {
+              const isActive = dotIndex === index;
+
+              return (
+                <button
+                  key={dotIndex}
+                  type="button"
+                  aria-label={`Go to banner ${dotIndex + 1}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    goTo(dotIndex);
+                  }}
+                  className="h-2.5 rounded-full transition-all"
+                  style={{
+                    width: isActive ? "1.6rem" : "0.6rem",
+                    backgroundColor: isActive ? "var(--brand-blue)" : "#cbd5e1",
+                    opacity: isActive ? 1 : 0.9,
+                  }}
+                />
+              );
+            })}
+          </div>
         </>
       )}
     </div>

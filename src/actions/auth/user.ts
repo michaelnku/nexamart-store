@@ -19,6 +19,7 @@ import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 import { Prisma } from "@/generated/prisma";
 import { CurrentUser } from "@/lib/currentUser";
 import { revalidatePath } from "next/cache";
+import { JsonFile } from "@/lib/types";
 import { UTApi } from "uploadthing/server";
 import { createWelcomeCouponForUser } from "@/lib/coupons/createWelcomeCoupon";
 import { createReferralCodeForUser } from "@/lib/referrals/createReferralCode";
@@ -39,9 +40,7 @@ export const deleteProfileAvatarAction = async () => {
 
     if (!dbUser?.profileAvatar) return { error: "No profile avatar to delete" };
 
-    const avatar = dbUser.profileAvatar as {
-      key?: string;
-    };
+    const avatar = dbUser.profileAvatar as Partial<JsonFile>;
 
     if (!avatar.key) {
       await prisma.user.update({

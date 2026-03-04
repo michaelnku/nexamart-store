@@ -11,7 +11,7 @@ import {
   completeOrderPaymentSideEffects,
 } from "@/lib/payments/completeOrderPayment";
 import { calculateDrivingDistance } from "@/lib/shipping/mapboxDistance";
-import { calculateShippingFee } from "@/lib/shipping/shippingCalculator";
+import { calculateStoreDeliveryFee } from "@/lib/shipping/shippingCalculator";
 import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
 import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
 import { buildDoubleEntryLedgerRows } from "@/lib/finance/ledgerService";
@@ -270,7 +270,13 @@ export async function placeOrderAction({
     if (!address) {
       return { error: "Invalid address" };
     }
-    if (address.latitude == null || address.longitude == null) {
+    const isPickupDelivery =
+      deliveryType === "STORE_PICKUP" || deliveryType === "STATION_PICKUP";
+
+    if (
+      !isPickupDelivery &&
+      (address.latitude == null || address.longitude == null)
+    ) {
       return {
         error:
           "Selected address is missing coordinates. Please update address.",
@@ -280,41 +286,50 @@ export async function placeOrderAction({
     const siteConfig = await prisma.siteConfiguration.findFirst({
       orderBy: { updatedAt: "desc" },
       select: {
+        foodMinimumDeliveryFee: true,
+        generalMinimumDeliveryFee: true,
+        foodBaseDeliveryRate: true,
+        foodRatePerMile: true,
         generalBaseDeliveryRate: true,
+        generalRatePerMile: true,
         expressMultiplier: true,
+        pickupFee: true,
       },
     });
-
-    const baseFee = siteConfig?.generalBaseDeliveryRate ?? 0;
-    const expressMultiplier =
-      deliveryType === "EXPRESS" ? (siteConfig?.expressMultiplier ?? 1) : 1;
 
     const storeEntries = await Promise.all(
       Array.from(itemsByStore.entries()).map(async ([storeId, items]) => {
         const store = items[0].product.store;
-        if (store.latitude == null || store.longitude == null) {
-          throw new PlaceOrderError(
-            `Store coordinates are missing for store ${storeId}.`,
+        let shippingFee = 0;
+        let distanceInMiles = 0;
+
+        if (!isPickupDelivery) {
+          if (store.latitude == null || store.longitude == null) {
+            throw new PlaceOrderError(
+              `Store coordinates are missing for store ${storeId}.`,
+            );
+          }
+
+          const distance = await calculateDrivingDistance(
+            {
+              latitude: store.latitude,
+              longitude: store.longitude,
+            },
+            {
+              latitude: address!.latitude!,
+              longitude: address!.longitude!,
+            },
           );
+
+          distanceInMiles = distance.distanceInMiles;
+          shippingFee = calculateStoreDeliveryFee({
+            distanceInMiles,
+            storeType: store.type,
+            storeRatePerMile: store.shippingRatePerMile,
+            deliveryType,
+            config: siteConfig,
+          });
         }
-
-        const distance = await calculateDrivingDistance(
-          {
-            latitude: store.latitude,
-            longitude: store.longitude,
-          },
-          {
-            latitude: address!.latitude!,
-            longitude: address!.longitude!,
-          },
-        );
-
-        const shippingFee = calculateShippingFee({
-          distanceInMiles: distance.distanceInMiles,
-          ratePerMile: store.shippingRatePerMile ?? 0,
-          baseFee,
-          expressMultiplier,
-        });
 
         return {
           storeId,
@@ -333,7 +348,7 @@ export async function placeOrderAction({
             0,
           ),
           shippingFee,
-          distanceInMiles: distance.distanceInMiles,
+          distanceInMiles,
         } satisfies StoreGroup;
       }),
     );
@@ -384,13 +399,47 @@ export async function placeOrderAction({
       return { error: "No valid order groups were found in cart." };
     }
 
-    checkoutShippingFee = orderGroups.reduce(
-      (sum, group) => sum + group.shippingFee,
-      0,
-    );
-    checkoutDistanceInMiles =
-      orderGroups.reduce((sum, group) => sum + group.distanceInMiles, 0) /
-      orderGroups.length;
+    if (isPickupDelivery) {
+      checkoutShippingFee = siteConfig?.pickupFee ?? 0;
+      checkoutDistanceInMiles = 0;
+
+      if (checkoutShippingFee > 0) {
+        const subtotalBase = orderGroups.reduce(
+          (sum, group) => sum + group.subtotal,
+          0,
+        );
+
+        const shippingAllocations =
+          subtotalBase > 0
+            ? splitDiscountAcrossGroups(
+                orderGroups.map((group) => ({ baseAmount: group.subtotal })),
+                checkoutShippingFee,
+              )
+            : orderGroups.map((_, index) =>
+                index === 0 ? checkoutShippingFee : 0,
+              );
+
+        orderGroups = orderGroups.map((group, index) => ({
+          ...group,
+          shippingFee: shippingAllocations[index],
+          distanceInMiles: 0,
+        }));
+      } else {
+        orderGroups = orderGroups.map((group) => ({
+          ...group,
+          shippingFee: 0,
+          distanceInMiles: 0,
+        }));
+      }
+    } else {
+      checkoutShippingFee = orderGroups.reduce(
+        (sum, group) => sum + group.shippingFee,
+        0,
+      );
+      checkoutDistanceInMiles =
+        orderGroups.reduce((sum, group) => sum + group.distanceInMiles, 0) /
+        orderGroups.length;
+    }
 
     couponResult = await resolveCouponForOrder({
       userId,

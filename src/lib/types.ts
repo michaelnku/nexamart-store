@@ -13,6 +13,7 @@ import {
   UserRole,
   WithdrawalStatus,
   HeroBanner,
+  SiteConfiguration,
 } from "@/generated/prisma/client";
 
 export type FullProductVariant = ProductVariant & {
@@ -313,29 +314,21 @@ export type ProductCardType = Product & {
   }[];
 };
 
-export type ProductImageInput = {
+export type JsonFile = {
   url: string;
   key: string;
 };
+
+export type ProductImageInput = JsonFile;
 
 export type TechnicalDetail = {
   key: string;
   value: string;
 };
 
-export type ProfileImage = {
-  url: string;
-  key: string;
-};
+export type ProfileImage = JsonFile;
 
-export type JsonFile = {
-  url: string;
-  key: string;
-};
-
-export type BannerFile = {
-  url: string;
-  key: string;
+export type BannerFile = JsonFile & {
   width?: number | null;
   height?: number | null;
   blurDataURL?: string | null;
@@ -659,3 +652,22 @@ export type FoodDetails = {
   isPerishable?: boolean;
   expiresAt?: string | Date;
 };
+
+export type SiteConfig = Pick<
+  SiteConfiguration,
+  | "id"
+  | "siteName"
+  | "siteEmail"
+  | "sitePhone"
+  | "siteLogo"
+  | "foodMinimumDeliveryFee"
+  | "generalMinimumDeliveryFee"
+  | "foodBaseDeliveryRate"
+  | "foodRatePerMile"
+  | "generalBaseDeliveryRate"
+  | "generalRatePerMile"
+  | "expressMultiplier"
+  | "pickupFee"
+  | "createdAt"
+  | "updatedAt"
+>;

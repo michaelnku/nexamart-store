@@ -1,7 +1,6 @@
 import { CurrentUser } from "@/lib/currentUser";
 import { redirect } from "next/navigation";
 import {
-  AdminSettingsPage,
   ModeratorSettingsPage,
   SellerSettingsPage,
 } from "../../_components/SettingsPage";
@@ -17,11 +16,7 @@ const page = async () => {
   const role = user.role;
 
   if (role === "ADMIN") {
-    return (
-      <div className="min-h-full bg-background py-4">
-        <AdminSettingsPage />
-      </div>
-    );
+    return <div className="min-h-full bg-background py-4">admin settings</div>;
   }
   if (role === "SELLER") {
     return (

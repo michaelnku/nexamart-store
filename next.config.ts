@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "utfs.io",
         pathname: "/**",
-        port: "", // for UploadThing
+        port: "",
       },
       {
         protocol: "https",

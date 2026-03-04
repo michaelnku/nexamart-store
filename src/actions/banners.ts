@@ -3,6 +3,7 @@
 import { Prisma } from "@/generated/prisma";
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
+import { JsonFile } from "@/lib/types";
 import { heroBannerSchema, HeroBannerInput } from "@/lib/zodValidation";
 import { revalidatePath } from "next/cache";
 import { UTApi } from "uploadthing/server";
@@ -80,10 +81,7 @@ export const updateHeroBannerAction = async (
 
   const data = parsed.data;
 
-  const existingBg = existing.backgroundImage as {
-    url: string;
-    key: string;
-  } | null;
+  const existingBg = existing.backgroundImage as JsonFile | null;
 
   if (existingBg?.key && existingBg.key !== data.backgroundImage?.key) {
     await utapi.deleteFiles(existingBg.key);
@@ -127,8 +125,8 @@ export const deleteHeroBannerAction = async (id: string) => {
 
   if (!banner) return { error: "Banner not found" };
 
-  const bg = banner.backgroundImage as { key?: string } | null;
-  const product = banner.productImage as { key?: string } | null;
+  const bg = banner.backgroundImage as Partial<JsonFile> | null;
+  const product = banner.productImage as Partial<JsonFile> | null;
 
   if (bg?.key) {
     await utapi.deleteFiles(bg.key);
