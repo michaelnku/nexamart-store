@@ -8,7 +8,7 @@ import {
   siteConfigurationSchemaType,
 } from "@/lib/zodValidation";
 import { SiteConfig } from "@/lib/types";
-import { Prisma } from "@/generated/prisma";
+import { SiteConfiguration } from "@/generated/prisma";
 
 type SiteConfigurationResult =
   | { success: true; data: SiteConfig | null }
@@ -46,8 +46,27 @@ export async function getOrCreateSiteConfiguration() {
   });
 }
 
+type SiteConfigurationMutableFields = Partial<
+  Pick<
+    SiteConfiguration,
+    | "siteName"
+    | "siteEmail"
+    | "sitePhone"
+    | "siteLogo"
+    | "foodMinimumDeliveryFee"
+    | "generalMinimumDeliveryFee"
+    | "platformCommissionPercent"
+    | "foodBaseDeliveryRate"
+    | "foodRatePerMile"
+    | "generalBaseDeliveryRate"
+    | "generalRatePerMile"
+    | "expressMultiplier"
+    | "pickupFee"
+  >
+>;
+
 export async function updateSiteConfigurationFields(
-  data: Prisma.SiteConfigurationUpdateInput,
+  data: SiteConfigurationMutableFields,
 ) {
   return prisma.siteConfiguration.upsert({
     where: { singleton: true },

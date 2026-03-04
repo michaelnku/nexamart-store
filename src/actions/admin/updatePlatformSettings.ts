@@ -16,24 +16,25 @@ const optionalNumberField = z
   .transform((value) => (value.length > 0 ? Number(value) : undefined))
   .refine((value) => value === undefined || Number.isFinite(value), {
     message: "Invalid numeric value",
+  })
+  .refine((value) => value === undefined || value >= 0, {
+    message: "Value must be greater than or equal to 0",
   });
 
 const platformSettingsSchema = z.object({
-  siteName: z.string().trim().optional(),
+  siteName: z.string().trim().min(1, "Site name is required").optional(),
   siteEmail: z.string().trim().email("Invalid site email").optional(),
   sitePhone: optionalTrimmedField.optional(),
   siteLogo: optionalTrimmedField.optional(),
   platformCommissionPercent: optionalNumberField.optional(),
 });
 
-type PlatformSettingsResult = { success: true } | { success: false; error: string };
-
 export async function updatePlatformSettings(
   formData: FormData,
-): Promise<PlatformSettingsResult> {
+): Promise<void> {
   const role = await CurrentRole();
   if (role !== "ADMIN") {
-    return { success: false, error: "Unauthorized" };
+    throw new Error("Unauthorized");
   }
 
   const parsed = platformSettingsSchema.safeParse({
@@ -47,10 +48,9 @@ export async function updatePlatformSettings(
   });
 
   if (!parsed.success) {
-    return {
-      success: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid platform settings",
-    };
+    throw new Error(
+      parsed.error.issues[0]?.message ?? "Invalid platform settings",
+    );
   }
 
   const updates: {
@@ -80,6 +80,4 @@ export async function updatePlatformSettings(
   revalidatePath("/marketplace/dashboard/settings/security");
   revalidatePath("/marketplace/dashboard/settings/site");
   revalidatePath("/");
-
-  return { success: true };
 }

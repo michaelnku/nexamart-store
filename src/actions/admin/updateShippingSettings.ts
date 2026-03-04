@@ -9,7 +9,10 @@ const numericField = z
   .string()
   .trim()
   .transform((value) => Number(value))
-  .refine((value) => Number.isFinite(value), { message: "Invalid number" });
+  .refine((value) => Number.isFinite(value), { message: "Invalid number" })
+  .refine((value) => value >= 0, {
+    message: "Value must be greater than or equal to 0",
+  });
 
 const shippingSettingsSchema = z.object({
   foodMinimumDeliveryFee: numericField,
@@ -18,18 +21,18 @@ const shippingSettingsSchema = z.object({
   foodRatePerMile: numericField,
   generalBaseDeliveryRate: numericField,
   generalRatePerMile: numericField,
-  expressMultiplier: numericField,
+  expressMultiplier: numericField.refine((value) => value >= 1, {
+    message: "Express multiplier must be at least 1",
+  }),
   pickupFee: numericField,
 });
 
-type ShippingSettingsResult = { success: true } | { success: false; error: string };
-
 export async function updateShippingSettings(
   formData: FormData,
-): Promise<ShippingSettingsResult> {
+): Promise<void> {
   const role = await CurrentRole();
   if (role !== "ADMIN") {
-    return { success: false, error: "Unauthorized" };
+    throw new Error("Unauthorized");
   }
 
   const parsed = shippingSettingsSchema.safeParse({
@@ -48,10 +51,9 @@ export async function updateShippingSettings(
   });
 
   if (!parsed.success) {
-    return {
-      success: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid shipping settings",
-    };
+    throw new Error(
+      parsed.error.issues[0]?.message ?? "Invalid shipping settings",
+    );
   }
 
   await updateSiteConfigurationFields(parsed.data);
@@ -60,6 +62,4 @@ export async function updateShippingSettings(
   revalidatePath("/marketplace/dashboard/settings/shipping");
   revalidatePath("/marketplace/dashboard/settings/site");
   revalidatePath("/");
-
-  return { success: true };
 }
