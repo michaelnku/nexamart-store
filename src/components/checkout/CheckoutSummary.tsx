@@ -272,6 +272,8 @@ export default function CheckoutSummary({ cart, address }: Props) {
     try {
       const response = await ky
         .post("/api/checkout", {
+          timeout: false,
+          retry: 0,
           json: {
             addressId: selectedAddress.id,
             deliveryType,

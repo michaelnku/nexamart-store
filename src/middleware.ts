@@ -51,15 +51,15 @@ export default Middleware((req) => {
   }
 
   if (pathname.startsWith("/api/currency-rates")) {
-    return;
+    return NextResponse.next();
   }
 
   if (isApiAuthRoute) {
-    return;
+    return NextResponse.next();
   }
 
   if (isApiRoute) {
-    return;
+    return NextResponse.next();
   }
 
   if (isPublicRoute) {

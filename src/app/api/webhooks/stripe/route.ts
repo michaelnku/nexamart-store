@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { DeliveryType } from "@/generated/prisma/client";
+import { placeOrderAction } from "@/actions/checkout/placeOrder";
 import { prisma } from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
 import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
@@ -9,6 +10,14 @@ import { completeOrderPayment } from "@/lib/payments/completeOrderPayment";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { createServiceContext } from "@/lib/system/serviceContext";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
+
+function isDeliveryType(value: string): value is DeliveryType {
+  return (
+    value === "HOME_DELIVERY" ||
+    value === "STORE_PICKUP" ||
+    value === "STATION_PICKUP"
+  );
+}
 
 async function handleWalletTopUp(session: Stripe.Checkout.Session) {
   const context = createServiceContext("WALLET_TOPUP_WEBHOOK");
@@ -91,8 +100,78 @@ async function handleWalletTopUp(session: Stripe.Checkout.Session) {
   return NextResponse.json({ received: true }, { status: 200 });
 }
 
-async function handleOrderCheckout(session: Stripe.Checkout.Session) {
+async function settleCreatedOrders({
+  orderId,
+  checkoutGroupId,
+  paymentIntentId,
+}: {
+  orderId: string;
+  checkoutGroupId?: string | null;
+  paymentIntentId: string;
+}) {
   const context = createServiceContext("ORDER_PAYMENT_WEBHOOK");
+
+  const targetOrders = checkoutGroupId
+    ? await prisma.order.findMany({
+        where: { checkoutGroupId },
+        select: { id: true },
+      })
+    : [{ id: orderId }];
+
+  for (const target of targetOrders) {
+    try {
+      const paymentResult = await completeOrderPayment({
+        orderId: target.id,
+        paymentReference: `order-payment-${paymentIntentId}-${target.id}`,
+        method: "CARD",
+        context,
+      });
+
+      if (!paymentResult.justPaid) {
+        continue;
+      }
+
+      const paidOrder = paymentResult.order;
+
+      await prisma.product.updateMany({
+        where: {
+          id: {
+            in: await prisma.orderItem
+              .findMany({
+                where: { orderId: paidOrder.id },
+                select: { productId: true },
+              })
+              .then((items) => items.map((item) => item.productId)),
+          },
+        },
+        data: { isPublished: true },
+      });
+
+      await pusherServer.trigger(`user-${paidOrder.userId}`, "payment-success", {
+        orderId: target.id,
+        message: "Payment received! Your order is now processing.",
+      });
+
+      for (const group of paidOrder.sellerGroups) {
+        await pusherServer.trigger(`seller-${group.sellerId}`, "new-order", {
+          orderId: target.id,
+          storeId: group.storeId,
+          subtotal: group.subtotal,
+        });
+      }
+
+      await applyReferralRewardsForPaidOrder(target.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      if (message.includes("already marked as paid")) {
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
+async function handleLegacyOrderCheckout(session: Stripe.Checkout.Session) {
   const orderId = session.metadata?.orderId;
   const checkoutGroupId = session.metadata?.checkoutGroupId || null;
   const paymentIntentRaw = session.payment_intent;
@@ -102,64 +181,66 @@ async function handleOrderCheckout(session: Stripe.Checkout.Session) {
       : (paymentIntentRaw?.id ?? null);
 
   if (!orderId || !paymentIntentId) {
-    console.error("Missing orderId or payment_intent in Stripe metadata");
     return new NextResponse("Invalid checkout metadata", { status: 400 });
   }
 
-  const targetOrders = checkoutGroupId
-    ? await prisma.order.findMany({
-        where: { checkoutGroupId, isPaid: false },
-        select: { id: true },
-      })
-    : await prisma.order
-        .findMany({
-          where: { id: orderId, isPaid: false },
-          select: { id: true },
-        });
+  await settleCreatedOrders({ orderId, checkoutGroupId, paymentIntentId });
+  return new NextResponse(null, { status: 200 });
+}
 
-  for (const target of targetOrders) {
-    const paymentResult = await completeOrderPayment({
-      orderId: target.id,
-      paymentReference: `order-payment-${paymentIntentId}-${target.id}`,
-      method: "CARD",
-      context,
-    });
+async function handleOrderCheckout(session: Stripe.Checkout.Session) {
+  const paymentIntentRaw = session.payment_intent;
+  const paymentIntentId =
+    typeof paymentIntentRaw === "string"
+      ? paymentIntentRaw
+      : (paymentIntentRaw?.id ?? null);
 
-    if (!paymentResult.justPaid) {
-      continue;
-    }
+  const addressId = session.metadata?.addressId;
+  const deliveryTypeRaw = session.metadata?.deliveryType;
+  const couponIdRaw = session.metadata?.couponId;
+  const idempotencyKey = session.metadata?.idempotencyKey;
+  const userId = session.metadata?.userId;
 
-    const paidOrder = paymentResult.order;
-
-    await prisma.product.updateMany({
-      where: {
-        id: {
-          in: await prisma.orderItem
-            .findMany({
-              where: { orderId: paidOrder.id },
-              select: { productId: true },
-            })
-            .then((items) => items.map((item) => item.productId)),
-        },
-      },
-      data: { isPublished: true },
-    });
-
-    await pusherServer.trigger(`user-${paidOrder.userId}`, "payment-success", {
-      orderId: target.id,
-      message: "Payment received! Your order is now processing.",
-    });
-
-    for (const group of paidOrder.sellerGroups) {
-      await pusherServer.trigger(`seller-${group.sellerId}`, "new-order", {
-        orderId: target.id,
-        storeId: group.storeId,
-        subtotal: group.subtotal,
-      });
-    }
-
-    await applyReferralRewardsForPaidOrder(target.id);
+  if (
+    !paymentIntentId ||
+    !addressId ||
+    !deliveryTypeRaw ||
+    !idempotencyKey ||
+    !userId
+  ) {
+    return new NextResponse("Invalid checkout metadata", { status: 400 });
   }
+
+  if (!isDeliveryType(deliveryTypeRaw)) {
+    return new NextResponse("Invalid delivery type", { status: 400 });
+  }
+
+  const placeOrder = await placeOrderAction({
+    addressId,
+    paymentMethod: "CARD",
+    deliveryType: deliveryTypeRaw,
+    couponId: couponIdRaw ? couponIdRaw : null,
+    idempotencyKey,
+    __internalUserId: userId,
+    __internalAuthToken: process.env.STRIPE_WEBHOOK_SECRET,
+  });
+
+  if ("error" in placeOrder) {
+    console.error("Failed to create order from webhook:", placeOrder.error);
+    return new NextResponse(placeOrder.error, { status: 400 });
+  }
+
+  if (!placeOrder.orderId) {
+    return new NextResponse("Order not created from webhook checkout", {
+      status: 400,
+    });
+  }
+
+  await settleCreatedOrders({
+    orderId: placeOrder.orderId,
+    checkoutGroupId: placeOrder.checkoutGroupId,
+    paymentIntentId,
+  });
 
   return new NextResponse(null, { status: 200 });
 }
@@ -170,7 +251,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.text();
-  const signature = (await headers()).get("stripe-signature");
+  const signature = req.headers.get("stripe-signature");
 
   if (!signature) {
     return NextResponse.json(
@@ -185,7 +266,7 @@ export async function POST(req: Request) {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!,
+      process.env.STRIPE_WEBHOOK_SECRET,
     );
   } catch (error: unknown) {
     const message =
@@ -194,9 +275,10 @@ export async function POST(req: Request) {
     return new NextResponse(`Webhook Error: ${message}`, { status: 400 });
   }
 
-  console.log("Stripe event received:", event.type);
-
-  if (event.type !== "checkout.session.completed") {
+  if (
+    event.type !== "checkout.session.completed" &&
+    event.type !== "checkout.session.async_payment_succeeded"
+  ) {
     return new NextResponse(null, { status: 200 });
   }
 
@@ -204,6 +286,10 @@ export async function POST(req: Request) {
 
   if (session.metadata?.type === "WALLET_TOPUP") {
     return handleWalletTopUp(session);
+  }
+
+  if (session.metadata?.orderId) {
+    return handleLegacyOrderCheckout(session);
   }
 
   return handleOrderCheckout(session);

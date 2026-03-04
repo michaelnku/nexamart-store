@@ -106,6 +106,8 @@ export async function placeOrderAction({
   distanceInMiles: _distanceInMiles,
   couponId,
   idempotencyKey,
+  __internalUserId,
+  __internalAuthToken,
 }: {
   addressId: string;
   paymentMethod: PaymentMethod;
@@ -113,8 +115,16 @@ export async function placeOrderAction({
   distanceInMiles?: number;
   couponId?: string | null;
   idempotencyKey: string;
+  __internalUserId?: string;
+  __internalAuthToken?: string;
 }) {
-  const userId = await CurrentUserId();
+  const isTrustedInternalCall =
+    !!process.env.STRIPE_WEBHOOK_SECRET &&
+    __internalAuthToken === process.env.STRIPE_WEBHOOK_SECRET;
+  const userId =
+    isTrustedInternalCall && __internalUserId
+      ? __internalUserId
+      : await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
   void _distanceInMiles;
 
