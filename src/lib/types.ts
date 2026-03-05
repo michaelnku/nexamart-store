@@ -9,6 +9,7 @@ import {
   Review,
   SenderType,
   Store,
+  VerificationStatus,
   TransactionStatus,
   TransactionType,
   UserRole,
@@ -652,7 +653,11 @@ export type StaffProfileDTO = {
   firstName: string;
   lastName: string;
   phone?: string | null;
-  avatar?: string | null;
+  stripeAccountId?: string | null;
+  isVerified: boolean;
+  verifiedAt?: Date | null;
+  verificationMethod?: string | null;
+  verificationStatus: VerificationStatus;
   department?: string | null;
   employmentType?: EmploymentType | null;
   status: StaffStatus;

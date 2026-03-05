@@ -1,6 +1,5 @@
 "use server";
 
-import { Prisma } from "@/generated/prisma";
 import { UserRole } from "@/generated/prisma/client";
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
@@ -8,6 +7,7 @@ import {
   createStaffProfileSchema,
   type StaffProfileInput,
 } from "@/lib/zodValidation";
+import { revalidatePath } from "next/cache";
 
 function normalizePhone(phone?: string): string | null {
   if (!phone) return null;
@@ -74,20 +74,19 @@ export async function createStaffProfile(
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
         phone: normalizePhone(parsed.data.phone),
-        avatar: parsed.data.avatar ?? null,
         department: parsed.data.department ?? null,
         employmentType: parsed.data.employmentType ?? null,
+        isVerified: false,
+        verifiedAt: null,
+        verificationMethod: null,
+        verificationStatus: "PENDING",
       },
     });
 
+    revalidatePath("/profile");
+
     return { success: true };
-  } catch (error: any) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      return { error: "Staff profile already exists" };
-    }
+  } catch {
     return { error: "Failed to create staff profile" };
   }
 }

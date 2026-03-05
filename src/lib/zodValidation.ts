@@ -445,11 +445,6 @@ export const createStaffProfileSchema = z.object({
     .trim()
     .optional()
     .transform((value) => (value && value.length ? value : undefined)),
-  avatar: z
-    .string()
-    .trim()
-    .optional()
-    .transform((value) => (value && value.length ? value : undefined)),
   department: z
     .string()
     .trim()

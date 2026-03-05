@@ -863,7 +863,13 @@ model StaffProfile {
   firstName String
   lastName  String
   phone     String?
-  avatar    String?
+
+  stripeAccountId String? @unique
+
+  isVerified         Boolean            @default(false)
+  verifiedAt         DateTime?
+  verificationMethod String?
+  verificationStatus VerificationStatus @default(PENDING)
 
   department     String?
   employmentType EmploymentType?
@@ -994,6 +1000,13 @@ model HeroBanner {
 /// * ===========================
 /// * ENUMS
 /// * ===========================
+enum VerificationStatus {
+  PENDING
+  REJECTED
+  INCOMPLETE
+  VERIFIED
+}
+
 enum BannerPlacement {
   HOMEPAGE
   CATEGORY

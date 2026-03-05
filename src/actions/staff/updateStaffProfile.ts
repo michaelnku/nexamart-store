@@ -1,15 +1,28 @@
 "use server";
 
-import { CurrentUserId } from "@/lib/currentUser";
+import { UserRole } from "@/generated/prisma/client";
+import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import {
   updateStaffProfileSchema,
   type UpdateStaffProfileInput,
 } from "@/lib/zodValidation";
+import { revalidatePath } from "next/cache";
+
+function normalizePhone(phone?: string): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return null;
+  return `+${digits}`;
+}
 
 export async function updateStaffProfile(input: UpdateStaffProfileInput) {
-  const userId = await CurrentUserId();
+  const user = await CurrentUser();
+  const userId = user?.id;
   if (!userId) return { error: "Unauthorized" };
+  if (user.role !== UserRole.ADMIN && user.role !== UserRole.MODERATOR) {
+    return { error: "Only admin and moderator can update staff profile" };
+  }
 
   const parsed = updateStaffProfileSchema.safeParse(input);
   if (!parsed.success) return { error: "Invalid staff profile data" };
@@ -17,38 +30,41 @@ export async function updateStaffProfile(input: UpdateStaffProfileInput) {
   try {
     const existingProfile = await prisma.staffProfile.findUnique({
       where: { userId },
-      select: { id: true },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+      },
     });
 
     if (!existingProfile) {
       return { error: "Staff profile not found" };
     }
 
-    const duplicateStaffId = await prisma.staffProfile.findFirst({
-      where: {
-        staffId: parsed.data.staffId,
-        userId: { not: userId },
-      },
-      select: { id: true },
-    });
-
-    if (duplicateStaffId) {
-      return { error: "Staff ID already exists" };
-    }
+    const nextPhone = normalizePhone(parsed.data.phone);
+    const identityChanged =
+      existingProfile.firstName !== parsed.data.firstName ||
+      existingProfile.lastName !== parsed.data.lastName ||
+      (existingProfile.phone ?? null) !== nextPhone;
 
     await prisma.staffProfile.update({
       where: { userId },
       data: {
-        staffId: parsed.data.staffId,
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
-        phone: parsed.data.phone ?? null,
-        avatar: parsed.data.avatar ?? null,
+        phone: nextPhone,
         department: parsed.data.department ?? null,
         employmentType: parsed.data.employmentType ?? null,
-        status: parsed.data.status ?? undefined,
+        ...(identityChanged && {
+          isVerified: false,
+          verifiedAt: null,
+          verificationMethod: null,
+          verificationStatus: "INCOMPLETE",
+        }),
       },
     });
+    revalidatePath("/profile");
 
     return { success: true };
   } catch {

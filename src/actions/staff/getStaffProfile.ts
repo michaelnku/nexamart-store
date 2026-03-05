@@ -1,11 +1,16 @@
 "use server";
 
-import { CurrentUserId } from "@/lib/currentUser";
+import { UserRole } from "@/generated/prisma/client";
+import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 
 export async function getStaffProfile() {
-  const userId = await CurrentUserId();
+  const user = await CurrentUser();
+  const userId = user?.id;
   if (!userId) return { error: "Unauthorized" };
+  if (user.role !== UserRole.ADMIN && user.role !== UserRole.MODERATOR) {
+    return { error: "Only admin and moderator can access staff profile" };
+  }
 
   try {
     const profile = await prisma.staffProfile.findUnique({
