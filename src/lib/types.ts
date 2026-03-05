@@ -446,7 +446,8 @@ export type WalletTransactionType =
   | "EARNING"
   | "ORDER_PAYMENT"
   | "WITHDRAWAL"
-  | "SELLER_PAYOUT";
+  | "SELLER_PAYOUT"
+  | "RIDER_PAYOUT";
 
 export type WalletTransactionStatus = "SUCCESS" | "PENDING" | "FAILED";
 

@@ -177,7 +177,7 @@ function SidebarContent({
                   {user?.name || user?.username || "My Account"}
                 </p>
 
-                <VerifiedBadge />
+                <VerifiedBadge user={user ?? null} />
               </div>
 
               <p className="text-sm text-gray-500 truncate">{user?.email}</p>

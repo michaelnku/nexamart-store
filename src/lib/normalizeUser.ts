@@ -11,6 +11,7 @@ export async function normalizeUser(
     include: {
       store: { select: { isVerified: true } },
       riderProfile: { select: { isVerified: true } },
+      staffProfile: { select: { isVerified: true } },
     },
   });
 
@@ -21,7 +22,9 @@ export async function normalizeUser(
       ? Boolean(db.store?.isVerified)
       : db.role === "RIDER"
         ? Boolean(db.riderProfile?.isVerified)
-        : false;
+        : db.role === "ADMIN" || db.role === "MODERATOR"
+          ? Boolean(db.staffProfile?.isVerified)
+          : false;
 
   return {
     id: db.id,

@@ -471,7 +471,7 @@ export default function MarketPlaceNavbar({
                           : "Welcome"}
                       </p>
 
-                      <VerifiedBadge />
+                      <VerifiedBadge user={currentUser ?? undefined} />
                     </div>
 
                     <p className="truncate text-sm text-gray-500">

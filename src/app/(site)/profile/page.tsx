@@ -87,7 +87,8 @@ async function ProfilePageContent() {
   });
 
   const staffProfile: StaffProfileDTO | null =
-    profileUser.role === UserRole.ADMIN || profileUser.role === UserRole.MODERATOR
+    profileUser.role === UserRole.ADMIN ||
+    profileUser.role === UserRole.MODERATOR
       ? await prisma.staffProfile.findUnique({
           where: { userId: profileUser.id },
         })
@@ -106,31 +107,13 @@ async function ProfilePageContent() {
         </header>
 
         <UserProfileCard user={profileUser} />
+
+        {referralCode?.code && <ReferralCodeCard code={referralCode.code} />}
+
         {(profileUser.role === UserRole.ADMIN ||
           profileUser.role === UserRole.MODERATOR) && (
           <StaffProfileCard staffProfile={staffProfile ?? undefined} />
         )}
-
-        {referralCode?.code && <ReferralCodeCard code={referralCode.code} />}
-
-        <Card>
-          <CardContent className="space-y-6">
-            <h2 className="font-medium text-black dark:text-gray-400">
-              Actions
-            </h2>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Button
-                asChild
-                className="w-full bg-[var(--brand-blue)] text-white hover:bg-[var(--brand-blue-hover)] sm:w-auto"
-              >
-                <Link href="/profile/update">Update Profile</Link>
-              </Button>
-
-              <DeleteAcountModal userId={profileUser.id} />
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </main>
   );

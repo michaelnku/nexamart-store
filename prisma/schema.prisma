@@ -370,6 +370,7 @@ model OrderSellerGroup {
   sellerId               String
   subtotal               Float
   shippingFee            Float
+  sellerRevenue          Float
   payoutStatus           PayoutStatus      @default(PENDING)
   status                 SellerGroupStatus @default(PENDING)
   expectedAtHub          DateTime?
@@ -390,6 +391,10 @@ model OrderSellerGroup {
   order                  Order             @relation(fields: [orderId], references: [id])
   seller                 User              @relation("SellerGroupBySeller", fields: [sellerId], references: [id], onDelete: Cascade)
   store                  Store             @relation(fields: [storeId], references: [id])
+
+  @@index([sellerId])
+  @@index([payoutReleasedAt])
+  @@index([sellerId, payoutReleasedAt])
 }
 
 model OrderItem {
@@ -404,6 +409,8 @@ model OrderItem {
   product       Product           @relation(fields: [productId], references: [id])
   sellerGroup   OrderSellerGroup? @relation("GroupItems", fields: [sellerGroupId], references: [id])
   variant       ProductVariant?   @relation(fields: [variantId], references: [id])
+
+  @@index([sellerGroupId])
 }
 
 model CheckoutGroup {
@@ -537,6 +544,18 @@ model EscrowSnapshot {
   id        String   @id @default(cuid())
   totalHeld Float
   createdAt DateTime @default(now())
+}
+
+model WalletReconciliationLog {
+  id              String   @id @default(cuid())
+  walletId        String
+  previousBalance Float
+  ledgerBalance   Float
+  fixed           Boolean
+  createdAt       DateTime @default(now())
+
+  @@index([walletId])
+  @@index([createdAt])
 }
 
 /// *
@@ -960,7 +979,7 @@ model Notification {
 
 /// *
 /// * ===========================
-/// *  MARKETING
+/// *  MARKETING & ANALYTICS
 /// * ===========================
 model HeroBanner {
   id String @id @default(cuid())
@@ -994,6 +1013,22 @@ model HeroBanner {
   @@index([position])
   @@index([startsAt])
   @@index([endsAt])
+}
+
+model SellerDailyStats {
+  id       String   @id @default(cuid())
+  sellerId String
+  date     DateTime
+
+  revenue      Float
+  orders       Int
+  productsSold Int
+
+  createdAt DateTime @default(now())
+
+  @@unique([sellerId, date])
+  @@index([sellerId])
+  @@index([date])
 }
 
 /// *

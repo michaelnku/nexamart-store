@@ -2,8 +2,7 @@ import { StaffProfileDTO } from "@/lib/types";
 import { Button } from "../ui/button";
 import Link from "next/link";
 import { Badge } from "../ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { User, Briefcase, Calendar, ShieldCheck, IdCard } from "lucide-react";
+import { Briefcase, Calendar, ShieldCheck, IdCard } from "lucide-react";
 
 type StaffProfileCardProps = {
   staffProfile?: StaffProfileDTO;
@@ -19,11 +18,6 @@ export function StaffProfileCard({ staffProfile }: StaffProfileCardProps) {
         year: "numeric",
       })
     : null;
-
-  const initials =
-    staffProfile?.firstName && staffProfile?.lastName
-      ? `${staffProfile.firstName[0]}${staffProfile.lastName[0]}`
-      : "ST";
 
   return (
     <section className="rounded-2xl border bg-white dark:bg-neutral-900 p-6 shadow-sm space-y-6">

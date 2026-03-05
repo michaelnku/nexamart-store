@@ -5,43 +5,69 @@ import {
   getRiderWalletAction,
   getSellerWalletAction,
 } from "@/actions/wallet/wallet";
+import { WithdrawalDTO, WalletTransaction } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
-import { BuyerWallet } from "@/lib/types";
+import { SharedWalletData, WalletRole } from "@/types/wallet";
+import { WALLET_ROLE_CONFIG } from "@/lib/wallet/walletRoleConfig";
 
-//queryClient.invalidateQueries(["wallet"]);
+function normalizeWallet(data: unknown): SharedWalletData {
+  const raw = (data ?? {}) as {
+    id?: string;
+    balance?: number;
+    pending?: number;
+    totalEarnings?: number;
+    currency?: string;
+    transactions?: WalletTransaction[];
+    withdrawals?: WithdrawalDTO[];
+  };
 
-export function useBuyerWallet() {
-  return useQuery<BuyerWallet>({
-    queryKey: ["buyer-wallet"],
+  return {
+    id: raw.id,
+    balance: raw.balance ?? 0,
+    pending: raw.pending ?? 0,
+    totalEarnings: raw.totalEarnings ?? 0,
+    currency: raw.currency ?? "USD",
+    transactions: raw.transactions ?? [],
+    withdrawals: raw.withdrawals ?? [],
+  };
+}
+
+export function useWallet(role: WalletRole) {
+  return useQuery<SharedWalletData>({
+    queryKey: ["wallet", role],
     queryFn: async () => {
-      const wallet = await getBuyerWalletAction();
-      return wallet;
+      const response =
+        role === "buyer"
+          ? await getBuyerWalletAction()
+          : role === "seller"
+            ? await getSellerWalletAction()
+            : await getRiderWalletAction();
+
+      const normalized = normalizeWallet(response);
+      const allowedTypes = WALLET_ROLE_CONFIG[role].visibleTypes;
+
+      return {
+        ...normalized,
+        transactions: normalized.transactions.filter((tx) =>
+          allowedTypes.includes(tx.type),
+        ),
+      };
     },
-    staleTime: 1000 * 60 * 1,
-    refetchInterval: 1000 * 60,
+    staleTime: 1000 * 60,
+    refetchInterval: role === "buyer" ? 1000 * 60 : undefined,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
 }
 
+export function useBuyerWallet() {
+  return useWallet("buyer");
+}
+
 export function useSellerWallet() {
-  return useQuery({
-    queryKey: ["seller-wallet"],
-    queryFn: async () => {
-      const wallet = await getSellerWalletAction();
-      return wallet;
-    },
-    staleTime: 1000 * 60 * 1,
-  });
+  return useWallet("seller");
 }
 
 export function useRiderWallet() {
-  return useQuery({
-    queryKey: ["rider-wallet"],
-    queryFn: async () => {
-      const wallet = await getRiderWalletAction();
-      return wallet;
-    },
-    staleTime: 1000 * 60 * 1,
-  });
+  return useWallet("rider");
 }

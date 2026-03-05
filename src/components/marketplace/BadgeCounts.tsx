@@ -12,6 +12,7 @@ import { motion } from "framer-motion";
 import { useCartStore } from "@/stores/useCartstore";
 import { useWishlistStore } from "@/stores/useWishlistStore";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
+import { UserDTO } from "@/lib/types";
 
 const AnimatedBadge = ({ count }: { count: number }) => {
   const display = count > 99 ? "99+" : count;
@@ -74,12 +75,18 @@ const WishlistBadge = () => {
   );
 };
 
-const VerifiedBadge = () => {
-  const { data: user } = useCurrentUserQuery();
+const verificationLabelByRole: Partial<Record<UserDTO["role"], string>> = {
+  SELLER: "Verified",
+  RIDER: "Verified",
+  ADMIN: "Verified",
+  MODERATOR: "Verified",
+};
+
+const VerifiedBadge = ({ user: providedUser }: { user?: UserDTO | null }) => {
+  const { data: queriedUser } = useCurrentUserQuery();
+  const user = providedUser ?? queriedUser;
 
   if (!user) return null;
-
-  console.log("USER FROM QUERY:", user);
 
   return user.isVerified ? (
     <Badge
@@ -87,7 +94,7 @@ const VerifiedBadge = () => {
       className="border-green-500 text-green-700 bg-green-50 dark:bg-green-900/30 dark:text-green-200 flex items-center gap-1 px-2.5 py-1 text-xs font-semibold"
     >
       <BadgeCheck className="w-3.5 h-3.5" />
-      {user?.role === "SELLER" ? "Verified Seller" : "Verified Rider"}
+      {verificationLabelByRole[user.role] ?? "Verified"}
     </Badge>
   ) : (
     <Badge

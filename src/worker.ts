@@ -2,7 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { finalizePostPayment } from "@/lib/payments/completeOrderPayment";
 import { ServiceContext } from "@/lib/system/serviceContext";
 import { markSellerGroupReady } from "@/lib/order/markSellerGroupReady";
+import { runSellerDailyStatsJob } from "./lib/cron/jobs/sellerDailyStatsJob";
 
+const SELLER_DAILY_STATS_JOB_TYPE = "SELLER_DAILY_STATS";
 const FINALIZE_ORDER_JOB_TYPE = "FINALIZE_ORDER";
 const MARK_READY_JOB_TYPE = "MARK_READY";
 const LEGACY_MARK_SELLER_GROUP_READY_JOB_TYPE = "MARK_SELLER_GROUP_READY";
@@ -46,6 +48,7 @@ export async function processPendingJobs(
           FINALIZE_ORDER_JOB_TYPE,
           MARK_READY_JOB_TYPE,
           LEGACY_MARK_SELLER_GROUP_READY_JOB_TYPE,
+          SELLER_DAILY_STATS_JOB_TYPE,
         ],
       },
       runAt: { lte: now },
@@ -84,6 +87,8 @@ export async function processPendingJobs(
         isMarkSellerGroupReadyPayload(job.payload)
       ) {
         await markSellerGroupReady(job.payload.sellerGroupId, "AUTO");
+      } else if (job.type === SELLER_DAILY_STATS_JOB_TYPE) {
+        await runSellerDailyStatsJob();
       } else {
         throw new Error("Invalid job payload");
       }

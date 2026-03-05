@@ -190,7 +190,7 @@ export async function updateUserProfile(values: updateUserSchemaType) {
     },
   });
 
-  revalidatePath("/dashboard/profile");
+  revalidatePath("/profile");
 
   return { success: true };
 }

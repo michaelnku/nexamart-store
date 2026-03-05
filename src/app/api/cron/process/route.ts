@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processPendingJobs } from "@/worker";
 import { prisma } from "@/lib/prisma";
+import { scheduleSellerAnalyticsJob } from "@/lib/cron/jobs/scheduler/sellerAnalyticsScheduler";
 
 const CRON_LOCK_NAME = "job_processor";
 const CRON_LOCK_WINDOW_MS = 2 * 60 * 1000;
@@ -38,6 +39,8 @@ export async function GET(req: NextRequest) {
   if (!lock.acquired) {
     return NextResponse.json({ ok: true, skipped: true });
   }
+
+  await scheduleSellerAnalyticsJob();
 
   const result = await processPendingJobs(20);
 

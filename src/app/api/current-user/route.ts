@@ -10,6 +10,7 @@ export async function GET() {
     include: {
       store: true,
       riderProfile: true,
+      staffProfile: true,
     },
   });
 
@@ -21,7 +22,9 @@ export async function GET() {
       user.role === "SELLER"
         ? user.store?.isVerified
         : user.role === "RIDER"
-        ? user.riderProfile?.isVerified
-        : false,
+          ? user.riderProfile?.isVerified
+          : user.role === "ADMIN" || user.role === "MODERATOR"
+            ? user.staffProfile?.isVerified
+            : false,
   });
 }

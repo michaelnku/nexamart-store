@@ -1,6 +1,10 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Mail } from "lucide-react";
+import { Separator } from "../ui/separator";
+import { Button } from "../ui/button";
+import Link from "next/link";
+import DeleteAcountModal from "../modal/DeleteAcountModal";
 
 type UserRole = "USER" | "ADMIN" | "RIDER" | "SELLER" | "MODERATOR" | "SYSTEM";
 
@@ -86,8 +90,10 @@ export function UserProfileCard({ user }: UserProfileCardProps) {
         </div>
       </div>
 
+      <Separator />
+
       {/* Info Grid */}
-      <div className="grid grid-cols-2 gap-4 border-t pt-4 text-sm">
+      <div className="grid grid-cols-2 gap-4 pt-4 text-sm">
         <div className="space-y-1">
           <p className="text-gray-500">Role</p>
           <p className="font-medium text-gray-800 dark:text-gray-200">
@@ -104,6 +110,16 @@ export function UserProfileCard({ user }: UserProfileCardProps) {
             </p>
           </div>
         </div>
+      </div>
+
+      <Separator />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Button className="w-full bg-[var(--brand-blue)] text-white hover:bg-[var(--brand-blue-hover)] sm:w-auto">
+          <Link href="/profile/update">Update Profile</Link>
+        </Button>
+
+        <DeleteAcountModal userId={user.id} />
       </div>
     </section>
   );

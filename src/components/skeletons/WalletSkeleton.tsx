@@ -1,101 +1,103 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { WalletRole } from "@/types/wallet";
 
-export function WalletSkeleton() {
+type WalletSkeletonProps = {
+  role?: WalletRole;
+};
+
+export function WalletSkeleton({ role = "buyer" }: WalletSkeletonProps) {
+  const isBuyer = role === "buyer";
+
   return (
-    <main className="max-w-4xl mx-auto py-10 px-4 space-y-10 min-h-screen">
-      {/* HEADER */}
-      <div className="space-y-2">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-4 w-24" />
-      </div>
+    <main className="mx-auto max-w-5xl space-y-8 px-4 py-6">
+      <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-28" />
+          <Skeleton className="h-4 w-40" />
+        </div>
+        <div className="flex gap-2">
+          {isBuyer ? (
+            <>
+              <Skeleton className="h-10 w-28 rounded-md" />
+              <Skeleton className="h-10 w-24 rounded-md" />
+            </>
+          ) : (
+            <Skeleton className="h-10 w-40 rounded-md" />
+          )}
+        </div>
+      </header>
 
-      {/* BALANCE SUMMARY CARDS */}
-      <section className="grid md:grid-cols-3 gap-6">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            key={i}
-            className="border rounded-xl shadow-sm p-5 bg-background space-y-4"
-          >
-            <Skeleton className="h-3 w-16" />
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-3 w-16" />
+      {isBuyer ? (
+        <section className="rounded-xl border bg-background p-6 shadow-sm">
+          <Skeleton className="h-6 w-44" />
+          <Skeleton className="mt-4 h-10 w-64" />
+          <Skeleton className="mt-3 h-4 w-72" />
+          <div className="mt-3 flex gap-6">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-20" />
           </div>
-        ))}
-      </section>
+        </section>
+      ) : (
+        <>
+          <section className="rounded-2xl border bg-background p-8 shadow-sm">
+            <Skeleton className="h-6 w-44" />
+            <Skeleton className="mt-4 h-10 w-64" />
+          </section>
 
-      {/* PROGRESS BAR */}
-      <section className="border rounded-xl shadow-sm p-6 space-y-4 bg-background">
-        <Skeleton className="h-3 w-32" />
-        <Skeleton className="h-3 w-full rounded-full" />
-        <Skeleton className="h-3 w-24" />
-      </section>
+          <section className="grid gap-6 md:grid-cols-2">
+            <div className="rounded-xl border bg-background p-6 shadow-sm">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="mt-3 h-8 w-40" />
+            </div>
+            <div className="rounded-xl border bg-background p-6 shadow-sm">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="mt-3 h-8 w-40" />
+            </div>
+          </section>
+        </>
+      )}
 
-      {/* TRANSACTION TABLE */}
-      <section className="border rounded-xl shadow-sm p-4 space-y-3 bg-background">
-        <Skeleton className="h-5 w-40" />
-
-        <div className="border rounded-md overflow-hidden">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex gap-4 p-4 border-b">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-4 w-16" />
+      <section className="rounded-xl border bg-background shadow-sm">
+        <div className="flex items-center justify-between border-b p-4">
+          <Skeleton className="h-6 w-44" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+        <div className="space-y-3 p-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="grid grid-cols-5 gap-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
             </div>
           ))}
         </div>
       </section>
+
+      {!isBuyer && (
+        <section className="rounded-xl border bg-background shadow-sm">
+          <div className="flex items-center justify-between border-b p-5">
+            <Skeleton className="h-6 w-44" />
+            <Skeleton className="h-5 w-5 rounded-full" />
+          </div>
+          <div className="space-y-3 p-5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="grid grid-cols-3 gap-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }
 
 export function CustomerWalletSkeleton() {
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-4 space-y-8 min-h-screen">
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="space-y-2">
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-4 w-28" />
-        </div>
-
-        <div className="flex gap-2">
-          <Skeleton className="h-11 w-32 rounded-lg" />
-          <Skeleton className="h-11 w-32 rounded-lg" />
-        </div>
-      </div>
-
-      {/* BALANCE CARD */}
-      <div className="border shadow-sm rounded-xl p-6 space-y-5 bg-background">
-        <Skeleton className="h-3 w-32" />
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-3 w-60" />
-        <Skeleton className="h-6 w-40" />
-      </div>
-
-      {/* TRANSACTION HISTORY */}
-      <div className="border shadow-sm rounded-xl bg-background">
-        <div className="px-4 py-3 border-b flex items-center justify-between">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-3 w-24" />
-        </div>
-
-        <div className="space-y-4 py-6 px-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-center"
-            >
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-5 w-16 rounded-full" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  return <WalletSkeleton role="buyer" />;
 }

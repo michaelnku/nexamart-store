@@ -143,11 +143,24 @@ export const getSellerWalletAction = async () => {
 
   const wallet = await prisma.wallet.findUnique({
     where: { userId: user.id },
-    include: { withdrawals: true },
+    include: {
+      withdrawals: true,
+      transactions: {
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      },
+    },
   });
 
   if (!wallet) {
-    return { balance: 0, pending: 0, totalEarnings: 0, withdrawals: [] };
+    return {
+      balance: 0,
+      pending: 0,
+      totalEarnings: 0,
+      currency: "USD",
+      withdrawals: [],
+      transactions: [],
+    };
   }
 
   const [balance, pending, total] = await Promise.all([
@@ -169,6 +182,7 @@ export const getSellerWalletAction = async () => {
     totalEarnings: total._sum.amount ?? 0,
     currency: wallet.currency,
     withdrawals: wallet.withdrawals,
+    transactions: wallet.transactions,
   };
 };
 
@@ -181,11 +195,24 @@ export const getRiderWalletAction = async () => {
 
   const wallet = await prisma.wallet.findUnique({
     where: { userId: user.id },
-    include: { withdrawals: true },
+    include: {
+      withdrawals: true,
+      transactions: {
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      },
+    },
   });
 
   if (!wallet) {
-    return { balance: 0, pending: 0, totalEarnings: 0, withdrawals: [] };
+    return {
+      balance: 0,
+      pending: 0,
+      totalEarnings: 0,
+      currency: "USD",
+      withdrawals: [],
+      transactions: [],
+    };
   }
 
   const [balance, pending, total] = await Promise.all([
@@ -207,5 +234,6 @@ export const getRiderWalletAction = async () => {
     totalEarnings: total._sum.amount ?? 0,
     currency: wallet.currency,
     withdrawals: wallet.withdrawals,
+    transactions: wallet.transactions,
   };
 };
