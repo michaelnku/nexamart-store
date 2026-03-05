@@ -97,7 +97,7 @@ export default async function OrderSuccessSessionPage({
         <p className="text-sm text-gray-600">
           Your order is ready. Open your order slip to view tracking details.
         </p>
-        <Button asChild className="w-full sm:w-auto">
+        <Button asChild className="w-full sm:w-auto mr-6">
           <Link href={`/customer/order/success/${keyRecord.orderId}`}>
             Order Slip
           </Link>
