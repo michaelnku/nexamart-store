@@ -47,7 +47,7 @@ export function UserProfileCard({ user }: UserProfileCardProps) {
   }).format(new Date(user.createdAt));
 
   return (
-    <section className="rounded-2xl bg-white p-6 shadow-md">
+    <section className="rounded-2xl bg-white dark:bg-neutral-900 p-6 shadow-md">
       <div className="flex items-start gap-4">
         {user.image ? (
           <img
@@ -62,7 +62,7 @@ export function UserProfileCard({ user }: UserProfileCardProps) {
         )}
 
         <div className="min-w-0 space-y-1">
-          <h1 className="truncate text-xl font-semibold text-gray-900">
+          <h1 className="truncate text-xl font-semibold text-gray-900 dark:text-gray-400">
             {fullName}
           </h1>
           <p className="truncate text-sm text-gray-600">{user.email}</p>

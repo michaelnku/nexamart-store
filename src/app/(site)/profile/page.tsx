@@ -43,10 +43,12 @@ export default async function ProfilePage() {
   });
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
       <div className="space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold text-black">My Profile</h1>
+          <h1 className="text-2xl font-semibold text-black dark:text-gray-400">
+            My Profile
+          </h1>
           <p className="text-sm text-gray-500">
             Manage your personal account information and security.
           </p>
@@ -58,8 +60,10 @@ export default async function ProfilePage() {
         {referralCode?.code && <ReferralCodeCard code={referralCode.code} />}
 
         <Card>
-          <CardContent className="space-y-4 pt-6">
-            <h2 className="font-medium text-black">Actions</h2>
+          <CardContent className="space-y-6">
+            <h2 className="font-medium text-black dark:text-gray-400">
+              Actions
+            </h2>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Button

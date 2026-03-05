@@ -1,5 +1,6 @@
 import {
   DeliveryStatus,
+  EmploymentType,
   PaymentMethod,
   Product,
   ProductImage,
@@ -14,6 +15,7 @@ import {
   WithdrawalStatus,
   HeroBanner,
   SiteConfiguration,
+  StaffStatus,
 } from "@/generated/prisma/client";
 
 export type FullProductVariant = ProductVariant & {
@@ -642,6 +644,23 @@ export type RiderProfileDTO = Pick<
   | "isVerified"
   | "isAvailable"
 >;
+
+export type StaffProfileDTO = {
+  id: string;
+  userId: string;
+  staffId: string;
+  firstName: string;
+  lastName: string;
+  phone?: string | null;
+  avatar?: string | null;
+  department?: string | null;
+  employmentType?: EmploymentType | null;
+  status: StaffStatus;
+  joinedAt: Date;
+  lastActiveAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export type FoodDetails = {
   ingredients?: string[];

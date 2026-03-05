@@ -1,5 +1,5 @@
-import DashboardPageSkeleton from "@/components/skeletons/DashboardPageSkeleton";
+import MarketplaceDashboardLoading from "./_components/MarketplaceDashboardLoading";
 
 export default function MarketplaceLoading() {
-  return <DashboardPageSkeleton />;
+  return <MarketplaceDashboardLoading />;
 }

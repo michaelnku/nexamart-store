@@ -29,11 +29,13 @@ function SidebarContent({
   const role = user?.role as "SELLER" | "RIDER" | "ADMIN" | "MODERATOR";
   const menu = DashboardMenu[role] || [];
 
-  const normalizePath = (value: string) => value.replace(/\/$/, "");
+  const normalizePath = (value: string) =>
+    value === "/" ? "/" : value.replace(/\/+$/, "");
 
-  const getActiveSectionTitle = useMemo(() => {
+  const activeMatch = useMemo(() => {
     const p = normalizePath(pathname);
-    let matchedTitle: string | null = null;
+    let bestHref: string | null = null;
+    let bestSectionTitle: string | null = null;
     let matchedLength = -1;
 
     for (const section of menu) {
@@ -41,14 +43,23 @@ function SidebarContent({
         const h = normalizePath(link.href);
         const isMatch = p === h || p.startsWith(`${h}/`);
         if (isMatch && h.length > matchedLength) {
-          matchedTitle = section.title;
+          bestHref = h;
+          bestSectionTitle = section.title;
           matchedLength = h.length;
         }
       }
     }
 
-    if (matchedTitle) return matchedTitle;
+    return {
+      href: bestHref,
+      sectionTitle: bestSectionTitle,
+    };
+  }, [menu, pathname]);
 
+  const getActiveSectionTitle = useMemo(() => {
+    if (activeMatch.sectionTitle) return activeMatch.sectionTitle;
+
+    const p = normalizePath(pathname);
     if (p.startsWith("/marketplace/dashboard")) {
       const dashboardSection = menu.find((section) =>
         section.links.some((link) => normalizePath(link.href) === "/marketplace/dashboard"),
@@ -57,7 +68,7 @@ function SidebarContent({
     }
 
     return null;
-  }, [menu, pathname]);
+  }, [activeMatch.sectionTitle, menu, pathname]);
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     getActiveSectionTitle ? { [getActiveSectionTitle]: true } : {},
@@ -76,9 +87,7 @@ function SidebarContent({
     setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));
 
   const isActive = (href: string) => {
-    const p = pathname.replace(/\/$/, "");
-    const h = href.replace(/\/$/, "");
-    return p === h || p.startsWith(`${h}/`);
+    return normalizePath(href) === activeMatch.href;
   };
 
   const logout = useLogout();
