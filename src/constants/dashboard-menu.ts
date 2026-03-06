@@ -89,7 +89,7 @@ export const DashboardMenu = {
         },
         {
           name: "Support",
-          href: "/marketplace/dashboard/seller/support",
+          href: "/support",
           icon: HelpCircle,
         },
         {
@@ -146,7 +146,7 @@ export const DashboardMenu = {
         },
         {
           name: "Support",
-          href: "/marketplace/dashboard/rider/support",
+          href: "/support",
           icon: HelpCircle,
         },
         {
@@ -321,6 +321,11 @@ export const DashboardMenu = {
     {
       title: "Account",
       links: [
+        {
+          name: "Support Tickets",
+          href: "/support",
+          icon: HelpCircle,
+        },
         {
           name: "Messages",
           href: "/messages",

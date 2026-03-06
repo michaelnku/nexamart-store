@@ -1,11 +1,5 @@
-import SupportForm from "@/app/marketplace/_components/SupportForm";
-
 const page = () => {
-  return (
-    <div>
-      <SupportForm role="buyer" />
-    </div>
-  );
+  return <div>coming soon...</div>;
 };
 
 export default page;
