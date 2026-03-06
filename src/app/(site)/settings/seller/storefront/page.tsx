@@ -7,13 +7,5 @@ export default async function SellerStorefrontSettingsPage() {
     return null;
   }
 
-  return (
-    <SellerStorefrontFormClient
-      initialTagline={store.tagline ?? ""}
-      initialLogo={store.logo ?? ""}
-      initialLogoKey={store.logoKey ?? ""}
-      initialBanner={store.bannerImage ?? ""}
-      initialBannerKey={store.bannerKey ?? ""}
-    />
-  );
+  return <SellerStorefrontFormClient />;
 }
