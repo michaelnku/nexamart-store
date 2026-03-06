@@ -6,6 +6,10 @@ export async function getUserConversations(userId: string) {
       members: {
         some: { userId },
       },
+
+      type: {
+        in: ["SUPPORT", "ORDER", "SYSTEM"],
+      },
       status: {
         notIn: ["DELETED", "BLOCKED"],
       },

@@ -84,7 +84,7 @@ export const DashboardMenu = {
       links: [
         {
           name: "Messages",
-          href: "/marketplace/dashboard/seller/messages",
+          href: "/messages",
           icon: MessageSquare,
         },
         {
@@ -141,7 +141,7 @@ export const DashboardMenu = {
       links: [
         {
           name: "Messages",
-          href: "/marketplace/dashboard/rider/messages",
+          href: "/messages",
           icon: MessageSquare,
         },
         {
@@ -323,7 +323,7 @@ export const DashboardMenu = {
       links: [
         {
           name: "Messages",
-          href: "/marketplace/dashboard/moderator/messages",
+          href: "/messages",
           icon: MessageSquare,
         },
         {

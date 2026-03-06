@@ -36,8 +36,7 @@ export default function InboxLayout({ conversations, currentUserId }: Props) {
 
       const current = prev[index];
       const nextUnread =
-        payload.senderType === "SUPPORT" &&
-        activeId !== payload.conversationId
+        payload.senderType === "SUPPORT" && activeId !== payload.conversationId
           ? current.unreadCount + 1
           : activeId === payload.conversationId
             ? 0
@@ -62,7 +61,7 @@ export default function InboxLayout({ conversations, currentUserId }: Props) {
 
   if (!hasConversations) {
     return (
-      <div className="flex h-full w-full items-center border justify-center bg-background">
+      <div className="flex h-full w-full px-6 items-center border justify-center bg-background">
         <EmptyInboxState onNewConversation={() => setOpen(true)} />
 
         <Dialog open={open} onOpenChange={setOpen}>

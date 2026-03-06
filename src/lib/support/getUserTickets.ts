@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import formatTicketId from "@/lib/support/formatTicketId";
 
 type Ticket = {
   id: string;
@@ -14,26 +15,20 @@ export default async function getUserTickets(
   const conversations = await prisma.conversation.findMany({
     where: {
       members: {
-        some: {
-          userId,
-        },
+        some: { userId },
       },
       type: "SUPPORT",
       status: {
         notIn: ["DELETED", "BLOCKED"],
       },
     },
-
     orderBy: {
       updatedAt: "desc",
     },
-
     include: {
       messages: {
         take: 1,
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy: { createdAt: "desc" },
         select: {
           senderType: true,
         },
@@ -42,7 +37,8 @@ export default async function getUserTickets(
   });
 
   return conversations.map((c) => ({
-    id: c.id,
+    id: formatTicketId(c.createdAt),
+    conversationId: c.id,
     subject: c.subject,
     status: c.status,
     lastReply: c.messages[0]?.senderType === "USER" ? "You" : "Support Team",
