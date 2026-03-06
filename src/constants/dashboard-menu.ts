@@ -362,7 +362,7 @@ export const DashboardMenuItems = {
           name: "Track a Package",
         },
         {
-          href: "/customer/cart",
+          href: "/cart",
           icon: ShoppingCartIcon,
           name: "My Cart",
         },
@@ -425,7 +425,7 @@ export const DashboardMenuItems = {
           name: "Messages",
         },
         {
-          href: "/help",
+          href: "/support",
           icon: HelpCircle,
           name: "Help & Support",
         },

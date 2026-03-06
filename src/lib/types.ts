@@ -685,7 +685,7 @@ export type SiteConfig = Pick<
   | "siteEmail"
   | "sitePhone"
   | "siteLogo"
-  | "platformCommissionPercent"
+  | "platformCommissionRate"
   | "foodMinimumDeliveryFee"
   | "generalMinimumDeliveryFee"
   | "foodBaseDeliveryRate"

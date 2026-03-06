@@ -70,7 +70,7 @@ export default function SupportTicketsPage({ tickets }: { tickets: Ticket[] }) {
   };
 
   return (
-    <div className="space-y-6 mx-auto max-w-5xl px-8">
+    <div className="space-y-6 mx-auto max-w-5xl px-8 md:px-4 py-8">
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
