@@ -14,15 +14,15 @@ export async function createConversationAction({
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
 
-  if (!message.trim()) {
-    return { error: "Message cannot be empty" };
-  }
+  const cleanMessage = message.trim();
+  if (!cleanMessage) return { error: "Message cannot be empty" };
 
   const conversation = await prisma.conversation.create({
     data: {
       userId,
       type: "SUPPORT",
-      subject: subject?.trim() ? subject.trim() : "Support Request",
+      status: "OPEN",
+      subject: subject?.trim() || "Support Request",
       members: {
         create: {
           userId,
@@ -39,7 +39,7 @@ export async function createConversationAction({
             {
               senderId: userId,
               senderType: SenderType.USER,
-              content: message.trim(),
+              content: cleanMessage,
             },
           ],
         },

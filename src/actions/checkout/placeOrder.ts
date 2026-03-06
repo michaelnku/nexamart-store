@@ -15,11 +15,13 @@ import { calculateStoreDeliveryFee } from "@/lib/shipping/shippingCalculator";
 import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
 import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
 import { buildDoubleEntryLedgerRows } from "@/lib/finance/ledgerService";
+import { calculatePlatformCommission } from "@/lib/finance/calculatePlatformCommission";
 
 type StoreGroup = {
   storeId: string;
   sellerId: string;
   sellerRevenue: number;
+  platformCommission: number;
   storeName: string;
   storeType: "FOOD" | "GENERAL";
   items: Array<{
@@ -305,6 +307,7 @@ export async function placeOrderAction({
         generalRatePerMile: true,
         expressMultiplier: true,
         pickupFee: true,
+        platformCommissionRate: true,
       },
     });
 
@@ -347,6 +350,11 @@ export async function placeOrderAction({
           0,
         );
 
+        const commissionRate = siteConfig?.platformCommissionRate ?? 0.1;
+
+        const { platformCommission, sellerRevenue } =
+          calculatePlatformCommission(subtotal, commissionRate);
+
         return {
           storeId,
           sellerId: store.userId,
@@ -363,7 +371,8 @@ export async function placeOrderAction({
 
           subtotal,
 
-          sellerRevenue: subtotal,
+          sellerRevenue,
+          platformCommission,
 
           shippingFee,
           distanceInMiles,
@@ -601,6 +610,7 @@ export async function placeOrderAction({
             data: {
               orderId: createdOrder.id,
               sellerRevenue: storeGroup.sellerRevenue,
+              platformCommission: storeGroup.platformCommission,
               storeId: storeGroup.storeId,
               sellerId: storeGroup.sellerId,
               subtotal: storeGroup.subtotal,

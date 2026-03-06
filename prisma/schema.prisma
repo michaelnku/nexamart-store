@@ -364,13 +364,15 @@ model OrderTimeline {
 /// *
 /// * GROUPS SELLER ITEMS PER ORDER
 model OrderSellerGroup {
-  id                     String            @id @default(cuid())
-  orderId                String
-  storeId                String
-  sellerId               String
-  subtotal               Float
-  shippingFee            Float
-  sellerRevenue          Float
+  id                 String @id @default(cuid())
+  orderId            String
+  storeId            String
+  sellerId           String
+  subtotal           Float
+  shippingFee        Float
+  sellerRevenue      Float
+  platformCommission Float  @default(0)
+
   payoutStatus           PayoutStatus      @default(PENDING)
   status                 SellerGroupStatus @default(PENDING)
   expectedAtHub          DateTime?
@@ -935,10 +937,9 @@ model SiteConfiguration {
 
   siteLogo String?
 
+  platformCommissionRate    Float @default(0.10)
   foodMinimumDeliveryFee    Float @default(2)
   generalMinimumDeliveryFee Float @default(5)
-
-  platformCommissionPercent Float @default(10)
 
   foodBaseDeliveryRate Float @default(1.5)
   foodRatePerMile      Float @default(0.7)
@@ -1216,6 +1217,12 @@ enum ConversationStatus {
   OPEN
   RESOLVED
   CLOSED
+  ARCHIVED
+  WAITING
+  CANCELLED
+  REJECTED
+  BLOCKED
+  DELETED
 }
 
 enum SenderType {

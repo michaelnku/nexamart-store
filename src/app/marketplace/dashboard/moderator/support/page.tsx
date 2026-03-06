@@ -2,7 +2,7 @@ import SupportTicketsPage from "@/components/inbox/SupportTicketsPage";
 import { CurrentUserId } from "@/lib/currentUser";
 import getUserTickets from "@/lib/support/getUserTickets";
 
-export default async function SellerSupportPage() {
+export default async function ModeratorSupportPage() {
   const userId = await CurrentUserId();
   if (!userId) return null;
 

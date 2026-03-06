@@ -1,7 +1,12 @@
-import SupportPage from "../../../marketplace/_components/SupportForm";
+import SupportTicketsPage from "@/components/inbox/SupportTicketsPage";
+import { CurrentUserId } from "@/lib/currentUser";
+import getUserTickets from "@/lib/support/getUserTickets";
 
-const page = () => {
-  return <SupportPage role="buyer" />;
-};
+export default async function BuyerSupportPage() {
+  const userId = await CurrentUserId();
+  if (!userId) return null;
 
-export default page;
+  const tickets = await getUserTickets(userId);
+
+  return <SupportTicketsPage tickets={tickets} />;
+}

@@ -1,12 +1,16 @@
-const page = () => {
+import { CurrentUserId } from "@/lib/currentUser";
+import InboxLayout from "@/components/inbox/InboxLayout";
+import { getUserConversations } from "@/lib/support/getUserConversations";
+
+export default async function RiderMessagesPage() {
+  const userId = await CurrentUserId();
+  if (!userId) return null;
+
+  const conversations = await getUserConversations(userId);
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold text-zinc-900">Support</h1>
-      <p className="mt-2 text-sm text-zinc-600">
-        Get help with delivery issues or account support.
-      </p>
+    <div className="h-[calc(100dvh-4rem)] min-h-0 overflow-hidden">
+      <InboxLayout conversations={conversations} currentUserId={userId} />
     </div>
   );
-};
-
-export default page;
+}
