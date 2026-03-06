@@ -36,6 +36,7 @@ import { MobileSearchSheet } from "../search/MobileSearchSheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getUserInitials } from "@/lib/user";
 import { CustomerSidebarContent } from "./CustomerSidebarContent";
+import NotificationMenu from "../notifications/NotificationMenu";
 
 export default function SiteNavbar({
   initialUser,
@@ -93,7 +94,10 @@ export default function SiteNavbar({
               onOpenChange={setAccountMenuOpen}
             >
               <DropdownMenuTrigger asChild>
-                <button aria-label="Open account menu" className="flex items-center gap-2 text-left hover:text-[#3c9ee0] transition-colors duration-200">
+                <button
+                  aria-label="Open account menu"
+                  className="flex items-center gap-2 text-left hover:text-[#3c9ee0] transition-colors duration-200"
+                >
                   <Avatar size="sm">
                     {avatarUrl ? (
                       <AvatarImage src={avatarUrl} alt="Profile" />
@@ -269,6 +273,9 @@ export default function SiteNavbar({
             </Link>
 
             <CurrencySelector />
+            <div className="flex items-center gap-4">
+              <NotificationMenu />
+            </div>
 
             {user?.role === "USER" && (
               <Link href="/cart" className="hover:text-[#3c9ee0]">
@@ -281,6 +288,9 @@ export default function SiteNavbar({
 
           <div className="flex lg:hidden items-center gap-3">
             <CurrencySelector />
+            <div className="flex items-center gap-4">
+              <NotificationMenu />
+            </div>
 
             {user?.role === "USER" && (
               <Link href="/cart">
@@ -366,5 +376,3 @@ export default function SiteNavbar({
     </nav>
   );
 }
-
-

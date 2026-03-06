@@ -13,6 +13,7 @@ import { useCartStore } from "@/stores/useCartstore";
 import { useWishlistStore } from "@/stores/useWishlistStore";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import { UserDTO } from "@/lib/types";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const AnimatedBadge = ({ count }: { count: number }) => {
   const display = count > 99 ? "99+" : count;
@@ -107,4 +108,10 @@ const VerifiedBadge = ({ user: providedUser }: { user?: UserDTO | null }) => {
   );
 };
 
-export { WishlistBadge, CartBadge, NotificationBadge, VerifiedBadge };
+export {
+  AnimatedBadge,
+  WishlistBadge,
+  CartBadge,
+  NotificationBadge,
+  VerifiedBadge,
+};

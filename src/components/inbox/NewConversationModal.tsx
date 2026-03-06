@@ -143,7 +143,7 @@ export default function NewConversationModal({ onCreated, onClose }: Props) {
                 </FormControl>
 
                 <SelectContent>
-                  <SelectItem value="billing">Billing</SelectItem>
+                  <SelectItem value="order">Order</SelectItem>
                   <SelectItem value="delivery">Delivery</SelectItem>
                   <SelectItem value="product">Product</SelectItem>
                   <SelectItem value="technical">Technical</SelectItem>

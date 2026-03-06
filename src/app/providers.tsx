@@ -22,7 +22,7 @@ export default function Providers({ children, session }: ProvidersProps) {
       >
         <CurrencyProvider>
           {children}
-          <Toaster richColors closeButton />
+          <Toaster richColors closeButton position="top-right" />
         </CurrencyProvider>
       </ThemeProvider>
     </SessionProvider>

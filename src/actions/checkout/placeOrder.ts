@@ -16,6 +16,7 @@ import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
 import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
 import { buildDoubleEntryLedgerRows } from "@/lib/finance/ledgerService";
 import { calculatePlatformCommission } from "@/lib/finance/calculatePlatformCommission";
+import { pusherServer } from "@/lib/pusher";
 
 type StoreGroup = {
   storeId: string;
@@ -887,23 +888,38 @@ export async function placeOrderAction({
       })),
     });
 
+    const notifications = [
+      {
+        userId,
+        title: "Order Confirmed",
+        message:
+          createdOrders.length > 1
+            ? `Your ${createdOrders.length} orders were placed successfully`
+            : `Your order ${createdOrders[0]?.trackingNumber ?? ""} was placed successfully`,
+        link: `/orders/${createdOrders[0]?.id}`,
+        type: "ORDER" as const,
+      },
+
+      ...storeGroups.map((group) => ({
+        userId: group.sellerId,
+        title: "New Order Received",
+        message: "You have a new order to fulfill",
+        link: `/seller/orders/${createdOrders[0]?.id}`,
+        type: "ORDER" as const,
+      })),
+    ];
+
     await prisma.notification.createMany({
-      data: [
-        {
-          userId,
-          title: "Order Confirmed",
-          message:
-            createdOrders.length > 1
-              ? `Your ${createdOrders.length} orders were placed successfully`
-              : `Your order ${createdOrders[0]?.trackingNumber ?? ""} was placed successfully`,
-        },
-        ...storeGroups.map((group) => ({
-          userId: group.sellerId,
-          title: "New Order Received",
-          message: `You have a new order to fulfill`,
-        })),
-      ],
+      data: notifications,
     });
+
+    for (const notification of notifications) {
+      await pusherServer.trigger(
+        `notifications-${notification.userId}`,
+        "new-notification",
+        notification,
+      );
+    }
   } catch (error) {
     console.error("Post-order side effects failed:", error);
   }

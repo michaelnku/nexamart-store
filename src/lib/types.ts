@@ -627,15 +627,6 @@ export type CouponFormValues = {
   isActive?: boolean;
 };
 
-export type NotificationDTO = {
-  id: string;
-  userId: string;
-  title: string;
-  message: string;
-  read: boolean;
-  createdAt: string;
-};
-
 export type RiderProfileDTO = Pick<
   RiderProfile,
   | "vehicleType"
@@ -702,3 +693,20 @@ export type StoreState =
   | { status: "loading" }
   | { status: "active"; store: StoreDTO }
   | { status: "deleted" };
+
+export type NotificationType =
+  | "ORDER"
+  | "DELIVERY"
+  | "PAYMENT"
+  | "SYSTEM"
+  | "PROMOTION";
+
+export type NotificationDTO = {
+  id: string;
+  title: string;
+  message?: string;
+  read: boolean;
+  createdAt: string;
+  type: NotificationType;
+  link?: string;
+};

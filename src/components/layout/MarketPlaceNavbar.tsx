@@ -40,6 +40,7 @@ import { MobileSearchSheet } from "../search/MobileSearchSheet";
 import { getUserInitials } from "@/lib/user";
 import RiderTripsDropdown from "@/components/layout/RiderTripsDropdown";
 import CurrencySelector from "@/components/currency/CurrencySelector";
+import NotificationMenu from "../notifications/NotificationMenu";
 
 type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -184,7 +185,10 @@ export default function MarketPlaceNavbar({
 
       const dynamicParts = segments.slice(3);
       const basePath = `/marketplace/dashboard/${roleSegment}`;
-      const labels = [dashboardTitle ?? "Dashboard", ...dynamicParts.map(toLabel)];
+      const labels = [
+        dashboardTitle ?? "Dashboard",
+        ...dynamicParts.map(toLabel),
+      ];
 
       let runningPath = basePath;
       const paths = labels.map((_, index) => {
@@ -285,12 +289,12 @@ export default function MarketPlaceNavbar({
         </div>
 
         <div className="hidden items-center gap-3 lg:flex xl:gap-5">
-              {quickNav.map((item) => {
-                const active = item.onClick
-                  ? (item.isActive?.() ?? false)
-                  : item.href
-                    ? isActivePath(item.href)
-                    : false;
+          {quickNav.map((item) => {
+            const active = item.onClick
+              ? (item.isActive?.() ?? false)
+              : item.href
+                ? isActivePath(item.href)
+                : false;
             const className = `relative flex flex-col items-center text-sm font-medium transition dark:text-gray-400 ${
               active
                 ? "text-[var(--brand-blue)]"
@@ -421,10 +425,16 @@ export default function MarketPlaceNavbar({
           <div className="hidden xl:block">
             <CurrencySelector />
           </div>
+          <div className="flex items-center gap-4">
+            <NotificationMenu />
+          </div>
           <ModeToggle />
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2 lg:hidden">
+          <div className="flex items-center gap-4">
+            <NotificationMenu />
+          </div>
           <ModeToggle />
 
           <Sheet open={open} onOpenChange={setOpen}>
@@ -521,7 +531,10 @@ export default function MarketPlaceNavbar({
       <div className="w-full border-t light:bg-white">
         <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap px-3 py-2 text-sm sm:px-4 lg:px-6 xl:px-8">
           {breadcrumbItems.map((item, index) => (
-            <div key={`${item.href}-${index}`} className="flex items-center gap-2">
+            <div
+              key={`${item.href}-${index}`}
+              className="flex items-center gap-2"
+            >
               {item.isLast ? (
                 <span className="font-semibold text-[var(--brand-blue)]">
                   {item.label}

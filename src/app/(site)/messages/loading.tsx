@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function InboxLoading() {
   return (
-    <main className="h-full min-h-0 w-full mx-auto max-w-6xl bg-background overflow-hidden">
+    <main className="h-full min-h-0 w-full mx-auto max-w-5xl py-8 bg-background overflow-hidden">
       <div className="grid h-full min-h-0 grid-cols-[320px_1fr] overflow-hidden">
         <aside className="border-r h-full min-h-0 overflow-hidden">
           <div className="h-full min-h-0 flex flex-col">
