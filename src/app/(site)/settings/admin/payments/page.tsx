@@ -33,7 +33,7 @@ export default async function PaymentSettingsPage() {
                 type="number"
                 step="0.01"
                 min="0"
-                defaultValue={config?.platformCommissionPercent ?? 10}
+                defaultValue={config?.platformCommissionRate ?? 10}
                 required
               />
             </div>
