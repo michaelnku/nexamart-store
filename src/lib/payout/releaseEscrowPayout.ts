@@ -167,6 +167,27 @@ async function releaseEscrowPayoutWithTx(
         description: `Escrow release payout for seller group ${group.id}`,
       },
     });
+
+    //     await prisma.sellerDailyStats.upsert({
+    //   where: {
+    //     sellerId_date: {
+    //       sellerId,
+    //       date: today,
+    //     },
+    //   },
+    //   update: {
+    //     revenue: { increment: sellerRevenue },
+    //     orders: { increment: 1 },
+    //     productsSold: { increment: quantity },
+    //   },
+    //   create: {
+    //     sellerId,
+    //     date: today,
+    //     revenue: sellerRevenue,
+    //     orders: 1,
+    //     productsSold: quantity,
+    //   },
+    // });
   }
 
   // Migration safety:

@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
+import { StoreDTO, StoreState } from "@/lib/types";
 
 type Props = {
   initialTagline: string;
@@ -19,155 +21,175 @@ type Props = {
   initialBannerKey: string;
 };
 
-export default function SellerStorefrontFormClient({
-  initialTagline,
-  initialLogo,
-  initialLogoKey,
-  initialBanner,
-  initialBannerKey,
-}: Props) {
-  const [logo, setLogo] = useState(initialLogo);
-  const [logoKey, setLogoKey] = useState(initialLogoKey);
-  const [banner, setBanner] = useState(initialBanner);
-  const [bannerKey, setBannerKey] = useState(initialBannerKey);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [uploadingBanner, setUploadingBanner] = useState(false);
+export default function SellerStorefrontFormClient() {
+  const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
+  const [logoKey, setLogoKey] = useState<string | undefined>(undefined);
+  const [bannerUrl, setBannerUrl] = useState<string | undefined>(undefined);
+  const [bannerKey, setBannerKey] = useState<string | undefined>(undefined);
 
-  const removeLogo = async () => {
-    if (!logoKey) return;
-    const res = await deleteLogoAction(logoKey);
-    if ((res as { error?: string })?.error) {
-      toast.error((res as { error?: string }).error);
-      return;
-    }
-    setLogo("");
-    setLogoKey("");
-    toast.success("Logo removed");
+  const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const [storeState, setStoreState] = useState<StoreState>({
+    status: "loading",
+  });
+
+  const setStore = (updates: Partial<StoreDTO>) => {
+    setStoreState((prev) => {
+      if (prev.status !== "active") return prev;
+
+      return {
+        status: "active",
+        store: {
+          ...prev.store,
+          ...updates,
+        },
+      };
+    });
   };
 
-  const removeBanner = async () => {
+  const handleDeleteBanner = async () => {
     if (!bannerKey) return;
-    const res = await deleteBannerAction(bannerKey);
-    if ((res as { error?: string })?.error) {
-      toast.error((res as { error?: string }).error);
-      return;
+
+    setDeleting(true);
+    try {
+      await deleteBannerAction(bannerKey);
+      setBannerUrl(undefined);
+      setBannerKey(undefined);
+      setStore({ bannerImage: null, bannerKey: null });
+      toast.success("Banner removed");
+    } catch {
+      toast.error("Failed to delete banner");
     }
-    setBanner("");
-    setBannerKey("");
-    toast.success("Banner removed");
+    setDeleting(false);
   };
+
+  if (storeState.status !== "active") return null;
+
+  const store = storeState.store;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Storefront</CardTitle>
+        <CardTitle>Storefront Appearance</CardTitle>
       </CardHeader>
-      <CardContent>
-        <form action={updateSellerStorefrontModule} className="space-y-6">
-          <input type="hidden" name="logo" value={logo} readOnly />
-          <input type="hidden" name="logoKey" value={logoKey} readOnly />
-          <input type="hidden" name="bannerImage" value={banner} readOnly />
-          <input type="hidden" name="bannerKey" value={bannerKey} readOnly />
 
-          <div className="space-y-2">
-            <Label htmlFor="tagline">Tagline</Label>
-            <Input id="tagline" name="tagline" defaultValue={initialTagline} />
-          </div>
+      <CardContent className="space-y-6">
+        {/* Banner Image Upload */}
+        {/* Banner Upload */}
+        <div className="space-y-3">
+          <Label>Banner Image</Label>
 
-          <div className="space-y-3">
-            <Label>Store Logo</Label>
-            <div className="flex flex-wrap items-center gap-3">
-              {logo ? (
-                <Image
-                  src={logo}
-                  alt="Store logo"
-                  width={72}
-                  height={72}
-                  className="rounded-full object-cover border"
-                />
-              ) : (
-                <div className="h-[72px] w-[72px] rounded-full border bg-muted" />
-              )}
-
-              <UploadButton
-                endpoint="storeLogo"
-                onUploadBegin={() => setUploadingLogo(true)}
-                onClientUploadComplete={(res) => {
-                  setUploadingLogo(false);
-                  const file = res[0];
-                  setLogo(file.url);
-                  setLogoKey(file.key);
-                  toast.success("Logo uploaded");
-                }}
-                onUploadError={(error) => {
-                  setUploadingLogo(false);
-                  toast.error(error.message);
-                }}
-                content={{
-                  button() {
-                    if (uploadingLogo) return "Uploading...";
-                    return logo ? "Replace Logo" : "Upload Logo";
-                  },
-                }}
+          <div className="relative w-full h-40 sm:h-48 bg-gray-100 border rounded-xl overflow-hidden group">
+            {bannerUrl ? (
+              <Image
+                src={bannerUrl}
+                alt="Banner"
+                fill
+                className="object-cover"
               />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                No Banner – Add one
+              </div>
+            )}
 
-              {logo && (
-                <Button type="button" variant="outline" onClick={removeLogo}>
-                  Remove
-                </Button>
-              )}
-            </div>
-          </div>
+            {/* 🔥 Uploading overlay (ALWAYS visible during upload) */}
+            {uploading && (
+              <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl text-white gap-2 z-20">
+                <Loader2 className="animate-spin w-6 h-6" />
+                <span className="text-xs">Uploading...</span>
+              </div>
+            )}
 
-          <div className="space-y-3">
-            <Label>Store Banner</Label>
-            <div className="space-y-3">
-              {banner ? (
-                <div className="relative h-40 w-full overflow-hidden rounded-xl border">
-                  <Image
-                    src={banner}
-                    alt="Store banner"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="h-40 w-full rounded-xl border bg-muted" />
-              )}
+            {/* Hover panel */}
+            {!uploading && (
+              <div className="hidden sm:flex absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-xl transition flex-col items-center justify-center gap-3 text-white text-sm cursor-pointer z-10">
+                {bannerUrl && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteBanner}
+                    className="hover:text-red-300"
+                  >
+                    {deleting ? "Deleting..." : "Remove"}
+                  </button>
+                )}
 
-              <div className="flex flex-wrap items-center gap-3">
                 <UploadButton
                   endpoint="storeBanner"
-                  onUploadBegin={() => setUploadingBanner(true)}
+                  onUploadBegin={() => setUploading(true)}
                   onClientUploadComplete={(res) => {
-                    setUploadingBanner(false);
+                    setUploading(false);
                     const file = res[0];
-                    setBanner(file.url);
+                    setBannerUrl(file.url);
                     setBannerKey(file.key);
-                    toast.success("Banner uploaded");
+                    toast.success("Banner updated!");
                   }}
-                  onUploadError={(error) => {
-                    setUploadingBanner(false);
-                    toast.error(error.message);
+                  appearance={{
+                    button:
+                      "text-xs font-medium text-white hover:text-gray-100",
+                    container: "flex flex-col items-center",
                   }}
                   content={{
-                    button() {
-                      if (uploadingBanner) return "Uploading...";
-                      return banner ? "Replace Banner" : "Upload Banner";
-                    },
+                    button: () => (bannerUrl ? "Change Banner" : "Add Banner"),
                   }}
                 />
-                {banner && (
-                  <Button type="button" variant="outline" onClick={removeBanner}>
-                    Remove
-                  </Button>
-                )}
               </div>
-            </div>
+            )}
           </div>
 
-          <Button type="submit">Save Storefront</Button>
-        </form>
+          {/* Mobile-visible banner controls */}
+          {!uploading && (
+            <div className="flex sm:hidden items-center gap-2">
+              {bannerUrl && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDeleteBanner}
+                >
+                  {deleting ? "Deleting..." : "Remove"}
+                </Button>
+              )}
+              <UploadButton
+                endpoint="storeBanner"
+                onUploadBegin={() => setUploading(true)}
+                onClientUploadComplete={(res) => {
+                  setUploading(false);
+                  const file = res[0];
+                  setBannerUrl(file.url);
+                  setBannerKey(file.key);
+                  toast.success("Banner updated!");
+                }}
+                appearance={{
+                  button: "text-xs font-medium",
+                  container: "flex items-center",
+                }}
+                content={{
+                  button: () => (bannerUrl ? "Change Banner" : "Add Banner"),
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Storefront Tagline */}
+        <div className="space-y-2">
+          <Label>Storefront Tagline / Slogan (optional)</Label>
+          <Input
+            placeholder="Example: Quality you can trust."
+            value={store.tagline || ""}
+            onChange={(e) =>
+              setStore({
+                ...store,
+                tagline: e.target.value,
+              })
+            }
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Appears under your store name on the public storefront.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

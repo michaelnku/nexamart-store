@@ -19,6 +19,7 @@ import { buildDoubleEntryLedgerRows } from "@/lib/finance/ledgerService";
 type StoreGroup = {
   storeId: string;
   sellerId: string;
+  sellerRevenue: number;
   storeName: string;
   storeType: "FOOD" | "GENERAL";
   items: Array<{
@@ -341,11 +342,17 @@ export async function placeOrderAction({
           });
         }
 
+        const subtotal = items.reduce(
+          (sum, item) => sum + item.quantity * item.variant!.priceUSD,
+          0,
+        );
+
         return {
           storeId,
           sellerId: store.userId,
           storeName: store.name,
           storeType: store.type,
+
           items: items.map((item) => ({
             id: item.id,
             productId: item.productId,
@@ -353,10 +360,11 @@ export async function placeOrderAction({
             quantity: item.quantity,
             priceUSD: item.variant!.priceUSD,
           })),
-          subtotal: items.reduce(
-            (sum, item) => sum + item.quantity * item.variant!.priceUSD,
-            0,
-          ),
+
+          subtotal,
+
+          sellerRevenue: subtotal,
+
           shippingFee,
           distanceInMiles,
         } satisfies StoreGroup;
@@ -592,6 +600,7 @@ export async function placeOrderAction({
           const createdSellerGroup = await tx.orderSellerGroup.create({
             data: {
               orderId: createdOrder.id,
+              sellerRevenue: storeGroup.sellerRevenue,
               storeId: storeGroup.storeId,
               sellerId: storeGroup.sellerId,
               subtotal: storeGroup.subtotal,

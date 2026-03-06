@@ -697,3 +697,8 @@ export type SiteConfig = Pick<
   | "createdAt"
   | "updatedAt"
 >;
+
+export type StoreState =
+  | { status: "loading" }
+  | { status: "active"; store: StoreDTO }
+  | { status: "deleted" };

@@ -1,40 +1,67 @@
+"use client";
+
 import { updateSellerPreferencesModule } from "@/actions/settings/sellerModules";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { getCurrentSellerStore } from "@/lib/settings/getCurrentSellerStore";
+import { StoreDTO, StoreState } from "@/lib/types";
+import { useState } from "react";
 
-export default async function SellerPreferencesSettingsPage() {
-  const store = await getCurrentSellerStore();
-  if (!store) {
-    return null;
-  }
+export default function SellerPreferencesSettingsPage() {
+  const [storeState, setStoreState] = useState<StoreState>({
+    status: "loading",
+  });
+
+  const setStore = (updates: Partial<StoreDTO>) => {
+    setStoreState((prev) => {
+      if (prev.status !== "active") return prev;
+
+      return {
+        status: "active",
+        store: {
+          ...prev.store,
+          ...updates,
+        },
+      };
+    });
+  };
+
+  if (storeState.status !== "active") return null;
+
+  const store = storeState.store;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Seller Preferences</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form action={updateSellerPreferencesModule} className="space-y-6">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="isActive">Enable Storefront</Label>
-            <Switch id="isActive" name="isActive" defaultChecked={store.isActive} />
-          </div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="emailNotificationsEnabled">
-              Email Notifications
-            </Label>
+    <>
+      {/* PREFERENCES SECTION */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Store Preferences</CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between gap-4">
+            <Label>Enable Storefront</Label>
             <Switch
-              id="emailNotificationsEnabled"
-              name="emailNotificationsEnabled"
-              defaultChecked={store.emailNotificationsEnabled}
+              checked={store.isActive}
+              onCheckedChange={(checked) =>
+                setStore({ ...store, isActive: checked })
+              }
             />
           </div>
-          <Button type="submit">Save Preferences</Button>
-        </form>
-      </CardContent>
-    </Card>
+
+          <div className="flex items-center justify-between gap-4">
+            <Label>Email Notifications</Label>
+            <Switch
+              checked={store.emailNotificationsEnabled}
+              onCheckedChange={(checked) =>
+                setStore({ ...store, emailNotificationsEnabled: checked })
+              }
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </>
   );
 }

@@ -5,6 +5,9 @@ import { useSellerSalesReport } from "@/hooks/useSellerSalesReport";
 import { useSellerAnalytics } from "@/hooks/useSellerAnalytics";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FileChartColumn, LineChart } from "lucide-react";
+import SellerAnalyticsChart from "@/lib/services/seller/SellerAnalyticsChart";
+import { Separator } from "@/components/ui/separator";
 
 export default function SellerReportsPage() {
   const [tab, setTab] = useState<"sales" | "analytics">("sales");
@@ -19,6 +22,7 @@ export default function SellerReportsPage() {
   const { data: analytics, isLoading: analyticsLoading } = useSellerAnalytics(
     startDate,
     endDate,
+    tab === "analytics",
   );
 
   const formatMoney = useFormatMoneyFromUSD();
@@ -36,25 +40,39 @@ export default function SellerReportsPage() {
     !analyticsLoading && (!analytics || analytics.length === 0);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 py-2">
       {/* Tabs */}
 
-      <div className="flex gap-4 border-b pb-2">
-        <button
-          disabled={isLoading}
-          onClick={() => setTab("sales")}
-          className={tab === "sales" ? "font-semibold text-primary" : ""}
-        >
-          Sales
-        </button>
+      <div className="flex gap-12 border-b pb-2 items-center">
+        <span>
+          <button
+            disabled={isLoading}
+            onClick={() => setTab("sales")}
+            className={
+              tab === "sales"
+                ? "font-semibold text-[var(--brand-blue)] inline-flex items-center gap-1"
+                : "inline-flex items-center gap-1 text-primary border-b"
+            }
+          >
+            <FileChartColumn className="w-4 h-4" />
+            Sales
+          </button>
+        </span>
         |
-        <button
-          disabled={isLoading}
-          onClick={() => setTab("analytics")}
-          className={tab === "analytics" ? "font-semibold text-primary" : ""}
-        >
-          Analytics
-        </button>
+        <span>
+          <button
+            disabled={isLoading}
+            onClick={() => setTab("analytics")}
+            className={
+              tab === "analytics"
+                ? "font-semibold text-[var(--brand-blue)] inline-flex items-center gap-1"
+                : "inline-flex items-center gap-1 text-primary"
+            }
+          >
+            <LineChart className="w-4 h-4" />
+            Analytics
+          </button>
+        </span>
       </div>
 
       {/* SALES TAB */}
@@ -147,14 +165,11 @@ export default function SellerReportsPage() {
       )}
 
       {/* ANALYTICS TAB */}
-
       {tab === "analytics" && (
         <>
           {analyticsLoading ? (
             <div className="space-y-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-[300px] w-full rounded-lg" />
             </div>
           ) : noAnalytics ? (
             <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
@@ -164,18 +179,24 @@ export default function SellerReportsPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {analytics?.map((day) => (
-                <div
-                  key={day.id}
-                  className="flex justify-between border-b pb-2 text-sm"
-                >
-                  <span>{new Date(day.date).toLocaleDateString()}</span>
-                  <span>{formatMoney(day.revenue)}</span>
-                  <span>{day.orders} orders</span>
-                </div>
-              ))}
-            </div>
+            <>
+              <SellerAnalyticsChart data={analytics ?? []} />
+
+              <Separator />
+
+              <div className="space-y-4">
+                {analytics?.map((day) => (
+                  <div
+                    key={day.id}
+                    className="flex justify-between border-b pb-2 text-sm"
+                  >
+                    <span>{new Date(day.date).toLocaleDateString()}</span>
+                    <span>{formatMoney(day.revenue)}</span>
+                    <span>{day.orders} orders</span>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </>
       )}

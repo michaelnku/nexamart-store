@@ -73,11 +73,6 @@ export const DashboardMenu = {
       title: "Insights",
       links: [
         {
-          name: "Analytics",
-          href: "/marketplace/dashboard/seller/analytics",
-          icon: LineChart,
-        },
-        {
           name: "Sales Reports",
           href: "/marketplace/dashboard/seller/reports",
           icon: FileChartColumn,
