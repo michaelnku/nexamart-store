@@ -913,13 +913,15 @@ export async function placeOrderAction({
       data: notifications,
     });
 
-    for (const notification of notifications) {
-      await pusherServer.trigger(
-        `notifications-${notification.userId}`,
-        "new-notification",
-        notification,
-      );
-    }
+    await Promise.all(
+      notifications.map((notification) =>
+        pusherServer.trigger(
+          `notifications-${notification.userId}`,
+          "new-notification",
+          notification,
+        ),
+      ),
+    );
   } catch (error) {
     console.error("Post-order side effects failed:", error);
   }
