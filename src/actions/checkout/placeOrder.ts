@@ -17,6 +17,8 @@ import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
 import { buildDoubleEntryLedgerRows } from "@/lib/finance/ledgerService";
 import { calculatePlatformCommission } from "@/lib/finance/calculatePlatformCommission";
 import { pusherServer } from "@/lib/pusher";
+import { createSellerOrderNotification } from "@/lib/notifications/createSellerOrderNotification";
+import { createNotification } from "@/lib/notifications/createNotification";
 
 type StoreGroup = {
   storeId: string;
@@ -888,40 +890,40 @@ export async function placeOrderAction({
       })),
     });
 
-    const notifications = [
-      {
-        userId,
+    await createNotification({
+      userId,
+      title: "Order Confirmed",
+      message:
+        createdOrders.length > 1
+          ? `Your ${createdOrders.length} orders were placed successfully`
+          : `Your order ${createdOrders[0]?.trackingNumber ?? ""} was placed successfully`,
+      link: `/customer/order/${createdOrders[0]?.id}`,
+      type: "ORDER",
+      key: `order-confirm-${createdOrders[0]?.id}-${userId}`,
+    });
+
+    const uniqueSellerIds = [...new Set(storeGroups.map((g) => g.sellerId))];
+
+    for (const sellerId of uniqueSellerIds) {
+      await createSellerOrderNotification(sellerId, createdOrders[0]?.id);
+    }
+
+    await Promise.all([
+      pusherServer.trigger(`notifications-${userId}`, "new-notification", {
         title: "Order Confirmed",
         message:
           createdOrders.length > 1
             ? `Your ${createdOrders.length} orders were placed successfully`
             : `Your order ${createdOrders[0]?.trackingNumber ?? ""} was placed successfully`,
-        link: `/orders/${createdOrders[0]?.id}`,
-        type: "ORDER" as const,
-      },
+      }),
 
-      ...storeGroups.map((group) => ({
-        userId: group.sellerId,
-        title: "New Order Received",
-        message: "You have a new order to fulfill",
-        link: `/seller/orders/${createdOrders[0]?.id}`,
-        type: "ORDER" as const,
-      })),
-    ];
-
-    await prisma.notification.createMany({
-      data: notifications,
-    });
-
-    await Promise.all(
-      notifications.map((notification) =>
-        pusherServer.trigger(
-          `notifications-${notification.userId}`,
-          "new-notification",
-          notification,
-        ),
+      ...uniqueSellerIds.map((sellerId) =>
+        pusherServer.trigger(`notifications-${sellerId}`, "new-notification", {
+          title: "New Orders",
+          message: "You received a new order",
+        }),
       ),
-    );
+    ]);
   } catch (error) {
     console.error("Post-order side effects failed:", error);
   }

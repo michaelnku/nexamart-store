@@ -9,6 +9,7 @@ export function useNotifications() {
       const res = await fetch("/api/notifications");
       return res.json();
     },
+
     refetchInterval: 30000,
   });
 }

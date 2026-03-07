@@ -62,11 +62,6 @@ export const DashboardMenu = {
           href: "/marketplace/dashboard/seller/wallet",
           icon: Wallet,
         },
-        {
-          name: "Notifications",
-          href: "/marketplace/dashboard/seller/notifications",
-          icon: Bell,
-        },
       ],
     },
     {

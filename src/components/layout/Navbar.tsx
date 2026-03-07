@@ -273,9 +273,12 @@ export default function SiteNavbar({
             </Link>
 
             <CurrencySelector />
-            <div className="flex items-center gap-4">
-              <NotificationMenu />
-            </div>
+
+            {user && (
+              <div className="flex items-center gap-4">
+                <NotificationMenu />
+              </div>
+            )}
 
             {user?.role === "USER" && (
               <Link href="/cart" className="hover:text-[#3c9ee0]">
@@ -288,9 +291,11 @@ export default function SiteNavbar({
 
           <div className="flex lg:hidden items-center gap-3">
             <CurrencySelector />
-            <div className="flex items-center gap-4">
-              <NotificationMenu />
-            </div>
+            {user && (
+              <div className="flex items-center gap-4">
+                <NotificationMenu />
+              </div>
+            )}
 
             {user?.role === "USER" && (
               <Link href="/cart">

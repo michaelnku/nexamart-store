@@ -13,13 +13,31 @@ import {
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
+import { markNotificationRead } from "@/actions/notifications/markNotificationRead";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function NotificationMenu() {
   const { data, isLoading } = useNotifications();
+  const router = useRouter();
 
   const notifications: NotificationDTO[] = data?.notifications ?? [];
   const unread = data?.unreadCount ?? 0;
+
+  const queryClient = useQueryClient();
+
+  const handleNotificationClick = async (notification: NotificationDTO) => {
+    await markNotificationRead(notification.id);
+
+    queryClient.invalidateQueries({
+      queryKey: ["notifications"],
+    });
+    if (notification.link) {
+      router.push(notification.link);
+    }
+  };
 
   return (
     <DropdownMenu>
@@ -53,7 +71,7 @@ export default function NotificationMenu() {
         <DropdownMenuSeparator />
 
         {isLoading && (
-          <div className="p-4 text-sm text-muted-foreground">
+          <div className="p-4 text-center text-sm text-muted-foreground">
             Loading notifications...
           </div>
         )}
@@ -69,9 +87,9 @@ export default function NotificationMenu() {
             const Icon = getNotificationIcon(n.type);
 
             return (
-              <Link
+              <DropdownMenuItem
                 key={n.id}
-                href={n.link ?? "/notifications"}
+                onClick={() => handleNotificationClick(n)}
                 className={`flex gap-3 px-4 py-3 border-b text-sm hover:bg-muted transition ${
                   !n.read ? "bg-blue-50" : ""
                 }`}
@@ -85,7 +103,7 @@ export default function NotificationMenu() {
 
                   <p className="text-muted-foreground text-xs">{n.message}</p>
                 </div>
-              </Link>
+              </DropdownMenuItem>
             );
           })}
 

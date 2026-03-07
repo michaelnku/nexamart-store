@@ -240,7 +240,7 @@ export default function CheckoutSummary({ cart, address }: Props) {
 
         useCartStore.getState().clearCart();
         idempotencyKeyRef.current = crypto.randomUUID();
-        toast.success("Order placed successfully!");
+        //  toast.success("Order placed successfully!");
         router.push(`/customer/order/success/${res.orderId}`);
       } catch (error) {
         console.error("Failed to place wallet order:", error);
