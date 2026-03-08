@@ -35,7 +35,7 @@ export async function startVerification(role: VerificationRole) {
       verificationId: verification.id,
       role,
     },
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/verification/success`,
+    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/verification/success/${verification.id}`,
   });
 
   await prisma.verification.update({
