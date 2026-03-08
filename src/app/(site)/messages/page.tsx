@@ -9,7 +9,7 @@ export default async function MessagesPage() {
   const conversations = await getUserConversations(userId);
 
   return (
-    <div className="h-[calc(100dvh-4rem)] min-h-0 overflow-hidden mx-auto max-w-5xl px-8 py-8">
+    <div className="h-[calc(100dvh-4rem)] min-h-0 overflow-hidden mx-auto max-w-5xl px-6 py-10">
       <InboxLayout conversations={conversations} currentUserId={userId} />
     </div>
   );

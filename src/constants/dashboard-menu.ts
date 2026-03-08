@@ -72,6 +72,11 @@ export const DashboardMenu = {
           href: "/marketplace/dashboard/seller/reports",
           icon: FileChartColumn,
         },
+        {
+          name: "Earnings",
+          href: "/marketplace/dashboard/seller/earnings",
+          icon: DollarSign,
+        },
       ],
     },
     {

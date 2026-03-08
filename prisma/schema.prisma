@@ -986,6 +986,8 @@ model Notification {
 
   key String? @unique
 
+  metadata Json?
+
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1162,6 +1164,7 @@ enum WithdrawalStatus {
 enum TransactionType {
   ORDER_PAYMENT
   SELLER_PAYOUT
+  RIDER_PAYOUT
   REFUND
   DEPOSIT
   WITHDRAWAL

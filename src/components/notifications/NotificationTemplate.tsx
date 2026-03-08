@@ -56,59 +56,61 @@ const NotificationTemplate = ({
   const Wrapper = href ? Link : "div";
 
   return (
-    <Wrapper
-      href={href ?? "#"}
-      className={`flex items-start gap-4 rounded-xl p-4 shadow-sm transition hover:shadow-md ${containerClass}`}
-    >
-      <div
-        className={`flex h-10 w-10 items-center justify-center rounded-full border ${VARIANT_STYLES[variant]}`}
+    <main>
+      <Wrapper
+        href={href ?? "#"}
+        className={`flex items-start  gap-4 rounded-xl p-4 shadow-sm transition hover:shadow-md ${containerClass}`}
       >
-        {resolveIcon(notification.type)}
-      </div>
-
-      <div className="flex-1 space-y-1">
-        <div className="flex items-start justify-between gap-3">
-          <h4 className="text-sm font-semibold text-gray-900">
-            {notification.title}
-          </h4>
-
-          <span className="text-xs text-gray-400 whitespace-nowrap">
-            {time}
-          </span>
+        <div
+          className={`flex h-10 w-10 items-center justify-center rounded-full border ${VARIANT_STYLES[variant]}`}
+        >
+          {resolveIcon(notification.type)}
         </div>
 
-        {notification.message && (
-          <p className="text-sm text-gray-600 leading-relaxed">
-            {notification.message}
-          </p>
+        <div className="flex-1 space-y-1">
+          <div className="flex items-start justify-between gap-3">
+            <h4 className="text-sm font-semibold text-gray-900">
+              {notification.title}
+            </h4>
+
+            <span className="text-xs text-gray-400 whitespace-nowrap">
+              {time}
+            </span>
+          </div>
+
+          {notification.message && (
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {notification.message}
+            </p>
+          )}
+
+          <div className="flex items-center gap-3 pt-2">
+            {href && (
+              <Link
+                href={href}
+                className="text-sm font-medium text-[var(--brand-blue)] hover:underline"
+              >
+                View details
+              </Link>
+            )}
+
+            {actionLabel && onAction && (
+              <button
+                type="button"
+                onClick={onAction}
+                className="text-sm font-medium text-gray-700 hover:text-gray-900"
+              >
+                {actionLabel}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {!notification.read && (
+          <span className="mt-1 h-2 w-2 rounded-full bg-[#3c9ee0]" />
         )}
-
-        <div className="flex items-center gap-3 pt-2">
-          {href && (
-            <Link
-              href={href}
-              className="text-sm font-medium text-[var(--brand-blue)] hover:underline"
-            >
-              View details
-            </Link>
-          )}
-
-          {actionLabel && onAction && (
-            <button
-              type="button"
-              onClick={onAction}
-              className="text-sm font-medium text-gray-700 hover:text-gray-900"
-            >
-              {actionLabel}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {!notification.read && (
-        <span className="mt-1 h-2 w-2 rounded-full bg-[#3c9ee0]" />
-      )}
-    </Wrapper>
+      </Wrapper>
+    </main>
   );
 };
 

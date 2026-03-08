@@ -898,7 +898,7 @@ export async function placeOrderAction({
           ? `Your ${createdOrders.length} orders were placed successfully`
           : `Your order ${createdOrders[0]?.trackingNumber ?? ""} was placed successfully`,
       link: `/customer/order/${createdOrders[0]?.id}`,
-      type: "ORDER",
+      event: "ORDER_CREATED",
       key: `order-confirm-${createdOrders[0]?.id}-${userId}`,
     });
 

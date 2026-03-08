@@ -9,16 +9,19 @@ export default function RiderPreferencesSettingsPage() {
       <CardHeader>
         <CardTitle>Rider Preferences</CardTitle>
       </CardHeader>
+
       <CardContent className="space-y-6">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="deliveryNotifications">Delivery Notifications</Label>
-          <Switch id="deliveryNotifications" defaultChecked />
+        <div className="flex justify-between">
+          <Label>Delivery Notifications</Label>
+          <Switch defaultChecked />
         </div>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="autoAccept">Auto-Accept Nearby Orders</Label>
-          <Switch id="autoAccept" />
+
+        <div className="flex justify-between">
+          <Label>Auto-Accept Nearby Orders</Label>
+          <Switch />
         </div>
-        <Button type="button">Save Preferences</Button>
+
+        <Button>Save Preferences</Button>
       </CardContent>
     </Card>
   );

@@ -42,7 +42,7 @@ function CategoryMiniList({ categories }: Props) {
   const visibleCategories = useMemo(() => {
     if (!categories?.length) return [];
 
-    const maxCount = isLargeScreen ? 3 : 3;
+    const maxCount = isLargeScreen ? 4 : 3;
     return categories.slice(0, maxCount);
   }, [categories, isLargeScreen]);
 
@@ -60,7 +60,7 @@ function CategoryMiniList({ categories }: Props) {
       <div
         className="
           grid grid-cols-2 gap-3
-          lg:grid-cols-1 lg:gap-8
+          lg:grid-cols-1 lg:gap-6
         "
       >
         {visibleCategories.map((cat) => {

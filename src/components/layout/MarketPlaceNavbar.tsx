@@ -42,16 +42,6 @@ import RiderTripsDropdown from "@/components/layout/RiderTripsDropdown";
 import CurrencySelector from "@/components/currency/CurrencySelector";
 import NotificationMenu from "../notifications/NotificationMenu";
 
-type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
-
-type QuickNavItem = {
-  icon: IconType;
-  label: string;
-  href?: string;
-  onClick?: () => void;
-  isActive?: () => boolean;
-};
-
 export default function MarketPlaceNavbar({
   initialUser,
 }: {
@@ -85,55 +75,6 @@ export default function MarketPlaceNavbar({
     return null;
   }
 
-  const sellerNav: QuickNavItem[] = [
-    {
-      icon: ShoppingBag,
-      label: "Orders",
-      href: "/marketplace/dashboard/seller/orders",
-    },
-  ];
-
-  const riderNav: QuickNavItem[] = [
-    {
-      icon: ShoppingBag,
-      label: "Assigned Trips",
-      onClick: undefined,
-      isActive: () => pathname.startsWith("/marketplace/dashboard/rider/trips"),
-    },
-    {
-      icon: Bell,
-      label: "Delivery Alerts",
-      href: "/marketplace/dashboard/rider/notifications",
-    },
-  ];
-
-  const adminNav: QuickNavItem[] = [
-    {
-      icon: FileChartColumn,
-      label: "Reports",
-      href: "/marketplace/dashboard/admin/reports",
-    },
-    {
-      icon: MessageSquare,
-      label: "Tickets",
-      href: "/marketplace/dashboard/admin/support",
-    },
-  ];
-
-  const moderatorNav: QuickNavItem[] = [
-    {
-      icon: FileChartColumn,
-      label: "Moderation",
-      href: "/marketplace/dashboard/moderator/reports",
-    },
-  ];
-
-  let quickNav: QuickNavItem[] = [];
-  if (role === "SELLER") quickNav = sellerNav;
-  if (role === "RIDER") quickNav = riderNav;
-  if (role === "ADMIN") quickNav = adminNav;
-  if (role === "MODERATOR") quickNav = moderatorNav;
-
   const isActivePath = (href: string) => {
     const p = pathname.replace(/\/$/, "");
     const h = href.replace(/\/$/, "");
@@ -155,7 +96,8 @@ export default function MarketPlaceNavbar({
     }
   };
 
-  const avatarUrl = currentUser?.image || currentUser?.profileAvatar?.url;
+  const avatarUrl =
+    currentUser?.image || currentUser?.profileAvatar?.url || null;
   const accountSettingsHref = "/settings";
   const walletHref =
     role === "SELLER"
@@ -165,9 +107,9 @@ export default function MarketPlaceNavbar({
         : null;
   const supportHref =
     role === "SELLER"
-      ? "/marketplace/dashboard/seller/support"
+      ? "/support"
       : role === "RIDER"
-        ? "/marketplace/dashboard/rider/support"
+        ? "/support"
         : role === "ADMIN"
           ? "/marketplace/dashboard/admin/support"
           : null;
@@ -289,62 +231,20 @@ export default function MarketPlaceNavbar({
         </div>
 
         <div className="hidden items-center gap-3 lg:flex xl:gap-5">
-          {quickNav.map((item) => {
-            const active = item.onClick
-              ? (item.isActive?.() ?? false)
-              : item.href
-                ? isActivePath(item.href)
-                : false;
-            const className = `relative flex flex-col items-center text-sm font-medium transition dark:text-gray-400 ${
-              active
-                ? "text-[var(--brand-blue)]"
-                : "text-gray-600 hover:text-[var(--brand-blue)]"
-            }`;
-
-            if (role === "RIDER" && item.label === "Assigned Trips") {
-              return (
-                <RiderTripsDropdown
-                  key={item.label}
-                  className={className}
-                  isActive={active}
-                  Icon={item.icon}
-                  label={item.label}
-                />
-              );
-            }
-
-            if (item.onClick) {
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={item.onClick}
-                  className={className}
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span className="mt-[2px] hidden text-[11px] xl:block">
-                    {item.label}
-                  </span>
-                </button>
-              );
-            }
-
-            return item.href ? (
-              <Link key={item.label} href={item.href} className={className}>
-                <item.icon className="h-5 w-5" />
-                <span className="mt-[2px] hidden text-[11px] xl:block">
-                  {item.label}
-                </span>
-              </Link>
-            ) : null;
-          })}
+          <div className="hidden xl:block">
+            <CurrencySelector />
+          </div>
+          <div className="flex items-center gap-4">
+            <NotificationMenu />
+          </div>
+          <ModeToggle />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 transition hover:text-[var(--brand-blue)]">
-                {currentUser?.image ? (
+              <button className="flex items-center gap-2 hover:bg-muted rounded-full hover:p-2 transition">
+                {avatarUrl ? (
                   <Image
-                    src={currentUser.image}
+                    src={avatarUrl}
                     alt="User"
                     width={32}
                     height={32}
@@ -357,18 +257,19 @@ export default function MarketPlaceNavbar({
                     </span>
                   </div>
                 )}
-                <span className="hidden font-semibold xl:block text-gray-700 dark:text-gray-400">
-                  {currentUser
-                    ? `Hi, ${currentUser?.name?.split(" ")[0] || currentUser.username}`
-                    : "Account"}
-                </span>
               </button>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end" className="w-64 py-2">
-              <p className="px-4 pb-2 text-xs text-gray-500">
-                {currentUser?.email}
-              </p>
+              <div className="px-3 pb-2">
+                <span className="hidden font-semibold xl:block text-gray-700 dark:text-gray-400">
+                  {currentUser
+                    ? `${currentUser?.name?.split(" ")[0] || currentUser.username}`
+                    : "Account"}
+                </span>
+                <p className=" text-xs text-gray-500">{currentUser?.email}</p>
+              </div>
+
               <DropdownMenuSeparator />
 
               <DropdownMenuItem asChild>
@@ -421,14 +322,6 @@ export default function MarketPlaceNavbar({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <div className="hidden xl:block">
-            <CurrencySelector />
-          </div>
-          <div className="flex items-center gap-4">
-            <NotificationMenu />
-          </div>
-          <ModeToggle />
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2 lg:hidden">

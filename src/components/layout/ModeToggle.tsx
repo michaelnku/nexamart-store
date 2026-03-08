@@ -33,9 +33,9 @@ export function ModeToggle() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Toggle theme">
           {resolvedTheme === "light" ? (
-            <Sun className="h-6 w-6" />
+            <Sun className="h-6 w-6 stroke-gray-400" />
           ) : (
-            <Moon className="h-6 w-6" />
+            <Moon className="h-6 w-6 stroke-gray-400" />
           )}
         </Button>
       </DropdownMenuTrigger>

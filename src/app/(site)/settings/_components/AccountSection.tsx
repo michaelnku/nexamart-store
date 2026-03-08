@@ -1,3 +1,5 @@
+"use client";
+
 import SettingsCard from "@/components/settings/SettingsCard";
 import AccountSectionSkeleton from "@/components/skeletons/AccountSectionSkeleton";
 import { Button } from "@/components/ui/button";

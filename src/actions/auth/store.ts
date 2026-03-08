@@ -42,8 +42,15 @@ export const createStoreAction = async (values: storeFormType) => {
     const validated = storeSchema.safeParse(values);
     if (!validated.success) return { error: "Invalid store data" };
 
-    const { name, description, location, logo, type, fulfillmentType, address } =
-      validated.data;
+    const {
+      name,
+      description,
+      location,
+      logo,
+      type,
+      fulfillmentType,
+      address,
+    } = validated.data;
 
     if (type === "FOOD" && fulfillmentType === "DIGITAL") {
       return {
@@ -166,7 +173,8 @@ export const UpdateStoreAction = async (values: updateStoreFormType) => {
 
     const addressChanged = (store.address ?? "").trim() !== nextAddress;
     const fulfillmentChanged = store.fulfillmentType !== values.fulfillmentType;
-    const missingCoordinates = store.latitude === null || store.longitude === null;
+    const missingCoordinates =
+      store.latitude === null || store.longitude === null;
 
     let latitude: number | null = null;
     let longitude: number | null = null;

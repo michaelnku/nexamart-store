@@ -27,7 +27,7 @@ export default function SettingsClient({ addresses, preferences }: Props) {
   const [active, setActive] = useState("account");
 
   return (
-    <div className="h-full min-h-full bg-background py-4 flex flex-col">
+    <div className="h-full min-h-full bg-background flex flex-col">
       <SettingsMobileNav active={active} onChange={setActive} />
 
       <div className="max-w-6xl w-full mx-auto flex-1 flex gap-8 px-4 py-12">
@@ -60,4 +60,3 @@ export default function SettingsClient({ addresses, preferences }: Props) {
     </div>
   );
 }
-

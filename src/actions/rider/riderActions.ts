@@ -179,16 +179,19 @@ export async function verifyDeliveryOTPAction(deliveryId: string, otp: string) {
 
   const delivery = await prisma.delivery.findUnique({
     where: { id: deliveryId },
-    include: {
-      order: true,
-    },
+    include: { order: true },
   });
 
   if (!delivery) return { error: "Delivery not found" };
+  if (delivery.status === "DELIVERED") {
+    return { success: true };
+  }
   if (delivery.riderId !== userId) return { error: "Not assigned to rider" };
+
   if (!canVerifyDeliveryStatus(delivery.status)) {
     return { error: `Delivery status ${delivery.status} cannot be verified` };
   }
+
   if (delivery.isLocked) {
     return {
       error:
@@ -200,13 +203,14 @@ export async function verifyDeliveryOTPAction(deliveryId: string, otp: string) {
     return { error: "OTP not generated" };
 
   if (delivery.otpExpiresAt < new Date()) return { error: "OTP expired" };
+
   const normalizedOtp = otp.trim();
   const otpMatches = hashOtp(normalizedOtp) === delivery.otpHash;
 
   if (!otpMatches) {
     const nextAttempts = (delivery.otpAttempts ?? 0) + 1;
 
-    if (nextAttempts > MAX_OTP_ATTEMPTS) {
+    if (nextAttempts >= MAX_OTP_ATTEMPTS) {
       await prisma.delivery.update({
         where: { id: deliveryId },
         data: {
@@ -222,13 +226,11 @@ export async function verifyDeliveryOTPAction(deliveryId: string, otp: string) {
       };
     }
 
-    const attemptsLeft = Math.max(0, MAX_OTP_ATTEMPTS - nextAttempts + 1);
+    const attemptsLeft = MAX_OTP_ATTEMPTS - nextAttempts;
 
     await prisma.delivery.update({
       where: { id: deliveryId },
-      data: {
-        otpAttempts: nextAttempts,
-      },
+      data: { otpAttempts: nextAttempts },
     });
 
     return {
@@ -239,48 +241,60 @@ export async function verifyDeliveryOTPAction(deliveryId: string, otp: string) {
   const confirmedAt = new Date();
   const payoutEligibleAt = new Date(confirmedAt.getTime() + ESCROW_DELAY_MS);
 
-  await prisma.$transaction(async (tx) => {
-    await tx.delivery.update({
-      where: { id: deliveryId },
-      data: {
-        status: "DELIVERED",
-        deliveredAt: confirmedAt,
-        payoutEligibleAt,
-        payoutLocked: false,
-        otpAttempts: 0,
-        isLocked: false,
-        lockedAt: null,
-      },
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.delivery.update({
+        where: { id: deliveryId },
+        data: {
+          status: "DELIVERED",
+          deliveredAt: confirmedAt,
+          payoutEligibleAt,
+          payoutLocked: false,
+          otpAttempts: 0,
+          isLocked: false,
+          lockedAt: null,
+          otpHash: null,
+          otpExpiresAt: null,
+        },
+      });
+
+      await tx.order.update({
+        where: { id: delivery.orderId },
+        data: {
+          status: (() => {
+            const nextStatus: OrderStatus = "DELIVERED";
+            assertValidTransition(
+              normalizeOrderStatus(delivery.order.status),
+              nextStatus,
+            );
+            return nextStatus;
+          })(),
+          customerConfirmedAt: confirmedAt,
+        },
+      });
+
+      await createOrderTimelineIfMissing(
+        {
+          orderId: delivery.orderId,
+          status: "DELIVERED",
+          message: "Order delivered successfully.",
+        },
+        tx,
+      );
     });
 
-    await tx.order.update({
-      where: { id: delivery.orderId },
-      data: {
-        status: (() => {
-          const nextStatus: OrderStatus = "DELIVERED";
-          assertValidTransition(
-            normalizeOrderStatus(delivery.order.status),
-            nextStatus,
-          );
-          return nextStatus;
-        })(),
-        customerConfirmedAt: confirmedAt,
-      },
-    });
+    try {
+      const res = await moveOrderEarningsToPending(delivery.orderId);
+      console.log("escrow result:", res);
+    } catch (err) {
+      console.error("moveOrderEarningsToPending failed:", err);
+    }
 
-    await createOrderTimelineIfMissing(
-      {
-        orderId: delivery.orderId,
-        status: "DELIVERED",
-        message: "Order delivered successfully.",
-      },
-      tx,
-    );
-  });
-
-  await moveOrderEarningsToPending(delivery.orderId);
-
-  return { success: true };
+    return { success: true };
+  } catch (error) {
+    console.error("verifyDeliveryOTPAction failed:", error);
+    return { error: "Failed to verify OTP. Please try again." };
+  }
 }
 
 export async function riderVerifyDeliveryOtpAction(

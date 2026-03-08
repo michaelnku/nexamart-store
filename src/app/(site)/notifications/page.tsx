@@ -33,7 +33,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto px-8 py-8">
-      <h1 className="text-xl font-semibold">Notifications</h1>
+      <h1 className="text-xl font-semibold">Notification Center</h1>
 
       <span className="flex justify-center items-center">
         {data.notifications.length === 0 && (
@@ -41,7 +41,7 @@ export default function NotificationsPage() {
         )}
       </span>
 
-      <div>
+      <div className="space-y-6">
         {notifications.map((notification) => (
           <NotificationTemplate
             key={notification.id}

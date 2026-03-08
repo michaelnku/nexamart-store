@@ -225,7 +225,7 @@ export default function RiderDeliveriesClient() {
               typeof delivery.otpAttempts === "number"
                 ? delivery.otpAttempts
                 : 0;
-            const attemptsLeft = Math.max(0, 3 - otpAttempts);
+            const attemptsLeft = Math.max(0, 5 - otpAttempts);
             const isLocked = Boolean(delivery.isLocked);
             const formattedFee = new Intl.NumberFormat("en-US", {
               style: "currency",

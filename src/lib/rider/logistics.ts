@@ -4,6 +4,7 @@ import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import { generateDeliveryOTP } from "@/lib/delivery/generateDeliveryOtp";
 import { sendDeliveryOtpToCustomer } from "@/lib/delivery/sendDeliveryOtpToCustomer";
 import { DeliveryStatus } from "@/generated/prisma/edge";
+import { createNotification } from "../notifications/createNotification";
 
 export async function autoAssignRider(orderId: string) {
   console.log("AUTO ASSIGN CALLED", orderId);
@@ -155,14 +156,48 @@ export async function autoAssignRider(orderId: string) {
     );
   });
 
-  console.log("Generated OTP:", generatedOtp);
+  await createNotification({
+    userId: riderId,
+    event: "RIDER_ASSIGNED",
+    title: "New Delivery Assigned",
+    message: "A delivery has been assigned to you",
+    link: `/marketplace/dashboard/rider/deliveries/${orderId}`,
+    key: `rider-assigned-${orderId}-${riderId}`,
+    metadata: {
+      orderId,
+      type: "delivery",
+    },
+  });
+
+  await createNotification({
+    userId: order.userId,
+    event: "RIDER_ASSIGNED",
+    title: "Rider Assigned",
+    message: "Your order is now out for delivery",
+    link: `/customer/order/${orderId}`,
+    key: `customer-rider-assigned-${orderId}`,
+    metadata: {
+      orderId,
+      type: "delivery",
+    },
+  });
+
+  await Promise.all([
+    pusherServer.trigger(`notifications-${riderId}`, "new-notification", {
+      event: "RIDER_ASSIGNED",
+      orderId,
+    }),
+
+    pusherServer.trigger(`notifications-${order.userId}`, "new-notification", {
+      event: "RIDER_ASSIGNED",
+      orderId,
+    }),
+  ]);
 
   await pusherServer.trigger(`user-${order.userId}`, "rider-assigned", {
     orderId,
     riderId,
   });
-
-  console.log("Sending OTP to:", order.deliveryPhone);
 
   if (generatedOtp) {
     void sendDeliveryOtpToCustomer(

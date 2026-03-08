@@ -155,16 +155,14 @@ async function releaseEscrowPayoutWithTx(
       resolveToWallet: false,
     });
 
-    await tx.transaction.create({
+    await tx.transaction.updateMany({
+      where: {
+        reference: `pending-seller-${group.id}`,
+        status: "PENDING",
+      },
       data: {
-        walletId: sellerWallet.id,
-        userId: group.sellerId,
-        orderId,
-        type: "SELLER_PAYOUT",
         status: "SUCCESS",
-        amount: sellerAmount,
-        reference: `tx-seller-payout-${group.id}`,
-        description: `Escrow release payout for seller group ${group.id}`,
+        description: `Escrow released payout for seller group ${group.id}`,
       },
     });
 

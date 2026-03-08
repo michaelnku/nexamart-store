@@ -13,6 +13,8 @@ import {
   BadgeCheck,
   SlidersHorizontal,
   TriangleAlert,
+  UserCog2Icon,
+  MapPin,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -140,6 +142,7 @@ export const MarketplaceSettingsModules: Record<
         href: "/settings/rider/preferences",
         icon: SlidersHorizontal,
       },
+      { label: "Danger", href: "/settings/rider/danger", icon: TriangleAlert },
     ],
     cards: [
       {
@@ -156,6 +159,11 @@ export const MarketplaceSettingsModules: Record<
         href: "/settings/rider/preferences",
         title: "Preferences",
         description: "Manage rider notification and workflow preferences.",
+      },
+      {
+        href: "/settings/rider/danger",
+        title: "Danger Zone",
+        description: "Delete your rider profile and permanently remove it.",
       },
     ],
   },
@@ -188,7 +196,7 @@ export const MarketplaceSettingsModules: Record<
   },
   USER: {
     nav: [
-      { label: "User", href: "/settings/user", icon: User },
+      { label: "User", href: "/settings/user", icon: UserCog2Icon },
       { label: "Profile", href: "/settings/user/profile", icon: User },
       { label: "Security", href: "/settings/user/security", icon: Lock },
       {
@@ -196,12 +204,18 @@ export const MarketplaceSettingsModules: Record<
         href: "/settings/user/notifications",
         icon: Bell,
       },
+      { label: "Addresses", href: "/settings/user/addresses", icon: MapPin },
     ],
     cards: [
       {
         href: "/settings/user/profile",
         title: "Profile",
         description: "Manage account information and personal details.",
+      },
+      {
+        href: "/settings/user/addresses",
+        title: "Addresses",
+        description: "Manage shipping and billing addresses.",
       },
       {
         href: "/settings/user/security",

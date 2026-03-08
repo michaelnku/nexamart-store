@@ -19,7 +19,7 @@ import { StaffProfileDTO } from "@/lib/types";
 
 function ProfilePageSkeleton() {
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
       <div className="space-y-6">
         <header className="space-y-2">
           <Skeleton className="h-7 w-40" />
@@ -95,7 +95,7 @@ async function ProfilePageContent() {
       : null;
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
+    <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-black dark:text-gray-400">

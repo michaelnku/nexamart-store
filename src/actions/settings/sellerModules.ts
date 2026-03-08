@@ -22,7 +22,7 @@ async function getCurrentSellerStoreForUpdate() {
   return store;
 }
 
-async function updateSellerStoreFields(
+async function updateSellerStoreInternal(
   patch: Partial<{
     name: string;
     description: string;
@@ -83,7 +83,7 @@ async function updateSellerStoreFields(
 }
 
 export async function updateSellerProfileModule(formData: FormData) {
-  await updateSellerStoreFields({
+  await updateSellerStoreInternal({
     name: formData.get("name")?.toString().trim() || undefined,
     description: formData.get("description")?.toString() || undefined,
     location: formData.get("location")?.toString().trim() || undefined,
@@ -103,7 +103,7 @@ export async function updateSellerStorefrontModule(formData: FormData) {
     return trimmed && trimmed.length > 0 ? trimmed : null;
   };
 
-  await updateSellerStoreFields({
+  await updateSellerStoreInternal({
     tagline: normalizeOptional(taglineValue),
     logo: normalizeOptional(logoValue),
     logoKey: normalizeOptional(logoKeyValue),
@@ -113,7 +113,7 @@ export async function updateSellerStorefrontModule(formData: FormData) {
 }
 
 export async function updateSellerPreferencesModule(formData: FormData) {
-  await updateSellerStoreFields({
+  await updateSellerStoreInternal({
     isActive: formData.get("isActive") === "on",
     emailNotificationsEnabled:
       formData.get("emailNotificationsEnabled") === "on",
