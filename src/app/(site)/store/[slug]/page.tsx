@@ -161,7 +161,7 @@ const page = async ({ params }: StoreFrontProps) => {
 
         <section className="flex flex-col items-center gap-4 text-center">
           {/* Logo */}
-          <div className="w-32 h-32 rounded-full overflow-hidden border rounded-full border-[#125c99] shadow bg-gray-50 z-50 -mt-20">
+          <div className="w-32 h-32 rounded-full overflow-hidden border p-2 rounded-full border-[#125c99] shadow bg-gray-50 z-50 -mt-20">
             {store.logo ? (
               <Image
                 src={store.logo}
@@ -178,7 +178,7 @@ const page = async ({ params }: StoreFrontProps) => {
           </div>
 
           {/* Store Name */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-2">
             <h1 className="text-4xl font-bold">{store.name}</h1>
             {performance && (
               <span
