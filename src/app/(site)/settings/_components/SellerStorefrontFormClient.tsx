@@ -110,17 +110,22 @@ export default function SellerStorefrontFormClient({
             className={`${isStoreVerified ? "text-green-600" : "text-yellow-600"}`}
           >
             {" "}
-            {isStoreVerified === true ? "Verified" : "Pending"} -
+            {isStoreVerified === true ? "Verified" : "Pending"}
           </span>
-          {isStoreVerified === false && (
-            <Link
-              href="/settings/seller/store/verification"
-              className="text-blue-600 hover:underline"
-            >
-              {" "}
-              Start verification process
-            </Link>
-          )}
+          <span>
+            {isStoreVerified === false && (
+              <>
+                -{" "}
+                <Link
+                  href="/settings/verification"
+                  className="text-blue-600 hover:underline"
+                >
+                  {" "}
+                  Start verification process
+                </Link>
+              </>
+            )}
+          </span>
         </p>
       </CardHeader>
 

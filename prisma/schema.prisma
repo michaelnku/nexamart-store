@@ -36,6 +36,8 @@ model User {
   deletedAt           DateTime?
   scheduledDeletionAt DateTime?
 
+  verificationFailedAttempts Int @default(0)
+
   isDeleted Boolean @default(false)
 
   Account               Account[]
@@ -943,6 +945,8 @@ model VerificationDocument {
 
   type DocumentType
   file Json
+
+  fingerprint String? @unique
 
   status     VerificationStatus @default(PENDING)
   reviewedAt DateTime?

@@ -17,6 +17,7 @@ import {
   HeroBanner,
   SiteConfiguration,
   StaffStatus,
+  StaffProfile,
 } from "@/generated/prisma/client";
 
 export type FullProductVariant = ProductVariant & {
@@ -358,6 +359,10 @@ export type UserDTO = {
   isBanned: boolean;
 
   isVerified: boolean;
+
+  store?: Store | null;
+  riderProfile?: RiderProfile | null;
+  staffProfile?: StaffProfile | null;
 };
 
 export type AppUser = UserDTO | null;

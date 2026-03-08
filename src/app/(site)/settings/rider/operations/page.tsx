@@ -29,7 +29,7 @@ export default async function RiderOperationsSettingsPage() {
             -
             {profile?.isVerified === false && (
               <Link
-                href="/settings/rider/profile/verification"
+                href="/settings/verification"
                 className="text-blue-600 hover:underline"
               >
                 {" "}

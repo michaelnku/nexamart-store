@@ -306,19 +306,61 @@ async function handleVerificationEvent(
   }
 }
 
+const errorMap: Record<string, string> = {
+  document_expired: "Your ID document has expired.",
+  document_unreadable:
+    "Your ID image is unclear. Please upload a clearer photo.",
+  selfie_mismatch: "Your selfie does not match the ID document.",
+};
+
 async function handleVerificationFailure(
   session: Stripe.Identity.VerificationSession,
 ) {
   const verificationId = session.metadata?.verificationId;
+  const userId = session.metadata?.userId;
 
-  if (!verificationId) return;
+  if (!verificationId || !userId) return;
 
-  await prisma.verification.update({
-    where: { id: verificationId },
-    data: {
-      status: "REJECTED",
-      rejectionReason: "Verification failed",
-    },
+  let reason = "Verification requires additional information";
+
+  const report = session.last_verification_report;
+
+  if (report && typeof report !== "string") {
+    reason =
+      report.document?.error?.reason ?? report.selfie?.error?.reason ?? reason;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // mark verification rejected
+    await tx.verification.update({
+      where: { id: verificationId },
+      data: {
+        status: "REJECTED",
+        rejectionReason: reason,
+      },
+    });
+
+    // unlock documents so user can upload again
+    await tx.verificationDocument.updateMany({
+      where: {
+        userId,
+        verificationId,
+      },
+      data: {
+        status: "REJECTED",
+      },
+    });
+
+    // notify user
+    await tx.notification.create({
+      data: {
+        userId,
+        title: "Verification Failed",
+        message:
+          "Your identity verification failed. Please upload new documents and retry verification.",
+        type: "VERIFICATION",
+      },
+    });
   });
 }
 

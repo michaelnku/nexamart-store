@@ -20,6 +20,16 @@ export async function startVerification(role: VerificationRole) {
     },
   });
 
+  await prisma.verificationDocument.updateMany({
+    where: {
+      userId,
+      verificationId: null,
+    },
+    data: {
+      verificationId: verification.id,
+    },
+  });
+
   const session = await stripe.identity.verificationSessions.create({
     type: "document",
     metadata: {
@@ -38,5 +48,5 @@ export async function startVerification(role: VerificationRole) {
     },
   });
 
-  return { url: session.url, verificationId: verification.id };
+  return { url: session.url };
 }

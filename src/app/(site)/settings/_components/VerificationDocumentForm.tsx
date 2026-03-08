@@ -93,7 +93,7 @@ export default function VerificationDocumentForm() {
   };
 
   return (
-    <div className="max-w-4xl py-12 px-4 mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-4">
       <h2 className="text-xl font-semibold">Upload Verification Documents</h2>
 
       <Form {...form}>

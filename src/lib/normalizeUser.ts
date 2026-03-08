@@ -9,9 +9,9 @@ export async function normalizeUser(
   const db = await prisma.user.findUnique({
     where: { email: sessionUser.email },
     include: {
-      store: { select: { isVerified: true } },
-      riderProfile: { select: { isVerified: true } },
-      staffProfile: { select: { isVerified: true } },
+      store: true,
+      riderProfile: true,
+      staffProfile: true,
     },
   });
 
