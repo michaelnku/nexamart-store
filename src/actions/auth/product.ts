@@ -11,6 +11,7 @@ import {
 } from "@/lib/zodValidation";
 import { revalidatePath } from "next/cache";
 import { UTApi } from "uploadthing/server";
+import { ensureVerifiedSeller } from "@/lib/verification/guards";
 
 const utapi = new UTApi();
 
@@ -20,6 +21,8 @@ const utapi = new UTApi();
 export const createProductAction = async (values: productSchemaType) => {
   const user = await CurrentUser();
   if (!user || user.role !== "SELLER") return { error: "Unauthorized access" };
+
+  await ensureVerifiedSeller(user.id);
 
   const store = await prisma.store.findUnique({
     where: { userId: user.id },
@@ -140,7 +143,7 @@ export const createProductAction = async (values: productSchemaType) => {
 --------------------------------------------------------------------------- */
 export const updateProductAction = async (
   productId: string,
-  values: updateProductSchemaType
+  values: updateProductSchemaType,
 ) => {
   const user = await CurrentUser();
   if (!user) return { error: "Unauthorized access" };
@@ -197,7 +200,7 @@ export const updateProductAction = async (
     });
 
     const deleted = existing.images.filter(
-      (img) => !images.some((p) => p.url === img.imageUrl)
+      (img) => !images.some((p) => p.url === img.imageUrl),
     );
     if (deleted.length) {
       await tx.productImage.deleteMany({
@@ -207,7 +210,7 @@ export const updateProductAction = async (
     }
 
     const newImages = images.filter(
-      (p) => !existing.images.some((d) => d.imageUrl === p.url)
+      (p) => !existing.images.some((d) => d.imageUrl === p.url),
     );
     if (newImages.length) {
       await tx.productImage.createMany({
@@ -243,7 +246,7 @@ export const updateProductAction = async (
               discount: v.discount,
             },
           });
-        })
+        }),
       );
 
       await tx.productVariant.deleteMany({
@@ -300,4 +303,3 @@ export const deleteProductAction = async (productId: string) => {
     return { error: "Something went wrong while deleting product" };
   }
 };
-

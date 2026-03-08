@@ -937,9 +937,9 @@ model Verification {
 }
 
 model VerificationDocument {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   userId         String
-  verificationId String
+  verificationId String?
 
   type DocumentType
   file Json
@@ -949,8 +949,8 @@ model VerificationDocument {
 
   createdAt DateTime @default(now())
 
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  verification Verification @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verification Verification? @relation(fields: [verificationId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([verificationId])

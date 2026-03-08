@@ -20,6 +20,7 @@ import {
   canVerifyDeliveryStatus,
   toRiderClientDeliveryStatus,
 } from "@/lib/rider/types";
+import { ensureVerifiedSeller } from "@/lib/verification/guards";
 
 export async function autoAssignRiderForPaidOrderAction(orderId: string) {
   const userId = await CurrentUserId();
@@ -53,6 +54,8 @@ export async function autoAssignRiderForPaidOrderAction(orderId: string) {
 export async function riderAcceptDeliveryAction(deliveryId: string) {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
+
+  await ensureVerifiedSeller(userId);
 
   const role = await CurrentRole();
   if (role !== "RIDER") return { error: "Forbidden" };
