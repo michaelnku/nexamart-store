@@ -490,7 +490,7 @@ export default function ProductPublicDetail({
                   details.
                 </p>
                 <Link
-                  href={`/messages/new?storeId=${data.store.id}&productId=${data.id}`}
+                  href={`/messages?storeId=${data.store.id}&productId=${data.id}`}
                   className="inline-block"
                 >
                   <button className="mt-2 bg-[#3c9ee0] hover:bg-[#318bc4] text-white text-sm font-semibold px-4 py-2 rounded-lg transition shadow-sm">
