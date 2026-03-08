@@ -15,6 +15,7 @@ import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet"
 function isDeliveryType(value: string): value is DeliveryType {
   return (
     value === "HOME_DELIVERY" ||
+    value === "EXPRESS_DELIVERY" ||
     value === "STORE_PICKUP" ||
     value === "STATION_PICKUP"
   );

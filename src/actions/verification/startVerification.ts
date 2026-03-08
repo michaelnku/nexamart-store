@@ -1,7 +1,7 @@
 "use server";
 
-import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { stripe } from "@/lib/stripe";
 import { CurrentUserId } from "@/lib/currentUser";
 import { VerificationRole } from "@/generated/prisma";
 
@@ -9,15 +9,7 @@ export async function startVerification(role: VerificationRole) {
   const userId = await CurrentUserId();
 
   if (!userId) {
-    throw new Error("Unauthorized");
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-  });
-
-  if (!user) {
-    throw new Error("User not found");
+    return { error: "Unauthorized" };
   }
 
   const verification = await prisma.verification.create({
@@ -31,8 +23,8 @@ export async function startVerification(role: VerificationRole) {
   const session = await stripe.identity.verificationSessions.create({
     type: "document",
     metadata: {
-      userId,
       verificationId: verification.id,
+      userId,
       role,
     },
     return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/verification/success/${verification.id}`,
@@ -42,8 +34,9 @@ export async function startVerification(role: VerificationRole) {
     where: { id: verification.id },
     data: {
       stripeVerificationId: session.id,
+      stripeSessionId: session.id,
     },
   });
 
-  return { url: session.url };
+  return { url: session.url, verificationId: verification.id };
 }

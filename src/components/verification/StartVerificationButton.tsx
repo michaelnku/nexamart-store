@@ -3,6 +3,7 @@
 import { startVerification } from "@/actions/verification/startVerification";
 import { VerificationRole } from "@/generated/prisma";
 import { useTransition } from "react";
+import { Button } from "../ui/button";
 
 export default function StartVerificationButton({
   role,
@@ -22,12 +23,12 @@ export default function StartVerificationButton({
   };
 
   return (
-    <button
+    <Button
       onClick={handleStart}
       disabled={pending}
       className="px-4 py-2 rounded bg-blue-600 text-white"
     >
-      {pending ? "Starting..." : "Start Verification"}
-    </button>
+      {pending ? "Starting..." : "Start Identity Verification"}
+    </Button>
   );
 }

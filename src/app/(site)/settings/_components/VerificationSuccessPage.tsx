@@ -1,5 +1,3 @@
-import { CircleCheck } from "lucide-react";
-
 export default function VerificationSuccessPage({
   verificationId,
 }: {
@@ -8,7 +6,9 @@ export default function VerificationSuccessPage({
   return (
     <div className="max-w-xl mx-auto py-16 text-center">
       <div className="w-12 h-12 mx-auto rounded-full animate-spin border-t-2 border-b-2 border-brand"></div>
-      <h1 className="text-2xl font-semibold mb-4">Verification Submitted</h1>
+      <h1 className="text-2xl font-semibold mb-4 mt-4">
+        Verification Submitted
+      </h1>
 
       <p className="text-gray-600 mb-2">
         Your identity verification has been submitted.
