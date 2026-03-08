@@ -128,7 +128,7 @@ const page = async ({ params }: StoreFrontProps) => {
           : "bg-red-100 text-red-800";
 
   return (
-    <section className="min-h-full px-6 py-12 sm:px-6 lg:px-8 dark:bg-zinc-900">
+    <section className="min-h-full px-6 py-8 sm:px-6 lg:px-8 dark:bg-zinc-900">
       <main className="max-w-7xl mx-auto space-y-12 shadow-md rounded-md ">
         <div>
           <div className="relative w-full h-48 md:h-64 rounded-tr-md rounded-tl-md overflow-hidden bg-gray-200 shadow">
@@ -161,14 +161,14 @@ const page = async ({ params }: StoreFrontProps) => {
 
         <section className="flex flex-col items-center gap-4 text-center">
           {/* Logo */}
-          <div className="w-32 h-32 rounded-full overflow-hidden border p-2 rounded-full border-[#125c99] shadow bg-gray-50 z-50 -mt-20">
+          <div className="w-32 h-32 rounded-full overflow-hidden border rounded-full border-[#125c99] shadow bg-gray-50 z-50 -mt-20">
             {store.logo ? (
               <Image
                 src={store.logo}
                 alt={store.name}
                 width={128}
                 height={128}
-                className="object-cover w-full h-full "
+                className="object-cover w-full h-full"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400">
