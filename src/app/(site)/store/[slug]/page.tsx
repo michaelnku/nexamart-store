@@ -128,7 +128,7 @@ const page = async ({ params }: StoreFrontProps) => {
           : "bg-red-100 text-red-800";
 
   return (
-    <section className="min-h-full px-6  dark:bg-zinc-900">
+    <section className="min-h-full px-6 py-12 sm:px-6 lg:px-8 dark:bg-zinc-900">
       <main className="max-w-7xl mx-auto space-y-12 shadow-md rounded-md ">
         <div>
           <div className="relative w-full h-48 md:h-64 rounded-tr-md rounded-tl-md overflow-hidden bg-gray-200 shadow">
