@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { useAddressAutocomplete } from "@/hooks/useAddressAutocomplete";
+import Link from "next/link";
 
 type Props = {
   initialTagline: string;
@@ -19,6 +20,7 @@ type Props = {
   initialLogoKey: string;
   initialBanner: string;
   initialBannerKey: string;
+  isStoreVerified: boolean;
 };
 
 export default function SellerStorefrontFormClient({
@@ -27,6 +29,7 @@ export default function SellerStorefrontFormClient({
   initialLogoKey,
   initialBanner,
   initialBannerKey,
+  isStoreVerified,
 }: Props) {
   const [logoUrl, setLogoUrl] = useState(initialLogo);
   const [logoKey, setLogoKey] = useState(initialLogoKey);
@@ -88,12 +91,6 @@ export default function SellerStorefrontFormClient({
       try {
         const formData = new FormData();
 
-        formData.append("tagline", tagline);
-        formData.append("logo", logoUrl);
-        formData.append("logoKey", logoKey);
-        formData.append("bannerImage", bannerUrl);
-        formData.append("bannerKey", bannerKey);
-
         await updateSellerStorefrontModule(formData);
 
         toast.success("Storefront updated");
@@ -107,6 +104,24 @@ export default function SellerStorefrontFormClient({
     <Card>
       <CardHeader>
         <CardTitle>Storefront Appearance</CardTitle>
+        <p>
+          Verification status:{" "}
+          <span
+            className={`${isStoreVerified ? "text-green-600" : "text-yellow-600"}`}
+          >
+            {" "}
+            {isStoreVerified === true ? "Verified" : "Pending"} -
+          </span>
+          {isStoreVerified === false && (
+            <Link
+              href="/settings/seller/store/verification"
+              className="text-blue-600 hover:underline"
+            >
+              {" "}
+              Start verification process
+            </Link>
+          )}
+        </p>
       </CardHeader>
 
       <CardContent className="space-y-6">

@@ -9,14 +9,5 @@ export async function getCurrentRiderProfile() {
 
   return prisma.riderProfile.findUnique({
     where: { userId },
-    select: {
-      vehicleType: true,
-      plateNumber: true,
-      licenseNumber: true,
-      vehicleColor: true,
-      vehicleModel: true,
-      isVerified: true,
-      isAvailable: true,
-    },
   });
 }

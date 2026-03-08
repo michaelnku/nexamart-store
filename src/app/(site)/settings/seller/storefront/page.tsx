@@ -6,6 +6,8 @@ export default async function SellerStorefrontSettingsPage() {
 
   if (!store) return null;
 
+  const isStoreVerified = store.isVerified;
+
   return (
     <SellerStorefrontFormClient
       initialTagline={store.tagline ?? ""}
@@ -13,6 +15,7 @@ export default async function SellerStorefrontSettingsPage() {
       initialLogoKey={store.logoKey ?? ""}
       initialBanner={store.bannerImage ?? ""}
       initialBannerKey={store.bannerKey ?? ""}
+      isStoreVerified={isStoreVerified}
     />
   );
 }
