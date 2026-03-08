@@ -32,7 +32,7 @@ export async function createSellerOrderNotification(
     userId: sellerId,
     title: "New Orders",
     message: "You received 1 new order",
-    type: "ORDER_BATCH",
+    event: "ORDER_BATCH",
     link: "/marketplace/dashboard/seller/orders",
     key: `seller-order-batch-${sellerId}-${Date.now()}`,
   });
