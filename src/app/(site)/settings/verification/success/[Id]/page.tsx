@@ -2,20 +2,15 @@ import { redirect } from "next/navigation";
 import VerificationSuccessPage from "../../../_components/VerificationSuccessPage";
 import { CurrentUser } from "@/lib/currentUser";
 
-interface PageProps {
-  params: {
-    Id: string;
-  };
-}
-
-const Page = async ({ params }: PageProps) => {
+const Page = async ({ params }: { params: Promise<{ Id: string }> }) => {
+  const { Id } = await params;
   const user = await CurrentUser();
 
   if (!user) {
     redirect("/auth/login");
   }
 
-  return <VerificationSuccessPage verificationId={params.Id} />;
+  return <VerificationSuccessPage verificationId={Id} />;
 };
 
 export default Page;
