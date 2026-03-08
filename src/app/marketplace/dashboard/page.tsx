@@ -1,5 +1,9 @@
 import { CurrentUser } from "@/lib/currentUser";
-import { getAdminStats, getRiderStats, getSellerStats } from "@/actions/dashboardState";
+import {
+  getAdminStats,
+  getRiderStats,
+  getSellerStats,
+} from "@/actions/dashboardState";
 import AdminPage from "@/app/marketplace/_components/AdminPage";
 import RiderPage from "@/app/marketplace/_components/RiderPage";
 import SellerPage from "@/app/marketplace/_components/SellerPage";
@@ -30,9 +34,11 @@ const page = async () => {
 
   if (user.role === "MODERATOR") {
     return (
-      <main className="space-y-6">
+      <main className="space-y-8 max-w-7xl mx-auto px-4 py-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Moderator Overview</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Moderator Overview
+          </h1>
           <p className="text-sm text-muted-foreground">
             Access moderation tools and monitor flagged platform activity.
           </p>

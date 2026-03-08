@@ -15,7 +15,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CheckCircle2, XCircle, Loader2, PackageSearch, Eye } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  PackageSearch,
+  Eye,
+} from "lucide-react";
 import Link from "next/link";
 import { SellerOrder } from "@/lib/types";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
@@ -193,7 +199,7 @@ export default function SellerOrdersTable({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-8">
       <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
 
       <div className="hidden lg:block overflow-hidden rounded-xl border bg-white shadow">
@@ -222,7 +228,10 @@ export default function SellerOrdersTable({
             {orders.map((o) => {
               const state = getSellerRowState(o);
               return (
-                <tr key={o.id} className="border-t transition-colors hover:bg-gray-50">
+                <tr
+                  key={o.id}
+                  className="border-t transition-colors hover:bg-gray-50"
+                >
                   <td className="p-4 font-medium">
                     <Link
                       href={`/marketplace/dashboard/seller/orders/${o.id}`}
@@ -256,7 +265,9 @@ export default function SellerOrdersTable({
 
                   <td className="p-4">
                     <div className="flex flex-wrap justify-end gap-2">
-                      <Link href={`/marketplace/dashboard/seller/orders/${o.id}`}>
+                      <Link
+                        href={`/marketplace/dashboard/seller/orders/${o.id}`}
+                      >
                         <Button size="sm" variant="outline">
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -282,7 +293,12 @@ export default function SellerOrdersTable({
                             size="sm"
                             disabled={isPending || !state.sellerGroupId}
                             variant="destructive"
-                            onClick={() => handleAction(cancelOrderAction, state.sellerGroupId)}
+                            onClick={() =>
+                              handleAction(
+                                cancelOrderAction,
+                                state.sellerGroupId,
+                              )
+                            }
                             className="flex gap-1"
                           >
                             <XCircle className="h-4 w-4" />
@@ -315,7 +331,9 @@ export default function SellerOrdersTable({
             <Card key={o.id} className="rounded-xl border bg-white shadow-sm">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-base font-semibold">#{o.id.slice(-6)}</CardTitle>
+                  <CardTitle className="text-base font-semibold">
+                    #{o.id.slice(-6)}
+                  </CardTitle>
                   <span
                     className={`rounded-full px-2 py-[2px] text-[11px] font-semibold ${
                       statusColor[o.status] ?? "bg-gray-100 text-gray-700"
@@ -328,14 +346,20 @@ export default function SellerOrdersTable({
 
               <CardContent className="space-y-2 pb-3">
                 <p className="text-sm text-gray-600">
-                  Customer: <span className="font-medium">{o.customer?.name ?? "-"}</span>
+                  Customer:{" "}
+                  <span className="font-medium">{o.customer?.name ?? "-"}</span>
                 </p>
 
                 <p className="text-sm text-gray-600">
-                  Delivery: <span className="font-semibold text-[#3c9ee0]">{o.deliveryType.replaceAll("_", " ")}</span>
+                  Delivery:{" "}
+                  <span className="font-semibold text-[#3c9ee0]">
+                    {o.deliveryType.replaceAll("_", " ")}
+                  </span>
                 </p>
 
-                <p className="text-lg font-bold text-gray-900">{formatMoneyFromUSD(o.totalAmount)}</p>
+                <p className="text-lg font-bold text-gray-900">
+                  {formatMoneyFromUSD(o.totalAmount)}
+                </p>
               </CardContent>
 
               <CardFooter className="flex flex-wrap justify-between gap-2 pt-0">
@@ -353,14 +377,20 @@ export default function SellerOrdersTable({
                       onClick={() => handleAcceptClick(state)}
                       className="flex-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
                     >
-                      {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Accept"}
+                      {isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Accept"
+                      )}
                     </Button>
 
                     <Button
                       size="sm"
                       disabled={isPending || !state.sellerGroupId}
                       variant="destructive"
-                      onClick={() => handleAction(cancelOrderAction, state.sellerGroupId)}
+                      onClick={() =>
+                        handleAction(cancelOrderAction, state.sellerGroupId)
+                      }
                       className="flex-1"
                     >
                       Cancel
@@ -388,4 +418,3 @@ export default function SellerOrdersTable({
     </div>
   );
 }
-

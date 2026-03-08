@@ -33,7 +33,7 @@ export default function SellerEarningsPage() {
     }).format(v);
 
   return (
-    <main className="max-w-6xl mx-auto px-4 py-6 space-y-8">
+    <main className="max-w-7xl mx-auto px-4 py-6 space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Earnings</h1>
         <p className="text-sm text-gray-500">

@@ -7,7 +7,10 @@ import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import { markSellerGroupReady } from "@/lib/order/markSellerGroupReady";
-import { assertValidTransition, normalizeOrderStatus } from "@/lib/order/orderLifecycle";
+import {
+  assertValidTransition,
+  normalizeOrderStatus,
+} from "@/lib/order/orderLifecycle";
 
 export const markSellerDispatchedToHubAction = async (
   sellerGroupId: string,
@@ -69,8 +72,10 @@ export const markSellerDispatchedToHubAction = async (
       return { success: "Food order marked ready for rider pickup" };
     }
 
-      await prisma.$transaction(async (tx) => {
-      const normalizedOrderStatus = normalizeOrderStatus(sellerGroup.order.status);
+    await prisma.$transaction(async (tx) => {
+      const normalizedOrderStatus = normalizeOrderStatus(
+        sellerGroup.order.status,
+      );
       if (normalizedOrderStatus !== "ACCEPTED") {
         assertValidTransition(normalizedOrderStatus, "ACCEPTED");
       }
@@ -271,7 +276,7 @@ export const cancelOrderAction = async (sellerGroupId: string) => {
         data: { status: "CANCELLED" },
       });
 
-      const refundAmount = group.subtotal + group.shippingFee;
+      const refundAmount = group.subtotal;
 
       const buyerWallet = await tx.wallet.upsert({
         where: { userId: group.order.userId },

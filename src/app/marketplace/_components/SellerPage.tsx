@@ -71,7 +71,7 @@ export default function SellerPage({ stats }: { stats: SellerStats }) {
   ];
 
   return (
-    <main className="space-y-8">
+    <main className="space-y-8 max-w-7xl mx-auto px-4 py-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
         <p className="text-sm text-gray-500">

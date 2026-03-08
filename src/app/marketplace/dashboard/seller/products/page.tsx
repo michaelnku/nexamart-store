@@ -35,9 +35,9 @@ const page = async () => {
   });
 
   return (
-    <div className="bg-zinc-50 dark:bg-zinc-900">
+    <div className="dark:bg-zinc-900 max-w-7xl mx-auto px-4 py-6 space-y-8 shadow rounded-lg">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold p-4">Products</h1>
+        <h1 className="text-2xl font-semibold ">Products</h1>
         <Link
           href={"/marketplace/dashboard/seller/products/new"}
           className="flex text-blue-700 font-semibold p-4 gap-1"
@@ -52,4 +52,3 @@ const page = async () => {
 };
 
 export default page;
-

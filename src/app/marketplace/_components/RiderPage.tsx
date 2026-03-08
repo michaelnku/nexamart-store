@@ -30,7 +30,10 @@ type RiderStats = {
 };
 
 const formatDeliveryStatus = (status: string) =>
-  status.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  status
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 
 const RiderPage = ({ stats }: { stats: RiderStats }) => {
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
@@ -89,7 +92,7 @@ const RiderPage = ({ stats }: { stats: RiderStats }) => {
 
   return (
     <div className="dark:bg-zinc-900">
-      <main>
+      <main className="space-y-8 max-w-7xl mx-auto px-4 py-6">
         <header className="mb-8">
           <h1 className="mb-2 text-2xl font-bold text-gray-800 dark:text-gray-100">
             Overview
@@ -162,9 +165,7 @@ const RiderPage = ({ stats }: { stats: RiderStats }) => {
         </section>
 
         <section className="mt-10 rounded-xl border bg-white p-5 shadow-sm dark:bg-neutral-950">
-          <h3 className="mb-4 text-lg font-semibold">
-            Latest Events
-          </h3>
+          <h3 className="mb-4 text-lg font-semibold">Latest Events</h3>
 
           {!stats.latestEvents.length ? (
             <p className="text-sm text-gray-500">No recent events yet.</p>

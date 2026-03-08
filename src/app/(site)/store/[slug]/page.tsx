@@ -128,8 +128,8 @@ const page = async ({ params }: StoreFrontProps) => {
           : "bg-red-100 text-red-800";
 
   return (
-    <section className="min-h-full p-6 dark:bg-zinc-900">
-      <main className="max-w-6xl mx-auto space-y-12 shadow-md rounded-md ">
+    <section className="min-h-full px-6  dark:bg-zinc-900">
+      <main className="max-w-7xl mx-auto space-y-12 shadow-md rounded-md ">
         <div>
           <div className="relative w-full h-48 md:h-64 rounded-tr-md rounded-tl-md overflow-hidden bg-gray-200 shadow">
             {store.bannerImage ? (
@@ -231,7 +231,7 @@ const page = async ({ params }: StoreFrontProps) => {
               {store.products.map((product) => (
                 <Link
                   key={product.id}
-                  href={`/product/${product.id}`}
+                  href={`/products/${product.id}`}
                   className="border rounded-xl p-3 group hover:shadow-md transition"
                 >
                   <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-gray-100">
