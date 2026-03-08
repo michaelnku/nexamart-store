@@ -57,7 +57,7 @@ const FollowStoreClient = ({
         variant={state ? "secondary" : "default"}
         onClick={toggleFollow}
         disabled={pending}
-        className="flex items-center gap-2 bg-[#146EB4] hover:bg-[#125c99]"
+        className="flex items-center gap-2 bg-[#146EB4] hover:bg-[#125c99] text-white"
       >
         <Heart
           className={`w-4 h-4 ${state ? "fill-red-500 stroke-red-500" : ""}`}
@@ -66,7 +66,7 @@ const FollowStoreClient = ({
       </Button>
 
       <span className="text-gray-500 text-sm">
-        {formatFollowers(count)} followers
+        {formatFollowers(count)} {count === 1 ? "Follower" : "Followers"}
       </span>
     </div>
   );
