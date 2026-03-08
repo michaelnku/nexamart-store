@@ -38,35 +38,37 @@ model User {
 
   isDeleted Boolean @default(false)
 
-  Account            Account[]
-  addresses          Address[]
-  agentProfile       AgentProfile?
-  staffProfile       StaffProfile?
-  cart               Cart?
-  agentConversations Conversation[]     @relation("ConversationAgent")
-  couponClaims       CouponClaim[]
-  couponUsages       CouponUsage[]
-  deliveries         Delivery[]         @relation("RiderDeliveries")
-  Notification       Notification[]
-  customerOrders     Order[]            @relation("CustomerOrders")
-  checkoutGroups     CheckoutGroup[]
-  sellerGroups       OrderSellerGroup[] @relation("SellerGroupBySeller")
-  referralsReceived  Referral?          @relation("Referred")
-  referralsMade      Referral[]         @relation("Referrer")
-  referralCode       ReferralCode?
-  referralRewards    ReferralReward[]   @relation("ReferralRewardBeneficiary")
-  Review             Review[]
-  riderProfile       RiderProfile?
-  riderSchedules     RiderSchedule[]
-  searchHistories    SearchHistory[]
-  Session            Session[]
-  store              Store?
-  StoreFollower      StoreFollower[]
-  StoreReview        StoreReview[]
-  transactions       Transaction[]
-  userPreference     UserPreference?
-  wallet             Wallet?
-  wishlist           Wishlist?
+  Account               Account[]
+  addresses             Address[]
+  agentProfile          AgentProfile?
+  staffProfile          StaffProfile?
+  cart                  Cart?
+  agentConversations    Conversation[]         @relation("ConversationAgent")
+  couponClaims          CouponClaim[]
+  couponUsages          CouponUsage[]
+  deliveries            Delivery[]             @relation("RiderDeliveries")
+  Notification          Notification[]
+  customerOrders        Order[]                @relation("CustomerOrders")
+  checkoutGroups        CheckoutGroup[]
+  sellerGroups          OrderSellerGroup[]     @relation("SellerGroupBySeller")
+  referralsReceived     Referral?              @relation("Referred")
+  referralsMade         Referral[]             @relation("Referrer")
+  referralCode          ReferralCode?
+  referralRewards       ReferralReward[]       @relation("ReferralRewardBeneficiary")
+  Review                Review[]
+  riderProfile          RiderProfile?
+  riderSchedules        RiderSchedule[]
+  searchHistories       SearchHistory[]
+  Session               Session[]
+  store                 Store?
+  StoreFollower         StoreFollower[]
+  StoreReview           StoreReview[]
+  transactions          Transaction[]
+  userPreference        UserPreference?
+  wallet                Wallet?
+  wishlist              Wishlist?
+  verifications         Verification[]
+  verificationDocuments VerificationDocument[]
 }
 
 model Account {
@@ -909,6 +911,47 @@ model StaffProfile {
   updatedAt DateTime @updatedAt
 }
 
+model Verification {
+  id     String             @id @default(cuid())
+  userId String
+  role   VerificationRole
+  status VerificationStatus @default(PENDING)
+
+  stripeVerificationId String?
+  stripeAccountId      String?
+
+  documentType String?
+  documentUrl  String?
+  documentKey  String?
+
+  rejectionReason String?
+
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+model VerificationDocument {
+  id     String       @id @default(cuid())
+  userId String
+  type   DocumentType
+  file   Json
+
+  status     VerificationStatus @default(PENDING)
+  reviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 /// *
 /// * ===========================
 /// * ADDRESS & SITE CONFIG
@@ -1051,6 +1094,20 @@ model SellerDailyStats {
 /// * ===========================
 /// * ENUMS
 /// * ===========================
+enum DocumentType {
+  NATIONAL_ID
+  PASSPORT
+  DRIVER_LICENSE
+  BUSINESS_LICENSE
+  VEHICLE_REGISTRATION
+}
+
+enum VerificationRole {
+  SELLER
+  RIDER
+  STAFF
+}
+
 enum WalletStatus {
   ACTIVE
   INACTIVE

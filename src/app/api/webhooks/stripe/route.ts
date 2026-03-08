@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { DeliveryType } from "@/generated/prisma/client";
 import { placeOrderAction } from "@/actions/checkout/placeOrder";
 import { prisma } from "@/lib/prisma";
@@ -147,10 +148,14 @@ async function settleCreatedOrders({
         data: { isPublished: true },
       });
 
-      await pusherServer.trigger(`user-${paidOrder.userId}`, "payment-success", {
-        orderId: target.id,
-        message: "Payment received! Your order is now processing.",
-      });
+      await pusherServer.trigger(
+        `user-${paidOrder.userId}`,
+        "payment-success",
+        {
+          orderId: target.id,
+          message: "Payment received! Your order is now processing.",
+        },
+      );
 
       for (const group of paidOrder.sellerGroups) {
         await pusherServer.trigger(`seller-${group.sellerId}`, "new-order", {
@@ -175,6 +180,7 @@ async function handleLegacyOrderCheckout(session: Stripe.Checkout.Session) {
   const orderId = session.metadata?.orderId;
   const checkoutGroupId = session.metadata?.checkoutGroupId || null;
   const paymentIntentRaw = session.payment_intent;
+
   const paymentIntentId =
     typeof paymentIntentRaw === "string"
       ? paymentIntentRaw
@@ -190,6 +196,7 @@ async function handleLegacyOrderCheckout(session: Stripe.Checkout.Session) {
 
 async function handleOrderCheckout(session: Stripe.Checkout.Session) {
   const paymentIntentRaw = session.payment_intent;
+
   const paymentIntentId =
     typeof paymentIntentRaw === "string"
       ? paymentIntentRaw
@@ -245,7 +252,80 @@ async function handleOrderCheckout(session: Stripe.Checkout.Session) {
   return new NextResponse(null, { status: 200 });
 }
 
-export async function POST(req: Request) {
+/* ===============================
+   VERIFICATION HANDLERS
+================================ */
+
+async function handleVerificationEvent(
+  session: Stripe.Identity.VerificationSession,
+) {
+  const verificationId = session.metadata?.verificationId;
+  const role = session.metadata?.role;
+  const userId = session.metadata?.userId;
+
+  if (!verificationId || !userId) return;
+
+  await prisma.verification.update({
+    where: { id: verificationId },
+    data: {
+      status: "VERIFIED",
+      verifiedAt: new Date(),
+    },
+  });
+
+  if (role === "SELLER") {
+    await prisma.store.update({
+      where: { userId },
+      data: {
+        isVerified: true,
+        verifiedAt: new Date(),
+        isActive: true,
+      },
+    });
+  }
+
+  if (role === "RIDER") {
+    await prisma.riderProfile.update({
+      where: { userId },
+      data: {
+        isVerified: true,
+        verifiedAt: new Date(),
+      },
+    });
+  }
+
+  if (role === "STAFF") {
+    await prisma.staffProfile.update({
+      where: { userId },
+      data: {
+        verificationStatus: "VERIFIED",
+        verifiedAt: new Date(),
+      },
+    });
+  }
+}
+
+async function handleVerificationFailure(
+  session: Stripe.Identity.VerificationSession,
+) {
+  const verificationId = session.metadata?.verificationId;
+
+  if (!verificationId) return;
+
+  await prisma.verification.update({
+    where: { id: verificationId },
+    data: {
+      status: "REJECTED",
+      rejectionReason: "Verification failed",
+    },
+  });
+}
+
+/* ===============================
+   MAIN WEBHOOK
+================================ */
+
+export async function POST(req: NextRequest) {
   if (!process.env.STRIPE_WEBHOOK_SECRET) {
     throw new Error("Missing STRIPE_WEBHOOK_SECRET");
   }
@@ -274,6 +354,26 @@ export async function POST(req: Request) {
     console.error("Webhook signature verification failed:", message);
     return new NextResponse(`Webhook Error: ${message}`, { status: 400 });
   }
+
+  /* ===============================
+     VERIFICATION EVENTS
+  =============================== */
+
+  if (event.type === "identity.verification_session.verified") {
+    const session = event.data.object as Stripe.Identity.VerificationSession;
+    await handleVerificationEvent(session);
+    return NextResponse.json({ received: true });
+  }
+
+  if (event.type === "identity.verification_session.requires_input") {
+    const session = event.data.object as Stripe.Identity.VerificationSession;
+    await handleVerificationFailure(session);
+    return NextResponse.json({ received: true });
+  }
+
+  /* ===============================
+     CHECKOUT EVENTS
+  =============================== */
 
   if (
     event.type !== "checkout.session.completed" &&

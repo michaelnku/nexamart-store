@@ -25,7 +25,17 @@ export default async function RiderOperationsSettingsPage() {
               }
             >
               {profile?.isVerified ? " Verified" : " Pending"}
-            </span>
+            </span>{" "}
+            -
+            {profile?.isVerified === false && (
+              <Link
+                href="/settings/rider/profile/verification"
+                className="text-blue-600 hover:underline"
+              >
+                {" "}
+                Start verification process
+              </Link>
+            )}
           </p>
 
           <div className="flex items-center justify-between">
