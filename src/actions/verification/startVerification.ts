@@ -60,7 +60,7 @@ export async function startVerification(role: VerificationRole) {
     },
   });
 
-  await pusherServer.trigger(`user-${userId}`, "verification-updated", {});
+  await pusherServer.trigger(`user-${userId}`, "verification-started", {});
 
   return { url: session.url };
 }

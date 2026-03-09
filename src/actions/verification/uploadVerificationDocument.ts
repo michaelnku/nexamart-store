@@ -118,7 +118,11 @@ export async function uploadVerificationDocument(
       ),
     );
 
-    await pusherServer.trigger(`user-${userId}`, "verification-updated", {});
+    await pusherServer.trigger(
+      `user-${userId}`,
+      "verification-documents-updated",
+      {},
+    );
 
     return { success: true };
   } catch (error) {

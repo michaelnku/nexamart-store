@@ -8,38 +8,61 @@ import {
   BadgeCheck,
   ShieldAlert,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/stores/useCartstore";
 import { useWishlistStore } from "@/stores/useWishlistStore";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import { UserDTO } from "@/lib/types";
-import { useNotifications } from "@/hooks/useNotifications";
+
+/* =========================
+   Animated Counter Badge
+========================= */
 
 const AnimatedBadge = ({ count }: { count: number }) => {
   const display = count > 99 ? "99+" : count;
 
   return (
-    <motion.span
-      initial={{ scale: 0 }}
-      animate={{ scale: 1 }}
-      exit={{ scale: 0 }}
-      transition={{ type: "spring", stiffness: 260, damping: 20 }}
-      className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 flex items-center justify-center 
-        bg-red-600 text-white text-xs font-semibold rounded-full shadow"
-    >
-      {display}
-    </motion.span>
+    <AnimatePresence>
+      <motion.span
+        key={display}
+        initial={{ scale: 0, y: -6 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0 }}
+        transition={{ type: "spring", stiffness: 280, damping: 18 }}
+        className="
+          absolute -top-2 -right-2
+          h-5 min-w-[20px] px-1
+          flex items-center justify-center
+          rounded-full
+          text-[11px] font-semibold
+          text-white
+          bg-gradient-to-br from-red-500 to-red-600
+          shadow-md
+          ring-2 ring-background
+        "
+      >
+        {display}
+      </motion.span>
+    </AnimatePresence>
   );
 };
+
+/* =========================
+   Notification Badge
+========================= */
 
 const NotificationBadge = ({ count = 0 }: { count?: number }) => {
   return (
     <div className="relative inline-flex items-center">
-      <Bell className="h-6 w-6" />
+      <Bell className="h-6 w-6 transition-colors hover:text-primary" />
       {count > 0 && <AnimatedBadge count={count} />}
     </div>
   );
 };
+
+/* =========================
+   Cart Badge
+========================= */
 
 const CartBadge = () => {
   const count = useCartStore((s) =>
@@ -49,38 +72,87 @@ const CartBadge = () => {
   return (
     <div className="relative inline-flex items-center cursor-pointer">
       <ShoppingCart
-        className={`h-5 w-5 ${
-          count > 0 ? "stroke-blue-700" : "stroke-gray-400"
+        className={`h-5 w-5 transition ${
+          count > 0
+            ? "stroke-blue-600 drop-shadow-[0_0_4px_rgba(59,130,246,0.5)]"
+            : "stroke-gray-400 hover:stroke-primary"
         }`}
       />
+
       {count > 0 && <AnimatedBadge count={count} />}
     </div>
   );
 };
 
-// 💖 Wishlist Badge
+/* =========================
+   Wishlist Badge
+========================= */
+
 const WishlistBadge = () => {
   const count = useWishlistStore((s) => s.items.length);
 
   return (
-    <div className="relative flex justify-center items-center">
+    <div className="relative flex items-center justify-center cursor-pointer">
       <Heart
-        className={` h-5 w-5 transition ${
+        className={`h-5 w-5 transition ${
           count > 0
-            ? "fill-red-500 stroke-red-500"
+            ? "fill-red-500 stroke-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.45)]"
             : "stroke-gray-600 hover:stroke-red-500"
         }`}
       />
+
       {count > 0 && <AnimatedBadge count={count} />}
     </div>
   );
 };
 
-const verificationLabelByRole: Partial<Record<UserDTO["role"], string>> = {
-  SELLER: "Verified",
-  RIDER: "Verified",
-  ADMIN: "Verified",
-  MODERATOR: "Verified",
+/* =========================
+   Verified Badge
+========================= */
+
+const roleBadgeConfig: Record<
+  UserDTO["role"],
+  {
+    label: string;
+    color: string;
+    icon: typeof BadgeCheck;
+  }
+> = {
+  USER: {
+    label: "Verified",
+    color: "green",
+    icon: BadgeCheck,
+  },
+
+  SELLER: {
+    label: "Verified Seller",
+    color: "emerald",
+    icon: BadgeCheck,
+  },
+
+  RIDER: {
+    label: "Verified Rider",
+    color: "blue",
+    icon: BadgeCheck,
+  },
+
+  ADMIN: {
+    label: "Trusted Admin",
+    color: "violet",
+    icon: BadgeCheck,
+  },
+
+  MODERATOR: {
+    label: "Moderator",
+    color: "indigo",
+    icon: BadgeCheck,
+  },
+
+  SYSTEM: {
+    label: "System",
+    color: "gray",
+    icon: BadgeCheck,
+  },
 };
 
 const VerifiedBadge = ({ user: providedUser }: { user?: UserDTO | null }) => {
@@ -89,22 +161,63 @@ const VerifiedBadge = ({ user: providedUser }: { user?: UserDTO | null }) => {
 
   if (!user) return null;
 
-  return user.isVerified ? (
-    <Badge
-      variant="outline"
-      className="border-green-500 text-green-700 bg-green-50 dark:bg-green-900/30 dark:text-green-200 flex items-center gap-1 px-2.5 py-1 text-xs font-semibold"
+  const config = roleBadgeConfig[user.role];
+  const Icon = config.icon;
+
+  if (!user.isVerified) {
+    return (
+      <Badge
+        variant="outline"
+        className="
+        flex items-center gap-1.5
+        px-2.5 py-[5px]
+        text-xs font-semibold
+        border-amber-500
+        text-amber-700
+        bg-amber-50
+        dark:bg-amber-900/30
+        dark:text-amber-200
+        shadow-sm
+      "
+      >
+        <ShieldAlert className="w-3.5 h-3.5" />
+        Not Verified
+      </Badge>
+    );
+  }
+
+  const color = config.color;
+
+  return (
+    <motion.div
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.25 }}
     >
-      <BadgeCheck className="w-3.5 h-3.5" />
-      {verificationLabelByRole[user.role] ?? "Verified"}
-    </Badge>
-  ) : (
-    <Badge
-      variant="outline"
-      className="border-amber-500 text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-200 flex items-center gap-1 px-2.5 py-1 text-xs font-semibold"
-    >
-      <ShieldAlert className="w-3.5 h-3.5" />
-      Not Verified
-    </Badge>
+      <Badge
+        variant="outline"
+        className={`
+        relative flex items-center gap-1.5
+        px-2.5 py-[5px]
+        text-xs font-semibold
+        shadow-sm transition hover:shadow-md
+        border-${color}-500
+        text-${color}-700
+        bg-${color}-50
+        dark:bg-${color}-900/30
+        dark:text-${color}-200
+        `}
+      >
+        {/* Glow */}
+        <span
+          className={`absolute inset-0 rounded-md bg-${color}-400/10 blur-md opacity-40 pointer-events-none`}
+        />
+
+        <Icon className="w-3.5 h-3.5" />
+
+        {config.label}
+      </Badge>
+    </motion.div>
   );
 };
 

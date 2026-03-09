@@ -1123,8 +1123,9 @@ enum WalletStatus {
 
 enum VerificationStatus {
   PENDING
+  IN_REVIEW
   REJECTED
-  INCOMPLETE
+  CANCELLED
   VERIFIED
 }
 

@@ -322,7 +322,59 @@ async function handleVerificationEvent(
     },
   });
 
-  await pusherServer.trigger(`user-${userId}`, "verification-updated", {});
+  await pusherServer.trigger(`user-${userId}`, "verification-updated", {
+    status: "VERIFIED",
+  });
+}
+
+async function handleVerificationProcessing(
+  session: Stripe.Identity.VerificationSession,
+) {
+  const verificationId = session.metadata?.verificationId;
+  const userId = session.metadata?.userId;
+
+  if (!verificationId || !userId) return;
+
+  await prisma.verification.update({
+    where: { id: verificationId },
+    data: {
+      status: "IN_REVIEW",
+    },
+  });
+
+  await pusherServer.trigger(`user-${userId}`, "verification-updated", {
+    status: "IN_REVIEW",
+  });
+}
+
+async function handleVerificationCancelled(
+  session: Stripe.Identity.VerificationSession,
+) {
+  const verificationId = session.metadata?.verificationId;
+  const userId = session.metadata?.userId;
+
+  if (!verificationId || !userId) return;
+
+  await prisma.verification.update({
+    where: { id: verificationId },
+    data: {
+      status: "CANCELLED",
+    },
+  });
+
+  await prisma.notification.create({
+    data: {
+      userId,
+      title: "Verification Cancelled",
+      message:
+        "You exited the identity verification process. You can restart verification anytime.",
+      type: "VERIFICATION",
+    },
+  });
+
+  await pusherServer.trigger(`user-${userId}`, "verification-updated", {
+    status: "CANCELLED",
+  });
 }
 
 const errorMap: Record<string, string> = {
@@ -384,7 +436,9 @@ async function handleVerificationFailure(
     });
   });
 
-  await pusherServer.trigger(`user-${userId}`, "verification-updated", {});
+  await pusherServer.trigger(`user-${userId}`, "verification-updated", {
+    status: "REJECTED",
+  });
 }
 
 /* ===============================
@@ -422,8 +476,16 @@ export async function POST(req: NextRequest) {
   }
 
   /* ===============================
-     VERIFICATION EVENTS
-  =============================== */
+   VERIFICATION EVENTS
+================================ */
+
+  console.log("Stripe webhook received:", event.type);
+
+  if (event.type === "identity.verification_session.processing") {
+    const session = event.data.object as Stripe.Identity.VerificationSession;
+    await handleVerificationProcessing(session);
+    return NextResponse.json({ received: true });
+  }
 
   if (event.type === "identity.verification_session.verified") {
     const session = event.data.object as Stripe.Identity.VerificationSession;
@@ -434,6 +496,12 @@ export async function POST(req: NextRequest) {
   if (event.type === "identity.verification_session.requires_input") {
     const session = event.data.object as Stripe.Identity.VerificationSession;
     await handleVerificationFailure(session);
+    return NextResponse.json({ received: true });
+  }
+
+  if (event.type === "identity.verification_session.canceled") {
+    const session = event.data.object as Stripe.Identity.VerificationSession;
+    await handleVerificationCancelled(session);
     return NextResponse.json({ received: true });
   }
 

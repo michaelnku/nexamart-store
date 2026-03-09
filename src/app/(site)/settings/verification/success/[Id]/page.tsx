@@ -10,7 +10,7 @@ const Page = async ({ params }: { params: Promise<{ Id: string }> }) => {
     redirect("/auth/login");
   }
 
-  return <VerificationSuccessPage verificationId={Id} />;
+  return <VerificationSuccessPage verificationId={Id} userId={user.id} />;
 };
 
 export default Page;

@@ -147,12 +147,18 @@ export default function VerificationDocumentForm() {
           {/* Upload */}
 
           <section className="space-y-4">
-            <h2 className="font-semibold text-xl">Upload Document</h2>
+            <span>
+              <h2 className="font-semibold text-xl">Upload Documents</h2>
+              <p className="text-sm text-muted-foreground">
+                Make sure the document is clear and readable!
+              </p>
+            </span>
 
-            {files.length < MAX_FILES && (
-              <UploadButton
-                endpoint="verificationFiles"
-                className="
+            <div className="space-y-2 mt-4">
+              {files.length < MAX_FILES && (
+                <UploadButton
+                  endpoint="verificationFiles"
+                  className="
                   ut-button:bg-muted
                   ut-button:text-foreground
                   ut-button:border
@@ -163,26 +169,27 @@ export default function VerificationDocumentForm() {
                   ut-button:text-sm
                   hover:ut-button:bg-muted/70
                 "
-                onClientUploadComplete={(res) => {
-                  const uploaded = res.map((file) => ({
-                    url: file.url,
-                    key: file.key,
-                  }));
+                  onClientUploadComplete={(res) => {
+                    const uploaded = res.map((file) => ({
+                      url: file.url,
+                      key: file.key,
+                    }));
 
-                  const existing = getValues("files");
+                    const existing = getValues("files");
 
-                  setValue("files", [...existing, ...uploaded]);
+                    setValue("files", [...existing, ...uploaded]);
 
-                  toast.success("Document uploaded");
-                }}
-              />
-            )}
+                    toast.success("Document uploaded");
+                  }}
+                />
+              )}
 
-            {files.length >= MAX_FILES && (
-              <p className="text-sm text-muted-foreground">
-                Maximum of {MAX_FILES} documents reached.
-              </p>
-            )}
+              {files.length >= MAX_FILES && (
+                <p className="text-sm text-muted-foreground">
+                  Maximum of {MAX_FILES} documents reached.
+                </p>
+              )}
+            </div>
 
             {/* Preview */}
 

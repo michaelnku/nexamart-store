@@ -16,18 +16,24 @@ export default async function VerificationPage() {
 
   if (!role) redirect("/settings");
 
-  const verification = await prisma.verification.findFirst({
-    where: { userId: user.id, role },
-    orderBy: { createdAt: "desc" },
-    select: {
-      status: true,
-      rejectionReason: true,
-    },
-  });
+  const [verification, docsCount] = await Promise.all([
+    prisma.verification.findFirst({
+      where: { userId: user.id, role },
+      orderBy: { createdAt: "desc" },
+      select: {
+        status: true,
+        rejectionReason: true,
+      },
+    }),
+
+    prisma.verificationDocument.count({
+      where: { userId: user.id },
+    }),
+  ]);
 
   return (
-    <div className="max-w-4xl px-4 space-y-8 mx-auto ">
-      <VerificationProgress />
+    <div className="max-w-4xl px-4 space-y-8 mx-auto">
+      <VerificationProgress userId={user.id} />
 
       {verification?.status === "REJECTED" && (
         <div className="border border-red-300 bg-red-50 p-4 rounded-lg">
@@ -42,7 +48,15 @@ export default async function VerificationPage() {
 
       <VerificationUploadGuard />
 
-      <VerificationStartGuard role={role} />
+      <VerificationStartGuard
+        role={role}
+        userId={user.id}
+        initialHasDocs={docsCount > 0}
+        initialVerificationStarted={
+          verification?.status === "PENDING" ||
+          verification?.status === "IN_REVIEW"
+        }
+      />
     </div>
   );
 }
