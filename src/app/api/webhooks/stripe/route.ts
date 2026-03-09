@@ -11,6 +11,7 @@ import { completeOrderPayment } from "@/lib/payments/completeOrderPayment";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { createServiceContext } from "@/lib/system/serviceContext";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
+import { createStripeConnectAccount } from "@/actions/verification/createStripeConnectAccount";
 
 function isDeliveryType(value: string): value is DeliveryType {
   return (
@@ -314,6 +315,8 @@ async function handleVerificationEvent(
       },
     });
   }
+
+  await createStripeConnectAccount();
 
   await prisma.user.update({
     where: { id: userId },

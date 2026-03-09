@@ -7,30 +7,41 @@ export type VerificationStep = {
 };
 
 export async function getVerificationProgress(userId: string) {
-  const [documents, verification, store] = await Promise.all([
-    prisma.verificationDocument.count({
-      where: { userId },
-    }),
+  const [documents, verification, store, riderProfile, staffProfile] =
+    await Promise.all([
+      prisma.verificationDocument.count({
+        where: { userId },
+      }),
 
-    prisma.verification.findFirst({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-    }),
+      prisma.verification.findFirst({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+      }),
 
-    prisma.store.findUnique({
-      where: { userId },
-      select: {
-        stripeAccountId: true,
-        isVerified: true,
-        isActive: true,
-      },
-    }),
-  ]);
+      prisma.store.findUnique({
+        where: { userId },
+        select: {
+          stripeAccountId: true,
+          isVerified: true,
+          isActive: true,
+        },
+      }),
+
+      prisma.riderProfile.findUnique({
+        where: { userId },
+        select: { isVerified: true, stripeAccountId: true },
+      }),
+
+      prisma.staffProfile.findUnique({
+        where: { userId },
+        select: { isVerified: true, stripeAccountId: true },
+      }),
+    ]);
 
   const steps: VerificationStep[] = [
     {
       id: "documents",
-      label: "Upload documents",
+      label: "Upload verification documents",
       completed: documents > 0,
     },
     {
@@ -40,13 +51,17 @@ export async function getVerificationProgress(userId: string) {
     },
     {
       id: "payout",
-      label: "Stripe payout setup",
-      completed: Boolean(store?.stripeAccountId),
+      label: "Set-up your  stripe payout account",
+      completed: Boolean(
+        store?.stripeAccountId ||
+        riderProfile?.stripeAccountId ||
+        staffProfile?.stripeAccountId,
+      ),
     },
     {
-      id: "activated",
-      label: "Account activated",
-      completed: Boolean(store?.isVerified && store?.isActive),
+      id: "complete",
+      label: "Verification complete",
+      completed: verification?.status === "VERIFIED",
     },
   ];
 
