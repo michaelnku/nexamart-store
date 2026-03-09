@@ -60,7 +60,7 @@ export async function updateStaffProfile(input: UpdateStaffProfileInput) {
           isVerified: false,
           verifiedAt: null,
           verificationMethod: null,
-          verificationStatus: "INCOMPLETE",
+          verificationStatus: "IN_REVIEW",
         }),
       },
     });
