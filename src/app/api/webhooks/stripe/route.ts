@@ -266,11 +266,21 @@ async function handleVerificationEvent(
 
   if (!verificationId || !userId) return;
 
+  let documentType: string | null = null;
+
+  const report = session.last_verification_report;
+
+  if (report && typeof report !== "string") {
+    documentType = report.document?.type ?? null;
+  }
+
   await prisma.verification.update({
     where: { id: verificationId },
     data: {
       status: "VERIFIED",
       verifiedAt: new Date(),
+      documentType,
+      stripeSessionId: session.id,
     },
   });
 
@@ -331,6 +341,8 @@ async function handleVerificationFailure(
   if (!verificationId || !userId) return;
 
   let reason = "Verification requires additional information";
+
+  reason = errorMap[reason] ?? reason;
 
   const report = session.last_verification_report;
 

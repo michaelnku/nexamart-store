@@ -12,7 +12,7 @@ async function fetchProgress() {
   return res.json();
 }
 
-export default function VerificationProgress({ userId }: { userId: string }) {
+export default function VerificationProgress() {
   const [progress, setProgress] = useState<any | null>(null);
 
   useEffect(() => {
