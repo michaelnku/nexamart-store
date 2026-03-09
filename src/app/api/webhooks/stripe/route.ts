@@ -304,6 +304,15 @@ async function handleVerificationEvent(
       },
     });
   }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      verificationFailedAttempts: 0,
+    },
+  });
+
+  await pusherServer.trigger(`user-${userId}`, "verification-updated", {});
 }
 
 const errorMap: Record<string, string> = {
@@ -362,6 +371,8 @@ async function handleVerificationFailure(
       },
     });
   });
+
+  await pusherServer.trigger(`user-${userId}`, "verification-updated", {});
 }
 
 /* ===============================

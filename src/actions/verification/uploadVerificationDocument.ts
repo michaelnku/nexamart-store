@@ -11,6 +11,8 @@ import { rateLimit } from "@/lib/security/rateLimit";
 import { createImageFingerprint } from "@/lib/security/createImageFingerprint";
 import { fetchImageBuffer } from "@/lib/verification/fetchImageBuffer";
 import { validateDocumentAI } from "@/lib/verification/validateDocumentAI";
+import { handleVerificationFraud } from "@/lib/verification/handleVerificationFraud";
+import { pusherServer } from "@/lib/pusher";
 
 export async function uploadVerificationDocument(
   data: VerificationDocumentInput,
@@ -65,9 +67,17 @@ export async function uploadVerificationDocument(
     });
 
     if (existing && existing.userId !== userId) {
+      const fraud = await handleVerificationFraud(userId);
+
+      if (fraud?.banned) {
+        return {
+          error:
+            "Your account has been suspended due to repeated fraudulent verification attempts.",
+        };
+      }
+
       return {
-        error:
-          "This identity document has already been used to verify another account.",
+        error: `This document has already been used on another account. Attempt ${fraud?.attempts}/3.`,
       };
     }
 
@@ -107,6 +117,8 @@ export async function uploadVerificationDocument(
         }),
       ),
     );
+
+    await pusherServer.trigger(`user-${userId}`, "verification-updated", {});
 
     return { success: true };
   } catch (error) {

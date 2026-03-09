@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { CurrentUserId } from "@/lib/currentUser";
 import { VerificationRole } from "@/generated/prisma";
+import { pusherServer } from "@/lib/pusher";
 
 export async function startVerification(role: VerificationRole) {
   const userId = await CurrentUserId();
@@ -47,6 +48,8 @@ export async function startVerification(role: VerificationRole) {
       stripeSessionId: session.id,
     },
   });
+
+  await pusherServer.trigger(`user-${userId}`, "verification-updated", {});
 
   return { url: session.url };
 }

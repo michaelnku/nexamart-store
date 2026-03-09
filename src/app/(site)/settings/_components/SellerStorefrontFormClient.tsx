@@ -115,6 +115,7 @@ export default function SellerStorefrontFormClient({
           <span>
             {isStoreVerified === false && (
               <>
+                {" "}
                 -{" "}
                 <Link
                   href="/settings/verification"

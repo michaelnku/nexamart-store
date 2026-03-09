@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-const MAX_VERIFICATION_ATTEMPTS = 3;
+const MAX_VERIFICATION_ATTEMPTS = 5;
 
 export async function handleVerificationFraud(userId: string) {
   const user = await prisma.user.findUnique({
