@@ -51,7 +51,7 @@ export async function getVerificationProgress(userId: string) {
     },
     {
       id: "payout",
-      label: "Set-up your  stripe payout account",
+      label: "Set-up your stripe payout account",
       completed: Boolean(
         store?.stripeAccountId ||
         riderProfile?.stripeAccountId ||
