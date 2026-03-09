@@ -13,13 +13,24 @@ export async function startVerification(role: VerificationRole) {
     return { error: "Unauthorized" };
   }
 
-  const verification = await prisma.verification.create({
-    data: {
+  let verification = await prisma.verification.findFirst({
+    where: {
       userId,
       role,
       status: "PENDING",
     },
+    orderBy: { createdAt: "desc" },
   });
+
+  if (!verification) {
+    verification = await prisma.verification.create({
+      data: {
+        userId,
+        role,
+        status: "PENDING",
+      },
+    });
+  }
 
   await prisma.verificationDocument.updateMany({
     where: {
