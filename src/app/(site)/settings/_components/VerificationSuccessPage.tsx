@@ -32,7 +32,7 @@ export default function VerificationSuccessPage({
         setStatus("VERIFIED");
 
         setTimeout(() => {
-          router.push("/settings");
+          router.push("/settings/verification");
         }, 1500);
 
         return;
@@ -52,7 +52,7 @@ export default function VerificationSuccessPage({
         setStatus("VERIFIED");
 
         setTimeout(() => {
-          router.push("/settings");
+          router.push("/settings/verification");
         }, 1500);
       }
 
@@ -89,21 +89,6 @@ export default function VerificationSuccessPage({
 
       {status === "VERIFIED" && (
         <div className="relative space-y-6">
-          {/* Confetti particles */}
-          {/* <div className="absolute inset-0 pointer-events-none flex justify-center">
-            {[...Array(12)].map((_, i) => (
-              <span
-                key={i}
-                className="absolute w-2 h-2 rounded-full bg-green-400 animate-[confetti_0.9s_ease-out_forwards]"
-                style={{
-                  left: "50%",
-                  top: "10px",
-                  transform: `rotate(${i * 30}deg) translateY(-10px)`,
-                }}
-              />
-            ))}
-          </div> */}
-
           {/* Success icon */}
           <div className="flex justify-center">
             <div className="relative">

@@ -316,7 +316,7 @@ async function handleVerificationEvent(
     });
   }
 
-  await createStripeConnectAccount();
+  await createStripeConnectAccount(userId);
 
   await prisma.user.update({
     where: { id: userId },

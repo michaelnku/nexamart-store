@@ -2,16 +2,9 @@
 
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-import { CurrentUserId } from "@/lib/currentUser";
 import { pusherServer } from "@/lib/pusher";
 
-export async function createStripeConnectAccount() {
-  const userId = await CurrentUserId();
-
-  if (!userId) {
-    return { error: "Unauthorized" };
-  }
-
+export async function createStripeConnectAccount(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
@@ -22,16 +15,16 @@ export async function createStripeConnectAccount() {
   });
 
   if (!user) {
-    return { error: "User not found" };
+    throw new Error("User not found");
   }
 
-  let existingAccountId =
+  const existingAccountId =
     user.store?.stripeAccountId ||
     user.riderProfile?.stripeAccountId ||
     user.staffProfile?.stripeAccountId;
 
   if (existingAccountId) {
-    return { success: true };
+    return existingAccountId;
   }
 
   const account = await stripe.accounts.create({
@@ -73,5 +66,5 @@ export async function createStripeConnectAccount() {
     status: "CONNECT_CREATED",
   });
 
-  return { success: true };
+  return account.id;
 }
