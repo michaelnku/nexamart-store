@@ -90,7 +90,7 @@ export default function VerificationSuccessPage({
       {status === "VERIFIED" && (
         <div className="relative space-y-6">
           {/* Confetti particles */}
-          <div className="absolute inset-0 pointer-events-none flex justify-center">
+          {/* <div className="absolute inset-0 pointer-events-none flex justify-center">
             {[...Array(12)].map((_, i) => (
               <span
                 key={i}
@@ -102,7 +102,7 @@ export default function VerificationSuccessPage({
                 }}
               />
             ))}
-          </div>
+          </div> */}
 
           {/* Success icon */}
           <div className="flex justify-center">

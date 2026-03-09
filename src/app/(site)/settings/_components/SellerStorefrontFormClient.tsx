@@ -91,6 +91,12 @@ export default function SellerStorefrontFormClient({
       try {
         const formData = new FormData();
 
+        formData.append("tagline", tagline ?? "");
+        formData.append("logo", logoUrl ?? "");
+        formData.append("logoKey", logoKey ?? "");
+        formData.append("bannerImage", bannerUrl ?? "");
+        formData.append("bannerKey", bannerKey ?? "");
+
         await updateSellerStorefrontModule(formData);
 
         toast.success("Storefront updated");
@@ -111,6 +117,21 @@ export default function SellerStorefrontFormClient({
           >
             {" "}
             {isStoreVerified === true ? "Verified" : "Pending"}
+            <span>
+              {isStoreVerified === true && (
+                <>
+                  {" "}
+                  -{" "}
+                  <Link
+                    href="/settings/verification"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {" "}
+                    View details
+                  </Link>
+                </>
+              )}
+            </span>
           </span>
           <span>
             {isStoreVerified === false && (
@@ -254,7 +275,11 @@ export default function SellerStorefrontFormClient({
           />
         </div>
 
-        <Button onClick={handleSave} disabled={isPending} className="w-full">
+        <Button
+          onClick={handleSave}
+          disabled={isPending || uploading}
+          className="w-full"
+        >
           {isPending ? "Saving..." : "Save Changes"}
         </Button>
       </CardContent>
