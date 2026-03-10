@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
 import DocumentCropper from "./DocumentCropper";
-import { detectDocumentEdges } from "@/lib/detectDocument";
+import { detectDocumentEdges } from "@/lib/detectDocumentEdges";
 import { loadOpenCV } from "@/lib/opencvLoader";
 import { useDocumentDetection } from "@/hooks/useDocumentDetection";
 
@@ -29,6 +29,48 @@ export default function DocumentScanner({ onCapture }: Props) {
   useDocumentDetection({
     video,
     canvas: canvasRef.current,
+    onStableCapture: async (dataUrl) => {
+      if (capturing) return;
+
+      setCapturing(true);
+
+      const img = new Image();
+      img.src = dataUrl;
+
+      await new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+      });
+
+      const rect = await detectDocumentEdges(img);
+
+      if (rect) {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        if (!ctx) return;
+
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        ctx.drawImage(
+          img,
+          rect.x,
+          rect.y,
+          rect.width,
+          rect.height,
+          0,
+          0,
+          rect.width,
+          rect.height,
+        );
+
+        setImageSrc(canvas.toDataURL("image/jpeg"));
+      } else {
+        setImageSrc(dataUrl);
+      }
+
+      setCapturing(false);
+    },
   });
 
   const capture = async () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { loadOpenCV } from "@/lib/opencvLoader";
+import { loadOpenCV, OpenCV } from "@/lib/opencvLoader";
 
 type DetectionBox = {
   x: number;
@@ -13,10 +13,17 @@ type DetectionBox = {
 type Props = {
   video: HTMLVideoElement | null;
   canvas: HTMLCanvasElement | null;
+  onStableCapture?: (imageData: string) => void;
 };
 
-export function useDocumentDetection({ video, canvas }: Props) {
+export function useDocumentDetection({
+  video,
+  canvas,
+  onStableCapture,
+}: Props) {
   const animationRef = useRef<number | null>(null);
+  const lastRectRef = useRef<DetectionBox | null>(null);
+  const stableStartRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!video || !canvas) return;
@@ -25,9 +32,10 @@ export function useDocumentDetection({ video, canvas }: Props) {
     const canvasEl = canvas;
 
     let running = true;
+    let lastRun = 0;
 
     async function start() {
-      const cv = await loadOpenCV();
+      const cv: OpenCV = await loadOpenCV();
       const ctx = canvasEl.getContext("2d");
 
       if (!ctx) return;
@@ -35,32 +43,38 @@ export function useDocumentDetection({ video, canvas }: Props) {
       const processFrame = () => {
         if (!running) return;
 
+        const now = Date.now();
+
+        /** throttle detection to ~10fps */
+        if (now - lastRun < 100) {
+          animationRef.current = requestAnimationFrame(processFrame);
+          return;
+        }
+
+        lastRun = now;
+
         if (videoEl.readyState >= 2) {
           canvasEl.width = videoEl.videoWidth;
           canvasEl.height = videoEl.videoHeight;
 
           ctx.drawImage(videoEl, 0, 0);
 
-          const src = (window.cv as any).imread(canvasEl);
-          const gray = new (window.cv as any).Mat();
-          const edges = new (window.cv as any).Mat();
+          const src = cv.imread(canvasEl);
+          const gray = new cv.Mat();
+          const edges = new cv.Mat();
 
-          (window.cv as any).cvtColor(
-            src,
-            gray,
-            (window.cv as any).COLOR_RGBA2GRAY,
-          );
-          (window.cv as any).Canny(gray, edges, 75, 200);
+          cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+          cv.Canny(gray, edges, 75, 200);
 
-          const contours = new (window.cv as any).MatVector();
-          const hierarchy = new (window.cv as any).Mat();
+          const contours = new cv.MatVector();
+          const hierarchy = new cv.Mat();
 
-          (window.cv as any).findContours(
+          cv.findContours(
             edges,
             contours,
             hierarchy,
-            (window.cv as any).RETR_EXTERNAL,
-            (window.cv as any).CHAIN_APPROX_SIMPLE,
+            cv.RETR_EXTERNAL,
+            cv.CHAIN_APPROX_SIMPLE,
           );
 
           let bestRect: DetectionBox | null = null;
@@ -68,7 +82,7 @@ export function useDocumentDetection({ video, canvas }: Props) {
 
           for (let i = 0; i < contours.size(); i++) {
             const cnt = contours.get(i);
-            const rect = (window.cv as any).boundingRect(cnt);
+            const rect = cv.boundingRect(cnt);
 
             const area = rect.width * rect.height;
 
@@ -90,6 +104,37 @@ export function useDocumentDetection({ video, canvas }: Props) {
               bestRect.width,
               bestRect.height,
             );
+
+            /** stability detection */
+
+            const last = lastRectRef.current;
+
+            if (
+              last &&
+              Math.abs(last.x - bestRect.x) < 10 &&
+              Math.abs(last.y - bestRect.y) < 10 &&
+              Math.abs(last.width - bestRect.width) < 10 &&
+              Math.abs(last.height - bestRect.height) < 10
+            ) {
+              if (!stableStartRef.current) {
+                stableStartRef.current = now;
+              }
+
+              if (
+                stableStartRef.current &&
+                now - stableStartRef.current > 800
+              ) {
+                const dataUrl = canvasEl.toDataURL("image/jpeg");
+
+                onStableCapture?.(dataUrl);
+
+                stableStartRef.current = null;
+              }
+            } else {
+              stableStartRef.current = null;
+            }
+
+            lastRectRef.current = bestRect;
           }
 
           src.delete();
@@ -114,5 +159,5 @@ export function useDocumentDetection({ video, canvas }: Props) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [video, canvas]);
+  }, [video, canvas, onStableCapture]);
 }
