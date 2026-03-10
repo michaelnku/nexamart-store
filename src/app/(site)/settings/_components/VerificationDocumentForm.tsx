@@ -36,6 +36,7 @@ import { toast } from "sonner";
 import { Loader2, Trash, Camera } from "lucide-react";
 import { deleteFileAction } from "@/actions/actions";
 import DocumentScanner from "@/components/verification/DocumentScanner";
+import { uploadFiles } from "@/utils/uploadthing";
 
 const MAX_FILES = 6;
 
@@ -43,6 +44,7 @@ export default function VerificationDocumentForm() {
   const [pending, startTransition] = useTransition();
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
   const [showScanner, setShowScanner] = useState(false);
+  const [capturing, setCapturing] = useState(false);
 
   const form = useForm<VerificationDocumentInput>({
     resolver: zodResolver(verificationDocumentSchema),
@@ -53,7 +55,6 @@ export default function VerificationDocumentForm() {
   });
 
   const { control, handleSubmit, setValue, getValues } = form;
-
   const files = form.watch("files");
 
   const onSubmit = (values: VerificationDocumentInput) => {
@@ -79,7 +80,11 @@ export default function VerificationDocumentForm() {
       await deleteFileAction(key);
 
       const updated = getValues("files").filter((f) => f.key !== key);
-      setValue("files", updated);
+
+      setValue("files", updated, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
 
       toast.success("File deleted");
     } catch {
@@ -99,33 +104,35 @@ export default function VerificationDocumentForm() {
       return;
     }
 
-    const file = new File([blob], "document.jpg", { type: "image/jpeg" });
-
-    const formData = new FormData();
-    formData.append("files", file);
+    setCapturing(true);
 
     try {
-      const res = await fetch("/api/uploadthing", {
-        method: "POST",
-        body: formData,
+      const file = new File([blob], `document-${Date.now()}.jpg`, {
+        type: "image/jpeg",
       });
 
-      const data = await res.json();
+      const res = await uploadFiles("verificationFiles", {
+        files: [file],
+      });
 
       const uploaded = {
-        url: data.url ?? data[0]?.url,
-        key: data.key ?? data[0]?.key,
+        url: res[0].url,
+        key: res[0].key,
       };
 
       const existing = getValues("files");
 
-      setValue("files", [...existing, uploaded]);
+      setValue("files", [...existing, uploaded], {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
 
       toast.success("Document captured and uploaded");
-
       setShowScanner(false);
     } catch {
       toast.error("Failed to upload photo");
+    } finally {
+      setCapturing(false);
     }
   };
 
@@ -133,11 +140,12 @@ export default function VerificationDocumentForm() {
     <div className="max-w-4xl mx-auto space-y-6">
       <h2 className="text-xl font-semibold">Upload Verification Documents</h2>
 
-      {/* Scanner Overlay */}
-
       {showScanner && (
         <div className="border rounded-lg p-4 space-y-4">
-          <DocumentScanner onCapture={handleCameraCapture} />
+          <DocumentScanner
+            onCapture={handleCameraCapture}
+            capturing={capturing}
+          />
 
           <Button
             variant="outline"
@@ -154,8 +162,6 @@ export default function VerificationDocumentForm() {
           onSubmit={handleSubmit(onSubmit)}
           className="space-y-8 rounded-lg shadow-md p-6"
         >
-          {/* Document Type */}
-
           <FormField
             control={control}
             name="type"
@@ -193,12 +199,9 @@ export default function VerificationDocumentForm() {
             )}
           />
 
-          {/* Upload Section */}
-
           <section className="space-y-4">
             <span>
               <h2 className="font-semibold text-xl">Upload Documents</h2>
-
               <p className="text-sm text-muted-foreground">
                 Make sure the document is clear and readable.
               </p>
@@ -210,34 +213,20 @@ export default function VerificationDocumentForm() {
                   type="button"
                   variant="outline"
                   onClick={() => setShowScanner(true)}
-                  className="
-                    ut-button:bg-muted
-                    ut-button:text-foreground
-                    ut-button:border
-                    ut-button:border-border
-                    ut-button:rounded-md
-                    ut-button:px-4
-                    ut-button:py-2
-                    ut-button:text-sm
-                    hover:ut-button:bg-muted/70
-                  "
+                  className=" ut-button:bg-muted 
+                  ut-button:text-foreground 
+                  ut-button:border 
+                  ut-button:border-border 
+                  ut-button:rounded-md 
+                  ut-button:px-4 ut-button:py-2 
+                  ut-button:text-sm 
+                  hover:ut-button:bg-muted/70 "
                 >
                   <Camera className="mr-2 h-4 w-4" /> Take Photo
                 </Button>
 
                 <UploadButton
                   endpoint="verificationFiles"
-                  className="
-                  ut-button:bg-muted
-                  ut-button:text-foreground
-                  ut-button:border
-                  ut-button:border-border
-                  ut-button:rounded-md
-                  ut-button:px-4
-                  ut-button:py-2
-                  ut-button:text-sm
-                  hover:ut-button:bg-muted/70
-                "
                   onClientUploadComplete={(res) => {
                     const uploaded = res.map((file) => ({
                       url: file.url,
@@ -246,10 +235,19 @@ export default function VerificationDocumentForm() {
 
                     const existing = getValues("files");
 
-                    setValue("files", [...existing, ...uploaded]);
+                    setValue("files", [...existing, ...uploaded], {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
 
                     toast.success("Document uploaded");
                   }}
+                  className=" ut-button:bg-muted 
+                  ut-button:text-foreground 
+                  ut-button:border ut-button:border-border 
+                  ut-button:rounded-md ut-button:px-4 
+                  ut-button:py-2 ut-button:text-sm 
+                  hover:ut-button:bg-muted/70 "
                 />
               </div>
             )}
@@ -259,8 +257,6 @@ export default function VerificationDocumentForm() {
                 Maximum of {MAX_FILES} documents reached.
               </p>
             )}
-
-            {/* Preview */}
 
             <div className="flex flex-wrap gap-4">
               {files.map((file) => (
