@@ -44,7 +44,7 @@ export default function VerificationDocumentForm() {
   const [pending, startTransition] = useTransition();
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
   const [showScanner, setShowScanner] = useState(false);
-  const [capturing, setCapturing] = useState(false);
+  //const [capturing, setCapturing] = useState(false);
 
   const form = useForm<VerificationDocumentInput>({
     resolver: zodResolver(verificationDocumentSchema),
@@ -104,7 +104,7 @@ export default function VerificationDocumentForm() {
       return;
     }
 
-    setCapturing(true);
+    //  setCapturing(true);
 
     try {
       const file = new File([blob], `document-${Date.now()}.jpg`, {
@@ -132,7 +132,7 @@ export default function VerificationDocumentForm() {
     } catch {
       toast.error("Failed to upload photo");
     } finally {
-      setCapturing(false);
+      //  setCapturing(false);
     }
   };
 
@@ -144,7 +144,7 @@ export default function VerificationDocumentForm() {
         <div className="border rounded-lg p-4 space-y-4">
           <DocumentScanner
             onCapture={handleCameraCapture}
-            capturing={capturing}
+            //  capturing={capturing}
           />
 
           <Button
