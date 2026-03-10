@@ -29,13 +29,14 @@ export default function DocumentScanner({ onCapture }: Props) {
   useDocumentDetection({
     video,
     canvas: canvasRef.current,
-    onStableCapture: async (dataUrl) => {
+    paused: capturing,
+    onAutoCapture: async (imageData) => {
       if (capturing) return;
 
       setCapturing(true);
 
       const img = new Image();
-      img.src = dataUrl;
+      img.src = imageData;
 
       await new Promise<void>((resolve) => {
         img.onload = () => resolve();
@@ -66,7 +67,7 @@ export default function DocumentScanner({ onCapture }: Props) {
 
         setImageSrc(canvas.toDataURL("image/jpeg"));
       } else {
-        setImageSrc(dataUrl);
+        setImageSrc(imageData);
       }
 
       setCapturing(false);
@@ -74,56 +75,60 @@ export default function DocumentScanner({ onCapture }: Props) {
   });
 
   const capture = async () => {
+    if (capturing) return;
+
     setCapturing(true);
 
-    const screenshot = webcamRef.current?.getScreenshot();
+    try {
+      const screenshot = webcamRef.current?.getScreenshot();
 
-    if (!screenshot) {
-      setCapturing(false);
-      return;
-    }
-
-    const img = new Image();
-    img.src = screenshot;
-
-    await new Promise<void>((resolve) => {
-      img.onload = () => resolve();
-    });
-
-    await loadOpenCV();
-
-    const rect = await detectDocumentEdges(img);
-
-    if (rect) {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-
-      if (!ctx) {
+      if (!screenshot) {
         setCapturing(false);
         return;
       }
 
-      canvas.width = rect.width;
-      canvas.height = rect.height;
+      const img = new Image();
+      img.src = screenshot;
 
-      ctx.drawImage(
-        img,
-        rect.x,
-        rect.y,
-        rect.width,
-        rect.height,
-        0,
-        0,
-        rect.width,
-        rect.height,
-      );
+      await new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+      });
 
-      setImageSrc(canvas.toDataURL("image/jpeg"));
-    } else {
-      setImageSrc(screenshot);
+      await loadOpenCV();
+
+      const rect = await detectDocumentEdges(img);
+
+      if (rect) {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        if (!ctx) {
+          setCapturing(false);
+          return;
+        }
+
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        ctx.drawImage(
+          img,
+          rect.x,
+          rect.y,
+          rect.width,
+          rect.height,
+          0,
+          0,
+          rect.width,
+          rect.height,
+        );
+
+        setImageSrc(canvas.toDataURL("image/jpeg"));
+      } else {
+        setImageSrc(screenshot);
+      }
+    } finally {
+      setCapturing(false);
     }
-
-    setCapturing(false);
   };
 
   if (imageSrc) {

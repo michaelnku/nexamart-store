@@ -13,20 +13,22 @@ type DetectionBox = {
 type Props = {
   video: HTMLVideoElement | null;
   canvas: HTMLCanvasElement | null;
-  onStableCapture?: (imageData: string) => void;
+  paused?: boolean;
+  onAutoCapture?: (image: string) => void;
 };
 
 export function useDocumentDetection({
   video,
   canvas,
-  onStableCapture,
+  paused,
+  onAutoCapture,
 }: Props) {
   const animationRef = useRef<number | null>(null);
   const lastRectRef = useRef<DetectionBox | null>(null);
   const stableStartRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!video || !canvas) return;
+    if (!video || !canvas || paused) return;
 
     const videoEl = video;
     const canvasEl = canvas;
@@ -45,7 +47,7 @@ export function useDocumentDetection({
 
         const now = Date.now();
 
-        /** throttle detection to ~10fps */
+        /** throttle detection to 10fps */
         if (now - lastRun < 100) {
           animationRef.current = requestAnimationFrame(processFrame);
           return;
@@ -109,13 +111,14 @@ export function useDocumentDetection({
 
             const last = lastRectRef.current;
 
-            if (
+            const stable =
               last &&
-              Math.abs(last.x - bestRect.x) < 10 &&
-              Math.abs(last.y - bestRect.y) < 10 &&
-              Math.abs(last.width - bestRect.width) < 10 &&
-              Math.abs(last.height - bestRect.height) < 10
-            ) {
+              Math.abs(last.x - bestRect.x) < 8 &&
+              Math.abs(last.y - bestRect.y) < 8 &&
+              Math.abs(last.width - bestRect.width) < 8 &&
+              Math.abs(last.height - bestRect.height) < 8;
+
+            if (stable) {
               if (!stableStartRef.current) {
                 stableStartRef.current = now;
               }
@@ -124,9 +127,11 @@ export function useDocumentDetection({
                 stableStartRef.current &&
                 now - stableStartRef.current > 800
               ) {
-                const dataUrl = canvasEl.toDataURL("image/jpeg");
+                running = false; // stop loop
 
-                onStableCapture?.(dataUrl);
+                const image = canvasEl.toDataURL("image/jpeg");
+
+                onAutoCapture?.(image);
 
                 stableStartRef.current = null;
               }
@@ -159,5 +164,5 @@ export function useDocumentDetection({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [video, canvas, onStableCapture]);
+  }, [video, canvas, paused, onAutoCapture]);
 }

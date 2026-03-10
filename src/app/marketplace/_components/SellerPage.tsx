@@ -81,7 +81,7 @@ export default function SellerPage({ stats }: { stats: SellerStats }) {
 
       {!stats.isStoreVerified && (
         <div className="p-4 bg-yellow-50 border rounded-xl flex gap-3">
-          <AlertTriangle className="w-5 h-5 text-yellow-700" />
+          <AlertTriangle className="w-5 h-5 text-yellow-700 shrink-0" />
           <p className="text-sm text-yellow-800">
             Your store is not verified. Some features may be limited.
           </p>
@@ -90,7 +90,7 @@ export default function SellerPage({ stats }: { stats: SellerStats }) {
 
       {stats.lowStockCount > 0 && (
         <div className="p-4 bg-orange-50 border rounded-xl flex gap-3">
-          <AlertTriangle className="w-5 h-5 text-orange-700" />
+          <AlertTriangle className="w-5 h-5 text-orange-700 shrink-0" />
           <p className="text-sm text-orange-800">
             {stats.lowStockCount} product variants are low on stock.
           </p>
@@ -99,7 +99,7 @@ export default function SellerPage({ stats }: { stats: SellerStats }) {
 
       {stats.pendingPayouts > 0 && (
         <div className="p-4 bg-blue-50 border rounded-xl flex gap-3">
-          <AlertTriangle className="w-5 h-5 text-blue-700" />
+          <AlertTriangle className="w-5 h-5 text-blue-700 shrink-0" />
           <p className="text-sm text-blue-800">
             You have {stats.pendingPayouts} pending payouts awaiting processing.
           </p>
