@@ -12,6 +12,7 @@ type TimelineStatus =
   | "DELIVERED"
   | "COMPLETED"
   | "CANCELLED"
+  | "DISPUTED"
   | "RETURN_REQUESTED"
   | "RETURNED"
   | "REFUNDED";
