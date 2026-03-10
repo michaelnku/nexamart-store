@@ -105,7 +105,7 @@ const RiderPage = ({ stats }: { stats: RiderStats }) => {
 
         {!stats.isRiderVerified && (
           <div className="mb-4 flex gap-3 rounded-xl border bg-yellow-50 p-4">
-            <AlertTriangle className="h-5 w-5 text-yellow-700" />
+            <AlertTriangle className="h-5 w-5 text-yellow-700 shrink-0" />
             <p className="text-sm text-yellow-800">
               Your rider profile is not verified. Some features may be limited.
             </p>
@@ -114,7 +114,7 @@ const RiderPage = ({ stats }: { stats: RiderStats }) => {
 
         {!stats.isRiderAvailable && (
           <div className="mb-4 flex gap-3 rounded-xl border bg-orange-50 p-4">
-            <AlertTriangle className="h-5 w-5 text-orange-700" />
+            <AlertTriangle className="h-5 w-5 text-orange-700 shrink-0" />
             <p className="text-sm text-orange-800">
               You are currently offline. Turn on availability to receive new
               delivery assignments.
@@ -124,7 +124,7 @@ const RiderPage = ({ stats }: { stats: RiderStats }) => {
 
         {stats.assignedPendingAcceptCount > 0 && (
           <div className="mb-4 flex gap-3 rounded-xl border bg-red-50 p-4">
-            <AlertTriangle className="h-5 w-5 text-red-700" />
+            <AlertTriangle className="h-5 w-5 text-red-700 shrink-0" />
             <p className="text-sm text-red-800">
               You have {stats.assignedPendingAcceptCount} assigned{" "}
               {stats.assignedPendingAcceptCount === 1
@@ -137,7 +137,7 @@ const RiderPage = ({ stats }: { stats: RiderStats }) => {
 
         {stats.pendingPayouts > 0 && (
           <div className="mb-4 flex gap-3 rounded-xl border bg-blue-50 p-4">
-            <AlertTriangle className="h-5 w-5 text-blue-700" />
+            <AlertTriangle className="h-5 w-5 text-blue-700 shrink-0" />
             <p className="text-sm text-blue-800">
               You have {stats.pendingPayouts} pending{" "}
               {stats.pendingPayouts === 1 ? "payout" : "payouts"} awaiting
