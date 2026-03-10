@@ -205,7 +205,7 @@ export default function VerificationDocumentForm() {
             </span>
 
             {files.length < MAX_FILES && (
-              <div className="flex gap-3 flex-wrap">
+              <div className="flex gap-3 mt-4 flex-wrap">
                 <Button
                   type="button"
                   variant="outline"
