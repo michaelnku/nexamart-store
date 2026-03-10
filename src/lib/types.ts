@@ -517,6 +517,7 @@ export type OrderStatus =
   | "COMPLETED"
   | "CANCELLED"
   | "RETURN_REQUESTED"
+  | "DISPUTED"
   | "RETURNED"
   | "REFUNDED";
 

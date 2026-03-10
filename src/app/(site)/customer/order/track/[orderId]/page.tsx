@@ -38,7 +38,9 @@ export default async function TrackOrderPage({
       },
       delivery: {
         include: {
-          rider: { select: { id: true, name: true, username: true, email: true } },
+          rider: {
+            select: { id: true, name: true, username: true, email: true },
+          },
         },
       },
       orderTimelines: {
