@@ -16,6 +16,7 @@ async function processRiderDeliveryPayout(
   now: Date,
   context: ServiceContext,
 ): Promise<boolean> {
+  /** Atomic lock to prevent race condition */
   const lockAttempt = await tx.delivery.updateMany({
     where: {
       id: deliveryId,
@@ -25,6 +26,7 @@ async function processRiderDeliveryPayout(
     },
     data: { payoutLocked: true },
   });
+
   if (lockAttempt.count !== 1) return false;
 
   const delivery = await tx.delivery.findUnique({
@@ -38,7 +40,7 @@ async function processRiderDeliveryPayout(
       order: {
         select: {
           id: true,
-          disputeRaised: true,
+          disputeId: true,
           isPaid: true,
         },
       },
@@ -47,6 +49,7 @@ async function processRiderDeliveryPayout(
 
   if (!delivery || !delivery.riderId) return false;
 
+  /** Safety guard */
   if (delivery.payoutReleasedAt || !delivery.order.isPaid) {
     await tx.delivery.update({
       where: { id: deliveryId },
@@ -55,7 +58,8 @@ async function processRiderDeliveryPayout(
     return false;
   }
 
-  if (delivery.order.disputeRaised) {
+  /** NEW: prevent payout during disputes */
+  if (delivery.order.disputeId) {
     await tx.delivery.update({
       where: { id: deliveryId },
       data: { payoutLocked: false },
@@ -63,8 +67,7 @@ async function processRiderDeliveryPayout(
     return false;
   }
 
-  // Backward-compatible idempotency:
-  // old flows may already have credited rider with an EARNING transaction.
+  /** Idempotency guard */
   const existingPayout = await tx.transaction.findFirst({
     where: {
       orderId: delivery.orderId,
@@ -116,6 +119,7 @@ async function processRiderDeliveryPayout(
     });
   }
 
+  /** Release escrow hold */
   await tx.escrowLedger.updateMany({
     where: {
       orderId: delivery.orderId,
@@ -135,6 +139,7 @@ async function processRiderDeliveryPayout(
     },
   });
 
+  /** If seller payouts finished, mark order payout completed */
   const remainingSeller = await tx.orderSellerGroup.count({
     where: {
       orderId: delivery.orderId,
@@ -159,6 +164,7 @@ export async function releaseEligibleRiderPayouts() {
   try {
     const now = new Date();
     const context = createServiceContext("RIDER_PAYOUT_CRON");
+
     const deliveries = await prisma.delivery.findMany({
       where: {
         status: "DELIVERED",
@@ -168,6 +174,7 @@ export async function releaseEligibleRiderPayouts() {
         riderId: { not: null },
         order: {
           isPaid: true,
+          disputeId: null,
         },
       },
       orderBy: { payoutEligibleAt: "asc" },
@@ -185,6 +192,7 @@ export async function releaseEligibleRiderPayouts() {
           now,
           context,
         );
+
         if (released) processed += 1;
       });
     }
@@ -198,6 +206,7 @@ export async function releaseEligibleRiderPayouts() {
 export async function releaseEligibleRiderPayoutForOrder(orderId: string) {
   const now = new Date();
   const context = createServiceContext("RIDER_PAYOUT_CRON");
+
   return prisma.$transaction(async (tx) => {
     const delivery = await tx.delivery.findFirst({
       where: {
@@ -207,17 +216,22 @@ export async function releaseEligibleRiderPayoutForOrder(orderId: string) {
         payoutLocked: false,
         payoutEligibleAt: { lte: now },
         riderId: { not: null },
+        order: {
+          disputeId: null,
+        },
       },
       select: { id: true },
     });
 
     if (!delivery) return { skipped: true };
+
     const released = await processRiderDeliveryPayout(
       tx,
       delivery.id,
       now,
       context,
     );
+
     return { skipped: !released };
   });
 }

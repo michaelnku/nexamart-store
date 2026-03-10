@@ -26,6 +26,7 @@ export async function releaseEligibleSellerGroups() {
           isPaid: true,
           status: "DELIVERED",
           payoutReleased: false,
+          disputeId: null, // NEW: skip disputed orders
         },
       },
       orderBy: { payoutEligibleAt: "asc" },
@@ -37,6 +38,7 @@ export async function releaseEligibleSellerGroups() {
 
     for (const candidate of groups) {
       await prisma.$transaction(async (tx) => {
+        /** Atomic payout lock */
         const lockAttempt = await tx.orderSellerGroup.updateMany({
           where: {
             id: candidate.id,
@@ -45,6 +47,7 @@ export async function releaseEligibleSellerGroups() {
           },
           data: { payoutLocked: true },
         });
+
         if (lockAttempt.count !== 1) return;
 
         const group = await tx.orderSellerGroup.findUnique({
@@ -55,7 +58,7 @@ export async function releaseEligibleSellerGroups() {
                 id: true,
                 isPaid: true,
                 status: true,
-                disputeRaised: true,
+                disputeId: true,
                 payoutReleased: true,
               },
             },
@@ -64,6 +67,7 @@ export async function releaseEligibleSellerGroups() {
 
         if (!group) return;
 
+        /** Safety validation */
         if (
           group.payoutStatus === "COMPLETED" ||
           group.order.payoutReleased ||
@@ -77,7 +81,8 @@ export async function releaseEligibleSellerGroups() {
           return;
         }
 
-        if (group.order.disputeRaised) {
+        /** NEW: block payout if dispute exists */
+        if (group.order.disputeId) {
           await tx.orderSellerGroup.update({
             where: { id: group.id },
             data: { payoutLocked: false },
@@ -85,7 +90,9 @@ export async function releaseEligibleSellerGroups() {
           return;
         }
 
+        /** Idempotency protection */
         const payoutTxRef = `seller-release-${group.id}`;
+
         const existingPayoutTx = await tx.transaction.findUnique({
           where: { reference: payoutTxRef },
           select: { id: true },
@@ -106,7 +113,7 @@ export async function releaseEligibleSellerGroups() {
             toWalletId: sellerWallet.id,
             entryType: "SELLER_PAYOUT",
             amount: group.subtotal,
-            reference: `seller-release-${group.id}`,
+            reference: payoutTxRef,
             context,
           });
 
@@ -124,7 +131,10 @@ export async function releaseEligibleSellerGroups() {
           });
         }
 
+        /** Release escrow hold */
+
         const heldRef = `seller-held-${group.id}`;
+
         const heldEntry = await tx.escrowLedger.findUnique({
           where: { reference: heldRef },
           select: { id: true, status: true },
