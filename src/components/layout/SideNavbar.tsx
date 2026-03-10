@@ -62,7 +62,9 @@ function SidebarContent({
     const p = normalizePath(pathname);
     if (p.startsWith("/marketplace/dashboard")) {
       const dashboardSection = menu.find((section) =>
-        section.links.some((link) => normalizePath(link.href) === "/marketplace/dashboard"),
+        section.links.some(
+          (link) => normalizePath(link.href) === "/marketplace/dashboard",
+        ),
       );
       return dashboardSection?.title ?? null;
     }
@@ -70,8 +72,8 @@ function SidebarContent({
     return null;
   }, [activeMatch.sectionTitle, menu, pathname]);
 
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
-    getActiveSectionTitle ? { [getActiveSectionTitle]: true } : {},
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(
+    () => (getActiveSectionTitle ? { [getActiveSectionTitle]: true } : {}),
   );
 
   useEffect(() => {
@@ -100,7 +102,7 @@ function SidebarContent({
         isMobile && "px-5 dark:bg-neutral-950",
       )}
     >
-      <h2 className="text-[13px] font-semibold text-gray-500 px-4 pt-5 pb-4 uppercase">
+      <h2 className="text-[13px] font-semibold text-gray-500 px-4 pt-4 pb-4 uppercase">
         Menu
       </h2>
 

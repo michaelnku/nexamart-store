@@ -4,17 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import {
-  User,
-  HelpCircle,
-  LogOut,
-  Bell,
-  MessageSquare,
-  ShoppingBag,
-  Menu,
-  Wallet,
-  FileChartColumn,
-} from "lucide-react";
+import { User, HelpCircle, LogOut, Menu, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -38,7 +28,6 @@ import DashboardPageSkeleton from "../skeletons/DashboardPageSkeleton";
 import { MarketplaceSearch } from "../search/MarketplaceSearch";
 import { MobileSearchSheet } from "../search/MobileSearchSheet";
 import { getUserInitials } from "@/lib/user";
-import RiderTripsDropdown from "@/components/layout/RiderTripsDropdown";
 import CurrencySelector from "@/components/currency/CurrencySelector";
 import NotificationMenu from "../notifications/NotificationMenu";
 
