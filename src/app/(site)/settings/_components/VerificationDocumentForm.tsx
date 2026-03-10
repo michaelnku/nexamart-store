@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -42,10 +42,7 @@ const MAX_FILES = 6;
 export default function VerificationDocumentForm() {
   const [pending, startTransition] = useTransition();
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
-
   const [showScanner, setShowScanner] = useState(false);
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const form = useForm<VerificationDocumentInput>({
     resolver: zodResolver(verificationDocumentSchema),
@@ -97,35 +94,60 @@ export default function VerificationDocumentForm() {
   };
 
   const handleCameraCapture = async (blob: Blob) => {
+    if (files.length >= MAX_FILES) {
+      toast.error(`Maximum of ${MAX_FILES} documents reached`);
+      return;
+    }
+
     const file = new File([blob], "document.jpg", { type: "image/jpeg" });
 
     const formData = new FormData();
     formData.append("files", file);
 
-    const res = await fetch("/api/uploadthing", {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const res = await fetch("/api/uploadthing", {
+        method: "POST",
+        body: formData,
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    const uploaded = {
-      url: data[0].url,
-      key: data[0].key,
-    };
+      const uploaded = {
+        url: data.url ?? data[0]?.url,
+        key: data.key ?? data[0]?.key,
+      };
 
-    const existing = getValues("files");
+      const existing = getValues("files");
 
-    setValue("files", [...existing, uploaded]);
+      setValue("files", [...existing, uploaded]);
 
-    setShowScanner(false);
+      toast.success("Document captured and uploaded");
 
-    toast.success("Document captured and uploaded");
+      setShowScanner(false);
+    } catch {
+      toast.error("Failed to upload photo");
+    }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
+    <div className="max-w-4xl mx-auto space-y-6">
       <h2 className="text-xl font-semibold">Upload Verification Documents</h2>
+
+      {/* Scanner Overlay */}
+
+      {showScanner && (
+        <div className="border rounded-lg p-4 space-y-4">
+          <DocumentScanner onCapture={handleCameraCapture} />
+
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => setShowScanner(false)}
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
 
       <Form {...form}>
         <form
@@ -153,17 +175,13 @@ export default function VerificationDocumentForm() {
 
                   <SelectContent>
                     <SelectItem value="NATIONAL_ID">National ID</SelectItem>
-
                     <SelectItem value="PASSPORT">Passport</SelectItem>
-
                     <SelectItem value="DRIVER_LICENSE">
                       Driver License
                     </SelectItem>
-
                     <SelectItem value="BUSINESS_LICENSE">
                       Business License
                     </SelectItem>
-
                     <SelectItem value="VEHICLE_REGISTRATION">
                       Vehicle Registration
                     </SelectItem>
@@ -180,6 +198,7 @@ export default function VerificationDocumentForm() {
           <section className="space-y-4">
             <span>
               <h2 className="font-semibold text-xl">Upload Documents</h2>
+
               <p className="text-sm text-muted-foreground">
                 Make sure the document is clear and readable.
               </p>
@@ -187,17 +206,24 @@ export default function VerificationDocumentForm() {
 
             {files.length < MAX_FILES && (
               <div className="flex gap-3 flex-wrap">
-                {/* Take Photo */}
-
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setShowScanner(true)}
+                  className="
+                    ut-button:bg-muted
+                    ut-button:text-foreground
+                    ut-button:border
+                    ut-button:border-border
+                    ut-button:rounded-md
+                    ut-button:px-4
+                    ut-button:py-2
+                    ut-button:text-sm
+                    hover:ut-button:bg-muted/70
+                  "
                 >
-                  Take Photo
+                  <Camera className="mr-2 h-4 w-4" /> Take Photo
                 </Button>
-
-                {/* Upload from device */}
 
                 <UploadButton
                   endpoint="verificationFiles"
@@ -234,44 +260,6 @@ export default function VerificationDocumentForm() {
               </p>
             )}
 
-            {/* Hidden camera input */}
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-
-                const formData = new FormData();
-                formData.append("files", file);
-
-                fetch("/api/uploadthing", {
-                  method: "POST",
-                  body: formData,
-                })
-                  .then((res) => res.json())
-                  .then((data) => {
-                    const uploaded = {
-                      url: data[0].url,
-                      key: data[0].key,
-                    };
-
-                    const existing = getValues("files");
-
-                    setValue("files", [...existing, uploaded]);
-
-                    toast.success("Photo uploaded");
-                  })
-                  .catch(() => {
-                    toast.error("Failed to upload photo");
-                  });
-              }}
-            />
-
             {/* Preview */}
 
             <div className="flex flex-wrap gap-4">
@@ -298,10 +286,6 @@ export default function VerificationDocumentForm() {
                   </button>
                 </div>
               ))}
-
-              {showScanner && (
-                <DocumentScanner onCapture={handleCameraCapture} />
-              )}
             </div>
           </section>
 
