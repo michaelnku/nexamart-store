@@ -3,10 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
-import { getCommissionRate } from "./commission";
 
 const PLATFORM_COMMISSION_PERCENT = 15;
-//const PLATFORM_COMMISSION_PERCENT = getCommissionRate();
 
 type ReleaseResult = { success: true } | { skipped: true; reason: string };
 
@@ -36,12 +34,17 @@ async function releaseEscrowPayoutWithTx(
           id: true,
           sellerId: true,
           subtotal: true,
+          payoutLocked: true,
         },
       },
       delivery: {
         select: {
           status: true,
+          payoutLocked: true,
         },
+      },
+      dispute: {
+        select: { id: true },
       },
     },
   });
@@ -51,13 +54,28 @@ async function releaseEscrowPayoutWithTx(
   if (order.status !== "DELIVERED") {
     return { skipped: true, reason: "ORDER_NOT_DELIVERED" };
   }
+
   if (order.payoutReleased) {
     return { skipped: true, reason: "PAYOUT_ALREADY_RELEASED" };
   }
-  if (order.disputeRaised && !options.allowDisputedOrder) {
-    return { skipped: true, reason: "PAYOUT_SKIPPED_ACTIVE_DISPUTE" };
+
+  /** NEW DISPUTE SAFETY */
+  if (order.disputeId && !options.allowDisputedOrder) {
+    return { skipped: true, reason: "ACTIVE_DISPUTE_LOCKED" };
   }
 
+  /** Prevent race condition if any seller group locked */
+  const lockedGroup = order.sellerGroups.find((g) => g.payoutLocked);
+  if (lockedGroup && !options.allowDisputedOrder) {
+    return { skipped: true, reason: "SELLER_GROUP_LOCKED" };
+  }
+
+  /** Prevent race condition if delivery payout locked */
+  if (order.delivery?.payoutLocked && !options.allowDisputedOrder) {
+    return { skipped: true, reason: "DELIVERY_PAYOUT_LOCKED" };
+  }
+
+  /** Idempotency protection */
   const existingRelease = await tx.ledgerEntry.findFirst({
     where: {
       orderId,
@@ -66,6 +84,7 @@ async function releaseEscrowPayoutWithTx(
     },
     select: { id: true },
   });
+
   if (existingRelease) {
     return { skipped: true, reason: "PAYOUT_TRANSACTION_EXISTS" };
   }
@@ -82,10 +101,12 @@ async function releaseEscrowPayoutWithTx(
     });
 
     const heldRef = `seller-held-${group.id}`;
+
     const heldEntry = await tx.escrowLedger.findUnique({
       where: { reference: heldRef },
       select: { id: true },
     });
+
     if (heldEntry) {
       await tx.escrowLedger.update({
         where: { reference: heldRef },
@@ -162,39 +183,17 @@ async function releaseEscrowPayoutWithTx(
       },
       data: {
         status: "SUCCESS",
-        description: `Escrow released payout for seller group ${group.id}`,
+        description: `Escrow payout released for seller group ${group.id}`,
       },
     });
-
-    //     await prisma.sellerDailyStats.upsert({
-    //   where: {
-    //     sellerId_date: {
-    //       sellerId,
-    //       date: today,
-    //     },
-    //   },
-    //   update: {
-    //     revenue: { increment: sellerRevenue },
-    //     orders: { increment: 1 },
-    //     productsSold: { increment: quantity },
-    //   },
-    //   create: {
-    //     sellerId,
-    //     date: today,
-    //     revenue: sellerRevenue,
-    //     orders: 1,
-    //     productsSold: quantity,
-    //   },
-    // });
   }
-
-  // Migration safety:
-  // Rider payout release is now managed by delivery-level cron
-  // `releaseEligibleRiderPayouts` with its own hold and idempotency guard.
 
   await tx.orderSellerGroup.updateMany({
     where: { orderId },
-    data: { payoutStatus: "COMPLETED" },
+    data: {
+      payoutStatus: "COMPLETED",
+      payoutLocked: false,
+    },
   });
 
   await tx.order.update({
@@ -213,6 +212,7 @@ export async function releaseEscrowPayout(
   options: ReleaseEscrowOptions = {},
 ): Promise<ReleaseResult> {
   const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
+
   return prisma.$transaction((tx) =>
     releaseEscrowPayoutWithTx(tx, orderId, systemEscrowAccount, options),
   );
@@ -224,5 +224,6 @@ export async function releaseEscrowPayoutInTx(
   options: ReleaseEscrowOptions = {},
 ): Promise<ReleaseResult> {
   const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
+
   return releaseEscrowPayoutWithTx(tx, orderId, systemEscrowAccount, options);
 }
