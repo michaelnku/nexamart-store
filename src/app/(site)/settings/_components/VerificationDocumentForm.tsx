@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -33,14 +33,19 @@ import {
 
 import { UploadButton } from "@/utils/uploadthing";
 import { toast } from "sonner";
-import { Loader2, Trash } from "lucide-react";
+import { Loader2, Trash, Camera } from "lucide-react";
 import { deleteFileAction } from "@/actions/actions";
+import DocumentScanner from "@/components/verification/DocumentScanner";
 
 const MAX_FILES = 6;
 
 export default function VerificationDocumentForm() {
   const [pending, startTransition] = useTransition();
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
+
+  const [showScanner, setShowScanner] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const form = useForm<VerificationDocumentInput>({
     resolver: zodResolver(verificationDocumentSchema),
@@ -77,7 +82,6 @@ export default function VerificationDocumentForm() {
       await deleteFileAction(key);
 
       const updated = getValues("files").filter((f) => f.key !== key);
-
       setValue("files", updated);
 
       toast.success("File deleted");
@@ -90,6 +94,33 @@ export default function VerificationDocumentForm() {
         return next;
       });
     }
+  };
+
+  const handleCameraCapture = async (blob: Blob) => {
+    const file = new File([blob], "document.jpg", { type: "image/jpeg" });
+
+    const formData = new FormData();
+    formData.append("files", file);
+
+    const res = await fetch("/api/uploadthing", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+
+    const uploaded = {
+      url: data[0].url,
+      key: data[0].key,
+    };
+
+    const existing = getValues("files");
+
+    setValue("files", [...existing, uploaded]);
+
+    setShowScanner(false);
+
+    toast.success("Document captured and uploaded");
   };
 
   return (
@@ -144,18 +175,30 @@ export default function VerificationDocumentForm() {
             )}
           />
 
-          {/* Upload */}
+          {/* Upload Section */}
 
           <section className="space-y-4">
             <span>
               <h2 className="font-semibold text-xl">Upload Documents</h2>
               <p className="text-sm text-muted-foreground">
-                Make sure the document is clear and readable!
+                Make sure the document is clear and readable.
               </p>
             </span>
 
-            <div className="space-y-2 mt-4">
-              {files.length < MAX_FILES && (
+            {files.length < MAX_FILES && (
+              <div className="flex gap-3 flex-wrap">
+                {/* Take Photo */}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowScanner(true)}
+                >
+                  Take Photo
+                </Button>
+
+                {/* Upload from device */}
+
                 <UploadButton
                   endpoint="verificationFiles"
                   className="
@@ -182,14 +225,52 @@ export default function VerificationDocumentForm() {
                     toast.success("Document uploaded");
                   }}
                 />
-              )}
+              </div>
+            )}
 
-              {files.length >= MAX_FILES && (
-                <p className="text-sm text-muted-foreground">
-                  Maximum of {MAX_FILES} documents reached.
-                </p>
-              )}
-            </div>
+            {files.length >= MAX_FILES && (
+              <p className="text-sm text-muted-foreground">
+                Maximum of {MAX_FILES} documents reached.
+              </p>
+            )}
+
+            {/* Hidden camera input */}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append("files", file);
+
+                fetch("/api/uploadthing", {
+                  method: "POST",
+                  body: formData,
+                })
+                  .then((res) => res.json())
+                  .then((data) => {
+                    const uploaded = {
+                      url: data[0].url,
+                      key: data[0].key,
+                    };
+
+                    const existing = getValues("files");
+
+                    setValue("files", [...existing, uploaded]);
+
+                    toast.success("Photo uploaded");
+                  })
+                  .catch(() => {
+                    toast.error("Failed to upload photo");
+                  });
+              }}
+            />
 
             {/* Preview */}
 
@@ -217,6 +298,10 @@ export default function VerificationDocumentForm() {
                   </button>
                 </div>
               ))}
+
+              {showScanner && (
+                <DocumentScanner onCapture={handleCameraCapture} />
+              )}
             </div>
           </section>
 

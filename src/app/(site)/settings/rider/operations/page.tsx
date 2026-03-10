@@ -56,7 +56,9 @@ export default async function RiderOperationsSettingsPage() {
             />
           </div>
 
-          <Button type="submit">Save Operations</Button>
+          <Button type="submit" disabled={!profile?.isVerified}>
+            Save Operations
+          </Button>
         </form>
 
         <div className="mt-4">

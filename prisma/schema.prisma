@@ -26,6 +26,9 @@ model User {
   image            String?
   stripeCustomerId String?
 
+  disputeCount Int?
+  refundCount  Int?
+
   role UserRole @default(USER)
 
   isBanned            Boolean   @default(false)
@@ -39,6 +42,9 @@ model User {
   verificationFailedAttempts Int @default(0)
 
   isDeleted Boolean @default(false)
+
+  disputesOpened   Dispute[] @relation("DisputeOpenedBy")
+  disputesResolved Dispute[] @relation("DisputeResolvedBy")
 
   Account               Account[]
   addresses             Address[]
@@ -71,6 +77,8 @@ model User {
   wishlist              Wishlist?
   verifications         Verification[]
   verificationDocuments VerificationDocument[]
+  disputeEvidences      DisputeEvidence[]
+  disputeMessages       DisputeMessage[]
 }
 
 model Account {
@@ -308,35 +316,35 @@ model WishlistItem {
 /// * ORDERS
 /// * ===========================
 model Order {
-  id                      String             @id @default(cuid())
-  userId                  String
-  status                  OrderStatus        @default(PENDING_PAYMENT)
-  deliveryType            DeliveryType       @default(HOME_DELIVERY)
-  shippingFee             Float              @default(0)
-  totalAmount             Float
-  distanceInMiles         Float              @default(0)
-  isPaid                  Boolean            @default(false)
-  payoutReleased          Boolean            @default(false)
-  isFoodOrder             Boolean            @default(false)
-  estimatedDeliveryMin    DateTime?
-  estimatedDeliveryMax    DateTime?
-  createdAt               DateTime           @default(now())
-  updatedAt               DateTime           @updatedAt
-  paymentMethod           PaymentMethod?
-  trackingNumber          String?            @unique
-  couponId                String?
-  discountAmount          Float?
-  customerConfirmedAt     DateTime?
-  deliveryPhone           String
-  deliveryCity            String
-  deliveryCountry         String
-  deliveryFullName        String
-  deliveryPostal          String
-  deliveryState           String
-  deliveryStreet          String
-  disputeRaised           Boolean            @default(false)
-  disputeRaisedAt         DateTime?
-  disputeReason           String?
+  id                   String         @id @default(cuid())
+  userId               String
+  status               OrderStatus    @default(PENDING_PAYMENT)
+  deliveryType         DeliveryType   @default(HOME_DELIVERY)
+  shippingFee          Float          @default(0)
+  totalAmount          Float
+  distanceInMiles      Float          @default(0)
+  isPaid               Boolean        @default(false)
+  payoutReleased       Boolean        @default(false)
+  isFoodOrder          Boolean        @default(false)
+  estimatedDeliveryMin DateTime?
+  estimatedDeliveryMax DateTime?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  paymentMethod        PaymentMethod?
+  trackingNumber       String?        @unique
+  couponId             String?
+  discountAmount       Float?
+  customerConfirmedAt  DateTime?
+  deliveryPhone        String
+  deliveryCity         String
+  deliveryCountry      String
+  deliveryFullName     String
+  deliveryPostal       String
+  deliveryState        String
+  deliveryStreet       String
+
+  disputeId String?
+
   postPaymentFinalized    Boolean            @default(false)
   arrivedAtHubConfirmedAt DateTime?
   arrivedAtHubConfirmedBy String?
@@ -351,6 +359,7 @@ model Order {
   orderTimelines          OrderTimeline[]
   referrals               Referral[]
   transactions            Transaction[]
+  dispute                 Dispute?
 
   @@index([userId])
   @@index([status])
@@ -382,26 +391,27 @@ model OrderSellerGroup {
   sellerRevenue      Float
   platformCommission Float  @default(0)
 
-  payoutStatus           PayoutStatus      @default(PENDING)
-  status                 SellerGroupStatus @default(PENDING)
-  expectedAtHub          DateTime?
-  arrivedAtHub           DateTime?
-  prepTimeMinutes        Int?
-  readyAt                DateTime?
-  isLate                 Boolean           @default(false)
-  lateMarkedAt           DateTime?
-  actualReadyAt          DateTime?
-  verified               Boolean           @default(false)
-  createdAt              DateTime          @default(now())
-  payoutEligibleAt       DateTime?
-  payoutLocked           Boolean           @default(false)
-  payoutReleasedAt       DateTime?
-  hubInboundCode         String            @unique
-  internalTrackingNumber String            @unique
-  items                  OrderItem[]       @relation("GroupItems")
-  order                  Order             @relation(fields: [orderId], references: [id])
-  seller                 User              @relation("SellerGroupBySeller", fields: [sellerId], references: [id], onDelete: Cascade)
-  store                  Store             @relation(fields: [storeId], references: [id])
+  payoutStatus              PayoutStatus               @default(PENDING)
+  status                    SellerGroupStatus          @default(PENDING)
+  expectedAtHub             DateTime?
+  arrivedAtHub              DateTime?
+  prepTimeMinutes           Int?
+  readyAt                   DateTime?
+  isLate                    Boolean                    @default(false)
+  lateMarkedAt              DateTime?
+  actualReadyAt             DateTime?
+  verified                  Boolean                    @default(false)
+  createdAt                 DateTime                   @default(now())
+  payoutEligibleAt          DateTime?
+  payoutLocked              Boolean                    @default(false)
+  payoutReleasedAt          DateTime?
+  hubInboundCode            String                     @unique
+  internalTrackingNumber    String                     @unique
+  items                     OrderItem[]                @relation("GroupItems")
+  order                     Order                      @relation(fields: [orderId], references: [id])
+  seller                    User                       @relation("SellerGroupBySeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  store                     Store                      @relation(fields: [storeId], references: [id])
+  disputeSellerGroupImpacts DisputeSellerGroupImpact[]
 
   @@index([sellerId])
   @@index([payoutReleasedAt])
@@ -626,6 +636,107 @@ model Delivery {
   rider            User?          @relation("RiderDeliveries", fields: [riderId], references: [id])
 
   @@index([orderId])
+}
+
+/// *
+/// * ===========================
+/// * DISPUTES
+/// * ===========================
+model Dispute {
+  id String @id @default(cuid())
+
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  openedById String
+  openedBy   User   @relation("DisputeOpenedBy", fields: [openedById], references: [id])
+
+  status      DisputeStatus @default(OPEN)
+  reason      DisputeReason
+  description String?
+
+  refundAmount Float?
+
+  resolution DisputeResolution?
+
+  resolvedById String?
+  resolvedBy   User?   @relation("DisputeResolvedBy", fields: [resolvedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  evidence                  DisputeEvidence[]
+  messages                  DisputeMessage[]
+  returnRequest             ReturnRequest?
+  disputeSellerGroupImpacts DisputeSellerGroupImpact[]
+
+  @@index([status])
+}
+
+model DisputeEvidence {
+  id String @id @default(cuid())
+
+  disputeId String
+  dispute   Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  uploadedById String
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+
+  type    EvidenceType
+  fileUrl String
+
+  createdAt DateTime @default(now())
+
+  @@index([disputeId])
+}
+
+model DisputeMessage {
+  id String @id @default(cuid())
+
+  disputeId String
+  dispute   Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id])
+
+  message String
+
+  createdAt DateTime @default(now())
+
+  @@index([disputeId])
+}
+
+model ReturnRequest {
+  id String @id @default(cuid())
+
+  disputeId String  @unique
+  dispute   Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  trackingNumber String?
+  carrier        String?
+
+  status ReturnStatus @default(PENDING)
+
+  shippedAt  DateTime?
+  receivedAt DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+model DisputeSellerGroupImpact {
+  id String @id @default(cuid())
+
+  disputeId String
+  dispute   Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  sellerGroupId String
+  sellerGroup   OrderSellerGroup @relation(fields: [sellerGroupId], references: [id])
+
+  refundAmount Float
+
+  createdAt DateTime @default(now())
+
+  @@index([sellerGroupId])
 }
 
 /// *
@@ -1102,6 +1213,46 @@ model SellerDailyStats {
 /// * ===========================
 /// * ENUMS
 /// * ===========================
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  WAITING_FOR_SELLER
+  WAITING_FOR_CUSTOMER
+  WAITING_FOR_RETURN
+  RESOLVED
+  REJECTED
+}
+
+enum DisputeReason {
+  ITEM_NOT_RECEIVED
+  ITEM_DAMAGED
+  WRONG_ITEM
+  NOT_AS_DESCRIBED
+  MISSING_ITEMS
+  OTHER
+}
+
+enum EvidenceType {
+  PHOTO
+  VIDEO
+  DOCUMENT
+  DELIVERY_PROOF
+}
+
+enum DisputeResolution {
+  REFUND_BUYER
+  PARTIAL_REFUND
+  RELEASE_TO_SELLER
+  RETURN_AND_REFUND
+}
+
+enum ReturnStatus {
+  PENDING
+  SHIPPED
+  RECEIVED
+  REJECTED
+}
+
 enum DocumentType {
   NATIONAL_ID
   PASSPORT
@@ -1178,6 +1329,7 @@ enum OrderStatus {
   DELIVERED
   COMPLETED
   CANCELLED
+  DISPUTED
   RETURN_REQUESTED
   RETURNED
   REFUNDED
