@@ -35,9 +35,7 @@ export function getSellerCancellationReasonLabel(
 
 export const sellerCancelOrderInputSchema = z.object({
   sellerGroupId: z.string().min(1, "Seller group is required"),
-  reason: z.enum(SELLER_CANCELLATION_REASONS, {
-    errorMap: () => ({ message: "Select a cancellation reason" }),
-  }),
+  reason: z.enum(SELLER_CANCELLATION_REASONS, "Select a cancellation reason"),
   note: z
     .string()
     .trim()
