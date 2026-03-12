@@ -31,18 +31,16 @@ function sortHistoryItems(
   return b.activityAt.getTime() - a.activityAt.getTime();
 }
 
-function normalizeTransactionItem(
-  transaction: {
-    id: string;
-    orderId: string | null;
-    type: TransactionType;
-    amount: number;
-    status: TransactionStatus;
-    reference: string | null;
-    description: string | null;
-    createdAt: Date;
-  },
-): TransactionHistoryItem {
+function normalizeTransactionItem(transaction: {
+  id: string;
+  orderId: string | null;
+  type: TransactionType;
+  amount: number;
+  status: TransactionStatus;
+  reference: string | null;
+  description: string | null;
+  createdAt: Date;
+}): TransactionHistoryItem {
   return {
     id: transaction.id,
     orderId: transaction.orderId,
@@ -129,7 +127,9 @@ async function getSellerTransactionHistory(
   });
 
   const derivedPendingItems: TransactionHistoryItem[] = pendingSellerGroups
-    .filter((group) => !finalizedPayoutReferences.has(`pending-seller-${group.id}`))
+    .filter(
+      (group) => !finalizedPayoutReferences.has(`pending-seller-${group.id}`),
+    )
     .map((group) => {
       const deliveredAt = group.order.delivery?.deliveredAt ?? null;
       const activityAt =
@@ -142,7 +142,7 @@ async function getSellerTransactionHistory(
         amount: group.sellerRevenue,
         status: "PENDING",
         reference: `pending-seller-${group.id}`,
-        description: `Seller payout pending release for order ${group.orderId}`,
+        description: `Payout pending release for order ${group.orderId}`,
         createdAt: group.createdAt,
         activityAt,
         eligibleAt: group.payoutEligibleAt,
@@ -220,11 +220,15 @@ async function getRiderTransactionHistory(
 
   const derivedPendingItems: TransactionHistoryItem[] = pendingDeliveries
     .filter(
-      (delivery) => !finalizedPayoutReferences.has(`pending-rider-${delivery.orderId}`),
+      (delivery) =>
+        !finalizedPayoutReferences.has(`pending-rider-${delivery.orderId}`),
     )
     .map((delivery) => {
       const createdAt =
-        delivery.assignedAt ?? delivery.deliveredAt ?? delivery.payoutEligibleAt ?? new Date(0);
+        delivery.assignedAt ??
+        delivery.deliveredAt ??
+        delivery.payoutEligibleAt ??
+        new Date(0);
       const activityAt =
         delivery.deliveredAt ?? delivery.payoutEligibleAt ?? createdAt;
 
@@ -235,7 +239,7 @@ async function getRiderTransactionHistory(
         amount: delivery.fee,
         status: "PENDING",
         reference: `pending-rider-${delivery.orderId}`,
-        description: `Rider payout pending release for order ${delivery.orderId}`,
+        description: `Payout pending release for order ${delivery.orderId}`,
         createdAt,
         activityAt,
         eligibleAt: delivery.payoutEligibleAt,
