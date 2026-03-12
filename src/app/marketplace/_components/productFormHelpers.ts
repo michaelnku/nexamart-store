@@ -1,8 +1,4 @@
-import type {
-  Category,
-  FullProduct,
-  TechnicalDetail,
-} from "@/lib/types";
+import type { Category, FullProduct, TechnicalDetail } from "@/lib/types";
 import type {
   productSchemaType,
   updateProductSchemaType,
@@ -13,7 +9,7 @@ type NormalizedFoodDetails = NonNullable<ProductFormValues["foodDetails"]>;
 
 const DEFAULT_FOOD_DETAILS: NonNullable<productSchemaType["foodDetails"]> = {
   ingredients: [""],
-  preparationTimeMinutes: 15,
+  preparationTimeMinutes: 0,
   portionSize: "",
   spiceLevel: undefined,
   dietaryTags: [],
@@ -67,7 +63,9 @@ function normalizeExpiresAt(value: unknown): Date | undefined {
   return undefined;
 }
 
-function normalizeFoodDetails(input: unknown): NormalizedFoodDetails | undefined {
+function normalizeFoodDetails(
+  input: unknown,
+): NormalizedFoodDetails | undefined {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return undefined;
   }

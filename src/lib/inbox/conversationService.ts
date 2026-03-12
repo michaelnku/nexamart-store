@@ -1,6 +1,10 @@
 "use server";
 
-import { SenderType, type Prisma, type PrismaClient } from "@/generated/prisma/client";
+import {
+  SenderType,
+  type Prisma,
+  type PrismaClient,
+} from "@/generated/prisma/client";
 import { pusherServer } from "@/lib/pusher";
 
 export type RealtimeMessagePayload = {
@@ -42,7 +46,7 @@ export async function createConversationMessage(
   return message;
 }
 
-export function toRealtimeMessagePayload(message: {
+function toRealtimeMessagePayload(message: {
   id: string;
   conversationId: string;
   senderId: string | null;

@@ -25,6 +25,13 @@ type Props = {
   control: any;
 };
 
+function parseCommaSeparatedList(rawValue: string) {
+  return rawValue
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
 export default function FoodProductSection({ control }: Props) {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -168,12 +175,15 @@ export default function FoodProductSection({ control }: Props) {
                 onChange={(e) => {
                   const rawValue = e.target.value;
                   setDietaryTagsInput(rawValue);
-                  field.onChange(
-                    rawValue
-                      .split(",")
-                      .map((tag) => tag.trim())
-                      .filter(Boolean),
+                  field.onChange(parseCommaSeparatedList(rawValue));
+                }}
+                onBlur={() => {
+                  const normalizedTags = parseCommaSeparatedList(
+                    dietaryTagsInput,
                   );
+                  setDietaryTagsInput(normalizedTags.join(", "));
+                  field.onChange(normalizedTags);
+                  field.onBlur();
                 }}
               />
             </FormControl>
