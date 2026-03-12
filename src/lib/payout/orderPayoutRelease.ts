@@ -5,6 +5,7 @@ import {
   RELEASE_ORDER_PAYOUT_JOB_TYPE,
   buildReleaseOrderPayoutJobId,
 } from "@/lib/jobs/jobTypes";
+import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import { releaseEscrowPayoutInTx } from "@/lib/payout/releaseEscrowPayout";
 import {
@@ -120,7 +121,7 @@ export async function releaseOrderPayoutsInTx(
         select: {
           id: true,
           riderId: true,
-          fee: true,
+          riderPayoutAmount: true,
           status: true,
           deliveredAt: true,
           payoutEligibleAt: true,
@@ -138,7 +139,11 @@ export async function releaseOrderPayoutsInTx(
   if (order.status !== "DELIVERED") {
     return { status: "COMPLETED", reason: "ORDER_NOT_DELIVERED" };
   }
-  if (!order.delivery || order.delivery.status !== "DELIVERED" || !order.delivery.deliveredAt) {
+  if (
+    !order.delivery ||
+    order.delivery.status !== "DELIVERED" ||
+    !order.delivery.deliveredAt
+  ) {
     return { status: "COMPLETED", reason: "DELIVERY_NOT_CONFIRMED" };
   }
 
@@ -154,7 +159,9 @@ export async function releaseOrderPayoutsInTx(
     };
   }
 
-  if (isPayoutBlockedByDispute(order.disputeId, order.dispute?.status ?? null)) {
+  if (
+    isPayoutBlockedByDispute(order.disputeId, order.dispute?.status ?? null)
+  ) {
     return {
       status: "DEFERRED",
       reason: "ACTIVE_DISPUTE_LOCKED",
@@ -164,9 +171,11 @@ export async function releaseOrderPayoutsInTx(
 
   const sellerContext = createServiceContext("SELLER_PAYOUT_CRON");
   const riderContext = createServiceContext("RIDER_PAYOUT_CRON");
+  const systemEscrowAccount = await getOrCreateSystemEscrowAccount(tx);
 
   const sellerReleaseResult = await releaseEscrowPayoutInTx(tx, order.id, {
     context: sellerContext,
+    systemEscrowAccount,
   });
 
   if (
@@ -193,6 +202,7 @@ export async function releaseOrderPayoutsInTx(
     const riderReleaseResult = await releaseRiderDeliveryPayoutInTx(
       tx,
       order.delivery.id,
+      systemEscrowAccount,
       input.now,
       riderContext,
     );

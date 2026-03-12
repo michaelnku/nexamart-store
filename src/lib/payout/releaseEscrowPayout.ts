@@ -1,6 +1,9 @@
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
-import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
+import {
+  getOrCreateSystemEscrowAccount,
+  PlatformTreasuryAccount,
+} from "@/lib/ledger/systemEscrowWallet";
 import {
   releaseSellerGroupPayoutInTx,
   syncOrderPayoutReleasedStateInTx,
@@ -14,8 +17,8 @@ type ReleaseResult =
 type ReleaseEscrowOptions = {
   allowDisputedOrder?: boolean;
   targetSellerGroupIds?: string[];
-  markOrderCompleted?: boolean;
   context?: ServiceContext;
+  systemEscrowAccount?: PlatformTreasuryAccount;
 };
 
 async function releaseEscrowPayoutWithTx(
@@ -76,7 +79,8 @@ async function releaseEscrowPayoutWithTx(
     return { skipped: true, reason: "NO_TARGET_GROUPS" };
   }
 
-  const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
+  const systemEscrowAccount =
+    options.systemEscrowAccount ?? (await getOrCreateSystemEscrowAccount(tx));
   let processedGroups = 0;
 
   for (const groupId of targetGroupIds) {
@@ -97,26 +101,19 @@ async function releaseEscrowPayoutWithTx(
 
   await syncOrderPayoutReleasedStateInTx(tx, orderId);
 
-  const allTargetGroupsFinalized = order.sellerGroups
-    .filter((group) => targetGroupIds.includes(group.id))
-    .every(
-      (group) =>
-        group.payoutStatus === "COMPLETED" ||
-        group.payoutStatus === "CANCELLED" ||
-        Boolean(group.payoutReleasedAt),
-    );
-
-  if (options.markOrderCompleted !== false && processedGroups > 0) {
-    await tx.order.updateMany({
-      where: { id: orderId, status: "DELIVERED" },
-      data: { status: "COMPLETED" },
-    });
-  }
-
   if (processedGroups === 0) {
+    const remainingTargetGroups = await tx.orderSellerGroup.count({
+      where: {
+        orderId,
+        id: { in: targetGroupIds },
+        payoutStatus: { notIn: ["COMPLETED", "CANCELLED"] },
+        payoutReleasedAt: null,
+      },
+    });
+
     return {
       skipped: true,
-      reason: allTargetGroupsFinalized
+      reason: remainingTargetGroups === 0
         ? "PAYOUT_ALREADY_RELEASED"
         : "NO_GROUPS_RELEASED",
     };

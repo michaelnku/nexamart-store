@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron/workers/cronLock";
+import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import {
   createServiceContext,
   ServiceContext,
@@ -13,12 +14,14 @@ const BATCH_SIZE = 20;
 async function processRiderDeliveryPayout(
   tx: Prisma.TransactionClient,
   deliveryId: string,
+  systemEscrowAccount: Awaited<ReturnType<typeof getOrCreateSystemEscrowAccount>>,
   now: Date,
   context: ServiceContext,
 ): Promise<boolean> {
   const released = await releaseRiderDeliveryPayoutInTx(
     tx,
     deliveryId,
+    systemEscrowAccount,
     now,
     context,
   );
@@ -34,6 +37,7 @@ export async function releaseEligibleRiderPayouts() {
   try {
     const now = new Date();
     const context = createServiceContext("RIDER_PAYOUT_CRON");
+    const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
 
     const deliveries = await prisma.delivery.findMany({
       where: {
@@ -41,7 +45,7 @@ export async function releaseEligibleRiderPayouts() {
         payoutEligibleAt: { lte: now },
         payoutReleasedAt: null,
         payoutLocked: false,
-        fee: { gt: 0 },
+        riderPayoutAmount: { gt: 0 },
         riderId: { not: null },
         order: {
           isPaid: true,
@@ -60,6 +64,7 @@ export async function releaseEligibleRiderPayouts() {
         const released = await processRiderDeliveryPayout(
           tx,
           candidate.id,
+          systemEscrowAccount,
           now,
           context,
         );
@@ -79,6 +84,7 @@ export async function releaseEligibleRiderPayouts() {
 export async function releaseEligibleRiderPayoutForOrder(orderId: string) {
   const now = new Date();
   const context = createServiceContext("RIDER_PAYOUT_CRON");
+  const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
 
   return prisma.$transaction(async (tx) => {
     const delivery = await tx.delivery.findFirst({
@@ -88,7 +94,7 @@ export async function releaseEligibleRiderPayoutForOrder(orderId: string) {
         payoutReleasedAt: null,
         payoutLocked: false,
         payoutEligibleAt: { lte: now },
-        fee: { gt: 0 },
+        riderPayoutAmount: { gt: 0 },
         riderId: { not: null },
         order: {
           isPaid: true,
@@ -105,6 +111,7 @@ export async function releaseEligibleRiderPayoutForOrder(orderId: string) {
     const released = await processRiderDeliveryPayout(
       tx,
       delivery.id,
+      systemEscrowAccount,
       now,
       context,
     );

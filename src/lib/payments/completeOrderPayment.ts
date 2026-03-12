@@ -8,10 +8,7 @@ import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import { processPendingJobs } from "@/worker";
 import { assertValidTransition } from "@/lib/order/orderLifecycle";
 import { commitOrderInventoryInTx } from "@/lib/inventory/reservationService";
-import { getPayoutEligibleAtFrom } from "@/lib/payout/timing";
 
-const PLATFORM_COMMISSION_PERCENT = 15;
-//const PLATFORM_COMMISSION_PERCENT = 12;
 const FINALIZE_ORDER_JOB_TYPE = "FINALIZE_ORDER";
 const FINALIZE_ORDER_JOB_ID_PREFIX = "finalize-order";
 
@@ -136,22 +133,8 @@ export async function finalizePostPayment(
     where: { id: orderId },
     select: {
       id: true,
-      paymentMethod: true,
       isFoodOrder: true,
       postPaymentFinalized: true,
-      sellerGroups: {
-        select: {
-          id: true,
-          sellerId: true,
-          subtotal: true,
-        },
-      },
-      delivery: {
-        select: {
-          riderId: true,
-          fee: true,
-        },
-      },
     },
   });
 
@@ -160,71 +143,6 @@ export async function finalizePostPayment(
   }
 
   await prisma.$transaction(async (tx) => {
-    const releaseAt = getPayoutEligibleAtFrom(
-      new Date(),
-      freshOrder.isFoodOrder,
-    );
-
-    for (const group of freshOrder.sellerGroups) {
-      const platformCommission =
-        (group.subtotal * PLATFORM_COMMISSION_PERCENT) / 100;
-
-      await createEscrowEntryIdempotent(tx, {
-        orderId: freshOrder.id,
-        userId: group.sellerId,
-        role: "SELLER",
-        entryType: "SELLER_EARNING",
-        amount: group.subtotal,
-        status: "HELD",
-        reference: `seller-held-${group.id}`,
-        metadata: { sellerGroupId: group.id, subtotal: group.subtotal },
-        context,
-      });
-
-      await createEscrowEntryIdempotent(tx, {
-        orderId: freshOrder.id,
-        role: "PLATFORM",
-        entryType: "PLATFORM_COMMISSION",
-        amount: platformCommission,
-        status: "HELD",
-        reference: `platform-held-${group.id}`,
-        metadata: {
-          sellerGroupId: group.id,
-          commissionPercent: PLATFORM_COMMISSION_PERCENT,
-        },
-        context,
-      });
-    }
-
-    if (freshOrder.delivery) {
-      await createEscrowEntryIdempotent(tx, {
-        orderId: freshOrder.id,
-        userId: freshOrder.delivery.riderId ?? undefined,
-        role: "RIDER",
-        entryType: "RIDER_EARNING",
-        amount: freshOrder.delivery.fee,
-        status: "HELD",
-        reference: `rider-held-${freshOrder.id}`,
-        context,
-      });
-    }
-
-    await tx.orderSellerGroup.updateMany({
-      where: { orderId: freshOrder.id, payoutEligibleAt: null },
-      data: {
-        payoutEligibleAt: releaseAt,
-        payoutLocked: false,
-      },
-    });
-
-    await tx.delivery.updateMany({
-      where: { orderId: freshOrder.id, payoutEligibleAt: null },
-      data: {
-        payoutEligibleAt: releaseAt,
-        payoutLocked: false,
-      },
-    });
-
     await createOrderTimelineIfMissing(
       {
         orderId: freshOrder.id,
@@ -236,12 +154,13 @@ export async function finalizePostPayment(
       tx,
     );
 
+    // Checkout/payment-time persisted payout fields are the only payout basis.
+    // Delivery confirmation moves those stored amounts into held/pending state.
     await tx.order.update({
       where: { id: freshOrder.id },
       data: { postPaymentFinalized: true },
     });
   });
-
 }
 
 export async function completeOrderPaymentCore({
@@ -328,12 +247,12 @@ export async function completeOrderPaymentCore({
       const availableBalance =
         preloadedWallet && preloadedWallet.id === buyerWallet.id
           ? preloadedWallet.balance
-          : (
+          : ((
               await tx.wallet.findUnique({
                 where: { id: buyerWallet.id },
                 select: { balance: true },
               })
-            )?.balance ?? 0;
+            )?.balance ?? 0);
       if (availableBalance < order.totalAmount) {
         throw new Error("Insufficient wallet balance");
       }
@@ -446,17 +365,15 @@ export async function completeOrderPayment({
 
   const systemEscrowWalletId = await getOrCreateSystemEscrowWallet();
 
-  const result = await prisma.$transaction(
-    async (tx) =>
-      completeOrderPaymentCore({
-        tx,
-        orderId,
-        paymentReference,
-        method,
-        context,
-        systemEscrowWalletId,
-      }),
-    { timeout: 15000 },
+  const result = await prisma.$transaction(async (tx) =>
+    completeOrderPaymentCore({
+      tx,
+      orderId,
+      paymentReference,
+      method,
+      context,
+      systemEscrowWalletId,
+    }),
   );
 
   if (result.justPaid) {

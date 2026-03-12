@@ -202,7 +202,7 @@ async function getRiderTransactionHistory(
     where: {
       riderId: userId,
       status: "DELIVERED",
-      fee: { gt: 0 },
+      riderPayoutAmount: { gt: 0 },
       payoutReleasedAt: null,
       order: {
         isPaid: true,
@@ -211,7 +211,7 @@ async function getRiderTransactionHistory(
     select: {
       id: true,
       orderId: true,
-      fee: true,
+      riderPayoutAmount: true,
       assignedAt: true,
       deliveredAt: true,
       payoutEligibleAt: true,
@@ -236,7 +236,7 @@ async function getRiderTransactionHistory(
         id: `pending-rider-${delivery.id}`,
         orderId: delivery.orderId,
         type: "RIDER_PAYOUT",
-        amount: delivery.fee,
+        amount: delivery.riderPayoutAmount,
         status: "PENDING",
         reference: `pending-rider-${delivery.orderId}`,
         description: `Payout pending release for order ${delivery.orderId}`,

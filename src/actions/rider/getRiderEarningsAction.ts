@@ -17,6 +17,7 @@ export async function getRiderEarningsAction() {
     select: {
       id: true,
       fee: true,
+      riderPayoutAmount: true,
       status: true,
       deliveredAt: true,
       payoutEligibleAt: true,
@@ -35,15 +36,18 @@ export async function getRiderEarningsAction() {
     take: 50,
   });
 
-  const totalEarnings = deliveries.reduce((sum, d) => sum + (d.fee ?? 0), 0);
+  const totalEarnings = deliveries.reduce(
+    (sum, d) => sum + (d.riderPayoutAmount ?? 0),
+    0,
+  );
 
   const pendingEscrow = deliveries
     .filter((d) => d.status === "DELIVERED" && d.payoutEligibleAt !== null)
-    .reduce((sum, d) => sum + (d.fee ?? 0), 0);
+    .reduce((sum, d) => sum + (d.riderPayoutAmount ?? 0), 0);
 
   const completed = deliveries
     .filter((d) => d.status === "DELIVERED")
-    .reduce((sum, d) => sum + (d.fee ?? 0), 0);
+    .reduce((sum, d) => sum + (d.riderPayoutAmount ?? 0), 0);
 
   return {
     totalEarnings,
@@ -55,7 +59,7 @@ export async function getRiderEarningsAction() {
       trackingNumber: d.order.trackingNumber,
       createdAt: d.order.createdAt,
       deliveredAt: d.deliveredAt,
-      fee: d.fee,
+      fee: d.riderPayoutAmount,
       status: d.status,
       payoutEligibleAt: d.payoutEligibleAt,
     })),

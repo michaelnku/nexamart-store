@@ -655,25 +655,26 @@ model RiderSchedule {
 }
 
 model Delivery {
-  id               String         @id @default(cuid())
-  orderId          String         @unique
-  riderId          String?
-  status           DeliveryStatus @default(PENDING_ASSIGNMENT)
-  deliveryAddress  String?
-  distance         Float?
-  fee              Float
-  assignedAt       DateTime?
-  deliveredAt      DateTime?
-  otpAttempts      Int            @default(0)
-  otpExpiresAt     DateTime?
-  otpHash          String?
-  isLocked         Boolean        @default(false)
-  lockedAt         DateTime?
-  payoutEligibleAt DateTime?
-  payoutLocked     Boolean        @default(false)
-  payoutReleasedAt DateTime?
-  order            Order          @relation("OrderDelivery", fields: [orderId], references: [id], onDelete: Cascade)
-  rider            User?          @relation("RiderDeliveries", fields: [riderId], references: [id])
+  id                String         @id @default(cuid())
+  orderId           String         @unique
+  riderId           String?
+  status            DeliveryStatus @default(PENDING_ASSIGNMENT)
+  deliveryAddress   String?
+  distance          Float?
+  fee               Float
+  riderPayoutAmount Float          @default(0)
+  assignedAt        DateTime?
+  deliveredAt       DateTime?
+  otpAttempts       Int            @default(0)
+  otpExpiresAt      DateTime?
+  otpHash           String?
+  isLocked          Boolean        @default(false)
+  lockedAt          DateTime?
+  payoutEligibleAt  DateTime?
+  payoutLocked      Boolean        @default(false)
+  payoutReleasedAt  DateTime?
+  order             Order          @relation("OrderDelivery", fields: [orderId], references: [id], onDelete: Cascade)
+  rider             User?          @relation("RiderDeliveries", fields: [riderId], references: [id])
 
   @@index([orderId])
 }

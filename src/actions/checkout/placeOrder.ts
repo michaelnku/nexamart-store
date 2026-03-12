@@ -16,17 +16,19 @@ import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
 import { getCartAvailabilityError } from "@/lib/inventory/cartAvailability";
 import { reserveOrderInventoryInTx } from "@/lib/inventory/reservationService";
 import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
-import { buildDoubleEntryLedgerRows } from "@/lib/finance/ledgerService";
+import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { calculatePlatformCommission } from "@/lib/finance/calculatePlatformCommission";
 import { pusherServer } from "@/lib/pusher";
 import { createSellerOrderNotification } from "@/lib/notifications/createSellerOrderNotification";
 import { createNotification } from "@/lib/notifications/createNotification";
+import { buildAuthoritativePayoutBasis } from "@/lib/payout/payoutBasis";
 
 type StoreGroup = {
   storeId: string;
   sellerId: string;
   sellerRevenue: number;
   platformCommission: number;
+  commissionRate: number;
   storeName: string;
   storeType: "FOOD" | "GENERAL";
   items: Array<{
@@ -47,6 +49,7 @@ type InternalOrderGroup = {
   subtotal: number;
   shippingFee: number;
   distanceInMiles: number;
+  riderPayoutAmount: number;
   totalAmount: number;
 };
 
@@ -374,6 +377,7 @@ export async function placeOrderAction({
           sellerId: store.userId,
           storeName: store.name,
           storeType: store.type,
+          commissionRate,
 
           items: items.map((item) => ({
             id: item.id,
@@ -410,6 +414,7 @@ export async function placeOrderAction({
         subtotal: storeGroup.subtotal,
         shippingFee: storeGroup.shippingFee,
         distanceInMiles: storeGroup.distanceInMiles,
+        riderPayoutAmount: storeGroup.shippingFee,
         totalAmount: 0,
       })),
       ...(nonFoodStoreGroups.length
@@ -430,6 +435,10 @@ export async function placeOrderAction({
                   (sum, group) => sum + group.distanceInMiles,
                   0,
                 ) / nonFoodStoreGroups.length,
+              riderPayoutAmount: nonFoodStoreGroups.reduce(
+                (sum, group) => sum + group.shippingFee,
+                0,
+              ),
               totalAmount: 0,
             } satisfies InternalOrderGroup,
           ]
@@ -499,20 +508,11 @@ export async function placeOrderAction({
       checkoutSubtotal + checkoutShippingFee - checkoutDiscountAmount,
     );
 
-    const discountAllocations = splitDiscountAcrossGroups(
-      orderGroups.map((group) => ({
-        baseAmount: group.subtotal + group.shippingFee,
-      })),
-      checkoutDiscountAmount,
-    );
-
-    orderGroups = orderGroups.map((group, index) => ({
-      ...group,
-      totalAmount: Math.max(
-        0,
-        group.subtotal + group.shippingFee - discountAllocations[index],
-      ),
-    }));
+    orderGroups = buildAuthoritativePayoutBasis({
+      orderGroups,
+      couponType: couponResult.coupon?.type ?? null,
+      totalDiscountAmount: checkoutDiscountAmount,
+    });
 
     if (paymentMethod === "WALLET") {
       const wallet = await prisma.wallet.findUnique({
@@ -570,7 +570,6 @@ export async function placeOrderAction({
   let checkoutGroupId: string | null = null;
   let walletJustPaid = false;
   const paidOrderIds: string[] = [];
-  let postCommitLedgerRows: Prisma.LedgerEntryCreateManyInput[] = [];
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -663,6 +662,7 @@ export async function placeOrderAction({
             orderId: createdOrder.id,
             status: "PENDING_ASSIGNMENT",
             fee: group.shippingFee,
+            riderPayoutAmount: group.riderPayoutAmount,
             deliveryAddress: [
               createdOrder.deliveryStreet,
               createdOrder.deliveryCity,
@@ -828,8 +828,6 @@ export async function placeOrderAction({
           });
         }
 
-        let checkoutLedgerRows: Prisma.LedgerEntryCreateManyInput[] = [];
-
         if (!existingParentTransaction) {
           if (walletForPayment.balance < checkoutTotalAmount) {
             throw new PlaceOrderError(
@@ -850,32 +848,22 @@ export async function placeOrderAction({
             },
           });
 
-          await Promise.all([
-            tx.wallet.update({
-              where: { id: walletForPayment.id },
-              data: { balance: { decrement: checkoutTotalAmount } },
-            }),
-            tx.wallet.update({
-              where: { id: systemEscrowWalletId },
-              data: { balance: { increment: checkoutTotalAmount } },
-            }),
-          ]);
-
-          checkoutLedgerRows = buildDoubleEntryLedgerRows({
+          await createDoubleEntryLedger(tx, {
             fromUserId: userId,
             fromWalletId: walletForPayment.id,
             toWalletId: systemEscrowWalletId,
             entryType: "ESCROW_DEPOSIT",
             amount: checkoutTotalAmount,
             reference: `escrow-fund-${checkoutGroupId ?? createdOrderIds[0]}`,
-          }).rows;
+            resolveFromWallet: false,
+            resolveToWallet: false,
+          });
         }
 
         return {
           alreadyPaidOrderIds,
           ordersToFinalize,
           walletForPayment: walletForPayment as WalletSettlementWalletPayload,
-          checkoutLedgerRows,
         };
       });
 
@@ -895,7 +883,6 @@ export async function placeOrderAction({
       })();
 
       paidOrderIds.push(...settlementPlan.alreadyPaidOrderIds);
-      postCommitLedgerRows = settlementPlan.checkoutLedgerRows;
 
       for (const orderToFinalize of settlementPlan.ordersToFinalize) {
         const paymentResult = await prisma.$transaction((tx) =>
@@ -979,17 +966,6 @@ export async function placeOrderAction({
       const uniquePaidOrderIds = [...new Set(paidOrderIds)];
       if (uniquePaidOrderIds.length !== createdOrders.length) {
         return { error: "Wallet payment validation failed. Please try again." };
-      }
-
-      if (postCommitLedgerRows.length) {
-        try {
-          await prisma.ledgerEntry.createMany({
-            data: postCommitLedgerRows,
-            skipDuplicates: true,
-          });
-        } catch (error) {
-          console.error("Post-commit ledger write failed:", error);
-        }
       }
 
       for (const order of createdOrders) {

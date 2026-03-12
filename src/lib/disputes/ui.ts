@@ -89,7 +89,7 @@ export function canCustomerRaiseDispute(order: OrderDetailDTO): boolean {
 }
 
 export function getDisputeWindowText(isFoodOrder: boolean): string {
-  return isFoodOrder ? "1 hour after delivery" : "48 hours after delivery";
+  return isFoodOrder ? "1 hour after delivery" : "24 hours after delivery";
 }
 
 export function buildDisputeTimeline(

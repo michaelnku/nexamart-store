@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { PlatformTreasuryAccount } from "@/lib/ledger/systemEscrowWallet";
 import { settlePendingPayoutTransaction } from "@/lib/payout/pendingPayoutTransactions";
 import { syncOrderPayoutReleasedStateInTx } from "@/lib/payout/sellerPayouts";
 import { ServiceContext } from "@/lib/system/serviceContext";
@@ -8,7 +9,7 @@ type Tx = Prisma.TransactionClient;
 
 type RiderPayoutState = {
   riderId: string | null;
-  fee: number;
+  riderPayoutAmount: number;
   payoutReleasedAt: Date | null;
 };
 
@@ -23,7 +24,7 @@ export function isDeliveryRiderPayoutRequired(
     return false;
   }
 
-  return Boolean(delivery.riderId) && delivery.fee > 0;
+  return Boolean(delivery.riderId) && delivery.riderPayoutAmount > 0;
 }
 
 export function isDeliveryRiderPayoutPending(
@@ -39,6 +40,7 @@ export function isDeliveryRiderPayoutPending(
 export async function releaseRiderDeliveryPayoutInTx(
   tx: Tx,
   deliveryId: string,
+  systemEscrowAccount: PlatformTreasuryAccount,
   now: Date,
   context: ServiceContext,
 ): Promise<RiderPayoutReleaseResult> {
@@ -62,7 +64,7 @@ export async function releaseRiderDeliveryPayoutInTx(
       id: true,
       orderId: true,
       riderId: true,
-      fee: true,
+      riderPayoutAmount: true,
       payoutReleasedAt: true,
       order: {
         select: {
@@ -142,16 +144,17 @@ export async function releaseRiderDeliveryPayoutInTx(
   await tx.wallet.update({
     where: { id: riderWallet.id },
     data: {
-      totalEarnings: { increment: delivery.fee },
+      totalEarnings: { increment: delivery.riderPayoutAmount },
     },
   });
 
   await createDoubleEntryLedger(tx, {
     orderId: delivery.orderId,
+    fromWalletId: systemEscrowAccount.walletId,
     toUserId: delivery.riderId,
     toWalletId: riderWallet.id,
     entryType: "RIDER_PAYOUT",
-    amount: delivery.fee,
+    amount: delivery.riderPayoutAmount,
     reference: `rider-release-${delivery.id}`,
     resolveFromWallet: false,
     resolveToWallet: false,
@@ -163,7 +166,7 @@ export async function releaseRiderDeliveryPayoutInTx(
     walletUserId: delivery.riderId,
     orderId: delivery.orderId,
     type: "RIDER_PAYOUT",
-    amount: delivery.fee,
+    amount: delivery.riderPayoutAmount,
     status: "SUCCESS",
     description: `Rider payout released by ${context.service}`,
   });

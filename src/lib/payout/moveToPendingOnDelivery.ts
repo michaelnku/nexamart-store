@@ -15,6 +15,7 @@ export async function moveOrderEarningsToPending(
           select: {
             riderId: true,
             fee: true,
+            riderPayoutAmount: true,
             status: true,
           },
         },
@@ -22,7 +23,8 @@ export async function moveOrderEarningsToPending(
           select: {
             id: true,
             sellerId: true,
-            subtotal: true,
+            sellerRevenue: true,
+            platformCommission: true,
           },
         },
       },
@@ -34,27 +36,42 @@ export async function moveOrderEarningsToPending(
       return { skipped: true, reason: "ORDER_NOT_DELIVERED" };
     if (!order.customerConfirmedAt)
       return { skipped: true, reason: "MISSING_CONFIRMATION_TIME" };
-    if (!order.delivery || !order.delivery.riderId)
-      return { skipped: true, reason: "MISSING_DELIVERY_OR_RIDER" };
+    if (!order.delivery)
+      return { skipped: true, reason: "MISSING_DELIVERY" };
     if (order.delivery.status !== "DELIVERED")
       return { skipped: true, reason: "DELIVERY_NOT_CONFIRMED" };
 
     // ---------------- SELLER ESCROW ----------------
 
     for (const group of order.sellerGroups) {
-      await createEscrowEntryIdempotent(tx, {
-        orderId,
-        userId: group.sellerId,
-        role: "SELLER",
-        entryType: "SELLER_EARNING",
-        amount: group.subtotal,
-        status: "HELD",
-        reference: `seller-held-${group.id}`,
-        metadata: {
-          sellerGroupId: group.id,
-          subtotal: group.subtotal,
-        },
-      });
+      if (group.sellerRevenue > 0) {
+        await createEscrowEntryIdempotent(tx, {
+          orderId,
+          userId: group.sellerId,
+          role: "SELLER",
+          entryType: "SELLER_EARNING",
+          amount: group.sellerRevenue,
+          status: "HELD",
+          reference: `seller-held-${group.id}`,
+          metadata: {
+            sellerGroupId: group.id,
+          },
+        });
+      }
+
+      if (group.platformCommission > 0) {
+        await createEscrowEntryIdempotent(tx, {
+          orderId,
+          role: "PLATFORM",
+          entryType: "PLATFORM_COMMISSION",
+          amount: group.platformCommission,
+          status: "HELD",
+          reference: `platform-held-${group.id}`,
+          metadata: {
+            sellerGroupId: group.id,
+          },
+        });
+      }
 
       const sellerWallet = await tx.wallet.upsert({
         where: { userId: group.sellerId },
@@ -63,58 +80,65 @@ export async function moveOrderEarningsToPending(
         select: { id: true },
       });
 
-      await tx.transaction.upsert({
-        where: {
-          reference: `pending-seller-${group.id}`,
-        },
-        update: {},
-        create: {
-          walletId: sellerWallet.id,
-          userId: group.sellerId,
-          orderId,
-          type: "SELLER_PAYOUT",
-          status: "PENDING",
-          amount: group.subtotal,
-          reference: `pending-seller-${group.id}`,
-          description: `Escrow hold for order ${orderId}`,
-        },
-      });
+      if (group.sellerRevenue > 0) {
+        await tx.transaction.upsert({
+          where: {
+            reference: `pending-seller-${group.id}`,
+          },
+          update: {},
+          create: {
+            walletId: sellerWallet.id,
+            userId: group.sellerId,
+            orderId,
+            type: "SELLER_PAYOUT",
+            status: "PENDING",
+            amount: group.sellerRevenue,
+            reference: `pending-seller-${group.id}`,
+            description: `Escrow hold for order ${orderId}`,
+          },
+        });
+      }
     }
 
     // ---------------- RIDER ESCROW ----------------
-    await createEscrowEntryIdempotent(tx, {
-      orderId,
-      userId: order.delivery.riderId,
-      role: "RIDER",
-      entryType: "RIDER_EARNING",
-      amount: order.delivery.fee,
-      status: "HELD",
-      reference: `rider-held-${orderId}`,
-    });
+    const shouldPrepareRiderPayout =
+      Boolean(order.delivery.riderId) && order.delivery.riderPayoutAmount > 0;
 
-    const riderWallet = await tx.wallet.upsert({
-      where: { userId: order.delivery.riderId },
-      update: {},
-      create: { userId: order.delivery.riderId },
-      select: { id: true },
-    });
-
-    await tx.transaction.upsert({
-      where: {
-        reference: `pending-rider-${orderId}`,
-      },
-      update: {},
-      create: {
-        walletId: riderWallet.id,
-        userId: order.delivery.riderId,
+    if (shouldPrepareRiderPayout) {
+      await createEscrowEntryIdempotent(tx, {
         orderId,
-        type: "RIDER_PAYOUT",
-        status: "PENDING",
-        amount: order.delivery.fee,
-        reference: `pending-rider-${orderId}`,
-        description: `Delivery payout pending release`,
-      },
-    });
+        userId: order.delivery.riderId!,
+        role: "RIDER",
+        entryType: "RIDER_EARNING",
+        amount: order.delivery.riderPayoutAmount,
+        status: "HELD",
+        reference: `rider-held-${orderId}`,
+      });
+
+      const riderWallet = await tx.wallet.upsert({
+        where: { userId: order.delivery.riderId! },
+        update: {},
+        create: { userId: order.delivery.riderId! },
+        select: { id: true },
+      });
+
+      await tx.transaction.upsert({
+        where: {
+          reference: `pending-rider-${orderId}`,
+        },
+        update: {},
+        create: {
+          walletId: riderWallet.id,
+          userId: order.delivery.riderId!,
+          orderId,
+          type: "RIDER_PAYOUT",
+          status: "PENDING",
+          amount: order.delivery.riderPayoutAmount,
+          reference: `pending-rider-${orderId}`,
+          description: `Delivery payout pending release`,
+        },
+      });
+    }
 
     // ---------------- PAYOUT TIMERS ----------------
     const releaseAt = new Date(

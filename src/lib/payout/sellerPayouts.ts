@@ -84,6 +84,32 @@ async function unlockSellerGroupIfNeeded(
   });
 }
 
+async function markEscrowEntryReleased(
+  tx: Tx,
+  reference: string,
+  fallback: Omit<Parameters<typeof createEscrowEntryIdempotent>[1], "status">,
+) {
+  const existing = await tx.escrowLedger.findUnique({
+    where: { reference },
+    select: { id: true, status: true },
+  });
+
+  if (existing) {
+    if (existing.status !== "RELEASED") {
+      await tx.escrowLedger.update({
+        where: { reference },
+        data: { status: "RELEASED" },
+      });
+    }
+    return;
+  }
+
+  await createEscrowEntryIdempotent(tx, {
+    ...fallback,
+    status: "RELEASED",
+  });
+}
+
 export async function syncOrderPayoutReleasedStateInTx(
   tx: Tx,
   orderId: string,
@@ -99,7 +125,7 @@ export async function syncOrderPayoutReleasedStateInTx(
       where: { orderId },
       select: {
         riderId: true,
-        fee: true,
+        riderPayoutAmount: true,
         payoutReleasedAt: true,
       },
     }),
@@ -194,28 +220,26 @@ export async function releaseSellerGroupPayoutInTx(
     select: { id: true },
   });
 
-  const heldRef = `seller-held-${group.id}`;
-  const heldEntry = await tx.escrowLedger.findUnique({
-    where: { reference: heldRef },
-    select: { id: true, status: true },
-  });
-
-  if (heldEntry && heldEntry.status !== "RELEASED") {
-    await tx.escrowLedger.update({
-      where: { reference: heldRef },
-      data: { status: "RELEASED" },
-    });
-  }
-
-  if (!heldEntry) {
-    await createEscrowEntryIdempotent(tx, {
+  if (sellerAmount > 0) {
+    await markEscrowEntryReleased(tx, `seller-held-${group.id}`, {
       orderId: group.orderId,
       userId: group.sellerId,
       role: "SELLER",
       entryType: "SELLER_EARNING",
-      amount: group.subtotal,
-      status: "RELEASED",
-      reference: heldRef,
+      amount: sellerAmount,
+      reference: `seller-held-${group.id}`,
+      metadata: { sellerGroupId: group.id, backfilled: true },
+      context: options.context,
+    });
+  }
+
+  if (platformFee > 0) {
+    await markEscrowEntryReleased(tx, `platform-held-${group.id}`, {
+      orderId: group.orderId,
+      role: "PLATFORM",
+      entryType: "PLATFORM_COMMISSION",
+      amount: platformFee,
+      reference: `platform-held-${group.id}`,
       metadata: { sellerGroupId: group.id, backfilled: true },
       context: options.context,
     });
@@ -274,25 +298,12 @@ export async function releaseSellerGroupPayoutInTx(
     });
   }
 
-  if (platformFee > 0) {
-    await createDoubleEntryLedger(tx, {
-      orderId: group.orderId,
-      fromWalletId: systemEscrowAccount.walletId,
-      toUserId: systemEscrowAccount.userId,
-      entryType: "PLATFORM_FEE",
-      amount: platformFee,
-      reference: `platform-ledger-fee-${group.id}`,
-      resolveToWallet: false,
-      context: options.context,
-    });
-  }
-
   await settlePendingPayoutTransaction(tx, {
     reference: `pending-seller-${group.id}`,
     walletUserId: group.sellerId,
     orderId: group.orderId,
     type: "SELLER_PAYOUT",
-    amount: sellerAmount > 0 ? sellerAmount : group.subtotal,
+    amount: sellerAmount,
     status: sellerAmount > 0 ? "SUCCESS" : "CANCELLED",
     description:
       sellerAmount > 0

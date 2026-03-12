@@ -3,9 +3,10 @@ import {
   DisputeResolution,
   DisputeStatus,
 } from "@/generated/prisma/client";
-import { FOOD_DISPUTE_WINDOW_MS } from "@/lib/payout/timing";
-
-const NON_FOOD_DISPUTE_WINDOW_MS = 48 * 60 * 60 * 1000;
+import {
+  FOOD_DISPUTE_WINDOW_MS,
+  GENERAL_DISPUTE_WINDOW_MS,
+} from "@/lib/payout/timing";
 
 const RETURN_REQUIRED_REASONS = new Set<DisputeReason>([
   "ITEM_DAMAGED",
@@ -44,7 +45,7 @@ export function getDisputePolicy(
   return {
     disputeWindowMs: isFoodOrder
       ? FOOD_DISPUTE_WINDOW_MS
-      : NON_FOOD_DISPUTE_WINDOW_MS,
+      : GENERAL_DISPUTE_WINDOW_MS,
     requiresReturn,
     lockRiderPayout: RIDER_PAYOUT_LOCK_REASONS.has(reason),
     allowedResolutions: isFoodOrder
