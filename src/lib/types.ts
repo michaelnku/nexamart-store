@@ -376,6 +376,7 @@ export type AdminDisputeDetailDTO = {
   } | null;
   evidence: DisputeEvidenceDTO[];
   messages: DisputeMessageDTO[];
+  sellerImpacts: DisputeSellerImpactDTO[];
   returnRequest?: ReturnRequestDTO | null;
   orderTimelines: OrderTrackTimelineDTO[];
   totalAmount: number;

@@ -52,7 +52,7 @@ const SellerLoginForm = () => {
   return (
     <main
       className="
-        min-h-full flex items-center justify-center px-4 py-6
+        min-h-full flex items-center justify-center px-4 py-10
         bg-gradient-to-br
         from-[var(--brand-blue-light)]/30
         via-white
@@ -211,4 +211,3 @@ const SellerLoginForm = () => {
 };
 
 export default SellerLoginForm;
-

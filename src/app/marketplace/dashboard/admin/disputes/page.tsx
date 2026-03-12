@@ -114,6 +114,13 @@ export default async function AdminDisputesPage() {
       message: item.message,
       createdAt: item.createdAt.toISOString(),
     })),
+    sellerImpacts: dispute.disputeSellerGroupImpacts.map((impact) => ({
+      id: impact.id,
+      sellerGroupId: impact.sellerGroupId,
+      refundAmount: impact.refundAmount,
+      sellerName: impact.sellerGroup.seller.name,
+      storeName: impact.sellerGroup.store.name,
+    })),
     returnRequest: dispute.returnRequest
       ? {
           id: dispute.returnRequest.id,
