@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +47,8 @@ type Props = {
   onSubmit: (input: SellerCancelOrderInput) => void;
 };
 
+type SellerCancelOrderFormValues = z.input<typeof sellerCancelOrderInputSchema>;
+
 export default function SellerCancelOrderDialog({
   open,
   onOpenChange,
@@ -54,7 +57,11 @@ export default function SellerCancelOrderDialog({
   isSubmitting,
   onSubmit,
 }: Props) {
-  const form = useForm<SellerCancelOrderInput>({
+  const form = useForm<
+    SellerCancelOrderFormValues,
+    unknown,
+    SellerCancelOrderInput
+  >({
     resolver: zodResolver(sellerCancelOrderInputSchema),
     defaultValues: {
       sellerGroupId: sellerGroupId ?? "",
