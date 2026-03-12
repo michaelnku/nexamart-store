@@ -127,7 +127,7 @@ export const removeFromCartAction = async (
   revalidatePath("/cart");
   const updatedItems = await getCartItems(userId);
 
-  return { success: true, items: updatedItems };
+  return { ok: true, items: updatedItems };
 };
 
 export const updateQuantityAction = async (

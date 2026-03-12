@@ -60,11 +60,11 @@ const AddToCartControl = ({
     if (qty <= 1) {
       startTransition(async () => {
         const res = await removeFromCartAction(productId, variantId);
-        if (res?.success) {
+        if (res?.ok) {
           useCartStore.getState().sync(res.items);
           toastCart.removed();
         }
-        if (res?.error) toastCart.error(res.error);
+        if (!res?.ok) toastCart.error();
       });
 
       return;

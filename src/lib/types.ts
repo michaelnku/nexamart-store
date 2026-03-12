@@ -618,9 +618,14 @@ export type WalletTransaction = {
   type: WalletTransactionType;
   amount: number;
   status: WalletTransactionStatus;
+  orderId?: string | null;
   reference?: string | null;
   description?: string | null;
+  source?: "transaction" | "pending-payout";
   createdAt: string | Date;
+  activityAt?: string | Date;
+  eligibleAt?: string | Date | null;
+  deliveredAt?: string | Date | null;
 };
 
 export type TransactionDTO = {

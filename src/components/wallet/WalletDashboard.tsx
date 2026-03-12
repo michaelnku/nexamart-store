@@ -63,6 +63,10 @@ function formatStatus(status: string) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function getTransactionDate(tx: WalletTransaction) {
+  return tx.activityAt ?? tx.createdAt;
+}
+
 function getWalletTransactionStatusLabel(tx: WalletTransaction) {
   const isPayout =
     tx.type === "SELLER_PAYOUT" || tx.type === "RIDER_PAYOUT";
@@ -112,7 +116,7 @@ function TransactionTable({
       <div className="space-y-3 p-4 sm:hidden">
         {transactions.map((tx) => {
           const isCredit = creditTypes.includes(tx.type);
-          const date = new Date(tx.createdAt).toLocaleString("en-US", {
+          const date = new Date(getTransactionDate(tx)).toLocaleString("en-US", {
             day: "2-digit",
             month: "short",
             year: "numeric",
@@ -171,7 +175,7 @@ function TransactionTable({
           <tbody>
             {transactions.map((tx) => {
               const isCredit = creditTypes.includes(tx.type);
-              const date = new Date(tx.createdAt).toLocaleString("en-US", {
+              const date = new Date(getTransactionDate(tx)).toLocaleString("en-US", {
                 day: "2-digit",
                 month: "short",
                 year: "numeric",

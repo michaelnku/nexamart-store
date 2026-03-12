@@ -11,6 +11,7 @@ import {
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { getOrCreateStripeCustomerForUser } from "@/lib/stripe/getOrCreateStripeCustomer";
+import { getUserTransactionHistory } from "@/lib/wallet/getUserTransactionHistory";
 
 const BUYER_WALLET_REVALIDATE_PATHS = [
   "/customer/wallet",
@@ -305,26 +306,30 @@ export const getSellerWalletAction = async () => {
   if (!userId) throw new Error("Unauthorized");
   if (user?.role !== "SELLER") return { error: "Forbidden" };
 
-  const wallet = await prisma.wallet.findUnique({
-    where: { userId: user.id },
-    include: {
-      withdrawals: true,
-      transactions: {
-        orderBy: { createdAt: "desc" },
-        take: 50,
+  const [wallet, transactions] = await Promise.all([
+    prisma.wallet.findUnique({
+      where: { userId: user.id },
+      include: {
+        withdrawals: true,
       },
-    },
-  });
+    }),
+    getUserTransactionHistory({
+      userId: user.id,
+      role: "seller",
+      limit: 50,
+    }),
+  ]);
 
   if (!wallet) {
     return {
+      id: undefined,
       balance: 0,
       pending: 0,
       totalEarnings: 0,
       currency: "USD",
       status: "ACTIVE" as WalletStatus,
       withdrawals: [],
-      transactions: [],
+      transactions,
     };
   }
 
@@ -342,13 +347,14 @@ export const getSellerWalletAction = async () => {
   ]);
 
   return {
+    id: wallet.id,
     balance,
     pending,
     totalEarnings: total._sum.amount ?? 0,
     currency: wallet.currency,
     status: wallet.status,
     withdrawals: wallet.withdrawals,
-    transactions: wallet.transactions,
+    transactions,
   };
 };
 
@@ -359,26 +365,30 @@ export const getRiderWalletAction = async () => {
   if (!userId) throw new Error("Unauthorized");
   if (user?.role !== "RIDER") return { error: "Forbidden" };
 
-  const wallet = await prisma.wallet.findUnique({
-    where: { userId: user.id },
-    include: {
-      withdrawals: true,
-      transactions: {
-        orderBy: { createdAt: "desc" },
-        take: 50,
+  const [wallet, transactions] = await Promise.all([
+    prisma.wallet.findUnique({
+      where: { userId: user.id },
+      include: {
+        withdrawals: true,
       },
-    },
-  });
+    }),
+    getUserTransactionHistory({
+      userId: user.id,
+      role: "rider",
+      limit: 50,
+    }),
+  ]);
 
   if (!wallet) {
     return {
+      id: undefined,
       balance: 0,
       pending: 0,
       totalEarnings: 0,
       currency: "USD",
       status: "ACTIVE" as WalletStatus,
       withdrawals: [],
-      transactions: [],
+      transactions,
     };
   }
 
@@ -396,12 +406,13 @@ export const getRiderWalletAction = async () => {
   ]);
 
   return {
+    id: wallet.id,
     balance,
     pending,
     totalEarnings: total._sum.amount ?? 0,
     currency: wallet.currency,
     status: wallet.status,
     withdrawals: wallet.withdrawals,
-    transactions: wallet.transactions,
+    transactions,
   };
 };
