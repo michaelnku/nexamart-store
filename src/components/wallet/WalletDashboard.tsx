@@ -56,6 +56,34 @@ function formatTxType(type: string) {
   return type.toLowerCase().replace(/_/g, " ");
 }
 
+function getWalletTransactionTypeLabel(tx: WalletTransaction) {
+  if (tx.type === "SELLER_PAYOUT") {
+    return tx.status === "PENDING"
+      ? "Revenue Earnings Queue"
+      : "Revenue Earnings";
+  }
+
+  if (tx.type === "RIDER_PAYOUT") {
+    return tx.status === "PENDING"
+      ? "Delivery Earnings Queue"
+      : "Delivery Earnings";
+  }
+
+  if (tx.type === "ORDER_PAYMENT") {
+    return "Order Payment";
+  }
+
+  if (tx.type === "WITHDRAWAL") {
+    return "Withdrawal";
+  }
+
+  if (tx.type === "DEPOSIT") {
+    return "Wallet Top Up";
+  }
+
+  return formatTxType(tx.type).replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function formatStatus(status: string) {
   return status
     .replaceAll("_", " ")
@@ -68,8 +96,7 @@ function getTransactionDate(tx: WalletTransaction) {
 }
 
 function getWalletTransactionStatusLabel(tx: WalletTransaction) {
-  const isPayout =
-    tx.type === "SELLER_PAYOUT" || tx.type === "RIDER_PAYOUT";
+  const isPayout = tx.type === "SELLER_PAYOUT" || tx.type === "RIDER_PAYOUT";
 
   if (tx.status === "PENDING" && isPayout) {
     return "Pending release";
@@ -116,13 +143,16 @@ function TransactionTable({
       <div className="space-y-3 p-4 sm:hidden">
         {transactions.map((tx) => {
           const isCredit = creditTypes.includes(tx.type);
-          const date = new Date(getTransactionDate(tx)).toLocaleString("en-US", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          });
+          const date = new Date(getTransactionDate(tx)).toLocaleString(
+            "en-US",
+            {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            },
+          );
 
           return (
             <div key={tx.id} className="rounded-xl border p-4">
@@ -143,8 +173,8 @@ function TransactionTable({
                 </span>
               </div>
               <div className="mt-3 flex items-end justify-between gap-3">
-                <p className="text-xs capitalize text-gray-500">
-                  {formatTxType(tx.type)}
+                <p className="text-xs text-gray-500">
+                  {getWalletTransactionTypeLabel(tx)}
                 </p>
                 <p
                   className={cn(
@@ -175,13 +205,16 @@ function TransactionTable({
           <tbody>
             {transactions.map((tx) => {
               const isCredit = creditTypes.includes(tx.type);
-              const date = new Date(getTransactionDate(tx)).toLocaleString("en-US", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              });
+              const date = new Date(getTransactionDate(tx)).toLocaleString(
+                "en-US",
+                {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                },
+              );
 
               return (
                 <tr key={tx.id} className="border-t">
@@ -189,8 +222,8 @@ function TransactionTable({
                   <td className="max-w-[260px] truncate p-3">
                     {tx.description ?? formatTxType(tx.type)}
                   </td>
-                  <td className="whitespace-nowrap p-3 capitalize">
-                    {formatTxType(tx.type)}
+                  <td className="whitespace-nowrap p-3 font-medium text-slate-700 dark:text-slate-200">
+                    {getWalletTransactionTypeLabel(tx)}
                   </td>
                   <td
                     className={cn(
@@ -295,7 +328,9 @@ function InactiveBuyerWalletState({
 
           <Card className="overflow-hidden border-white/15 bg-white/10 py-0 text-white shadow-none backdrop-blur">
             <CardHeader className="px-5 pt-5 sm:px-6 sm:pt-6">
-              <CardTitle className="text-lg sm:text-xl">Why activate now</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">
+                Why activate now
+              </CardTitle>
               <CardDescription className="text-sm leading-6 text-sky-50/75">
                 Activation prepares your wallet for live use without changing
                 ledger history.
