@@ -8,16 +8,30 @@ import { MessageStatus } from "./MessageStatus";
 type Props = {
   message: ChatMessage;
   viewerSenderType?: SenderType;
+  viewerUserId?: string | null;
 };
 
-export default function MessageBubble({ message, viewerSenderType }: Props) {
-  const selfType = viewerSenderType ?? "USER";
-  const isUser = message.senderType === selfType;
+function isOwnMessage(
+  message: ChatMessage,
+  viewerUserId?: string | null,
+  viewerSenderType?: SenderType,
+) {
+  if (viewerUserId && message.senderId) {
+    return message.senderId === viewerUserId;
+  }
+
+  return message.senderType === (viewerSenderType ?? "USER");
+}
+
+export default function MessageBubble({
+  message,
+  viewerSenderType,
+  viewerUserId,
+}: Props) {
+  const isUser = isOwnMessage(message, viewerUserId, viewerSenderType);
 
   return (
-    <div
-      className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}
-    >
+    <div className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
           "max-w-[75%] rounded-2xl px-4 py-2 text-sm leading-relaxed",
@@ -27,10 +41,8 @@ export default function MessageBubble({ message, viewerSenderType }: Props) {
             : "bg-muted text-foreground",
         )}
       >
-        {/* MESSAGE TEXT */}
         <p className="whitespace-pre-wrap break-words">{message.content}</p>
 
-        {/* META */}
         <div className="mt-1 flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
           <span>
             {new Date(message.createdAt).toLocaleTimeString([], {

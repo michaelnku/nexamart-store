@@ -42,6 +42,9 @@ export async function GET(req: NextRequest) {
 
   await scheduleSellerAnalyticsJob();
 
+  // UptimeRobot wakes this route every 5 minutes. The route itself does not
+  // execute payout logic directly; it wakes `processPendingJobs(...)`, and the
+  // queued workers handle delayed work such as payout release when due.
   const result = await processPendingJobs(20);
 
   return NextResponse.json({

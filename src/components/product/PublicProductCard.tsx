@@ -22,28 +22,31 @@ export default function PublicProductCard({
 }: Props) {
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
 
-  const cheapestVariant = useMemo(() => {
+  const preferredVariant = useMemo(() => {
     if (!product.variants?.length) return null;
-    return [...product.variants].sort((a, b) => a.priceUSD - b.priceUSD)[0];
+    const sortedVariants = [...product.variants].sort(
+      (a, b) => a.priceUSD - b.priceUSD,
+    );
+    return sortedVariants.find((variant) => variant.stock > 0) ?? sortedVariants[0];
   }, [product.variants]);
 
   const displayPriceUSD = useMemo(() => {
-    return cheapestVariant ? cheapestVariant.priceUSD : product.basePriceUSD;
-  }, [cheapestVariant, product.basePriceUSD]);
+    return preferredVariant ? preferredVariant.priceUSD : product.basePriceUSD;
+  }, [preferredVariant, product.basePriceUSD]);
 
   const displayOldPriceUSD = useMemo(() => {
-    if (!cheapestVariant) return null;
-    if (!cheapestVariant.discount || !(cheapestVariant.oldPriceUSD ?? 0))
+    if (!preferredVariant) return null;
+    if (!preferredVariant.discount || !(preferredVariant.oldPriceUSD ?? 0))
       return null;
-    return cheapestVariant.oldPriceUSD;
-  }, [cheapestVariant]);
+    return preferredVariant.oldPriceUSD;
+  }, [preferredVariant]);
 
   const discount = useMemo(() => {
-    if (!cheapestVariant) return null;
-    return cheapestVariant.discount && cheapestVariant.discount > 0
-      ? cheapestVariant.discount
+    if (!preferredVariant) return null;
+    return preferredVariant.discount && preferredVariant.discount > 0
+      ? preferredVariant.discount
       : null;
-  }, [cheapestVariant]);
+  }, [preferredVariant]);
 
   return (
     <div className="relative border rounded-xl bg-white dark:bg-neutral-900 shadow-sm hover:shadow-lg transition duration-300 group overflow-hidden">
@@ -103,7 +106,8 @@ export default function PublicProductCard({
 
         <AddToCartControl
           productId={product.id}
-          variantId={cheapestVariant?.id ?? null}
+          variantId={preferredVariant?.id ?? null}
+          availableStock={preferredVariant?.stock ?? 0}
         />
       </div>
     </div>

@@ -22,7 +22,7 @@ const Footer = () => {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.1 }}
       transition={{ duration: 0.6 }}
-      className="bg-[#0f172a] text-white mt-16"
+      className="bg-[#0f172a] text-white"
     >
       {/* ================= BRAND TRUST BAR ================= */}
       <div className="bg-gradient-to-r from-[#3c9ee0]/20 to-[#3c9ee0]/5 border-b border-white/10">

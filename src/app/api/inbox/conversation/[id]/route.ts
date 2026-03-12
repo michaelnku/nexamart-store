@@ -36,6 +36,7 @@ export async function GET(
     messages: conversation.messages.map((m) => ({
       id: m.id,
       conversationId: m.conversationId,
+      senderId: m.senderId ?? null,
       senderType: m.senderType,
       content: m.content,
       createdAt: m.createdAt.toISOString(),

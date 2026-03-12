@@ -1,23 +1,19 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-import {
-  updateProductSchema,
-  updateProductSchemaType,
-} from "@/lib/zodValidation";
-
-import { Category, FullProduct } from "@/lib/types";
-import { updateProductAction } from "@/actions/auth/product";
-import { UploadButton } from "@/utils/uploadthing";
-
+import { AlertCircle, Loader2, Plus, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { updateProductAction } from "@/actions/auth/product";
+import { deleteProductImageAction } from "@/actions/actions";
+import { PriceConverter } from "@/components/currency/PriceConverter";
+import FoodProductSection from "@/components/product/FoodProductSection";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -26,199 +22,180 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Loader2, Plus, Trash } from "lucide-react";
-import Image from "next/image";
-import { deleteProductImageAction } from "@/actions/actions";
-import { PriceConverter } from "@/components/currency/PriceConverter";
+import type { Category, FullProduct } from "@/lib/types";
+import { productSchema, type productSchemaType } from "@/lib/zodValidation";
+import { UploadButton } from "@/utils/uploadthing";
+
+import {
+  createEmptyVariant,
+  getCategoryLevels,
+  getProductFormDefaults,
+} from "./productFormHelpers";
 
 type UpdateProductProps = {
   initialData: FullProduct;
   categories: Category[];
+  storeType: "GENERAL" | "FOOD";
 };
 
-type TechnicalDetail = {
-  key: string;
-  value: string;
-};
-
-const UpdateProductForm = ({ initialData, categories }: UpdateProductProps) => {
+export default function UpdateProductForm({
+  initialData,
+  categories,
+  storeType,
+}: UpdateProductProps) {
   const router = useRouter();
+  const isFoodStore = storeType === "FOOD";
+  const topLevelCategories = useMemo(
+    () => categories.filter((category) => !category.parentId),
+    [categories],
+  );
+  const initialLevels = useMemo(
+    () => getCategoryLevels(categories, initialData.categoryId),
+    [categories, initialData.categoryId],
+  );
 
-  const topLevelCategories = categories.filter((c) => !c.parentId);
-  const [level1, setLevel1] = useState<string | null>(initialData.categoryId);
-  const [level2, setLevel2] = useState<string | null>(null);
-  const [level3, setLevel3] = useState<string | null>(null);
-
-  const childrenLevel1 = categories.filter((c) => c.parentId === level1);
-  const childrenLevel2 = categories.filter((c) => c.parentId === level2);
-
+  const [level1, setLevel1] = useState<string | null>(initialLevels.level1);
+  const [level2, setLevel2] = useState<string | null>(initialLevels.level2);
+  const [level3, setLevel3] = useState<string | null>(initialLevels.level3);
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
-
-  const [error, setError] = useState<string | undefined>();
+  const [error, setError] = useState<string>();
   const [uploading, setUploading] = useState(false);
-
   const [isPending, startTransition] = useTransition();
 
-  const categoryMap = useMemo(() => {
-    const map = new Map<string, Category>();
-    categories.forEach((c) => map.set(c.id, c));
-    return map;
-  }, [categories]);
-
-  useEffect(() => {
-    const leaf = categoryMap.get(initialData.categoryId);
-    if (!leaf) return;
-
-    const parent = leaf.parentId ? categoryMap.get(leaf.parentId) : null;
-
-    const grandParent = parent?.parentId
-      ? categoryMap.get(parent.parentId)
-      : null;
-
-    setLevel1(grandParent?.id ?? parent?.id ?? leaf.id);
-    setLevel2(parent && grandParent ? parent.id : null);
-    setLevel3(parent && grandParent ? leaf.id : null);
-  }, [initialData.categoryId, categoryMap]);
-
-  const generateSimpleSku = (name: string) => {
-    const id = Math.floor(100000 + Math.random() * 900000);
-    return `${name.slice(0, 3).toUpperCase()}-${id}`;
-  };
-
-  const generateVariantSku = (color?: string, size?: string) => {
-    const rand = Math.floor(100000 + Math.random() * 900000);
-    const c = (color || "NA").slice(0, 2).toUpperCase();
-    const s = (size || "NA").slice(0, 2).toUpperCase();
-    return `${c}-${s}-${rand}`;
-  };
-
-  const isKeyValueObject = (value: unknown): value is TechnicalDetail => {
-    if (typeof value !== "object" || value === null) return false;
-
-    return (
-      "key" in value &&
-      "value" in value &&
-      typeof (value as Record<string, unknown>).key === "string" &&
-      typeof (value as Record<string, unknown>).value === "string"
-    );
-  };
-
-  const normalizeTechnicalDetails = (input: unknown): TechnicalDetail[] => {
-    if (!input) return [];
-
-    if (Array.isArray(input)) {
-      return input.filter(isKeyValueObject);
-    }
-
-    if (isKeyValueObject(input)) {
-      return [input];
-    }
-
-    return [];
-  };
-
-  const form = useForm<updateProductSchemaType>({
-    resolver: zodResolver(updateProductSchema),
-    defaultValues: {
-      name: initialData.name,
-      brand: initialData.brand ?? "",
-      description: initialData.description,
-      specifications: initialData.specifications.join("\n"),
-      technicalDetails: normalizeTechnicalDetails(initialData.technicalDetails),
-      categoryId: initialData.categoryId,
-      images: initialData.images.map((img) => ({
-        url: img.imageUrl,
-        key: img.imageKey,
-      })),
-      variants: initialData.variants.map((v) => ({
-        color: v.color ?? "",
-        size: v.size ?? "",
-        priceUSD: v.priceUSD,
-        stock: v.stock,
-        sku: v.sku,
-        oldPriceUSD: v.oldPriceUSD ?? 0,
-        discount: v.discount ?? 0,
-      })),
-    },
+  const form = useForm<productSchemaType>({
+    resolver: zodResolver(productSchema),
+    defaultValues: getProductFormDefaults({
+      isFoodStore,
+      initialData,
+    }) as productSchemaType,
   });
 
-  const { control, handleSubmit, setValue, getValues } = form;
+  const { control, handleSubmit, setValue, getValues, watch } = form;
+  const childrenLevel1 = categories.filter((category) => category.parentId === level1);
+  const childrenLevel2 = categories.filter((category) => category.parentId === level2);
+  const watchedImages = watch("images");
 
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
+  const { fields, append, remove, replace } = useFieldArray({
+    control,
     name: "variants",
   });
-
   const {
-    fields: techFields,
-    append: appendTech,
-    remove: removeTech,
+    fields: technicalFields,
+    append: appendTechnicalDetail,
+    remove: removeTechnicalDetail,
   } = useFieldArray({
-    control: form.control,
+    control,
     name: "technicalDetails",
   });
 
   useEffect(() => {
-    const finalId = level3 || level2 || level1 || "";
-    setValue("categoryId", finalId);
+    setValue("categoryId", level3 || level2 || level1 || "");
   }, [level1, level2, level3, setValue]);
 
   useEffect(() => {
-    const name = getValues("name");
-    const variants = getValues("variants");
+    setValue("isFoodProduct", isFoodStore);
 
-    variants.forEach((v, index) => {
-      if (v.sku) return;
-
-      setValue(
-        `variants.${index}.sku`,
-        v.color || v.size
-          ? generateVariantSku(v.color, v.size)
-          : generateSimpleSku(name),
-      );
-    });
-  }, [getValues, setValue]);
-
-  const hasDuplicateSkus = (variants: { sku: string }[]) => {
-    const skus = variants.map((v) => v.sku.trim());
-    return new Set(skus).size !== skus.length;
-  };
-
-  const onSubmit = (values: updateProductSchemaType) => {
-    const variants = values.variants;
-
-    if (!variants || variants.length === 0) {
-      toast.error("At least one variant is required");
+    if (isFoodStore) {
+      const currentVariant = getValues("variants")[0] ?? createEmptyVariant(true);
+      replace([
+        {
+          ...currentVariant,
+          color: undefined,
+          size: undefined,
+        },
+      ]);
       return;
     }
 
-    if (hasDuplicateSkus(variants)) {
-      toast.error(
-        "Duplicate SKUs detected. Each variant must have a unique SKU.",
-      );
+    setValue("foodDetails", undefined);
+  }, [getValues, isFoodStore, replace, setValue]);
+
+  const generateSimpleSku = (name: string) => {
+    const prefix = (name || "PRD")
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .slice(0, 3)
+      .toUpperCase();
+    return `${prefix || "PRD"}-${Math.floor(100000 + Math.random() * 900000)}`;
+  };
+
+  const generateVariantSku = (color?: string, size?: string) => {
+    const rand = Math.floor(100000 + Math.random() * 900000);
+    const colorToken = (color || "NA").slice(0, 2).toUpperCase();
+    const sizeToken = (size || "NA").slice(0, 2).toUpperCase();
+    return `${colorToken}-${sizeToken}-${rand}`;
+  };
+
+  const hasDuplicateSkus = (variants: { sku: string }[]) => {
+    const skus = variants.map((variant) => variant.sku.trim());
+    return new Set(skus).size !== skus.length;
+  };
+
+  const onSubmit = (values: productSchemaType) => {
+    if (!values.categoryId) {
+      toast.error("Please select a category");
+      return;
+    }
+
+    if (!values.images.length) {
+      toast.error("Upload at least one product image");
       return;
     }
 
     if (uploading) {
-      toast.error("Wait for images to finish uploading");
+      toast.error("Wait for image uploads to finish");
+      return;
+    }
+
+    const normalizedValues: productSchemaType = {
+      ...values,
+      isFoodProduct: isFoodStore,
+      description: values.description.trim(),
+      brand: values.brand?.trim() || "",
+      foodDetails: isFoodStore ? values.foodDetails : undefined,
+      technicalDetails: isFoodStore ? [] : values.technicalDetails ?? [],
+      specifications: isFoodStore ? "" : (values.specifications ?? "").trim(),
+      variants: values.variants.map((variant) => ({
+        ...variant,
+        color: isFoodStore ? undefined : variant.color?.trim() || "",
+        size: isFoodStore ? undefined : variant.size?.trim() || "",
+        sku:
+          variant.sku?.trim() ||
+          (isFoodStore
+            ? generateSimpleSku(values.name)
+            : generateVariantSku(variant.color, variant.size)),
+      })),
+    };
+
+    if (!normalizedValues.variants.length) {
+      toast.error("At least one variant is required");
+      return;
+    }
+
+    if (isFoodStore && normalizedValues.variants.length !== 1) {
+      toast.error("Food products can only have one pricing option.");
+      return;
+    }
+
+    if (hasDuplicateSkus(normalizedValues.variants)) {
+      toast.error("Each variant must have a unique SKU.");
       return;
     }
 
     startTransition(async () => {
       try {
-        const res = await updateProductAction(initialData.id, values);
-        if (res?.error) {
-          setError(res.error);
-          toast.error(res.error);
+        const response = await updateProductAction(initialData.id, normalizedValues);
+        if (response?.error) {
+          setError(response.error);
+          toast.error(response.error);
           return;
         }
 
         toast.success("Product updated successfully");
         router.push("/marketplace/dashboard/seller/products");
       } catch {
-        toast.error("Something went wrong");
+        toast.error("Something went wrong while updating this product.");
       }
     });
   };
@@ -226,301 +203,332 @@ const UpdateProductForm = ({ initialData, categories }: UpdateProductProps) => {
   const deleteImage = async (key: string) => {
     if (deletingKeys.has(key)) return;
 
-    setDeletingKeys((prev) => new Set(prev).add(key));
-
+    setDeletingKeys((previous) => new Set(previous).add(key));
     try {
       await deleteProductImageAction(key);
-
       setValue(
         "images",
-        getValues("images").filter((img) => img.key !== key),
+        getValues("images").filter((image) => image.key !== key),
       );
-
       toast.success("Image deleted");
     } catch {
       toast.error("Failed to delete image");
     } finally {
-      setDeletingKeys((prev) => {
-        const next = new Set(prev);
+      setDeletingKeys((previous) => {
+        const next = new Set(previous);
         next.delete(key);
         return next;
       });
     }
   };
 
-  const watchedImages = form.watch("images");
-
   return (
-    <main className="flex justify-center dark:bg-neutral-950 min-h-screen">
-      <div className="w-full max-w-4xl border px-8 py-4 rounded-2xl shadow light:bg-white space-y-10">
-        <h1 className="text-3xl font-bold text-center text-[var(--brand-blue)]">
-          Update Product
-        </h1>
+    <main className="flex justify-center bg-neutral-50 px-3 py-4 dark:bg-neutral-950">
+      <div className="w-full max-w-5xl space-y-8 rounded-[28px] border bg-white p-4 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.35)] sm:p-6 lg:p-8 dark:bg-zinc-950">
+        <div className="rounded-[24px] bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_48%,#0f766e_100%)] p-6 text-white">
+          <h1 className="text-2xl font-semibold sm:text-3xl">Update Product</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100/85 sm:text-base">
+            {isFoodStore
+              ? "Keep menu information complete and service-ready with description, prep time, ingredients, and stock."
+              : "Maintain a polished product listing with accurate variants, specs, inventory, and images."}
+          </p>
+        </div>
 
-        {error && (
-          <Alert variant="destructive" className="border-red-500 text-red-600">
-            <AlertCircle />
+        {error ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
             <AlertTitle>{error}</AlertTitle>
           </Alert>
-        )}
+        ) : null}
 
         <Form {...form}>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-12">
-            {/* GENERAL INFO */}
-            <section className="space-y-5">
-              <h2 className="font-semibold text-xl border-b pb-1">
-                Product Information
-              </h2>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            <section className="space-y-6 rounded-[24px] border p-5 sm:p-6">
+              <h2 className="text-lg font-semibold">Product Information</h2>
 
               <FormField
-                control={form.control}
+                control={control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Product Name</FormLabel>
-                    <Input {...field} />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="brand"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Brand (optional)</FormLabel>
-                    <Input {...field} />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Product Detail</FormLabel>
-                    <Textarea {...field} rows={3} />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="specifications"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Specifications (one per line)</FormLabel>
-                    <Textarea
-                      rows={4}
-                      placeholder={`5000mAh battery
-6.5-inch AMOLED display
-Dual SIM`}
-                      {...field}
-                    />
-                  </FormItem>
-                )}
-              />
-
-              {/* TECHNICAL DETAILS */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Technical Details</h3>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => appendTech({ key: "", value: "" })}
-                  >
-                    <Plus className="w-4 h-4 mr-1" /> Add Detail
-                  </Button>
-                </div>
-
-                {techFields.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className="grid grid-cols-1 md:grid-cols-[2fr,3fr,auto] gap-3"
-                  >
-                    <FormField
-                      control={form.control}
-                      name={`technicalDetails.${index}.key`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Label</FormLabel>
-                          <Input
-                            {...field}
-                            placeholder="Processor / Material..."
-                          />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`technicalDetails.${index}.value`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Value</FormLabel>
-                          <Input
-                            {...field}
-                            placeholder="Snapdragon 720 / Stainless steel..."
-                          />
-                        </FormItem>
-                      )}
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => removeTech(index)}
-                      className="mt-5 text-red-500 hover:text-red-600"
-                    >
-                      <Trash className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {/* CATEGORY */}
-              <FormField
-                control={form.control}
-                name="categoryId"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <div className="space-y-3">
-                      {/* Level 1 */}
-                      <select
-                        className="border p-2 rounded-md w-full"
-                        value={level1 || ""}
-                        onChange={(e) => {
-                          setLevel1(e.target.value);
-                          setLevel2(null);
-                          setLevel3(null);
-                        }}
-                      >
-                        <option value="">Select Category</option>
-                        {topLevelCategories.map((cat) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </option>
-                        ))}
-                      </select>
-
-                      {/* Level 2 */}
-                      {childrenLevel1.length > 0 && (
-                        <select
-                          className="border p-2 rounded-md w-full"
-                          value={level2 || ""}
-                          onChange={(e) => {
-                            setLevel2(e.target.value);
-                            setLevel3(null);
-                          }}
-                        >
-                          <option value="">Select Subcategory</option>
-                          {childrenLevel1.map((cat) => (
-                            <option key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-
-                      {/* Level 3 */}
-                      {childrenLevel2.length > 0 && (
-                        <select
-                          className="border p-2 rounded-md w-full"
-                          value={level3 || ""}
-                          onChange={(e) => setLevel3(e.target.value)}
-                        >
-                          <option value="">Select Sub-Sub Category</option>
-                          {childrenLevel2.map((cat) => (
-                            <option key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
+                    <FormLabel>
+                      {isFoodStore ? "Menu Item Name" : "Product Name"}
+                    </FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={control}
+                name="brand"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {isFoodStore ? "Kitchen / Brand (optional)" : "Brand (optional)"}
+                    </FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {isFoodStore ? "Menu Description" : "Product Description"}
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        rows={isFoodStore ? 5 : 4}
+                        placeholder={
+                          isFoodStore
+                            ? "Describe taste, portion, preparation style, and serving appeal."
+                            : "Describe the product clearly."
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="space-y-4">
+                <select
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                  value={level1 ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value || null;
+                    setLevel1(value);
+                    setLevel2(null);
+                    setLevel3(null);
+                  }}
+                >
+                  <option value="">Select category</option>
+                  {topLevelCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+
+                {childrenLevel1.length > 0 ? (
+                  <select
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                    value={level2 ?? ""}
+                    onChange={(event) => {
+                      const value = event.target.value || null;
+                      setLevel2(value);
+                      setLevel3(null);
+                    }}
+                  >
+                    <option value="">Select subcategory</option>
+                    {childrenLevel1.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+
+                {childrenLevel2.length > 0 ? (
+                  <select
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                    value={level3 ?? ""}
+                    onChange={(event) => setLevel3(event.target.value || null)}
+                  >
+                    <option value="">Select sub-subcategory</option>
+                    {childrenLevel2.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+              </div>
             </section>
 
-            {/* VARIANTS */}
-            <section className="space-y-6">
-              <h2 className="font-semibold text-xl">Variants (Price in USD)</h2>
-              {fields.map((_, index) => (
-                <div key={index} className="border rounded-lg p-5 space-y-5">
-                  {fields.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => remove(index)}
-                      className="text-red-500"
-                    >
-                      <Trash />
-                    </button>
+            {!isFoodStore ? (
+              <section className="space-y-6 rounded-[24px] border p-5 sm:p-6">
+                <h2 className="text-lg font-semibold">Specifications and Technical Details</h2>
+
+                <FormField
+                  control={control}
+                  name="specifications"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Key Features (one per line)</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} rows={5} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
+                />
 
-                  <div className="grid md:grid-cols-2 gap-5">
-                    <FormField
-                      control={control}
-                      name={`variants.${index}.color`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Color</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                setValue(
-                                  `variants.${index}.sku`,
-                                  generateVariantSku(
-                                    e.target.value,
-                                    getValues(`variants.${index}.size`),
-                                  ),
-                                );
-                              }}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={control}
-                      name={`variants.${index}.size`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Size</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                setValue(
-                                  `variants.${index}.sku`,
-                                  generateVariantSku(
-                                    e.target.value,
-                                    getValues(`variants.${index}.size`),
-                                  ),
-                                );
-                              }}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-medium">Technical Details</h3>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => appendTechnicalDetail({ key: "", value: "" })}
+                    >
+                      <Plus className="mr-1 h-4 w-4" />
+                      Add Detail
+                    </Button>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-5">
-                    <PriceConverter
-                      onUSDChange={(usd) =>
-                        setValue(`variants.${index}.priceUSD`, usd)
-                      }
-                    />
+                  {technicalFields.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="grid gap-3 rounded-2xl border p-4 md:grid-cols-[1.2fr_1.6fr_auto]"
+                    >
+                      <FormField
+                        control={control}
+                        name={`technicalDetails.${index}.key`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Label</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
+                      <FormField
+                        control={control}
+                        name={`technicalDetails.${index}.value`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Value</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex items-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeTechnicalDetail(index)}
+                        >
+                          <Trash className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : (
+              <section className="space-y-4 rounded-[24px] border border-orange-200 bg-gradient-to-br from-orange-50 to-white p-5 sm:p-6">
+                <div>
+                  <h2 className="text-lg font-semibold">Food Details</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Keep menu information complete and restaurant-ready.
+                  </p>
+                </div>
+                <FoodProductSection control={control} />
+              </section>
+            )}
+
+            <section className="space-y-6 rounded-[24px] border p-5 sm:p-6">
+              <h2 className="text-lg font-semibold">
+                {isFoodStore ? "Pricing and Availability" : "Variants and Inventory"}
+              </h2>
+
+              {fields.map((field, index) => (
+                <div key={field.id} className="space-y-4 rounded-[22px] border bg-slate-50/70 p-4">
+                  {!isFoodStore && fields.length > 1 ? (
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(index)}
+                      >
+                        <Trash className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {!isFoodStore ? (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <FormField
+                        control={control}
+                        name={`variants.${index}.color`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Color</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                onChange={(event) => {
+                                  field.onChange(event);
+                                  setValue(
+                                    `variants.${index}.sku`,
+                                    generateVariantSku(
+                                      event.target.value,
+                                      getValues(`variants.${index}.size`),
+                                    ),
+                                  );
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={control}
+                        name={`variants.${index}.size`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Size</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                onChange={(event) => {
+                                  field.onChange(event);
+                                  setValue(
+                                    `variants.${index}.sku`,
+                                    generateVariantSku(
+                                      getValues(`variants.${index}.color`),
+                                      event.target.value,
+                                    ),
+                                  );
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  ) : null}
+
+                  <PriceConverter
+                    onUSDChange={(usd) => setValue(`variants.${index}.priceUSD`, usd)}
+                  />
+
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <FormField
                       control={control}
                       name={`variants.${index}.priceUSD`}
@@ -528,8 +536,15 @@ Dual SIM`}
                         <FormItem>
                           <FormLabel>Price (USD)</FormLabel>
                           <FormControl>
-                            <Input type="number" {...field} />
+                            <Input
+                              type="number"
+                              {...field}
+                              onChange={(event) =>
+                                field.onChange(Number(event.target.value))
+                              }
+                            />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -539,13 +554,13 @@ Dual SIM`}
                       name={`variants.${index}.stock`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Stock</FormLabel>
+                          <FormLabel>{isFoodStore ? "Available Portions" : "Stock"}</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
                               {...field}
-                              onChange={(e) =>
-                                field.onChange(Number(e.target.value))
+                              onChange={(event) =>
+                                field.onChange(Number(event.target.value))
                               }
                             />
                           </FormControl>
@@ -555,66 +570,26 @@ Dual SIM`}
                     />
                   </div>
 
-                  {/* OLD PRICE / DISCOUNT */}
-                  <div className="grid md:grid-cols-2 gap-5">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <FormField
                       control={control}
                       name={`variants.${index}.oldPriceUSD`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Old Price (Optional)</FormLabel>
+                          <FormLabel>Old Price (optional)</FormLabel>
                           <FormControl>
                             <Input
-                              className="focus-visible:ring-[var(--brand-blue)]"
                               type="number"
                               step={1}
                               {...field}
-                              onChange={(e) => {
-                                const old = Math.max(
-                                  0,
-                                  Math.round(Number(e.target.value || 0)),
-                                );
-                                field.onChange(old);
-
-                                const discount = Math.max(
-                                  0,
-                                  Math.round(
-                                    Number(
-                                      getValues(`variants.${index}.discount`) ||
-                                        0,
-                                    ),
-                                  ),
-                                );
-
-                                const price = Math.max(
-                                  0,
-                                  Math.round(
-                                    Number(
-                                      getValues(`variants.${index}.priceUSD`) ||
-                                        0,
-                                    ),
-                                  ),
-                                );
-
-                                if (old > 0 && discount > 0) {
-                                  const newPrice = old - (old * discount) / 100;
-                                  setValue(
-                                    `variants.${index}.priceUSD`,
-                                    Math.max(0, Math.round(newPrice)),
-                                  );
-                                }
-
-                                if (old > 0 && price > 0) {
-                                  const newDiscount =
-                                    ((old - price) / old) * 100;
-                                  setValue(
-                                    `variants.${index}.discount`,
-                                    Math.max(0, Math.round(newDiscount)),
-                                  );
-                                }
-                              }}
+                              onChange={(event) =>
+                                field.onChange(
+                                  Math.max(0, Math.round(Number(event.target.value || 0))),
+                                )
+                              }
                             />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -624,41 +599,20 @@ Dual SIM`}
                       name={`variants.${index}.discount`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Discount % (Optional)</FormLabel>
+                          <FormLabel>Discount % (optional)</FormLabel>
                           <FormControl>
                             <Input
-                              className="focus-visible:ring-[var(--brand-blue)]"
                               type="number"
                               step={1}
                               {...field}
-                              onChange={(e) => {
-                                const discount = Math.max(
-                                  0,
-                                  Math.round(Number(e.target.value || 0)),
-                                );
-                                field.onChange(discount);
-
-                                const old = Math.max(
-                                  0,
-                                  Math.round(
-                                    Number(
-                                      getValues(
-                                        `variants.${index}.oldPriceUSD`,
-                                      ) || 0,
-                                    ),
-                                  ),
-                                );
-
-                                if (old > 0 && discount > 0) {
-                                  const newPrice = old - (old * discount) / 100;
-                                  setValue(
-                                    `variants.${index}.priceUSD`,
-                                    Math.max(0, Math.round(newPrice)),
-                                  );
-                                }
-                              }}
+                              onChange={(event) =>
+                                field.onChange(
+                                  Math.max(0, Math.round(Number(event.target.value || 0))),
+                                )
+                              }
                             />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -673,83 +627,75 @@ Dual SIM`}
                         <FormControl>
                           <Input disabled {...field} />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
               ))}
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  append({
-                    color: "",
-                    size: "",
-                    priceUSD: 0,
-                    stock: 0,
-                    sku: "",
-                  })
-                }
-              >
-                <Plus className="mr-2 h-4 w-4" /> Add Variant
-              </Button>
+              {!isFoodStore ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => append(createEmptyVariant(false))}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Variant
+                </Button>
+              ) : null}
             </section>
 
-            {/* IMAGES */}
-            <section className="space-y-5">
-              <h2 className="font-semibold text-xl">Product Images</h2>
+            <section className="space-y-6 rounded-[24px] border p-5 sm:p-6">
+              <h2 className="text-lg font-semibold">Product Images</h2>
+
               <UploadButton
                 endpoint="productImages"
                 onUploadBegin={() => setUploading(true)}
-                onClientUploadComplete={(res) => {
+                onClientUploadComplete={(response) => {
                   setUploading(false);
-
-                  const uploaded = res.map((f) => ({
-                    url: f.url,
-                    key: f.key,
+                  const uploadedImages = response.map((file) => ({
+                    url: file.url,
+                    key: file.key,
                   }));
 
-                  setValue("images", [
-                    ...(getValues("images") ?? []),
-                    ...uploaded,
-                  ]);
-
+                  setValue("images", [...(getValues("images") ?? []), ...uploadedImages]);
                   toast.success("Images uploaded");
                 }}
-                className="ut-button:bg-[var(--brand-blue)] ut-button:text-white ut-button:rounded-lg"
+                onUploadError={() => {
+                  setUploading(false);
+                  toast.error("Image upload failed");
+                }}
+                className="ut-button:rounded-full ut-button:border ut-button:border-sky-400/30 ut-button:bg-[var(--brand-blue)] ut-button:px-6 ut-button:py-2 ut-button:text-sm ut-button:text-white"
               />
 
-              {/* IMAGE PREVIEW */}
-              <div className="flex flex-wrap gap-4">
-                {watchedImages?.map((img) => {
-                  const isDeleting = deletingKeys.has(img.key);
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {watchedImages?.map((image) => {
+                  const isDeleting = deletingKeys.has(image.key);
 
                   return (
                     <div
-                      key={img.key}
-                      className="relative w-40 h-40 rounded-lg overflow-hidden border"
+                      key={image.key}
+                      className="relative aspect-square overflow-hidden rounded-2xl border"
                     >
                       <button
                         type="button"
-                        onClick={() => deleteImage(img.key)}
+                        onClick={() => deleteImage(image.key)}
                         disabled={isDeleting}
-                        className="absolute top-2 right-2 z-10 bg-red-600 text-white p-1 rounded-full disabled:opacity-60"
+                        className="absolute right-2 top-2 z-10 rounded-full bg-red-600 p-1.5 text-white disabled:opacity-60"
                       >
                         {isDeleting ? (
-                          <Loader2 className="animate-spin w-4 h-4" />
+                          <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <Trash className="w-4 h-4" />
+                          <Trash className="h-4 w-4" />
                         )}
                       </button>
 
                       <Image
-                        src={img.url}
-                        alt="product image"
+                        src={image.url}
+                        alt="Product image"
                         fill
-                        className={`object-cover transition ${
-                          isDeleting ? "opacity-50" : ""
-                        }`}
+                        className={`object-cover transition ${isDeleting ? "opacity-50" : ""}`}
                       />
                     </div>
                   );
@@ -757,16 +703,16 @@ Dual SIM`}
               </div>
             </section>
 
-            {/* SUBMIT */}
             <Button
               type="submit"
-              disabled={isPending}
-              className="w-full text-lg py-3 rounded-xl font-semibold
-              bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white 
-              shadow-md disabled:opacity-60"
+              disabled={isPending || uploading}
+              className="w-full rounded-2xl py-6 text-base font-semibold"
             >
               {isPending ? (
-                <Loader2 className="animate-spin mr-2" />
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Updating product...
+                </>
               ) : (
                 "Update Product"
               )}
@@ -776,6 +722,4 @@ Dual SIM`}
       </div>
     </main>
   );
-};
-
-export default UpdateProductForm;
+}

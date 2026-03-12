@@ -1,10 +1,10 @@
 import { updateRiderOperationsModule } from "@/actions/settings/riderModules";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { getCurrentRiderProfile } from "@/lib/settings/getCurrentRiderProfile";
 import Link from "next/link";
+import SubmitOperationsButton from "./SubmitOperationsButton";
 
 export default async function RiderOperationsSettingsPage() {
   const profile = await getCurrentRiderProfile();
@@ -56,9 +56,7 @@ export default async function RiderOperationsSettingsPage() {
             />
           </div>
 
-          <Button type="submit" disabled={!profile?.isVerified}>
-            Save Operations
-          </Button>
+          <SubmitOperationsButton disabled={!profile?.isVerified} />
         </form>
 
         <div className="mt-4">

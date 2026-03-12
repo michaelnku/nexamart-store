@@ -2,299 +2,533 @@
 
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
+import {
+  applyRefundImpactToSellerGroups,
+  createAdminNotifications,
+  createDisputeTimelineAndNotification,
+  creditBuyerRefundInTx,
+  ensureActiveDispute,
+  ensureDisputeCanBeOpened,
+  getDisputeRefundCeiling,
+  getOrderDisputeContext,
+  isWholeOrderDispute,
+  normalizeSellerGroupRefundImpacts,
+  openReturnRequestInTx,
+  replaceDisputeSellerGroupImpacts,
+  resolveImpactedSellerGroupIds,
+  setDisputePayoutLocks,
+  type OrderDisputeContext,
+  type SellerGroupImpactInput,
+} from "@/lib/disputes/disputeService";
+import {
+  getDisputePolicy,
+  isResolutionAllowed,
+  normalizeDisputeResolution,
+  parseDisputeReason,
+} from "@/lib/disputes/policy";
 import { releaseEscrowPayoutInTx } from "@/lib/payout/releaseEscrowPayout";
-import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
-import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
-import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 
-const FOOD_DISPUTE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const PRODUCT_DISPUTE_WINDOW_MS = 48 * 60 * 60 * 1000; // 48 hours
+function buildFullRefundImpactMap(
+  order: OrderDisputeContext,
+  impactedGroupIds: string[],
+): Map<string, number> {
+  const groups = order.sellerGroups.filter((group) => impactedGroupIds.includes(group.id));
 
-type Resolution = "REFUND_BUYER" | "RELEASE_SELLER" | "PARTIAL_REFUND";
+  return new Map(
+    groups.map((group) => [
+      group.id,
+      Number((group.subtotal + Math.max(0, group.shippingFee)).toFixed(2)),
+    ]),
+  );
+}
 
-export async function raiseOrderDisputeAction(orderId: string, reason: string) {
+export async function raiseOrderDisputeAction(
+  orderId: string,
+  reasonInput: string,
+  description?: string,
+  sellerGroupIds?: string[],
+) {
   const userId = await CurrentUserId();
-  if (!userId) throw new Error("Unauthorized");
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
 
-  const cleanReason = reason.trim();
-  if (!cleanReason) throw new Error("Dispute reason is required");
+  const parsedReason = parseDisputeReason(reasonInput);
+  const reason = parsedReason ?? "OTHER";
+  const cleanDescription =
+    (description ?? (parsedReason ? "" : reasonInput)).trim() || null;
 
   return prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({
-      where: { id: orderId },
-      include: {
-        dispute: true,
-        sellerGroups: { select: { id: true } },
-        delivery: { select: { deliveredAt: true } },
-      },
-    });
+    const order = await getOrderDisputeContext(tx, orderId);
 
-    if (!order) throw new Error("Order not found");
-    if (order.userId !== userId) throw new Error("Forbidden");
-    if (order.status !== "DELIVERED")
-      throw new Error("Order must be delivered");
-    if (order.dispute) throw new Error("Dispute already exists");
-    if (!order.delivery?.deliveredAt)
-      throw new Error("Missing delivery timestamp");
-
-    const now = new Date();
-
-    const disputeWindow = order.isFoodOrder
-      ? FOOD_DISPUTE_WINDOW_MS
-      : PRODUCT_DISPUTE_WINDOW_MS;
-
-    if (now.getTime() > order.delivery.deliveredAt.getTime() + disputeWindow) {
-      throw new Error("Dispute window expired");
+    if (!order) {
+      throw new Error("Order not found");
     }
+
+    ensureDisputeCanBeOpened(order, userId, reason);
+
+    const impactedGroupIds = resolveImpactedSellerGroupIds(order, sellerGroupIds);
+    const policy = getDisputePolicy(order.isFoodOrder, reason);
 
     const dispute = await tx.dispute.create({
       data: {
         orderId,
         openedById: userId,
-        reason: "OTHER",
-        description: cleanReason,
+        reason,
+        description: cleanDescription,
         status: "OPEN",
       },
+    });
+
+    await replaceDisputeSellerGroupImpacts(tx, dispute.id, impactedGroupIds);
+
+    await setDisputePayoutLocks(tx, {
+      orderId,
+      sellerGroupIds: impactedGroupIds,
+      locked: true,
+      lockRider: policy.lockRiderPayout,
     });
 
     await tx.order.update({
       where: { id: orderId },
       data: {
+        status: "DISPUTED",
         disputeId: dispute.id,
-        status: "DISPUTED",
       },
     });
 
-    await tx.orderSellerGroup.updateMany({
-      where: { orderId },
-      data: { payoutLocked: true },
+    await createDisputeTimelineAndNotification(tx, {
+      orderId,
+      userId,
+      title: "Dispute opened",
+      message: "Your dispute has been opened and is now under review.",
+      status: "DISPUTED",
     });
 
-    await tx.delivery.updateMany({
-      where: { orderId },
-      data: { payoutLocked: true },
-    });
+    await createAdminNotifications(
+      tx,
+      "New dispute",
+      `A new dispute was opened for order ${orderId}.`,
+    );
 
-    await tx.orderTimeline.create({
-      data: {
-        orderId,
-        status: "DISPUTED",
-        message: "Customer opened dispute",
-      },
-    });
+    return { success: true, disputeId: dispute.id };
+  });
+}
 
-    const admins = await tx.user.findMany({
-      where: { role: "ADMIN" },
-      select: { id: true },
-    });
+function ensureAdmin(role: string | null, adminId: string | null): asserts adminId is string {
+  if (role !== "ADMIN" || !adminId) {
+    throw new Error("Forbidden");
+  }
+}
 
-    if (admins.length > 0) {
-      await tx.notification.createMany({
-        data: admins.map((admin) => ({
-          userId: admin.id,
-          title: "New Dispute",
-          message: `Dispute opened for order ${orderId}`,
-        })),
-      });
+export async function resolveOrderDisputeAction(
+  orderId: string,
+  resolutionInput: string,
+  refundAmount?: number,
+  sellerGroupImpacts?: SellerGroupImpactInput[],
+) {
+  const [role, adminId] = await Promise.all([CurrentRole(), CurrentUserId()]);
+  ensureAdmin(role, adminId);
+
+  const resolution = normalizeDisputeResolution(resolutionInput);
+
+  return prisma.$transaction(async (tx) => {
+    const order = await getOrderDisputeContext(tx, orderId);
+
+    if (!order) {
+      throw new Error("Order not found");
     }
+
+    const activeDispute = ensureActiveDispute(order);
+    const policy = getDisputePolicy(order.isFoodOrder, activeDispute.reason);
+
+    if (!isResolutionAllowed(policy, resolution)) {
+      throw new Error("Resolution is not allowed for this dispute");
+    }
+
+    const impactedGroupIds = activeDispute.disputeSellerGroupImpacts.length
+      ? activeDispute.disputeSellerGroupImpacts.map((impact) => impact.sellerGroupId)
+      : order.sellerGroups.map((group) => group.id);
+
+    if (resolution === "RETURN_AND_REFUND") {
+      if (!policy.requiresReturn) {
+        throw new Error("This dispute does not require a return flow");
+      }
+
+      await openReturnRequestInTx(tx, activeDispute.id);
+
+      await tx.dispute.update({
+        where: { id: activeDispute.id },
+        data: {
+          status: "WAITING_FOR_RETURN",
+          resolution: "RETURN_AND_REFUND",
+          resolvedById: adminId,
+        },
+      });
+
+      await tx.order.update({
+        where: { id: orderId },
+        data: { status: "RETURN_REQUESTED" },
+      });
+
+      await createDisputeTimelineAndNotification(tx, {
+        orderId,
+        userId: order.userId,
+        title: "Return requested",
+        message:
+          "Return instructions have been issued. Refund will be processed after the return is confirmed.",
+        status: "RETURN_REQUESTED",
+      });
+
+      return { success: true, nextStep: "RETURN_REQUESTED" };
+    }
+
+    if (policy.requiresReturn) {
+      throw new Error("This dispute requires a return flow before refund resolution");
+    }
+
+    if (resolution === "RELEASE_TO_SELLER") {
+      await setDisputePayoutLocks(tx, {
+        orderId,
+        sellerGroupIds: impactedGroupIds,
+        locked: false,
+        lockRider: policy.lockRiderPayout,
+      });
+
+      const payoutResult = await releaseEscrowPayoutInTx(tx, orderId, {
+        allowDisputedOrder: true,
+      });
+
+      if ("skipped" in payoutResult && payoutResult.reason !== "PAYOUT_ALREADY_RELEASED") {
+        throw new Error(`Unable to release seller payout: ${payoutResult.reason}`);
+      }
+
+      await tx.dispute.update({
+        where: { id: activeDispute.id },
+        data: {
+          status: "RESOLVED",
+          resolution: "RELEASE_TO_SELLER",
+          resolvedById: adminId,
+          refundAmount: null,
+        },
+      });
+
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: "COMPLETED",
+          disputeId: null,
+        },
+      });
+
+      await createDisputeTimelineAndNotification(tx, {
+        orderId,
+        userId: order.userId,
+        title: "Dispute resolved",
+        message: "The dispute was resolved in favor of the seller.",
+        status: "COMPLETED",
+      });
+
+      return { success: true, nextStep: "COMPLETED" };
+    }
+
+    if (resolution === "REFUND_BUYER") {
+      const refundCeiling = getDisputeRefundCeiling(order, impactedGroupIds);
+      const finalRefundAmount = isWholeOrderDispute(order, impactedGroupIds)
+        ? order.totalAmount
+        : refundCeiling;
+
+      await creditBuyerRefundInTx(tx, {
+        disputeId: activeDispute.id,
+        orderId,
+        buyerUserId: order.userId,
+        amount: finalRefundAmount,
+        referenceSuffix: "full",
+      });
+
+      const fullImpactMap = buildFullRefundImpactMap(order, impactedGroupIds);
+
+      await replaceDisputeSellerGroupImpacts(tx, activeDispute.id, impactedGroupIds, fullImpactMap);
+      await applyRefundImpactToSellerGroups(tx, order, fullImpactMap);
+
+      await tx.dispute.update({
+        where: { id: activeDispute.id },
+        data: {
+          status: "RESOLVED",
+          resolution: "REFUND_BUYER",
+          refundAmount: finalRefundAmount,
+          resolvedById: adminId,
+        },
+      });
+
+      const wholeOrder = isWholeOrderDispute(order, impactedGroupIds);
+
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: wholeOrder ? "REFUNDED" : "COMPLETED",
+          disputeId: null,
+        },
+      });
+
+      if (!wholeOrder) {
+        const payoutResult = await releaseEscrowPayoutInTx(tx, orderId, {
+          allowDisputedOrder: true,
+        });
+
+        if ("skipped" in payoutResult && payoutResult.reason !== "PAYOUT_ALREADY_RELEASED") {
+          throw new Error(`Unable to release remaining seller payout: ${payoutResult.reason}`);
+        }
+      }
+
+      await createDisputeTimelineAndNotification(tx, {
+        orderId,
+        userId: order.userId,
+        title: "Refund issued",
+        message: wholeOrder
+          ? "Your dispute was resolved and a full refund has been issued."
+          : "Your dispute was resolved and the affected items were refunded.",
+        status: wholeOrder ? "REFUNDED" : "COMPLETED",
+      });
+
+      return { success: true, nextStep: wholeOrder ? "REFUNDED" : "COMPLETED" };
+    }
+
+    if (resolution === "PARTIAL_REFUND") {
+      if (!refundAmount) {
+        throw new Error("Partial refund amount is required");
+      }
+
+      const refundCeiling = getDisputeRefundCeiling(order, impactedGroupIds);
+
+      if (refundAmount > refundCeiling) {
+        throw new Error("Partial refund exceeds the refundable amount");
+      }
+
+      const impactMap = normalizeSellerGroupRefundImpacts(
+        order,
+        refundAmount,
+        sellerGroupImpacts,
+      );
+
+      await replaceDisputeSellerGroupImpacts(tx, activeDispute.id, impactedGroupIds, impactMap);
+
+      await creditBuyerRefundInTx(tx, {
+        disputeId: activeDispute.id,
+        orderId,
+        buyerUserId: order.userId,
+        amount: refundAmount,
+        referenceSuffix: "partial",
+      });
+
+      const fullyRefundedGroupIds = await applyRefundImpactToSellerGroups(
+        tx,
+        order,
+        impactMap,
+      );
+
+      const releasableGroupIds = impactedGroupIds.filter(
+        (groupId) => !fullyRefundedGroupIds.includes(groupId),
+      );
+
+      if (releasableGroupIds.length > 0) {
+        await tx.orderSellerGroup.updateMany({
+          where: { id: { in: releasableGroupIds } },
+          data: { payoutLocked: false },
+        });
+      }
+
+      if (policy.lockRiderPayout) {
+        await tx.delivery.updateMany({
+          where: { orderId },
+          data: { payoutLocked: false },
+        });
+      }
+
+      const payoutResult = await releaseEscrowPayoutInTx(tx, orderId, {
+        allowDisputedOrder: true,
+      });
+
+      if ("skipped" in payoutResult && payoutResult.reason !== "PAYOUT_ALREADY_RELEASED") {
+        throw new Error(`Unable to release adjusted seller payout: ${payoutResult.reason}`);
+      }
+
+      await tx.dispute.update({
+        where: { id: activeDispute.id },
+        data: {
+          status: "RESOLVED",
+          resolution: "PARTIAL_REFUND",
+          refundAmount,
+          resolvedById: adminId,
+        },
+      });
+
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: "COMPLETED",
+          disputeId: null,
+        },
+      });
+
+      await createDisputeTimelineAndNotification(tx, {
+        orderId,
+        userId: order.userId,
+        title: "Partial refund issued",
+        message: "Your dispute was resolved and a partial refund has been issued.",
+        status: "COMPLETED",
+      });
+
+      return { success: true, nextStep: "COMPLETED" };
+    }
+
+    throw new Error("Unsupported dispute resolution");
+  });
+}
+
+export async function markReturnShippedAction(
+  orderId: string,
+  trackingNumber: string,
+  carrier?: string,
+) {
+  const userId = await CurrentUserId();
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+
+  const cleanTrackingNumber = trackingNumber.trim();
+  if (!cleanTrackingNumber) {
+    throw new Error("Tracking number is required");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const order = await getOrderDisputeContext(tx, orderId);
+
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    if (order.userId !== userId) {
+      throw new Error("Forbidden");
+    }
+
+    const activeDispute = ensureActiveDispute(order);
+
+    if (
+      activeDispute.status !== "WAITING_FOR_RETURN" ||
+      !activeDispute.returnRequest
+    ) {
+      throw new Error("Return request is not active");
+    }
+
+    await tx.returnRequest.update({
+      where: { disputeId: activeDispute.id },
+      data: {
+        status: "SHIPPED",
+        trackingNumber: cleanTrackingNumber,
+        carrier: carrier?.trim() || null,
+        shippedAt: new Date(),
+      },
+    });
+
+    await tx.dispute.update({
+      where: { id: activeDispute.id },
+      data: { status: "WAITING_FOR_RETURN" },
+    });
+
+    await createDisputeTimelineAndNotification(tx, {
+      orderId,
+      userId,
+      title: "Return shipped",
+      message: "Your return shipment details were submitted successfully.",
+      status: "RETURN_REQUESTED",
+    });
 
     return { success: true };
   });
 }
 
-export async function resolveOrderDisputeAction(
-  orderId: string,
-  resolution: Resolution,
-  partialAmount?: number,
-) {
-  const role = await CurrentRole();
-  if (role !== "ADMIN") throw new Error("Forbidden");
-
-  const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
+export async function confirmReturnReceivedAction(orderId: string) {
+  const [role, adminId] = await Promise.all([CurrentRole(), CurrentUserId()]);
+  ensureAdmin(role, adminId);
 
   return prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({
-      where: { id: orderId },
-      include: {
-        dispute: true,
-        sellerGroups: true,
+    const order = await getOrderDisputeContext(tx, orderId);
+
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    const activeDispute = ensureActiveDispute(order);
+
+    if (
+      activeDispute.status !== "WAITING_FOR_RETURN" ||
+      activeDispute.resolution !== "RETURN_AND_REFUND" ||
+      !activeDispute.returnRequest
+    ) {
+      throw new Error("Return flow is not active for this dispute");
+    }
+
+    if (activeDispute.returnRequest.status !== "SHIPPED") {
+      throw new Error("Return must be marked as shipped before confirmation");
+    }
+
+    const impactedGroupIds = activeDispute.disputeSellerGroupImpacts.length
+      ? activeDispute.disputeSellerGroupImpacts.map((impact) => impact.sellerGroupId)
+      : order.sellerGroups.map((group) => group.id);
+
+    const refundAmount = getDisputeRefundCeiling(order, impactedGroupIds);
+    const impactMap = buildFullRefundImpactMap(order, impactedGroupIds);
+
+    await replaceDisputeSellerGroupImpacts(tx, activeDispute.id, impactedGroupIds, impactMap);
+    await creditBuyerRefundInTx(tx, {
+      disputeId: activeDispute.id,
+      orderId,
+      buyerUserId: order.userId,
+      amount: refundAmount,
+      referenceSuffix: "return",
+    });
+
+    await applyRefundImpactToSellerGroups(tx, order, impactMap);
+
+    await tx.returnRequest.update({
+      where: { disputeId: activeDispute.id },
+      data: {
+        status: "RECEIVED",
+        receivedAt: new Date(),
       },
     });
 
-    if (!order) throw new Error("Order not found");
-    if (!order.dispute) throw new Error("No active dispute");
-
-    const buyerWallet = await tx.wallet.upsert({
-      where: { userId: order.userId },
-      update: {},
-      create: { userId: order.userId },
-      select: { id: true },
+    await tx.dispute.update({
+      where: { id: activeDispute.id },
+      data: {
+        status: "RESOLVED",
+        resolution: "RETURN_AND_REFUND",
+        refundAmount,
+        resolvedById: adminId,
+      },
     });
 
-    if (resolution === "RELEASE_SELLER") {
-      await tx.orderSellerGroup.updateMany({
-        where: { orderId },
-        data: { payoutLocked: false },
-      });
+    const wholeOrder = isWholeOrderDispute(order, impactedGroupIds);
 
-      await tx.delivery.updateMany({
-        where: { orderId },
-        data: { payoutLocked: false },
-      });
+    await tx.order.update({
+      where: { id: orderId },
+      data: {
+        status: wholeOrder ? "REFUNDED" : "COMPLETED",
+        disputeId: null,
+      },
+    });
 
-      const released = await releaseEscrowPayoutInTx(tx, orderId, {
-        allowDisputedOrder: true,
-      });
+    await createDisputeTimelineAndNotification(tx, {
+      orderId,
+      userId: order.userId,
+      title: "Return confirmed",
+      message: wholeOrder
+        ? "Return confirmed and refund issued."
+        : "Returned items were confirmed and the refund was issued.",
+      status: wholeOrder ? "REFUNDED" : "COMPLETED",
+    });
 
-      if (
-        "skipped" in released &&
-        released.reason !== "PAYOUT_ALREADY_RELEASED"
-      ) {
-        throw new Error(`Unable to release payout: ${released.reason}`);
-      }
-
-      await tx.dispute.update({
-        where: { id: order.dispute.id },
-        data: {
-          status: "RESOLVED",
-          resolution: "RELEASE_TO_SELLER",
-        },
-      });
-
-      await tx.order.update({
-        where: { id: orderId },
-        data: {
-          status: "COMPLETED",
-          disputeId: null,
-        },
-      });
-
-      return { success: true };
-    }
-
-    if (resolution === "REFUND_BUYER") {
-      const amount = order.totalAmount;
-
-      await createEscrowEntryIdempotent(tx, {
-        orderId,
-        userId: order.userId,
-        role: "BUYER",
-        entryType: "REFUND",
-        amount,
-        status: "RELEASED",
-        reference: `refund-${orderId}`,
-      });
-
-      await createDoubleEntryLedger(tx, {
-        orderId,
-        fromWalletId: systemEscrowAccount.walletId,
-        toUserId: order.userId,
-        toWalletId: buyerWallet.id,
-        entryType: "REFUND",
-        amount,
-        reference: `ledger-refund-${orderId}`,
-      });
-
-      await tx.transaction.create({
-        data: {
-          walletId: buyerWallet.id,
-          userId: order.userId,
-          orderId,
-          type: "REFUND",
-          amount,
-          status: "SUCCESS",
-        },
-      });
-
-      await tx.orderSellerGroup.updateMany({
-        where: { orderId },
-        data: {
-          payoutStatus: "CANCELLED",
-          payoutLocked: true,
-        },
-      });
-
-      await tx.dispute.update({
-        where: { id: order.dispute.id },
-        data: {
-          status: "RESOLVED",
-          resolution: "REFUND_BUYER",
-          refundAmount: amount,
-        },
-      });
-
-      await tx.order.update({
-        where: { id: orderId },
-        data: {
-          status: "REFUNDED",
-          disputeId: null,
-        },
-      });
-
-      return { success: true };
-    }
-
-    if (resolution === "PARTIAL_REFUND") {
-      if (!partialAmount || partialAmount <= 0)
-        throw new Error("Invalid partial amount");
-
-      if (partialAmount > order.totalAmount)
-        throw new Error("Partial exceeds order");
-
-      await createEscrowEntryIdempotent(tx, {
-        orderId,
-        userId: order.userId,
-        role: "BUYER",
-        entryType: "REFUND",
-        amount: partialAmount,
-        status: "RELEASED",
-        reference: `partial-${orderId}`,
-      });
-
-      await createDoubleEntryLedger(tx, {
-        orderId,
-        fromWalletId: systemEscrowAccount.walletId,
-        toUserId: order.userId,
-        toWalletId: buyerWallet.id,
-        entryType: "REFUND",
-        amount: partialAmount,
-        reference: `ledger-partial-${orderId}`,
-      });
-
-      await tx.orderSellerGroup.updateMany({
-        where: { orderId },
-        data: { payoutLocked: false },
-      });
-
-      await tx.delivery.updateMany({
-        where: { orderId },
-        data: { payoutLocked: false },
-      });
-
-      await releaseEscrowPayoutInTx(tx, orderId, {
-        allowDisputedOrder: true,
-      });
-
-      await tx.dispute.update({
-        where: { id: order.dispute.id },
-        data: {
-          status: "RESOLVED",
-          resolution: "PARTIAL_REFUND",
-          refundAmount: partialAmount,
-        },
-      });
-
-      await tx.order.update({
-        where: { id: orderId },
-        data: {
-          status: "COMPLETED",
-          disputeId: null,
-        },
-      });
-
-      return { success: true };
-    }
-
-    throw new Error("Invalid resolution");
+    return { success: true, nextStep: wholeOrder ? "REFUNDED" : "COMPLETED" };
   });
 }

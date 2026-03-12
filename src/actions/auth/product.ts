@@ -152,11 +152,46 @@ export const updateProductAction = async (
 
   const existing = await prisma.product.findFirst({
     where: { id: productId, store: { userId: user.id } },
-    include: { images: true, variants: true },
+    include: {
+      images: true,
+      variants: true,
+      store: {
+        select: {
+          type: true,
+        },
+      },
+    },
   });
   if (!existing) return { error: "Product not found" };
 
-  const parsed = updateProductSchema.safeParse(values);
+  const isFoodStore = existing.store.type === "FOOD";
+  const buildSimpleSku = (productName: string) => {
+    const cleaned = (productName || "PRD")
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .slice(0, 3)
+      .toUpperCase();
+    const prefix = cleaned.length > 0 ? cleaned : "PRD";
+    return `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
+  };
+
+  const normalizedVariants =
+    values.variants?.map((variant) => ({
+      ...variant,
+      sku: variant.sku?.trim() || buildSimpleSku(values.name),
+      color: isFoodStore ? undefined : variant.color,
+      size: isFoodStore ? undefined : variant.size,
+    })) ?? [];
+
+  const normalizedValues: updateProductSchemaType = {
+    ...values,
+    isFoodProduct: isFoodStore,
+    foodDetails: isFoodStore ? values.foodDetails : null,
+    technicalDetails: isFoodStore ? [] : (values.technicalDetails ?? []),
+    specifications: isFoodStore ? "" : values.specifications,
+    variants: normalizedVariants,
+  };
+
+  const parsed = updateProductSchema.safeParse(normalizedValues);
   if (!parsed.success) {
     return { error: "Invalid product data" };
   }
@@ -170,10 +205,11 @@ export const updateProductAction = async (
     discount,
     images,
     variants,
+    foodDetails,
   } = parsed.data;
 
   const specsArray =
-    values.specifications
+    parsed.data.specifications
       ?.split("\n")
       .map((s) => s.trim())
       .filter(Boolean) ?? [];
@@ -181,7 +217,18 @@ export const updateProductAction = async (
   if (!variants.length) {
     return { error: "At least one variant is required" };
   }
+  if (isFoodStore && variants.length !== 1) {
+    return { error: "FOOD products must have exactly one variant" };
+  }
   const basePriceUSD = Math.min(...variants.map((v) => v.priceUSD));
+
+  const serializedFoodDetails =
+    isFoodStore && foodDetails
+      ? {
+          ...foodDetails,
+          expiresAt: foodDetails.expiresAt?.toISOString(),
+        }
+      : Prisma.JsonNull;
 
   await prisma.$transaction(async (tx) => {
     await tx.product.update({
@@ -190,12 +237,14 @@ export const updateProductAction = async (
         name,
         description,
         specifications: specsArray,
-        technicalDetails: values.technicalDetails ?? [],
+        technicalDetails: parsed.data.technicalDetails ?? [],
         brand,
         categoryId,
         oldPriceUSD,
         discount,
         basePriceUSD,
+        isFoodProduct: isFoodStore,
+        foodDetails: serializedFoodDetails,
       },
     });
 
@@ -230,8 +279,8 @@ export const updateProductAction = async (
             update: {
               priceUSD: v.priceUSD,
               stock: v.stock,
-              color: v.color,
-              size: v.size,
+              color: isFoodStore ? null : v.color,
+              size: isFoodStore ? null : v.size,
               oldPriceUSD: v.oldPriceUSD,
               discount: v.discount,
             },
@@ -240,8 +289,8 @@ export const updateProductAction = async (
               sku: v.sku,
               priceUSD: v.priceUSD,
               stock: v.stock,
-              color: v.color,
-              size: v.size,
+              color: isFoodStore ? null : v.color,
+              size: isFoodStore ? null : v.size,
               oldPriceUSD: v.oldPriceUSD,
               discount: v.discount,
             },

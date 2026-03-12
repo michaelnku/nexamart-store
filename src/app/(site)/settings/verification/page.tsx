@@ -32,7 +32,7 @@ export default async function VerificationPage() {
   ]);
 
   return (
-    <div className="max-w-4xl px-4 space-y-8 mx-auto">
+    <div className="max-w-4xl px-4 pb-8 space-y-8 mx-auto">
       <VerificationProgress userId={user.id} />
 
       {verification?.status === "REJECTED" && (

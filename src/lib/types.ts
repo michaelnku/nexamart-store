@@ -1,4 +1,8 @@
 import {
+  ConversationType,
+  DisputeReason,
+  DisputeResolution,
+  DisputeStatus,
   DeliveryStatus,
   EmploymentType,
   PaymentMethod,
@@ -18,6 +22,7 @@ import {
   SiteConfiguration,
   StaffStatus,
   StaffProfile,
+  ReturnStatus,
 } from "@/generated/prisma/client";
 
 export type FullProductVariant = ProductVariant & {
@@ -27,7 +32,7 @@ export type FullProductVariant = ProductVariant & {
 export type FullProduct = Product & {
   images: ProductImage[];
   variants: FullProductVariant[];
-  store: Pick<Store, "id" | "userId" | "name" | "slug" | "logo">;
+  store: Pick<Store, "id" | "userId" | "name" | "slug" | "logo" | "type">;
   brand?: string | null;
   category?: {
     id: string;
@@ -166,6 +171,7 @@ export type OrderHistoryItemDTO = {
   trackingNumber: string | null;
   isFoodOrder?: boolean;
   prepTimeMinutes?: number | null;
+  dispute?: OrderDisputeSummaryDTO | null;
 
   items: {
     id: string;
@@ -202,11 +208,27 @@ export type OrderSellerGroupDTO = {
   id: string;
   status: string;
   subtotal: number;
+  sellerRevenue?: number;
+  platformCommission?: number;
+  sellerName?: string | null;
+  payoutLocked?: boolean;
+  payoutStatus?: string;
+  payoutReleasedAt?: string | null;
 
   store: {
     name: string;
     slug?: string | null;
   };
+
+  cancellation?: {
+    cancelledAt: string;
+    cancelledBy: string;
+    reason: string;
+    reasonLabel: string;
+    note?: string | null;
+    refundStatus?: string | null;
+    refundMessage?: string | null;
+  } | null;
 
   items: OrderDetailItemDTO[];
 };
@@ -215,12 +237,14 @@ export type OrderDetailDTO = {
   id: string;
   status: string;
   trackingNumber: string | null;
+  isFoodOrder?: boolean;
   deliveryType: string;
   deliveryAddress?: string | null;
   paymentMethod?: string | null;
   shippingFee: number;
   totalAmount: number;
   createdAt: string;
+  deliveredAt?: string | null;
 
   customer: {
     name: string | null;
@@ -228,6 +252,133 @@ export type OrderDetailDTO = {
   };
 
   sellerGroups: OrderSellerGroupDTO[];
+  dispute?: OrderDisputeSummaryDTO | null;
+  orderTimelines?: OrderTrackTimelineDTO[];
+};
+
+export type DisputeEvidenceDTO = {
+  id: string;
+  type: string;
+  fileUrl: string;
+  uploadedByName?: string | null;
+  createdAt: string;
+};
+
+export type DisputeMessageDTO = {
+  id: string;
+  senderName?: string | null;
+  senderId: string;
+  message: string;
+  createdAt: string;
+};
+
+export type DisputeSellerImpactDTO = {
+  id?: string;
+  sellerGroupId: string;
+  refundAmount: number;
+  sellerName?: string | null;
+  storeName?: string | null;
+};
+
+export type ReturnRequestDTO = {
+  id: string;
+  status: ReturnStatus;
+  trackingNumber?: string | null;
+  carrier?: string | null;
+  shippedAt?: string | null;
+  receivedAt?: string | null;
+};
+
+export type OrderDisputeSummaryDTO = {
+  id: string;
+  orderId: string;
+  status: DisputeStatus;
+  reason: DisputeReason;
+  description?: string | null;
+  resolution?: DisputeResolution | null;
+  refundAmount?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  openedByName?: string | null;
+  resolvedByName?: string | null;
+  evidence: DisputeEvidenceDTO[];
+  messages: DisputeMessageDTO[];
+  sellerImpacts: DisputeSellerImpactDTO[];
+  returnRequest?: ReturnRequestDTO | null;
+};
+
+export type SellerDisputeListItemDTO = {
+  id: string;
+  orderId: string;
+  customerName?: string | null;
+  customerEmail: string;
+  status: DisputeStatus;
+  reason: DisputeReason;
+  createdAt: string;
+  updatedAt: string;
+  refundAmount?: number | null;
+  affectedAmount: number;
+  isFoodOrder: boolean;
+  impactedGroups: DisputeSellerImpactDTO[];
+};
+
+export type SellerDisputeDetailDTO = SellerDisputeListItemDTO & {
+  description?: string | null;
+  resolution?: DisputeResolution | null;
+  returnRequest?: ReturnRequestDTO | null;
+  evidence: DisputeEvidenceDTO[];
+  messages: DisputeMessageDTO[];
+  orderTimelines: OrderTrackTimelineDTO[];
+  delivery?: {
+    id: string;
+    status: string;
+    riderName?: string | null;
+    riderEmail?: string | null;
+    deliveredAt?: string | null;
+  } | null;
+};
+
+export type AdminDisputeDetailDTO = {
+  id: string;
+  orderId: string;
+  status: DisputeStatus;
+  reason: DisputeReason;
+  resolution?: DisputeResolution | null;
+  description?: string | null;
+  refundAmount?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  isFoodOrder: boolean;
+  customer: {
+    id?: string;
+    name?: string | null;
+    email: string;
+  };
+  sellers: Array<{
+    sellerId: string;
+    sellerName?: string | null;
+    storeName?: string | null;
+    sellerGroupId: string;
+    refundAmount: number;
+    payoutLocked?: boolean;
+    payoutStatus?: string;
+    payoutReleasedAt?: string | null;
+  }>;
+  delivery?: {
+    id: string;
+    status: string;
+    riderId?: string | null;
+    riderName?: string | null;
+    riderEmail?: string | null;
+    deliveredAt?: string | null;
+    payoutLocked?: boolean;
+    payoutReleasedAt?: string | null;
+  } | null;
+  evidence: DisputeEvidenceDTO[];
+  messages: DisputeMessageDTO[];
+  returnRequest?: ReturnRequestDTO | null;
+  orderTimelines: OrderTrackTimelineDTO[];
+  totalAmount: number;
 };
 
 export type CheckoutCartItem = {
@@ -279,6 +430,7 @@ export type FullCart = {
     variant?: {
       id: string;
       priceUSD: number;
+      stock: number;
       color: string | null;
       size: string | null;
     } | null;
@@ -454,7 +606,11 @@ export type WalletTransactionType =
   | "SELLER_PAYOUT"
   | "RIDER_PAYOUT";
 
-export type WalletTransactionStatus = "SUCCESS" | "PENDING" | "FAILED";
+export type WalletTransactionStatus =
+  | "SUCCESS"
+  | "PENDING"
+  | "FAILED"
+  | "CANCELLED";
 
 export type WalletTransaction = {
   id: string;
@@ -533,11 +689,19 @@ export type SellerOrder = {
   isFoodOrder?: boolean;
   deliveryType: DeliveryType;
   totalAmount: number;
+  dispute?: {
+    id: string;
+    status: DisputeStatus;
+    reason: DisputeReason;
+  } | null;
   sellerGroups: {
     id: string;
     status: string;
     prepTimeMinutes?: number | null;
     readyAt?: string | Date | null;
+    store?: {
+      name?: string | null;
+    } | null;
   }[];
   customer?: {
     name?: string | null;
@@ -581,13 +745,22 @@ export type ChatMessage = {
 
 export type InboxPreview = {
   id: string;
+  type: ConversationType;
   subject: string | null;
   agentId?: string | null;
   agentName?: string | null;
+  participantName?: string | null;
+  participantRole?: UserRole | null;
+  productId?: string | null;
+  productName?: string | null;
+  storeId?: string | null;
+  storeName?: string | null;
+  canDelete?: boolean;
   lastMessage?: {
     content: string;
     createdAt: string;
     senderType: SenderType;
+    senderId?: string | null;
   };
   unreadCount: number;
 };

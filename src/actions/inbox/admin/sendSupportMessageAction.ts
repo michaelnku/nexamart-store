@@ -2,8 +2,11 @@
 
 import { prisma } from "@/lib/prisma";
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
-import { pusherServer } from "@/lib/pusher";
 import { SenderType } from "@/generated/prisma/client";
+import {
+  createConversationMessage,
+  publishConversationMessage,
+} from "@/lib/inbox/conversationService";
 
 export async function sendSupportMessageAction({
   conversationId,
@@ -29,27 +32,14 @@ export async function sendSupportMessageAction({
     return { error: "Assigned to another agent" };
   }
 
-  const supportMessage = await prisma.message.create({
-    data: {
-      conversationId,
-      senderId: userId,
-      senderType: SenderType.SUPPORT,
-      content: text,
-    },
+  const supportMessage = await createConversationMessage(prisma, {
+    conversationId,
+    senderId: userId,
+    senderType: SenderType.SUPPORT,
+    content: text,
   });
 
-  await pusherServer.trigger(
-    `conversation-${conversationId}`,
-    "new-message",
-    {
-      id: supportMessage.id,
-      conversationId,
-      senderId: supportMessage.senderId,
-      senderType: supportMessage.senderType,
-      content: supportMessage.content,
-      createdAt: supportMessage.createdAt.toISOString(),
-    },
-  );
+  await publishConversationMessage(supportMessage);
 
   return { success: true };
 }

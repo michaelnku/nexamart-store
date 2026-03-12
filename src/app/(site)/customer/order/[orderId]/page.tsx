@@ -2,6 +2,10 @@ import { prisma } from "@/lib/prisma";
 import OrderCard from "@/components/order/OrderCard";
 import { OrderDetailDTO } from "@/lib/types";
 import { CurrentUserId } from "@/lib/currentUser";
+import {
+  getSellerCancellationReasonLabel,
+  type SellerCancellationReason,
+} from "@/lib/orders/sellerCancellation";
 
 export default async function OrderDetailsPage({
   params,
@@ -14,6 +18,35 @@ export default async function OrderDetailsPage({
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
+      dispute: {
+        include: {
+          openedBy: { select: { name: true } },
+          resolvedBy: { select: { name: true } },
+          evidence: {
+            include: {
+              uploadedBy: { select: { name: true } },
+            },
+            orderBy: { createdAt: "asc" },
+          },
+          messages: {
+            include: {
+              sender: { select: { name: true } },
+            },
+            orderBy: { createdAt: "asc" },
+          },
+          disputeSellerGroupImpacts: {
+            include: {
+              sellerGroup: {
+                include: {
+                  seller: { select: { name: true } },
+                  store: { select: { name: true } },
+                },
+              },
+            },
+          },
+          returnRequest: true,
+        },
+      },
       items: {
         include: {
           product: { include: { images: true } },
@@ -22,6 +55,19 @@ export default async function OrderDetailsPage({
       },
       delivery: true,
       customer: true,
+      orderTimelines: {
+        orderBy: { createdAt: "asc" },
+      },
+      transactions: {
+        where: {
+          type: "REFUND",
+        },
+        select: {
+          reference: true,
+          status: true,
+          description: true,
+        },
+      },
       sellerGroups: {
         include: {
           store: true,
@@ -39,9 +85,7 @@ export default async function OrderDetailsPage({
 
   if (!order) {
     return (
-      <p className="text-center text-red-500 py-40 min-h-full">
-        Order not found
-      </p>
+      <p className="min-h-full py-40 text-center text-red-500">Order not found</p>
     );
   }
 
@@ -59,44 +103,69 @@ export default async function OrderDetailsPage({
     .filter((part) => Boolean(part && part.trim()))
     .join(", ");
 
+  const refundBySellerGroupReference = new Map(
+    order.transactions
+      .filter((transaction) => transaction.reference)
+      .map((transaction) => [transaction.reference as string, transaction]),
+  );
+
   const orderDTO: OrderDetailDTO = {
     id: order.id,
     status: order.status,
     trackingNumber: order.trackingNumber,
+    isFoodOrder: order.isFoodOrder,
     deliveryType: order.deliveryType,
     deliveryAddress,
     paymentMethod: order.paymentMethod,
     shippingFee: order.shippingFee,
     totalAmount: order.totalAmount,
     createdAt: order.createdAt.toISOString(),
-
+    deliveredAt: order.delivery?.deliveredAt?.toISOString() ?? null,
     customer: {
       name: order.customer.name,
       email: order.customer.email,
     },
-
     sellerGroups: order.sellerGroups.map((group) => ({
       id: group.id,
       status: group.status,
       subtotal: group.subtotal,
-
+      sellerRevenue: group.sellerRevenue,
+      platformCommission: group.platformCommission,
+      sellerName: group.seller.name,
+      payoutLocked: group.payoutLocked,
+      payoutStatus: group.payoutStatus,
+      payoutReleasedAt: group.payoutReleasedAt?.toISOString() ?? null,
       store: {
         name: group.store.name,
         slug: group.store.slug,
       },
-
+      cancellation: group.cancelledAt
+        ? {
+            cancelledAt: group.cancelledAt.toISOString(),
+            cancelledBy: group.cancelledBy ?? "SELLER",
+            reason: group.cancelReason ?? "OTHER",
+            reasonLabel: getSellerCancellationReasonLabel(
+              group.cancelReason as SellerCancellationReason | null,
+            ),
+            note: group.cancelNote ?? null,
+            refundStatus:
+              refundBySellerGroupReference.get(`seller-cancel-refund-${group.id}`)
+                ?.status ?? null,
+            refundMessage:
+              refundBySellerGroupReference.get(`seller-cancel-refund-${group.id}`)
+                ?.description ?? null,
+          }
+        : null,
       items: group.items.map((item) => ({
         id: item.id,
         quantity: item.quantity,
         price: item.price,
-
         product: {
           name: item.product.name,
           images: item.product.images.map((img) => ({
             imageUrl: img.imageUrl,
           })),
         },
-
         variant: item.variant
           ? {
               color: item.variant.color,
@@ -105,12 +174,66 @@ export default async function OrderDetailsPage({
           : null,
       })),
     })),
+    dispute: order.dispute
+      ? {
+          id: order.dispute.id,
+          orderId: order.id,
+          status: order.dispute.status,
+          reason: order.dispute.reason,
+          description: order.dispute.description,
+          resolution: order.dispute.resolution,
+          refundAmount: order.dispute.refundAmount,
+          createdAt: order.dispute.createdAt.toISOString(),
+          updatedAt: order.dispute.updatedAt.toISOString(),
+          openedByName: order.dispute.openedBy.name,
+          resolvedByName: order.dispute.resolvedBy?.name ?? null,
+          evidence: order.dispute.evidence.map((item) => ({
+            id: item.id,
+            type: item.type,
+            fileUrl: item.fileUrl,
+            uploadedByName: item.uploadedBy.name,
+            createdAt: item.createdAt.toISOString(),
+          })),
+          messages: order.dispute.messages.map((item) => ({
+            id: item.id,
+            senderId: item.senderId,
+            senderName: item.sender.name,
+            message: item.message,
+            createdAt: item.createdAt.toISOString(),
+          })),
+          sellerImpacts: order.dispute.disputeSellerGroupImpacts.map((impact) => ({
+            id: impact.id,
+            sellerGroupId: impact.sellerGroupId,
+            refundAmount: impact.refundAmount,
+            sellerName: impact.sellerGroup.seller.name,
+            storeName: impact.sellerGroup.store.name,
+          })),
+          returnRequest: order.dispute.returnRequest
+            ? {
+                id: order.dispute.returnRequest.id,
+                status: order.dispute.returnRequest.status,
+                trackingNumber: order.dispute.returnRequest.trackingNumber,
+                carrier: order.dispute.returnRequest.carrier,
+                shippedAt:
+                  order.dispute.returnRequest.shippedAt?.toISOString() ?? null,
+                receivedAt:
+                  order.dispute.returnRequest.receivedAt?.toISOString() ?? null,
+              }
+            : null,
+        }
+      : null,
+    orderTimelines: order.orderTimelines.map((timeline) => ({
+      id: timeline.id,
+      status: timeline.status,
+      message: timeline.message,
+      createdAt: timeline.createdAt.toISOString(),
+    })),
   };
 
   const trackingNumber = order.trackingNumber ?? "NEX-ORD-XXXXX";
 
   return (
-    <div className=" max-w-4xl mx-auto py-10">
+    <div className="mx-auto max-w-4xl py-10">
       <div className="mx-auto max-w-6xl rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
         A one-time delivery code will be sent to your phone number. Please call
         it out to the rider at the delivery point for order:{" "}

@@ -10,13 +10,14 @@ import { useQuery } from "@tanstack/react-query";
 import { SharedWalletData, WalletRole } from "@/types/wallet";
 import { WALLET_ROLE_CONFIG } from "@/lib/wallet/walletRoleConfig";
 
-function normalizeWallet(data: unknown): SharedWalletData {
+function normalizeWallet(data: unknown, role: WalletRole): SharedWalletData {
   const raw = (data ?? {}) as {
     id?: string;
     balance?: number;
     pending?: number;
     totalEarnings?: number;
     currency?: string;
+    status?: SharedWalletData["status"];
     transactions?: WalletTransaction[];
     withdrawals?: WithdrawalDTO[];
   };
@@ -27,6 +28,7 @@ function normalizeWallet(data: unknown): SharedWalletData {
     pending: raw.pending ?? 0,
     totalEarnings: raw.totalEarnings ?? 0,
     currency: raw.currency ?? "USD",
+    status: raw.status ?? (role === "buyer" ? "INACTIVE" : "ACTIVE"),
     transactions: raw.transactions ?? [],
     withdrawals: raw.withdrawals ?? [],
   };
@@ -43,7 +45,7 @@ export function useWallet(role: WalletRole) {
             ? await getSellerWalletAction()
             : await getRiderWalletAction();
 
-      const normalized = normalizeWallet(response);
+      const normalized = normalizeWallet(response, role);
       const allowedTypes = WALLET_ROLE_CONFIG[role].visibleTypes;
 
       return {

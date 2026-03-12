@@ -80,6 +80,10 @@ export async function getSellerStats() {
       where: {
         sellerId: user.id,
         payoutStatus: "PENDING",
+        status: { not: "CANCELLED" },
+        order: {
+          status: { not: "CANCELLED" },
+        },
       },
     }),
     prisma.orderSellerGroup.findMany({

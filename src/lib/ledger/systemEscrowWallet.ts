@@ -1,9 +1,12 @@
+import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 
-async function resolvePlatformUserId(): Promise<string> {
+type DbClient = Prisma.TransactionClient | typeof prisma;
+
+async function resolvePlatformUserId(db: DbClient = prisma): Promise<string> {
   const explicitPlatformUserId = process.env.PLATFORM_ESCROW_USER_ID;
   if (explicitPlatformUserId) {
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { id: explicitPlatformUserId },
       select: { id: true, role: true },
     });
@@ -13,7 +16,7 @@ async function resolvePlatformUserId(): Promise<string> {
     return user.id;
   }
 
-  const admin = await prisma.user.findFirst({
+  const admin = await db.user.findFirst({
     where: { role: "ADMIN" },
     orderBy: { createdAt: "asc" },
     select: { id: true },
@@ -33,10 +36,12 @@ export async function getOrCreateSystemEscrowWallet() {
   return account.walletId;
 }
 
-export async function getOrCreateSystemEscrowAccount() {
-  const userId = await resolvePlatformUserId();
+export async function getOrCreateSystemEscrowAccount(
+  db: DbClient = prisma,
+) {
+  const userId = await resolvePlatformUserId(db);
 
-  const wallet = await prisma.wallet.upsert({
+  const wallet = await db.wallet.upsert({
     where: { userId },
     update: {},
     create: {

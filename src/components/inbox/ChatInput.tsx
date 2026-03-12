@@ -10,13 +10,20 @@ import { SenderType } from "@/generated/prisma/client";
 
 type Props = {
   conversationId: string;
+  selfUserId?: string | null;
   onPreviewUpdate?: (payload: {
     content: string;
+    senderId?: string | null;
     senderType: SenderType;
     createdAt: string;
   }) => void;
 };
-export function ChatInput({ conversationId, onPreviewUpdate }: Props) {
+
+export function ChatInput({
+  conversationId,
+  selfUserId,
+  onPreviewUpdate,
+}: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const lastTypingAtRef = useRef(0);
 
@@ -39,6 +46,7 @@ export function ChatInput({ conversationId, onPreviewUpdate }: Props) {
       if (!res?.error) {
         onPreviewUpdate?.({
           content: value,
+          senderId: selfUserId ?? null,
           senderType: SenderType.USER,
           createdAt: new Date().toISOString(),
         });
@@ -65,7 +73,7 @@ export function ChatInput({ conversationId, onPreviewUpdate }: Props) {
               }
             }}
             onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder="Type a message…"
+            placeholder="Type a message..."
             className="min-h-10 w-full resize-none max-h-40 overflow-y-auto rounded-md border px-3 py-2 pr-14 text-sm leading-6 focus:outline-none"
           />
           <Button

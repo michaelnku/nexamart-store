@@ -1,8 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import cron from "node-cron";
 import { createDailyEscrowSnapshot } from "@/lib/cron/workers/createEscrowSnapshot";
-import { finalizeDeliveredOrders } from "@/lib/cron/workers/finalizeDeliveredOrders";
-import { releaseEligibleRiderPayouts } from "@/lib/cron/workers/releaseEligibleRiderPayouts";
 import { processHubTimeouts } from "@/lib/cron/workers/processHubTimeouts";
 import { autoMarkPreparingFoodOrdersReady } from "@/lib/cron/workers/autoMarkPreparingFoodOrdersReady";
 
@@ -17,8 +15,6 @@ function isStuckOrderPayload(payload: unknown): payload is StuckOrderPayload {
 }
 
 cron.schedule("*/2 * * * *", async () => {
-  await finalizeDeliveredOrders();
-  await releaseEligibleRiderPayouts();
   await processHubTimeouts();
   await autoMarkPreparingFoodOrdersReady();
 

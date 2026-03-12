@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { hashOtp } from "@/lib/otp";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
+import { getPayoutEligibleAtFrom } from "@/lib/payout/timing";
+import { ensureOrderPayoutReleaseJobInTx } from "@/lib/payout/orderPayoutRelease";
 import {
   assertValidTransition,
   normalizeOrderStatus,
@@ -57,12 +59,18 @@ export async function verifyDeliveryOtp(deliveryId: string, otpInput: string) {
 
   await prisma.$transaction(async (tx) => {
     const deliveredAt = new Date();
+    const payoutEligibleAt = getPayoutEligibleAtFrom(
+      deliveredAt,
+      Boolean(delivery.order.isFoodOrder),
+    );
 
     await tx.delivery.update({
       where: { id: deliveryId },
       data: {
         status: "DELIVERED",
         deliveredAt,
+        payoutEligibleAt,
+        payoutLocked: false,
         otpHash: null,
         otpExpiresAt: null,
         otpAttempts: 0,
@@ -92,5 +100,10 @@ export async function verifyDeliveryOtp(deliveryId: string, otpInput: string) {
       },
       tx,
     );
+
+    await ensureOrderPayoutReleaseJobInTx(tx, {
+      orderId: delivery.orderId,
+      releaseAt: payoutEligibleAt,
+    });
   });
 }

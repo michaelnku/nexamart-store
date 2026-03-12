@@ -3,11 +3,18 @@ import { finalizePostPayment } from "@/lib/payments/completeOrderPayment";
 import { ServiceContext } from "@/lib/system/serviceContext";
 import { markSellerGroupReady } from "@/lib/order/markSellerGroupReady";
 import { runSellerDailyStatsJob } from "./lib/cron/jobs/sellerDailyStatsJob";
+import {
+  FINALIZE_ORDER_JOB_TYPE,
+  LEGACY_MARK_SELLER_GROUP_READY_JOB_TYPE,
+  MARK_READY_JOB_TYPE,
+  RELEASE_ORDER_PAYOUT_JOB_TYPE,
+  SELLER_DAILY_STATS_JOB_TYPE,
+} from "@/lib/jobs/jobTypes";
+import {
+  isOrderPayoutReleasePayload,
+  processOrderPayoutReleaseJob,
+} from "@/lib/payout/orderPayoutRelease";
 
-const SELLER_DAILY_STATS_JOB_TYPE = "SELLER_DAILY_STATS";
-const FINALIZE_ORDER_JOB_TYPE = "FINALIZE_ORDER";
-const MARK_READY_JOB_TYPE = "MARK_READY";
-const LEGACY_MARK_SELLER_GROUP_READY_JOB_TYPE = "MARK_SELLER_GROUP_READY";
 const DEFAULT_JOB_BATCH_LIMIT = 20;
 const DEFAULT_MAX_RETRIES = 5;
 const BACKOFF_BASE_SECONDS = 30;
@@ -49,6 +56,7 @@ export async function processPendingJobs(
           MARK_READY_JOB_TYPE,
           LEGACY_MARK_SELLER_GROUP_READY_JOB_TYPE,
           SELLER_DAILY_STATS_JOB_TYPE,
+          RELEASE_ORDER_PAYOUT_JOB_TYPE,
         ],
       },
       runAt: { lte: now },
@@ -87,6 +95,15 @@ export async function processPendingJobs(
         isMarkSellerGroupReadyPayload(job.payload)
       ) {
         await markSellerGroupReady(job.payload.sellerGroupId, "AUTO");
+      } else if (
+        job.type === RELEASE_ORDER_PAYOUT_JOB_TYPE &&
+        isOrderPayoutReleasePayload(job.payload)
+      ) {
+        const outcome = await processOrderPayoutReleaseJob(job.id, job.payload);
+
+        if (outcome.status === "DEFERRED") {
+          continue;
+        }
       } else if (job.type === SELLER_DAILY_STATS_JOB_TYPE) {
         await runSellerDailyStatsJob();
       } else {

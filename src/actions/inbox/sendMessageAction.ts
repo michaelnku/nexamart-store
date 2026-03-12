@@ -2,17 +2,11 @@
 
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
-import { pusherServer } from "@/lib/pusher";
 import { SenderType } from "@/generated/prisma/client";
-
-export type RealtimeMessagePayload = {
-  id: string;
-  conversationId: string;
-  senderId: string | null;
-  senderType: SenderType;
-  content: string;
-  createdAt: string;
-};
+import {
+  createConversationMessage,
+  publishConversationMessage,
+} from "@/lib/inbox/conversationService";
 
 export async function sendMessageAction({
   conversationId,
@@ -40,29 +34,14 @@ export async function sendMessageAction({
     return { error: "Not allowed in this conversation" };
   }
 
-  const userMessage = await prisma.message.create({
-    data: {
-      conversationId,
-      senderId: userId,
-      senderType: SenderType.USER,
-      content: text,
-    },
+  const userMessage = await createConversationMessage(prisma, {
+    conversationId,
+    senderId: userId,
+    senderType: SenderType.USER,
+    content: text,
   });
 
-  const userPayload: RealtimeMessagePayload = {
-    id: userMessage.id,
-    conversationId,
-    senderId: userMessage.senderId,
-    senderType: userMessage.senderType,
-    content: userMessage.content,
-    createdAt: userMessage.createdAt.toISOString(),
-  };
-
-  await pusherServer.trigger(
-    `conversation-${conversationId}`,
-    "new-message",
-    userPayload,
-  );
+  await publishConversationMessage(userMessage);
 
   return { success: true };
 }

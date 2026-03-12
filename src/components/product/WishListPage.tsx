@@ -28,7 +28,7 @@ const WishListPage = ({ initialData }: Props) => {
 
   const router = useRouter();
 
-  const { items, remove, sync, clear } = useWishlistStore();
+  const { items, remove, sync } = useWishlistStore();
 
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
 
@@ -70,14 +70,16 @@ const WishListPage = ({ initialData }: Props) => {
       const movedCount =
         typeof res.movedCount === "number" ? res.movedCount : 0;
 
-      clear();
-      toast.success(
-        movedCount > 0
-          ? `${movedCount} item${movedCount > 1 ? "s" : ""} moved to cart`
-          : "Wishlist is empty",
-      );
-      router.push("/cart");
-      router.refresh();
+      if (movedCount > 0) {
+        toast.success(
+          `${movedCount} item${movedCount > 1 ? "s" : ""} moved to cart`,
+        );
+        router.push("/cart");
+        router.refresh();
+        return;
+      }
+
+      toast.error("No in-stock wishlist items could be moved to cart");
     });
   };
 
@@ -144,9 +146,10 @@ const WishListPage = ({ initialData }: Props) => {
               discount > 0 ? product.basePriceUSD / (1 - discount / 100) : null;
             const cheapestVariant =
               product.variants && product.variants.length > 0
-                ? [...product.variants].sort(
-                    (a, b) => a.priceUSD - b.priceUSD,
-                  )[0]
+                ? [...product.variants]
+                    .sort((a, b) => a.priceUSD - b.priceUSD)
+                    .find((variant) => variant.stock > 0) ??
+                  [...product.variants].sort((a, b) => a.priceUSD - b.priceUSD)[0]
                 : null;
 
             return (
@@ -215,6 +218,7 @@ const WishListPage = ({ initialData }: Props) => {
                   <AddToCartControl
                     productId={product.id}
                     variantId={cheapestVariant?.id ?? null}
+                    availableStock={cheapestVariant?.stock ?? 0}
                   />
                 </div>
               </Card>

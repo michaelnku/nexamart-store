@@ -13,6 +13,8 @@ import {
 import { calculateDrivingDistance } from "@/lib/shipping/mapboxDistance";
 import { calculateStoreDeliveryFee } from "@/lib/shipping/shippingCalculator";
 import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
+import { getCartAvailabilityError } from "@/lib/inventory/cartAvailability";
+import { reserveOrderInventoryInTx } from "@/lib/inventory/reservationService";
 import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
 import { buildDoubleEntryLedgerRows } from "@/lib/finance/ledgerService";
 import { calculatePlatformCommission } from "@/lib/finance/calculatePlatformCommission";
@@ -250,6 +252,16 @@ export async function placeOrderAction({
     if (!item.variantId || !item.variant) {
       return { error: "Invalid cart item. Please reselect product variant." };
     }
+
+    const stockError = getCartAvailabilityError({
+      stock: item.variant.stock,
+      requestedQuantity: item.quantity,
+      productName: item.product.name,
+    });
+
+    if (stockError) {
+      return { error: stockError };
+    }
   }
 
   const itemsByStore = new Map<string, typeof cart.items>();
@@ -264,7 +276,6 @@ export async function placeOrderAction({
     (s, i) => s + i.quantity * i.variant!.priceUSD,
     0,
   );
-  const snapshotCartItemIds = cart.items.map((item) => item.id);
 
   let address: Awaited<ReturnType<typeof prisma.address.findFirst>>;
   let storeGroups: StoreGroup[] = [];
@@ -506,13 +517,12 @@ export async function placeOrderAction({
     if (paymentMethod === "WALLET") {
       const wallet = await prisma.wallet.findUnique({
         where: { userId },
-        select: { id: true },
+        select: { id: true, status: true },
       });
 
-      if (!wallet) {
+      if (!wallet || wallet.status !== "ACTIVE") {
         return {
-          error:
-            "Insufficient wallet balance. Please choose another payment method.",
+          error: "Activate your wallet before paying with it.",
         };
       }
 
@@ -646,6 +656,8 @@ export async function placeOrderAction({
           });
         }
 
+        await reserveOrderInventoryInTx(tx, createdOrder.id);
+
         await tx.delivery.create({
           data: {
             orderId: createdOrder.id,
@@ -713,10 +725,6 @@ export async function placeOrderAction({
           },
         });
       }
-
-      await tx.cartItem.deleteMany({
-        where: { id: { in: snapshotCartItemIds } },
-      });
     });
   } catch (error) {
     if (error instanceof PlaceOrderError) {
@@ -734,71 +742,95 @@ export async function placeOrderAction({
 
     const parentReference = `wallet-checkout-${checkoutGroupId ?? createdOrders[0]?.id}`;
     const createdOrderIds = createdOrders.map((order) => order.id);
+    type WalletSettlementOrderPayload = NonNullable<
+      Parameters<typeof completeOrderPaymentCore>[0]["preloadedOrder"]
+    >;
+    type WalletSettlementWalletPayload = NonNullable<
+      Parameters<typeof completeOrderPaymentCore>[0]["preloadedWallet"]
+    >;
 
-    const existingParentTransaction = await prisma.transaction.findUnique({
-      where: { reference: parentReference },
-      select: { id: true },
-    });
-
-    if (existingParentTransaction) {
-      const alreadyPaid = await prisma.order.findMany({
-        where: { id: { in: createdOrderIds }, isPaid: true },
-        select: { id: true },
-      });
-
-      if (alreadyPaid.length !== createdOrderIds.length) {
-        return {
-          error: "Checkout payment is processing. Please retry in a moment.",
-        };
-      }
-
-      paidOrderIds.push(...alreadyPaid.map((order) => order.id));
-    } else {
-      try {
-        await prisma.$transaction(async (tx) => {
-          const ordersForSettlement = await tx.order.findMany({
-            where: { id: { in: createdOrderIds } },
-            select: {
-              id: true,
-              userId: true,
-              status: true,
-              isPaid: true,
-              paymentMethod: true,
-              postPaymentFinalized: true,
-              totalAmount: true,
-              sellerGroups: {
-                select: {
-                  id: true,
-                  sellerId: true,
-                  storeId: true,
-                  subtotal: true,
-                  shippingFee: true,
-                },
+    const runWalletSettlementParentTransaction = async () =>
+      prisma.$transaction(async (tx) => {
+        const ordersForSettlement = await tx.order.findMany({
+          where: { id: { in: createdOrderIds }, userId },
+          select: {
+            id: true,
+            userId: true,
+            status: true,
+            isPaid: true,
+            paymentMethod: true,
+            postPaymentFinalized: true,
+            totalAmount: true,
+            sellerGroups: {
+              select: {
+                id: true,
+                sellerId: true,
+                storeId: true,
+                subtotal: true,
+                shippingFee: true,
               },
             },
-          });
+          },
+        });
 
-          if (ordersForSettlement.length !== createdOrderIds.length) {
+        if (ordersForSettlement.length !== createdOrderIds.length) {
+          throw new PlaceOrderError("Order settlement payload is incomplete.");
+        }
+
+        const walletForPayment = await tx.wallet.findUnique({
+          where: { userId },
+          select: { id: true, balance: true, status: true },
+        });
+
+        if (!walletForPayment || walletForPayment.status !== "ACTIVE") {
+          throw new PlaceOrderError(
+            "Activate your wallet before paying with it.",
+          );
+        }
+
+        const existingParentTransaction = await tx.transaction.findUnique({
+          where: { reference: parentReference },
+          select: { id: true },
+        });
+
+        const alreadyPaidOrderIds: string[] = [];
+        const ordersToFinalize: Array<{
+          orderId: string;
+          paymentReference: string;
+          preloadedOrder: WalletSettlementOrderPayload;
+        }> = [];
+
+        for (const order of ordersForSettlement) {
+          if (order.isPaid) {
+            alreadyPaidOrderIds.push(order.id);
+            continue;
+          }
+
+          if (order.status !== "PENDING_PAYMENT") {
             throw new PlaceOrderError(
-              "Order settlement payload is incomplete.",
+              "Order already settled or in invalid status for payment.",
             );
           }
 
-          for (const order of ordersForSettlement) {
-            if (order.isPaid || order.status !== "PENDING_PAYMENT") {
-              throw new PlaceOrderError(
-                "Order already settled or in invalid status for payment.",
-              );
-            }
-          }
-
-          const walletForPayment = await tx.wallet.upsert({
-            where: { userId },
-            update: {},
-            create: { userId },
-            select: { id: true, balance: true },
+          ordersToFinalize.push({
+            orderId: order.id,
+            paymentReference: `${parentReference}-order-${order.id}`,
+            preloadedOrder: {
+              id: order.id,
+              userId: order.userId,
+              paymentMethod: (order.paymentMethod ?? "WALLET") as PaymentMethod,
+              status: order.status,
+              isPaid: order.isPaid,
+              postPaymentFinalized: order.postPaymentFinalized,
+              totalAmount: order.totalAmount,
+              sellerGroups: order.sellerGroups,
+            },
           });
+        }
 
+        let checkoutLedgerRows: Prisma.LedgerEntryCreateManyInput[] = [];
+
+        if (!existingParentTransaction) {
           if (walletForPayment.balance < checkoutTotalAmount) {
             throw new PlaceOrderError(
               "Insufficient wallet balance. Please choose another payment method.",
@@ -829,55 +861,69 @@ export async function placeOrderAction({
             }),
           ]);
 
-          const preparedLedger = buildDoubleEntryLedgerRows({
+          checkoutLedgerRows = buildDoubleEntryLedgerRows({
             fromUserId: userId,
             fromWalletId: walletForPayment.id,
             toWalletId: systemEscrowWalletId,
             entryType: "ESCROW_DEPOSIT",
             amount: checkoutTotalAmount,
             reference: `escrow-fund-${checkoutGroupId ?? createdOrderIds[0]}`,
-          });
-          postCommitLedgerRows = preparedLedger.rows;
-
-          for (const order of ordersForSettlement) {
-            const orderPaymentReference = `${parentReference}-order-${order.id}`;
-            const paymentResult = await completeOrderPaymentCore({
-              tx,
-              orderId: order.id,
-              checkoutGroupId,
-              paymentReference: orderPaymentReference,
-              method: "WALLET",
-              systemEscrowWalletId,
-              preloadedOrder: {
-                id: order.id,
-                userId: order.userId,
-                paymentMethod: (order.paymentMethod ??
-                  "WALLET") as PaymentMethod,
-                status: order.status,
-                isPaid: order.isPaid,
-                postPaymentFinalized: order.postPaymentFinalized,
-                totalAmount: order.totalAmount,
-                sellerGroups: order.sellerGroups,
-              },
-              preloadedWallet: walletForPayment,
-              assumePaymentReferenceFresh: true,
-              skipWalletBalanceCheck: true,
-              skipWalletLedgerTransfer: true,
-            });
-
-            if (paymentResult.justPaid) {
-              walletJustPaid = true;
-              paidOrderIds.push(paymentResult.order.id);
-            }
-          }
-        });
-      } catch (error) {
-        if (error instanceof PlaceOrderError) {
-          return { error: error.message };
+          }).rows;
         }
-        console.error("Wallet settlement transaction failed:", error);
-        return { error: "Wallet payment failed. Please try again." };
+
+        return {
+          alreadyPaidOrderIds,
+          ordersToFinalize,
+          walletForPayment: walletForPayment as WalletSettlementWalletPayload,
+          checkoutLedgerRows,
+        };
+      });
+
+    try {
+      const settlementPlan = await (async () => {
+        try {
+          return await runWalletSettlementParentTransaction();
+        } catch (error: any) {
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002"
+          ) {
+            return runWalletSettlementParentTransaction();
+          }
+          throw error;
+        }
+      })();
+
+      paidOrderIds.push(...settlementPlan.alreadyPaidOrderIds);
+      postCommitLedgerRows = settlementPlan.checkoutLedgerRows;
+
+      for (const orderToFinalize of settlementPlan.ordersToFinalize) {
+        const paymentResult = await prisma.$transaction((tx) =>
+          completeOrderPaymentCore({
+            tx,
+            orderId: orderToFinalize.orderId,
+            checkoutGroupId,
+            paymentReference: orderToFinalize.paymentReference,
+            method: "WALLET",
+            systemEscrowWalletId,
+            preloadedOrder: orderToFinalize.preloadedOrder,
+            preloadedWallet: settlementPlan.walletForPayment,
+            skipWalletBalanceCheck: true,
+            skipWalletLedgerTransfer: true,
+          }),
+        );
+
+        if (paymentResult.justPaid) {
+          walletJustPaid = true;
+          paidOrderIds.push(paymentResult.order.id);
+        }
       }
+    } catch (error) {
+      if (error instanceof PlaceOrderError) {
+        return { error: error.message };
+      }
+      console.error("Wallet settlement transaction failed:", error);
+      return { error: "Wallet payment failed. Please try again." };
     }
   }
 
@@ -930,7 +976,8 @@ export async function placeOrderAction({
 
   if (paymentMethod === "WALLET") {
     try {
-      if (paidOrderIds.length !== createdOrders.length) {
+      const uniquePaidOrderIds = [...new Set(paidOrderIds)];
+      if (uniquePaidOrderIds.length !== createdOrders.length) {
         return { error: "Wallet payment validation failed. Please try again." };
       }
 
@@ -950,7 +997,7 @@ export async function placeOrderAction({
       }
 
       if (walletJustPaid) {
-        for (const orderId of paidOrderIds) {
+        for (const orderId of uniquePaidOrderIds) {
           await applyReferralRewardsForPaidOrder(orderId);
         }
       }

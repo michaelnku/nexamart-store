@@ -9,10 +9,28 @@ export async function clearAllConversationsAction() {
 
   const memberships = await prisma.conversationMember.findMany({
     where: { userId },
-    select: { conversationId: true },
+    select: {
+      conversationId: true,
+      conversation: {
+        select: {
+          type: true,
+          _count: {
+            select: {
+              members: true,
+            },
+          },
+        },
+      },
+    },
   });
 
-  const ids = memberships.map((m) => m.conversationId);
+  const ids = memberships
+    .filter(
+      ({ conversation }) =>
+        conversation.type === "SUPPORT" || conversation._count.members <= 1,
+    )
+    .map((membership) => membership.conversationId);
+
   if (ids.length === 0) return { success: true };
 
   await prisma.message.deleteMany({

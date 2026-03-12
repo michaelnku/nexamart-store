@@ -8,6 +8,10 @@ export default async function SellerOrdersPage() {
 
   const orders = await prisma.order.findMany({
     where: {
+      isPaid: true,
+      status: {
+        not: "PENDING_PAYMENT",
+      },
       sellerGroups: {
         some: {
           sellerId: user.id,
@@ -15,6 +19,13 @@ export default async function SellerOrdersPage() {
       },
     },
     include: {
+      dispute: {
+        select: {
+          id: true,
+          status: true,
+          reason: true,
+        },
+      },
       customer: true,
       sellerGroups: {
         where: {

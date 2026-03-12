@@ -1,17 +1,7 @@
 ﻿"use client";
 
 import Image from "next/image";
-import {
-  X,
-  ShieldCheck,
-  Truck,
-  AlertTriangle,
-  CalendarDays,
-  Clock,
-  Flame,
-  Leaf,
-  Utensils,
-} from "lucide-react";
+import { X, ShieldCheck, Truck } from "lucide-react";
 import {
   Dialog,
   DialogClose,
@@ -32,12 +22,14 @@ import {
   CarouselPrevious,
   CarouselNext,
 } from "../ui/carousel";
-import { Separator } from "../ui/separator";
 import { useCartStore } from "@/stores/useCartstore";
 import { useWishlistStore } from "@/stores/useWishlistStore";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { addRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import StarRating from "@/components/reviews/StarRating";
+import ProductInformationSections from "./ProductInformationSections";
+import { normalizeFoodDetails } from "@/app/marketplace/_components/productFormHelpers";
+import AskStoreQuestionDialog from "./AskStoreQuestionDialog";
 
 type ProductVariant = FullProduct["variants"][number];
 
@@ -140,15 +132,7 @@ export default function ProductPublicDetail({
     };
   }, [activeIndex]);
 
-  const hasFoodDetails =
-    foodDetails &&
-    (foodDetails.ingredients?.length ||
-      foodDetails.preparationTimeMinutes ||
-      foodDetails.portionSize ||
-      foodDetails.spiceLevel ||
-      foodDetails.dietaryTags?.length ||
-      foodDetails.isPerishable ||
-      foodDetails.expiresAt);
+  const normalizedFoodDetails = normalizeFoodDetails(foodDetails);
 
   return (
     <main className="w-full max-w-[1200px] mx-auto space-y-10 py-8 px-3 sm:px-6 lg:px-4">
@@ -304,6 +288,7 @@ export default function ProductPublicDetail({
           <AddToCartControl
             productId={data.id}
             variantId={selectedVariant?.id ?? null}
+            availableStock={selectedVariant?.stock ?? 0}
           />
 
           <div className="border p-4 rounded-xl bg-gray-50 dark:bg-neutral-900 space-y-2 text-sm">
@@ -319,189 +304,27 @@ export default function ProductPublicDetail({
         </section>
       </section>
 
-      {data.description && (
-        <section className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm">
-          <h2 className="font-semibold text-lg p-4">Product Details</h2>
-          <Separator />
-          <p className="p-4 text-gray-700 text-sm sm:text-base leading-relaxed">
-            {data.description}
-          </p>
-        </section>
-      )}
-
-      {!isFoodProduct && (
-        <section className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm">
-          <h2 className="font-semibold text-lg p-4">
-            Specifications Information
-          </h2>
-          <Separator />
-
-          <div className="p-6 grid grid-cols-1 gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="border rounded-lg shadow-sm">
-                <h3 className="font-semibold text-lg p-4 border-b">
-                  Key Features
-                </h3>
-                <div className="p-4">
-                  {Array.isArray(data.specifications) &&
-                  data.specifications.length > 0 ? (
-                    <ul className="list-disc pl-6 space-y-1 text-sm text-gray-700">
-                      {data.specifications.map((s, i) => (
-                        <li key={i}>{s}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-gray-500 text-sm">No data available</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="border rounded-lg shadow-sm">
-                <h3 className="font-semibold text-lg p-4 border-b">
-                  What's in the box
-                </h3>
-                <div className="p-4">
-                  <p className="text-gray-500 text-sm">No data available</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="border rounded-lg shadow-sm">
-              <h3 className="font-semibold text-lg p-4 border-b">
-                Technical Details
-              </h3>
-              <div className="p-4">
-                {Array.isArray(data.technicalDetails) &&
-                data.technicalDetails.length > 0 ? (
-                  <dl className="space-y-3">
-                    {data.technicalDetails.map((item, i) => {
-                      const t = item as { key: string; value: string };
-                      return (
-                        <span
-                          key={i}
-                          className="grid grid-cols-1 sm:grid-cols-[1fr_3fr] gap-2 "
-                        >
-                          <span className="font-semibold">{t.key}:</span>
-                          <span className="text-gray-600 text-sm break-words">
-                            {t.value}
-                          </span>
-                        </span>
-                      );
-                    })}
-                  </dl>
-                ) : (
-                  <p className="text-gray-500 text-sm">No data available</p>
-                )}
-              </div>
-            </div>
+      <ProductInformationSections
+        data={data}
+        isFoodProduct={isFoodProduct}
+        foodDetails={normalizedFoodDetails}
+        foodEmptyState={
+          <div className="text-center py-8 space-y-3">
+            <p className="text-sm text-gray-500">
+              No food information has been provided.
+            </p>
+            <p className="text-xs text-gray-400">
+              Please contact the store for preparation or ingredient details.
+            </p>
+            <AskStoreQuestionDialog
+              productId={data.id}
+              productName={data.name}
+              storeName={data.store.name}
+              isLoggedIn={Boolean(userId)}
+            />
           </div>
-        </section>
-      )}
-
-      {isFoodProduct && (
-        <section className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm">
-          <h2 className="font-semibold text-lg p-4">Food Information</h2>
-          <Separator />
-
-          <div className="p-6 space-y-6">
-            {hasFoodDetails ? (
-              <>
-                <div className="flex flex-wrap gap-3">
-                  {foodDetails?.preparationTimeMinutes && (
-                    <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-2 rounded-full text-sm">
-                      <Clock className="w-4 h-4" />
-                      Ready in {foodDetails.preparationTimeMinutes} mins
-                    </div>
-                  )}
-
-                  {foodDetails?.portionSize && (
-                    <div className="flex items-center gap-2 bg-purple-50 text-purple-700 px-3 py-2 rounded-full text-sm">
-                      <Utensils className="w-4 h-4" />
-                      {foodDetails.portionSize}
-                    </div>
-                  )}
-
-                  {foodDetails?.spiceLevel && (
-                    <div className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-2 rounded-full text-sm">
-                      <Flame className="w-4 h-4" />
-                      {foodDetails.spiceLevel}
-                    </div>
-                  )}
-
-                  {foodDetails?.isPerishable && (
-                    <div className="flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-2 rounded-full text-sm">
-                      <AlertTriangle className="w-4 h-4" />
-                      Perishable
-                    </div>
-                  )}
-
-                  {foodDetails?.expiresAt && (
-                    <div className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-full text-sm">
-                      <CalendarDays className="w-4 h-4" />
-                      Expires{" "}
-                      {new Date(foodDetails.expiresAt).toLocaleDateString()}
-                    </div>
-                  )}
-                </div>
-
-                {foodDetails?.dietaryTags?.length ? (
-                  <div>
-                    <p className="text-sm font-medium mb-2">Dietary Tags</p>
-                    <div className="flex flex-wrap gap-2">
-                      {foodDetails.dietaryTags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full"
-                        >
-                          <Leaf className="w-3 h-3" />
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {foodDetails?.ingredients?.length ? (
-                  <div>
-                    <p className="text-sm font-medium mb-2">Ingredients</p>
-                    <div className="flex flex-wrap gap-2">
-                      {foodDetails.ingredients.map((ingredient) => (
-                        <span
-                          key={ingredient}
-                          className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full"
-                        >
-                          {ingredient}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <div className="text-center py-8 space-y-3">
-                <div className="flex justify-center">
-                  <Utensils className="w-8 h-8 text-gray-400" />
-                </div>
-                <p className="text-sm text-gray-500">
-                  No food information has been provided.
-                </p>
-                <p className="text-xs text-gray-400">
-                  Please contact the store for preparation or ingredient
-                  details.
-                </p>
-                <Link
-                  href={`/messages?storeId=${data.store.id}&productId=${data.id}`}
-                  className="inline-block"
-                >
-                  <button className="mt-2 bg-[#3c9ee0] hover:bg-[#318bc4] text-white text-sm font-semibold px-4 py-2 rounded-lg transition shadow-sm">
-                    Ask Store a Question
-                  </button>
-                </Link>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
+        }
+      />
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogPortal>

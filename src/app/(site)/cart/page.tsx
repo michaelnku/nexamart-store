@@ -31,6 +31,7 @@ export default async function page() {
             select: {
               id: true,
               priceUSD: true,
+              stock: true,
               color: true,
               size: true,
             },

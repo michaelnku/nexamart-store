@@ -1,11 +1,11 @@
+import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron/workers/cronLock";
-import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
-import { Prisma } from "@/generated/prisma";
 import {
   createServiceContext,
   ServiceContext,
 } from "@/lib/system/serviceContext";
+import { releaseRiderDeliveryPayoutInTx } from "@/lib/payout/riderPayouts";
 
 const LOCK_NAME = "RELEASE_ELIGIBLE_RIDER_PAYOUTS";
 const BATCH_SIZE = 20;
@@ -16,150 +16,20 @@ async function processRiderDeliveryPayout(
   now: Date,
   context: ServiceContext,
 ): Promise<boolean> {
-  /** Atomic lock to prevent race condition */
-  const lockAttempt = await tx.delivery.updateMany({
-    where: {
-      id: deliveryId,
-      status: "DELIVERED",
-      payoutReleasedAt: null,
-      payoutLocked: false,
-    },
-    data: { payoutLocked: true },
-  });
-
-  if (lockAttempt.count !== 1) return false;
-
-  const delivery = await tx.delivery.findUnique({
-    where: { id: deliveryId },
-    select: {
-      id: true,
-      orderId: true,
-      riderId: true,
-      fee: true,
-      payoutReleasedAt: true,
-      order: {
-        select: {
-          id: true,
-          disputeId: true,
-          isPaid: true,
-        },
-      },
-    },
-  });
-
-  if (!delivery || !delivery.riderId) return false;
-
-  /** Safety guard */
-  if (delivery.payoutReleasedAt || !delivery.order.isPaid) {
-    await tx.delivery.update({
-      where: { id: deliveryId },
-      data: { payoutLocked: false },
-    });
-    return false;
-  }
-
-  /** NEW: prevent payout during disputes */
-  if (delivery.order.disputeId) {
-    await tx.delivery.update({
-      where: { id: deliveryId },
-      data: { payoutLocked: false },
-    });
-    return false;
-  }
-
-  /** Idempotency guard */
-  const existingPayout = await tx.transaction.findFirst({
-    where: {
-      orderId: delivery.orderId,
-      userId: delivery.riderId,
-      type: "EARNING",
-    },
-    select: { id: true },
-  });
-
-  if (!existingPayout) {
-    const riderWallet = await tx.wallet.upsert({
-      where: { userId: delivery.riderId },
-      update: {},
-      create: { userId: delivery.riderId },
-      select: { id: true },
-    });
-
-    await tx.wallet.update({
-      where: { id: riderWallet.id },
-      data: {
-        pending: { decrement: delivery.fee },
-        totalEarnings: { increment: delivery.fee },
-      },
-    });
-
-    await tx.transaction.create({
-      data: {
-        walletId: riderWallet.id,
-        userId: delivery.riderId,
-        orderId: delivery.orderId,
-        type: "EARNING",
-        status: "SUCCESS",
-        amount: delivery.fee,
-        reference: `rider-release-${delivery.id}`,
-        description: `Executed by ${context.service}`,
-      },
-    });
-
-    await createDoubleEntryLedger(tx, {
-      orderId: delivery.orderId,
-      toUserId: delivery.riderId,
-      toWalletId: riderWallet.id,
-      entryType: "RIDER_PAYOUT",
-      amount: delivery.fee,
-      reference: `rider-release-${delivery.id}`,
-      resolveFromWallet: false,
-      resolveToWallet: false,
-      context,
-    });
-  }
-
-  /** Release escrow hold */
-  await tx.escrowLedger.updateMany({
-    where: {
-      orderId: delivery.orderId,
-      userId: delivery.riderId,
-      role: "RIDER",
-      entryType: "RIDER_EARNING",
-      status: "HELD",
-    },
-    data: { status: "RELEASED" },
-  });
-
-  await tx.delivery.update({
-    where: { id: delivery.id },
-    data: {
-      payoutReleasedAt: now,
-      payoutLocked: false,
-    },
-  });
-
-  /** If seller payouts finished, mark order payout completed */
-  const remainingSeller = await tx.orderSellerGroup.count({
-    where: {
-      orderId: delivery.orderId,
-      payoutStatus: { not: "COMPLETED" },
-    },
-  });
-
-  if (remainingSeller === 0) {
-    await tx.order.update({
-      where: { id: delivery.orderId },
-      data: { payoutReleased: true },
-    });
-  }
-
-  return true;
+  const released = await releaseRiderDeliveryPayoutInTx(
+    tx,
+    deliveryId,
+    now,
+    context,
+  );
+  return "success" in released;
 }
 
 export async function releaseEligibleRiderPayouts() {
   const hasLock = await acquireCronLock(LOCK_NAME);
-  if (!hasLock) return { skipped: true, processed: 0 };
+  if (!hasLock) {
+    return { skipped: true, processed: 0 };
+  }
 
   try {
     const now = new Date();
@@ -171,6 +41,7 @@ export async function releaseEligibleRiderPayouts() {
         payoutEligibleAt: { lte: now },
         payoutReleasedAt: null,
         payoutLocked: false,
+        fee: { gt: 0 },
         riderId: { not: null },
         order: {
           isPaid: true,
@@ -193,7 +64,9 @@ export async function releaseEligibleRiderPayouts() {
           context,
         );
 
-        if (released) processed += 1;
+        if (released) {
+          processed += 1;
+        }
       });
     }
 
@@ -215,15 +88,19 @@ export async function releaseEligibleRiderPayoutForOrder(orderId: string) {
         payoutReleasedAt: null,
         payoutLocked: false,
         payoutEligibleAt: { lte: now },
+        fee: { gt: 0 },
         riderId: { not: null },
         order: {
+          isPaid: true,
           disputeId: null,
         },
       },
       select: { id: true },
     });
 
-    if (!delivery) return { skipped: true };
+    if (!delivery) {
+      return { skipped: true };
+    }
 
     const released = await processRiderDeliveryPayout(
       tx,

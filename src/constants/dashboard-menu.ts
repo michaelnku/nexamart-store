@@ -53,6 +53,11 @@ export const DashboardMenu = {
           icon: ShoppingBag,
         },
         {
+          name: "Disputes",
+          href: "/marketplace/dashboard/seller/disputes",
+          icon: Scale,
+        },
+        {
           name: "Store",
           href: "/marketplace/dashboard/seller/store",
           icon: Store,

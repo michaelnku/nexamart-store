@@ -47,7 +47,11 @@ export async function getSellerEarningsAction() {
   );
 
   const pendingEscrow = sellerGroups
-    .filter((g) => g.payoutStatus === "PENDING")
+    .filter(
+      (g) =>
+        g.payoutStatus === "PENDING" &&
+        g.order.status !== "CANCELLED",
+    )
     .reduce((sum, g) => sum + (g.sellerRevenue ?? 0), 0);
 
   const released = sellerGroups
@@ -70,6 +74,6 @@ export async function getSellerEarningsAction() {
       commission: g.platformCommission,
       payoutStatus: g.payoutStatus,
       payoutEligibleAt: g.payoutEligibleAt,
-    })),
+    })).filter((group) => !(group.status === "CANCELLED" && group.payoutStatus === "PENDING")),
   };
 }

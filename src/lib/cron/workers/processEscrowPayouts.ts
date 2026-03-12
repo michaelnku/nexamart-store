@@ -52,7 +52,7 @@ export async function processEscrowPayouts() {
         });
       } else if (
         "skipped" in result &&
-        result.reason !== "PAYOUT_SKIPPED_ACTIVE_DISPUTE"
+        result.reason !== "ACTIVE_DISPUTE_LOCKED"
       ) {
         await prisma.job.update({
           where: { id: job.id },

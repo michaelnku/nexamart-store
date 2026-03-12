@@ -42,7 +42,10 @@ const CartPage = ({ cart, mixedCart }: Props) => {
   const increase = (productId: string, variantId: string | null) => {
     change(productId, variantId, +1);
     startTransition(async () => {
-      await updateQuantityAction(productId, variantId, +1);
+      const res = await updateQuantityAction(productId, variantId, +1);
+      if (res?.error) {
+        change(productId, variantId, -1);
+      }
     });
   };
 
@@ -54,7 +57,7 @@ const CartPage = ({ cart, mixedCart }: Props) => {
     if (qty <= 1) {
       remove(productId, variantId);
       startTransition(async () => {
-        await removeFromCartAction(productId);
+        await removeFromCartAction(productId, variantId);
       });
       return;
     }
@@ -105,6 +108,9 @@ const CartPage = ({ cart, mixedCart }: Props) => {
                 item.variant?.priceUSD ?? item.product.basePriceUSD;
 
               const totalPriceUSD = priceUSD * item.quantity;
+              const stock = item.variant?.stock ?? 0;
+              const atStockLimit = !!item.variant && item.quantity >= stock;
+              const isOutOfStock = !!item.variant && stock <= 0;
 
               const displayPrice = formatMoneyFromUSD(totalPriceUSD);
 
@@ -188,10 +194,20 @@ const CartPage = ({ cart, mixedCart }: Props) => {
                           onClick={() =>
                             increase(item.productId, item.variantId)
                           }
+                          disabled={pending || atStockLimit || isOutOfStock}
                         >
                           <Plus size={16} />
                         </Button>
                       </div>
+                      {item.variant && (
+                        <p>
+                          {isOutOfStock && (
+                            <p className="text-xs text-red-500 font-semibold">
+                              Out of stock
+                            </p>
+                          )}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </Card>

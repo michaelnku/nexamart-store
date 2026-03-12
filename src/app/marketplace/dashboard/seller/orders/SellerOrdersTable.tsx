@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   acceptOrderAction,
   cancelOrderAction,
+  type SellerOrderActionResult,
   shipOrderAction,
 } from "@/actions/order/sellerOrderActions";
 import { Button } from "@/components/ui/button";
@@ -21,17 +22,25 @@ import {
   Loader2,
   PackageSearch,
   Eye,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { SellerOrder } from "@/lib/types";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { useRouter } from "next/navigation";
 import FoodPrepTimeModal from "./FoodPrepTimeModal";
+import SellerCancelOrderDialog from "./SellerCancelOrderDialog";
+import DisputeStatusBadge from "@/components/disputes/DisputeStatusBadge";
+import DisputeReasonLabel from "@/components/disputes/DisputeReasonLabel";
+import type { SellerCancelOrderInput } from "@/lib/orders/sellerCancellation";
 
 type SellerOrderAction = (
   sellerGroupId: string,
   prepTimeMinutes?: number,
-) => Promise<{ success?: string; error?: string }>;
+) => Promise<SellerOrderActionResult>;
+
+const GENERIC_SELLER_ORDER_TOAST_ERROR =
+  "We couldn't update this order right now. Please refresh and try again.";
 
 type SellerRowState = {
   isFoodOrder: boolean;
@@ -49,12 +58,14 @@ function getSellerRowState(order: SellerOrder): SellerRowState {
   const isFoodOrder = Boolean(order.isFoodOrder);
   const sellerGroupId = order.sellerGroups?.[0]?.id;
   const sellerGroupStatus = order.sellerGroups?.[0]?.status;
+  const isPaymentPending = order.status === "PENDING_PAYMENT";
 
-  const rowPending = sellerGroupStatus === "PENDING";
+  const rowPending = sellerGroupStatus === "PENDING" && !isPaymentPending;
   const isPreparingFood = isFoodOrder && sellerGroupStatus === "PREPARING";
   const isReadyFood = isFoodOrder && sellerGroupStatus === "READY";
 
-  const canDispatchToHub = !isFoodOrder && sellerGroupStatus === "ACCEPTED";
+  const canDispatchToHub =
+    !isFoodOrder && sellerGroupStatus === "ACCEPTED" && !isPaymentPending;
   const isDispatchedToHub =
     !isFoodOrder &&
     (sellerGroupStatus === "DISPATCHED_TO_HUB" ||
@@ -81,34 +92,64 @@ export default function SellerOrdersTable({
 }) {
   const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const [isPending, startTransition] = useTransition();
+  const inFlightActionRef = useRef<string | null>(null);
+  const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
   const [foodAcceptSellerGroupId, setFoodAcceptSellerGroupId] = useState<
     string | null
   >(null);
+  const [cancelDialogState, setCancelDialogState] = useState<{
+    sellerGroupId: string;
+    storeName?: string | null;
+  } | null>(null);
   const router = useRouter();
 
+  const runAction = (
+    actionKey: string,
+    task: () => Promise<SellerOrderActionResult>,
+    options?: { onSuccess?: () => void },
+  ) => {
+    if (inFlightActionRef.current) return;
+
+    inFlightActionRef.current = actionKey;
+    setPendingActionKey(actionKey);
+
+    startTransition(async () => {
+      try {
+        const res = await task();
+
+        if (res?.error) {
+          toast.error(GENERIC_SELLER_ORDER_TOAST_ERROR);
+          return;
+        }
+
+        if (res?.success) {
+          toast.success(res.success);
+        }
+
+        options?.onSuccess?.();
+        router.refresh();
+      } finally {
+        inFlightActionRef.current = null;
+        setPendingActionKey(null);
+      }
+    });
+  };
+
   const handleAction = (
+    actionName: string,
     actionFn: SellerOrderAction,
     sellerGroupId?: string,
     prepTimeMinutes?: number,
   ) => {
-    if (isPending) return;
+    if (inFlightActionRef.current) return;
     if (!sellerGroupId) {
-      toast.error("Seller group not found for this order");
+      toast.error(GENERIC_SELLER_ORDER_TOAST_ERROR);
       return;
     }
 
-    startTransition(async () => {
-      const res = await actionFn(sellerGroupId, prepTimeMinutes);
-      if (res?.error) {
-        toast.error(res.error);
-        return;
-      }
-
-      if (res?.success) {
-        toast.success(res.success);
-      }
-      router.refresh();
-    });
+    runAction(`${actionName}:${sellerGroupId}`, () =>
+      actionFn(sellerGroupId, prepTimeMinutes),
+    );
   };
 
   const statusColor: Record<string, string> = {
@@ -128,12 +169,12 @@ export default function SellerOrdersTable({
 
   const handleAcceptClick = (state: SellerRowState) => {
     if (!state.sellerGroupId) {
-      toast.error("Seller group not found for this order");
+      toast.error(GENERIC_SELLER_ORDER_TOAST_ERROR);
       return;
     }
 
     if (!state.isFoodOrder) {
-      handleAction(acceptOrderAction, state.sellerGroupId);
+      handleAction("accept", acceptOrderAction, state.sellerGroupId);
       return;
     }
 
@@ -142,9 +183,24 @@ export default function SellerOrdersTable({
 
   const handleConfirmFoodEta = (prepTimeMinutes: number) => {
     if (!foodAcceptSellerGroupId) return;
-    handleAction(acceptOrderAction, foodAcceptSellerGroupId, prepTimeMinutes);
+    handleAction(
+      "accept",
+      acceptOrderAction,
+      foodAcceptSellerGroupId,
+      prepTimeMinutes,
+    );
     setFoodAcceptSellerGroupId(null);
   };
+
+  const handleCancelSubmit = (input: SellerCancelOrderInput) => {
+    if (inFlightActionRef.current) return;
+
+    runAction(`cancel:${input.sellerGroupId}`, () => cancelOrderAction(input), {
+      onSuccess: () => setCancelDialogState(null),
+    });
+  };
+
+  const isActionPending = Boolean(pendingActionKey) || isPending;
 
   const renderOpsButton = (order: SellerOrder, state: SellerRowState) => {
     const {
@@ -167,7 +223,7 @@ export default function SellerOrdersTable({
       <Button
         size="sm"
         disabled={
-          isPending ||
+          isActionPending ||
           !sellerGroupId ||
           (isFoodOrder ? isReadyFood : !canDispatchToHub)
         }
@@ -175,25 +231,29 @@ export default function SellerOrdersTable({
           if (!sellerGroupId) return;
 
           if (isFoodOrder && !isReadyFood) {
-            handleAction(shipOrderAction, sellerGroupId);
+            handleAction("ship", shipOrderAction, sellerGroupId);
             return;
           }
 
           if (!isFoodOrder && canDispatchToHub) {
-            handleAction(shipOrderAction, sellerGroupId);
+            handleAction("ship", shipOrderAction, sellerGroupId);
           }
         }}
         className="flex gap-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
       >
-        {isFoodOrder
-          ? isReadyFood
+        {pendingActionKey === `ship:${sellerGroupId}` ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : isFoodOrder ? (
+          isReadyFood
             ? "Ready for Pickup"
             : "Food is Ready"
-          : isHubVerified
-            ? "Hub Verified"
-            : isDispatchedToHub
-              ? "Dispatched to Hub"
-              : "Dispatch to Hub"}
+        ) : isHubVerified ? (
+          "Hub Verified"
+        ) : isDispatchedToHub ? (
+          "Dispatched to Hub"
+        ) : (
+          "Dispatch to Hub"
+        )}
       </Button>
     );
   };
@@ -210,6 +270,7 @@ export default function SellerOrdersTable({
               <th className="p-4 font-medium">Customer</th>
               <th className="p-4 font-medium">Amount</th>
               <th className="p-4 font-medium">Status</th>
+              <th className="p-4 font-medium">Dispute</th>
               <th className="p-4 font-medium">Delivery</th>
               <th className="p-4 text-right font-medium">Actions</th>
             </tr>
@@ -218,7 +279,7 @@ export default function SellerOrdersTable({
           <tbody>
             {orders.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-16 text-center text-gray-500">
+                <td colSpan={7} className="py-16 text-center text-gray-500">
                   <PackageSearch className="mx-auto mb-2 h-6 w-6 opacity-70" />
                   No orders yet
                 </td>
@@ -258,6 +319,19 @@ export default function SellerOrdersTable({
                   </td>
 
                   <td className="p-4">
+                    {o.dispute ? (
+                      <div className="space-y-1">
+                        <DisputeStatusBadge status={o.dispute.status} />
+                        <p className="text-xs text-muted-foreground">
+                          <DisputeReasonLabel reason={o.dispute.reason} />
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No dispute</span>
+                    )}
+                  </td>
+
+                  <td className="p-4">
                     <span className="rounded-full bg-[#3c9ee0]/10 px-2 py-[3px] text-[11px] font-medium text-[#3c9ee0]">
                       {o.deliveryType.replaceAll("_", " ")}
                     </span>
@@ -273,15 +347,25 @@ export default function SellerOrdersTable({
                         </Button>
                       </Link>
 
+                      {o.dispute ? (
+                        <Link
+                          href={`/marketplace/dashboard/seller/disputes/${o.dispute.id}`}
+                        >
+                          <Button size="sm" variant="outline">
+                            <AlertTriangle className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      ) : null}
+
                       {state.rowPending && (
                         <>
                           <Button
                             size="sm"
-                            disabled={isPending || !state.sellerGroupId}
+                            disabled={isActionPending || !state.sellerGroupId}
                             onClick={() => handleAcceptClick(state)}
                             className="flex gap-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
                           >
-                            {isPending ? (
+                            {pendingActionKey === `accept:${state.sellerGroupId}` ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <CheckCircle2 className="h-4 w-4" />
@@ -291,13 +375,13 @@ export default function SellerOrdersTable({
 
                           <Button
                             size="sm"
-                            disabled={isPending || !state.sellerGroupId}
+                            disabled={isActionPending || !state.sellerGroupId}
                             variant="destructive"
                             onClick={() =>
-                              handleAction(
-                                cancelOrderAction,
-                                state.sellerGroupId,
-                              )
+                              setCancelDialogState({
+                                sellerGroupId: state.sellerGroupId!,
+                                storeName: o.sellerGroups?.[0]?.store?.name,
+                              })
                             }
                             className="flex gap-1"
                           >
@@ -357,6 +441,15 @@ export default function SellerOrdersTable({
                   </span>
                 </p>
 
+                {o.dispute ? (
+                  <div className="flex items-center gap-2">
+                    <DisputeStatusBadge status={o.dispute.status} />
+                    <span className="text-sm text-muted-foreground">
+                      <DisputeReasonLabel reason={o.dispute.reason} />
+                    </span>
+                  </div>
+                ) : null}
+
                 <p className="text-lg font-bold text-gray-900">
                   {formatMoneyFromUSD(o.totalAmount)}
                 </p>
@@ -369,15 +462,25 @@ export default function SellerOrdersTable({
                   </Button>
                 </Link>
 
+                {o.dispute ? (
+                  <Link
+                    href={`/marketplace/dashboard/seller/disputes/${o.dispute.id}`}
+                  >
+                    <Button size="sm" variant="outline" className="w-full">
+                      <AlertTriangle className="mr-1 h-4 w-4" /> Dispute
+                    </Button>
+                  </Link>
+                ) : null}
+
                 {state.rowPending && (
                   <>
                     <Button
                       size="sm"
-                      disabled={isPending || !state.sellerGroupId}
+                      disabled={isActionPending || !state.sellerGroupId}
                       onClick={() => handleAcceptClick(state)}
                       className="flex-1 bg-[#3c9ee0] text-white hover:bg-[#318bc4]"
                     >
-                      {isPending ? (
+                      {pendingActionKey === `accept:${state.sellerGroupId}` ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         "Accept"
@@ -386,10 +489,13 @@ export default function SellerOrdersTable({
 
                     <Button
                       size="sm"
-                      disabled={isPending || !state.sellerGroupId}
+                      disabled={isActionPending || !state.sellerGroupId}
                       variant="destructive"
                       onClick={() =>
-                        handleAction(cancelOrderAction, state.sellerGroupId)
+                        setCancelDialogState({
+                          sellerGroupId: state.sellerGroupId!,
+                          storeName: o.sellerGroups?.[0]?.store?.name,
+                        })
                       }
                       className="flex-1"
                     >
@@ -413,7 +519,17 @@ export default function SellerOrdersTable({
           if (!open) setFoodAcceptSellerGroupId(null);
         }}
         onConfirm={handleConfirmFoodEta}
-        isSubmitting={isPending}
+        isSubmitting={isActionPending}
+      />
+      <SellerCancelOrderDialog
+        open={Boolean(cancelDialogState)}
+        onOpenChange={(open) => {
+          if (!open) setCancelDialogState(null);
+        }}
+        sellerGroupId={cancelDialogState?.sellerGroupId ?? null}
+        storeName={cancelDialogState?.storeName}
+        isSubmitting={isActionPending}
+        onSubmit={handleCancelSubmit}
       />
     </div>
   );

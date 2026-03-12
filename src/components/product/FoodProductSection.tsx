@@ -1,6 +1,7 @@
 "use client";
 
-import { useFieldArray } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { useFieldArray, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,10 +30,22 @@ export default function FoodProductSection({ control }: Props) {
     control,
     name: "foodDetails.ingredients",
   });
+  const [dietaryTagsInput, setDietaryTagsInput] = useState("");
+  const dietaryTags = useWatch({
+    control,
+    name: "foodDetails.dietaryTags",
+  });
+
+  useEffect(() => {
+    setDietaryTagsInput((dietaryTags ?? []).join(", "));
+  }, [dietaryTags]);
 
   return (
-    <section className="space-y-6 border rounded-xl p-6 bg-muted/30">
-      <h2 className="text-xl font-semibold">Food Details</h2>
+    <section className="space-y-6 dark:bg-neutral-950">
+      <div className="rounded-2xl border border-orange-200 bg-white/80 dark:bg-neutral-900 p-4 text-sm text-muted-foreground shadow-sm">
+        Add a clear restaurant-style info so buyers know what to expect before
+        ordering.
+      </div>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -48,7 +61,10 @@ export default function FoodProductSection({ control }: Props) {
         </div>
 
         {fields.map((field, index) => (
-          <div key={field.id} className="flex gap-2 items-center">
+          <div
+            key={field.id}
+            className="flex items-center gap-2 rounded-2xl border bg-white dark:bg-neutral-900 p-3 shadow-sm"
+          >
             <FormField
               control={control}
               name={`foodDetails.ingredients.${index}`}
@@ -77,37 +93,39 @@ export default function FoodProductSection({ control }: Props) {
         ))}
       </div>
 
-      <FormField
-        control={control}
-        name="foodDetails.preparationTimeMinutes"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Preparation Time (Minutes)</FormLabel>
-            <FormControl>
-              <Input
-                type="number"
-                {...field}
-                onChange={(e) => field.onChange(Number(e.target.value))}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField
+          control={control}
+          name="foodDetails.preparationTimeMinutes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Preparation Time (Minutes)</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  {...field}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <FormField
-        control={control}
-        name="foodDetails.portionSize"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Portion Size</FormLabel>
-            <FormControl>
-              <Input {...field} placeholder="1 person / Family size" />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        <FormField
+          control={control}
+          name="foodDetails.portionSize"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Portion Size</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="1 person / Family size" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
 
       <FormField
         control={control}
@@ -145,16 +163,18 @@ export default function FoodProductSection({ control }: Props) {
             <FormLabel>Dietary Tags (comma separated)</FormLabel>
             <FormControl>
               <Input
-                value={(field.value ?? []).join(", ")}
+                value={dietaryTagsInput}
                 placeholder="Halal, Vegan, Gluten-Free"
-                onChange={(e) =>
+                onChange={(e) => {
+                  const rawValue = e.target.value;
+                  setDietaryTagsInput(rawValue);
                   field.onChange(
-                    e.target.value
+                    rawValue
                       .split(",")
-                      .map((t) => t.trim())
+                      .map((tag) => tag.trim())
                       .filter(Boolean),
-                  )
-                }
+                  );
+                }}
               />
             </FormControl>
           </FormItem>
@@ -165,8 +185,13 @@ export default function FoodProductSection({ control }: Props) {
         control={control}
         name="foodDetails.isPerishable"
         render={({ field }) => (
-          <FormItem className="flex items-center justify-between rounded-md border p-3">
-            <FormLabel>Perishable Item</FormLabel>
+          <FormItem className="flex items-center justify-between rounded-2xl border bg-white dark:bg-neutral-900 p-4 shadow-sm">
+            <div>
+              <FormLabel>Perishable Item</FormLabel>
+              <p className="text-xs text-muted-foreground">
+                Mark dishes that are best consumed quickly after preparation.
+              </p>
+            </div>
             <FormControl>
               <Switch
                 checked={Boolean(field.value)}

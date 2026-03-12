@@ -9,7 +9,7 @@ import RecentlyViewedRow from "@/components/home/RecentlyViewedRow";
 import RecommendedPreviewRow from "@/components/home/RecommendedPreviewRow";
 import TopRatedProductRow from "@/components/home/TopRatedProductRow";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
-import { prisma } from "@/lib/prisma";
+
 export default async function HomeContent() {
   const user = await CurrentUser();
 

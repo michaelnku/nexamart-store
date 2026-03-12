@@ -1,13 +1,22 @@
 "use client";
 
+import Link from "next/link";
 import {
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  DollarSign,
   Package,
   ShoppingBag,
-  DollarSign,
-  BarChart3,
-  AlertTriangle,
 } from "lucide-react";
+
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
+import {
+  DashboardHero,
+  PremiumNotice,
+  PremiumPanel,
+  PremiumStatCard,
+} from "./PremiumDashboard";
 
 type SellerStats = {
   totalProducts: number;
@@ -52,83 +61,99 @@ export default function SellerPage({ stats }: { stats: SellerStats }) {
       title: "Active Products",
       value: stats.totalProducts,
       icon: Package,
+      description: "Live listings currently available to shoppers.",
+      tintClassName:
+        "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/40 dark:text-sky-300",
     },
     {
       title: "Total Orders",
       value: stats.totalOrders,
       icon: ShoppingBag,
+      description: "Orders processed across your storefront.",
+      tintClassName:
+        "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300",
     },
     {
       title: "Total Revenue",
       value: formatMoneyFromUSD(stats.totalRevenue),
       icon: DollarSign,
+      description: "Gross earnings captured from fulfilled sales.",
+      tintClassName:
+        "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300",
     },
     {
       title: "Performance",
-      value: "View Report",
+      value: "Open Reports",
       icon: BarChart3,
+      description: "Review sales trends, conversion, and store performance.",
+      tintClassName:
+        "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300",
+      href: "/marketplace/dashboard/seller/reports",
     },
   ];
 
   return (
-    <main className="space-y-8 max-w-7xl mx-auto px-4 py-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
-        <p className="text-sm text-gray-500">
-          Welcome back — monitor sales and manage your store
-        </p>
-      </div>
+    <main className="mx-auto max-w-7xl space-y-8 px-4 py-6">
+      <DashboardHero
+        eyebrow="Seller Dashboard"
+        title="Overview"
+        description="Track demand, monitor revenue, and move from daily operations into higher-signal store decisions."
+        accentClassName="bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_48%,#059669_100%)]"
+      />
 
       {!stats.isStoreVerified && (
-        <div className="p-4 bg-yellow-50 border rounded-xl flex gap-3">
-          <AlertTriangle className="w-5 h-5 text-yellow-700 shrink-0" />
-          <p className="text-sm text-yellow-800">
-            Your store is not verified. Some features may be limited.
-          </p>
-        </div>
+        <PremiumNotice
+          icon={AlertTriangle}
+          title="Verification Pending"
+          description="Your store is not verified yet, so some marketplace capabilities remain limited."
+          toneClassName="border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-900/60 dark:bg-yellow-950/30 dark:text-yellow-100"
+        />
       )}
 
       {stats.lowStockCount > 0 && (
-        <div className="p-4 bg-orange-50 border rounded-xl flex gap-3">
-          <AlertTriangle className="w-5 h-5 text-orange-700 shrink-0" />
-          <p className="text-sm text-orange-800">
-            {stats.lowStockCount} product variants are low on stock.
-          </p>
-        </div>
+        <PremiumNotice
+          icon={AlertTriangle}
+          title="Inventory Attention Needed"
+          description={`${stats.lowStockCount} product variants are running low on stock and may affect order flow soon.`}
+          toneClassName="border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-900/60 dark:bg-orange-950/30 dark:text-orange-100"
+        />
       )}
 
       {stats.pendingPayouts > 0 && (
-        <div className="p-4 bg-blue-50 border rounded-xl flex gap-3">
-          <AlertTriangle className="w-5 h-5 text-blue-700 shrink-0" />
-          <p className="text-sm text-blue-800">
-            You have {stats.pendingPayouts} pending payouts awaiting processing.
-          </p>
-        </div>
+        <PremiumNotice
+          icon={AlertTriangle}
+          title="Pending Payouts"
+          description={`You have ${stats.pendingPayouts} pending payout${stats.pendingPayouts === 1 ? "" : "s"} awaiting processing.`}
+          toneClassName="border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-100"
+        />
       )}
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {dashboardStats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={stat.title}
-              className="p-5 bg-white dark:bg-neutral-950 border rounded-xl shadow-sm"
-            >
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-gray-500">{stat.title}</p>
-                  <p className="text-2xl font-semibold mt-1">{stat.value}</p>
-                </div>
-                <Icon className="w-8 h-8 text-gray-600" />
-              </div>
-            </div>
-          );
-        })}
+      <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {dashboardStats.map((stat) => (
+          <PremiumStatCard
+            key={stat.title}
+            title={stat.title}
+            value={stat.value}
+            description={stat.description}
+            icon={stat.icon}
+            tintClassName={stat.tintClassName}
+            href={stat.href}
+          />
+        ))}
       </section>
 
-      <section className="rounded-xl border bg-white p-5 shadow-sm dark:bg-neutral-950">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold">Latest Events</h2>
+      <PremiumPanel
+        title="Latest Events"
+        description="A concise feed of orders, reviews, and payout activity affecting your store."
+      >
+        <div className="mb-4 flex items-center justify-end">
+          <Link
+            href="/marketplace/dashboard/seller/reports"
+            className="inline-flex items-center gap-2 text-sm font-medium text-sky-700 transition hover:text-sky-800 dark:text-sky-300 dark:hover:text-sky-200"
+          >
+            Open reports
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
 
         {!stats.latestEvents.length ? (
@@ -173,7 +198,7 @@ export default function SellerPage({ stats }: { stats: SellerStats }) {
             ))}
           </div>
         )}
-      </section>
+      </PremiumPanel>
     </main>
   );
 }

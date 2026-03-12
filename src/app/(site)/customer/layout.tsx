@@ -13,7 +13,7 @@ export default async function CustomerLayout({
   if (user.role !== "USER") redirect("/marketplace/dashboard");
 
   return (
-    <div className="mx-auto h-[calc(100dvh-4rem)] w-full max-w-7xl overflow-hidden px-4 py-4 sm:px-6 md:py-6 lg:px-8">
+    <div className="mx-auto h-[calc(100dvh-4rem)] w-full max-w-7xl overflow-hidden px-4 py-2 sm:px-6 md:py-4 lg:px-8">
       <div className="flex h-full items-start gap-6 overflow-hidden">
         <Dashboard />
 

@@ -38,6 +38,7 @@ export default async function Page({
           name: true,
           slug: true,
           logo: true,
+          type: true,
         },
       },
       reviews: {
@@ -66,7 +67,11 @@ export default async function Page({
 
   return (
     <div>
-      <UpdateProductForm initialData={product} categories={categories} />
+      <UpdateProductForm
+        initialData={product}
+        categories={categories}
+        storeType={product.store.type}
+      />
     </div>
   );
 }

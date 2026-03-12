@@ -9,25 +9,44 @@ import { FileChartColumn, LineChart } from "lucide-react";
 import SellerAnalyticsChart from "@/lib/services/seller/SellerAnalyticsChart";
 import { Separator } from "@/components/ui/separator";
 
-export default function SellerReportsPage() {
-  const [tab, setTab] = useState<"sales" | "analytics">("sales");
-
-  const start = new Date();
+function createDefaultDateRange() {
+  const end = new Date();
+  const start = new Date(end);
   start.setDate(start.getDate() - 30);
 
-  const startDate = start.toISOString();
-  const endDate = new Date().toISOString();
+  return {
+    startDate: start.toISOString(),
+    endDate: end.toISOString(),
+  };
+}
 
-  const { data, isLoading } = useSellerSalesReport(startDate, endDate);
-  const { data: analytics, isLoading: analyticsLoading } = useSellerAnalytics(
-    startDate,
-    endDate,
+export default function SellerReportsPage() {
+  const [tab, setTab] = useState<"sales" | "analytics">("sales");
+  const [dateRange] = useState(createDefaultDateRange);
+
+  const { data, isLoading, isError, error, isFetching } = useSellerSalesReport(
+    dateRange.startDate,
+    dateRange.endDate,
+  );
+  const {
+    data: analytics,
+    isLoading: analyticsLoading,
+    isError: analyticsIsError,
+    error: analyticsError,
+  } = useSellerAnalytics(
+    dateRange.startDate,
+    dateRange.endDate,
     tab === "analytics",
   );
 
   const formatMoney = useFormatMoneyFromUSD();
-
   const stats = data?.stats;
+  const salesErrorMessage =
+    error instanceof Error ? error.message : "Failed to load sales reports.";
+  const analyticsErrorMessage =
+    analyticsError instanceof Error
+      ? analyticsError.message
+      : "Failed to load analytics.";
 
   const growth =
     stats?.previousRevenue && stats.previousRevenue > 0
@@ -35,27 +54,34 @@ export default function SellerReportsPage() {
       : 0;
 
   const noSales =
-    !isLoading && (!data?.sales.rows || data.sales.rows.length === 0);
+    !isLoading &&
+    !isError &&
+    (!data?.sales.rows || data.sales.rows.length === 0);
   const noAnalytics =
-    !analyticsLoading && (!analytics || analytics.length === 0);
+    !analyticsLoading &&
+    !analyticsIsError &&
+    (!analytics || analytics.length === 0);
 
   return (
     <div className="space-y-8 py-2">
-      {/* Tabs */}
-
-      <div className="flex gap-12 border-b pb-2 items-center">
+      <div className="flex items-center gap-12 border-b pb-2">
         <span>
           <button
             disabled={isLoading}
             onClick={() => setTab("sales")}
             className={
               tab === "sales"
-                ? "font-semibold text-[var(--brand-blue)] inline-flex items-center gap-1"
-                : "inline-flex items-center gap-1 text-primary border-b"
+                ? "inline-flex items-center gap-1 font-semibold text-[var(--brand-blue)]"
+                : "inline-flex items-center gap-1 text-primary"
             }
           >
-            <FileChartColumn className="w-4 h-4" />
+            <FileChartColumn className="h-4 w-4" />
             Sales
+            {tab === "sales" && isFetching ? (
+              <span className="text-xs text-muted-foreground">
+                Refreshing...
+              </span>
+            ) : null}
           </button>
         </span>
         |
@@ -65,23 +91,19 @@ export default function SellerReportsPage() {
             onClick={() => setTab("analytics")}
             className={
               tab === "analytics"
-                ? "font-semibold text-[var(--brand-blue)] inline-flex items-center gap-1"
+                ? "inline-flex items-center gap-1 font-semibold text-[var(--brand-blue)]"
                 : "inline-flex items-center gap-1 text-primary"
             }
           >
-            <LineChart className="w-4 h-4" />
+            <LineChart className="h-4 w-4" />
             Analytics
           </button>
         </span>
       </div>
 
-      {/* SALES TAB */}
-
       {tab === "sales" && (
         <>
-          {/* Stats Cards */}
-
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             {isLoading ? (
               <>
                 <Skeleton className="h-20 w-full rounded-lg" />
@@ -118,14 +140,16 @@ export default function SellerReportsPage() {
             )}
           </div>
 
-          {/* Sales Table */}
-
           {isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
+            </div>
+          ) : isError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700">
+              {salesErrorMessage}
             </div>
           ) : noSales ? (
             <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
@@ -138,17 +162,20 @@ export default function SellerReportsPage() {
             <table className="w-full text-sm">
               <thead className="border-b">
                 <tr>
-                  <th className="text-left py-2">Order</th>
-                  <th className="text-left py-2">Product</th>
-                  <th className="text-left py-2">Qty</th>
-                  <th className="text-left py-2">Revenue</th>
-                  <th className="text-left py-2">Date</th>
+                  <th className="py-2 text-left">Order</th>
+                  <th className="py-2 text-left">Product</th>
+                  <th className="py-2 text-left">Qty</th>
+                  <th className="py-2 text-left">Revenue</th>
+                  <th className="py-2 text-left">Date</th>
                 </tr>
               </thead>
 
               <tbody>
-                {data?.sales.rows.map((sale, i) => (
-                  <tr key={i} className="border-b">
+                {data?.sales.rows.map((sale) => (
+                  <tr
+                    key={`${sale.orderId}-${sale.productName}`}
+                    className="border-b"
+                  >
                     <td className="py-2">{sale.orderId}</td>
                     <td className="py-2">{sale.productName}</td>
                     <td className="py-2">{sale.quantity}</td>
@@ -164,12 +191,15 @@ export default function SellerReportsPage() {
         </>
       )}
 
-      {/* ANALYTICS TAB */}
       {tab === "analytics" && (
         <>
           {analyticsLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-[300px] w-full rounded-lg" />
+            </div>
+          ) : analyticsIsError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700">
+              {analyticsErrorMessage}
             </div>
           ) : noAnalytics ? (
             <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">

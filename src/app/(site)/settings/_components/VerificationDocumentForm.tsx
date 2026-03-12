@@ -1,50 +1,46 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Camera, Loader2, Trash } from "lucide-react";
+import { toast } from "sonner";
 
 import { uploadVerificationDocument } from "@/actions/verification/uploadVerificationDocument";
-
+import { deleteFileAction } from "@/actions/actions";
+import DocumentScanner from "@/components/verification/DocumentScanner";
+import { Button } from "@/components/ui/button";
 import {
   Form,
+  FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
 } from "@/components/ui/form";
-
 import {
   Select,
-  SelectTrigger,
   SelectContent,
   SelectItem,
+  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-import { Button } from "@/components/ui/button";
-import Image from "next/image";
-
 import {
   VerificationDocumentInput,
   verificationDocumentSchema,
 } from "@/lib/zodValidation";
-
-import { UploadButton } from "@/utils/uploadthing";
-import { toast } from "sonner";
-import { Loader2, Trash, Camera } from "lucide-react";
-import { deleteFileAction } from "@/actions/actions";
-import DocumentScanner from "@/components/verification/DocumentScanner";
-import { uploadFiles } from "@/utils/uploadthing";
+import { UploadButton, uploadFiles } from "@/utils/uploadthing";
 
 const MAX_FILES = 6;
+
+type UploadedFile = VerificationDocumentInput["files"][number];
 
 export default function VerificationDocumentForm() {
   const [pending, startTransition] = useTransition();
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
   const [showScanner, setShowScanner] = useState(false);
-  //const [capturing, setCapturing] = useState(false);
+  const [uploadingCameraCapture, setUploadingCameraCapture] = useState(false);
 
   const form = useForm<VerificationDocumentInput>({
     resolver: zodResolver(verificationDocumentSchema),
@@ -54,8 +50,20 @@ export default function VerificationDocumentForm() {
     },
   });
 
-  const { control, handleSubmit, setValue, getValues } = form;
+  const { control, getValues, handleSubmit, setValue } = form;
   const files = form.watch("files");
+
+  const appendFiles = (nextFiles: UploadedFile[]) => {
+    const existing = getValues("files");
+    const remainingSlots = Math.max(0, MAX_FILES - existing.length);
+    const merged = [...existing, ...nextFiles.slice(0, remainingSlots)];
+
+    setValue("files", merged, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+  };
 
   const onSubmit = (values: VerificationDocumentInput) => {
     startTransition(async () => {
@@ -67,31 +75,42 @@ export default function VerificationDocumentForm() {
       }
 
       toast.success("Documents uploaded successfully");
-      form.reset();
+      form.reset({
+        type: values.type,
+        files: [],
+      });
+      setShowScanner(false);
     });
   };
 
   const deleteSingleFile = async (key: string) => {
-    if (deletingKeys.has(key)) return;
+    if (deletingKeys.has(key)) {
+      return;
+    }
 
-    setDeletingKeys((p) => new Set(p).add(key));
+    setDeletingKeys((current) => {
+      const next = new Set(current);
+      next.add(key);
+      return next;
+    });
 
     try {
       await deleteFileAction(key);
 
-      const updated = getValues("files").filter((f) => f.key !== key);
+      const updatedFiles = getValues("files").filter((file) => file.key !== key);
 
-      setValue("files", updated, {
-        shouldValidate: true,
+      setValue("files", updatedFiles, {
         shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
       });
 
       toast.success("File deleted");
     } catch {
       toast.error("Failed to delete file");
     } finally {
-      setDeletingKeys((prev) => {
-        const next = new Set(prev);
+      setDeletingKeys((current) => {
+        const next = new Set(current);
         next.delete(key);
         return next;
       });
@@ -104,63 +123,71 @@ export default function VerificationDocumentForm() {
       return;
     }
 
-    //  setCapturing(true);
+    setUploadingCameraCapture(true);
 
     try {
-      const file = new File([blob], `document-${Date.now()}.jpg`, {
-        type: "image/jpeg",
+      const file = new File([blob], `verification-${Date.now()}.jpg`, {
+        type: blob.type || "image/jpeg",
       });
 
-      const res = await uploadFiles("verificationFiles", {
+      const result = await uploadFiles("verificationFiles", {
         files: [file],
       });
 
-      const uploaded = {
-        url: res[0].url,
-        key: res[0].key,
-      };
+      const uploadedFiles: UploadedFile[] = result.map((item) => ({
+        url: item.url,
+        key: item.key,
+      }));
 
-      const existing = getValues("files");
-
-      setValue("files", [...existing, uploaded], {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
-
-      toast.success("Document captured and uploaded");
+      appendFiles(uploadedFiles);
       setShowScanner(false);
+      toast.success("Document captured and uploaded");
     } catch {
-      toast.error("Failed to upload photo");
+      toast.error("Failed to upload captured document");
+      throw new Error("Failed to upload captured document.");
     } finally {
-      //  setCapturing(false);
+      setUploadingCameraCapture(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <h2 className="text-xl font-semibold">Upload Verification Documents</h2>
 
-      {showScanner && (
-        <div className="border rounded-lg p-4 space-y-4">
+      {showScanner ? (
+        <div className="space-y-4 rounded-lg border p-4">
           <DocumentScanner
+            disabled={uploadingCameraCapture}
             onCapture={handleCameraCapture}
-            //  capturing={capturing}
+            onCancel={() => {
+              if (!uploadingCameraCapture) {
+                setShowScanner(false);
+              }
+            }}
           />
 
           <Button
-            variant="outline"
             type="button"
+            variant="outline"
+            disabled={uploadingCameraCapture}
             onClick={() => setShowScanner(false)}
           >
-            Cancel
+            {uploadingCameraCapture ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading capture...
+              </>
+            ) : (
+              "Close Camera"
+            )}
           </Button>
         </div>
-      )}
+      ) : null}
 
       <Form {...form}>
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="space-y-8 rounded-lg shadow-md p-6"
+          className="space-y-8 rounded-lg p-6 shadow-md"
         >
           <FormField
             control={control}
@@ -171,7 +198,8 @@ export default function VerificationDocumentForm() {
 
                 <Select
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
+                  disabled={pending || uploadingCameraCapture}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -200,59 +228,43 @@ export default function VerificationDocumentForm() {
           />
 
           <section className="space-y-4">
-            <span>
-              <h2 className="font-semibold text-xl">Upload Documents</h2>
+            <div>
+              <h2 className="text-xl font-semibold">Upload Documents</h2>
               <p className="text-sm text-muted-foreground">
-                Make sure the document is clear and readable.
+                Make sure each document is clear and readable.
               </p>
-            </span>
+            </div>
 
-            {files.length < MAX_FILES && (
-              <div className="flex gap-3 mt-4 flex-wrap">
+            {files.length < MAX_FILES ? (
+              <div className="mt-4 flex flex-wrap gap-3">
                 <Button
                   type="button"
                   variant="outline"
+                  disabled={pending || uploadingCameraCapture}
                   onClick={() => setShowScanner(true)}
-                  className=" ut-button:bg-muted 
-                  ut-button:text-foreground 
-                  ut-button:border 
-                  ut-button:border-border 
-                  ut-button:rounded-md 
-                  ut-button:px-4 ut-button:py-2 
-                  ut-button:text-sm 
-                  hover:ut-button:bg-muted/70 "
                 >
-                  <Camera className="mr-2 h-4 w-4" /> Take Photo
+                  <Camera className="mr-2 h-4 w-4" />
+                  Take Photo
                 </Button>
 
                 <UploadButton
                   endpoint="verificationFiles"
-                  onClientUploadComplete={(res) => {
-                    const uploaded = res.map((file) => ({
+                  onClientUploadComplete={(result) => {
+                    const uploadedFiles: UploadedFile[] = result.map((file) => ({
                       url: file.url,
                       key: file.key,
                     }));
 
-                    const existing = getValues("files");
-
-                    setValue("files", [...existing, ...uploaded], {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                    });
-
+                    appendFiles(uploadedFiles);
                     toast.success("Document uploaded");
                   }}
-                  className=" ut-button:bg-muted 
-                  ut-button:text-foreground 
-                  ut-button:border ut-button:border-border 
-                  ut-button:rounded-md ut-button:px-4 
-                  ut-button:py-2 ut-button:text-sm 
-                  hover:ut-button:bg-muted/70 "
+                  onUploadError={() => {
+                    toast.error("Failed to upload document");
+                  }}
+                  className="ut-button:rounded-md ut-button:border ut-button:border-border ut-button:bg-muted ut-button:px-4 ut-button:py-2 ut-button:text-sm ut-button:text-foreground hover:ut-button:bg-muted/70"
                 />
               </div>
-            )}
-
-            {files.length >= MAX_FILES && (
+            ) : (
               <p className="text-sm text-muted-foreground">
                 Maximum of {MAX_FILES} documents reached.
               </p>
@@ -260,24 +272,24 @@ export default function VerificationDocumentForm() {
 
             <div className="flex flex-wrap gap-4">
               {files.map((file) => (
-                <div key={file.key} className="relative w-32 h-32">
+                <div key={file.key} className="relative h-32 w-32 overflow-hidden rounded-lg border">
                   <Image
                     src={file.url}
-                    alt="verification"
+                    alt="verification document"
                     fill
-                    className="object-cover rounded-lg"
+                    className="object-cover"
                   />
 
                   <button
                     type="button"
                     onClick={() => deleteSingleFile(file.key)}
                     disabled={deletingKeys.has(file.key)}
-                    className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full"
+                    className="absolute right-1 top-1 rounded-full bg-red-600 p-1 text-white"
                   >
                     {deletingKeys.has(file.key) ? (
-                      <Loader2 className="animate-spin w-4 h-4" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Trash className="w-4 h-4" />
+                      <Trash className="h-4 w-4" />
                     )}
                   </button>
                 </div>
@@ -285,7 +297,10 @@ export default function VerificationDocumentForm() {
             </div>
           </section>
 
-          <Button type="submit" disabled={pending || files.length === 0}>
+          <Button
+            type="submit"
+            disabled={pending || uploadingCameraCapture || files.length === 0}
+          >
             {pending ? "Uploading..." : "Submit Documents"}
           </Button>
         </form>

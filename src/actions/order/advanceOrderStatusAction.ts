@@ -2,8 +2,12 @@
 
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
-import { OrderStatus, Prisma } from "@/generated/prisma/client";
+import {
+  InventoryReleaseReason,
+  OrderStatus,
+} from "@/generated/prisma/client";
 import { assertValidTransition, normalizeOrderStatus } from "@/lib/order/orderLifecycle";
+import { releaseOrderInventoryInTx } from "@/lib/inventory/reservationService";
 
 type AdvanceOrderInput = {
   orderId: string;
@@ -24,8 +28,6 @@ export async function advanceOrderStatusAction({
     select: {
       status: true,
       isPaid: true,
-      userId: true,
-      items: { select: { variantId: true, quantity: true } },
     },
   });
 
@@ -40,45 +42,33 @@ export async function advanceOrderStatusAction({
     };
   }
 
-  const operations: Prisma.PrismaPromise<unknown>[] = [
-    prisma.order.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.order.update({
       where: { id: orderId },
       data: { status: nextStatus },
-    }),
-    prisma.orderTimeline.create({
+    });
+
+    await tx.orderTimeline.create({
       data: {
         orderId,
         status: nextStatus,
         message: message ?? defaultTimelineMessage(nextStatus),
       },
-    }),
-  ];
+    });
 
-  if (
-    nextStatus === "CANCELLED" &&
-    order.isPaid &&
-    ["READY", "IN_DELIVERY", "DELIVERED", "COMPLETED"].includes(
-      order.status as string,
-    )
-  ) {
-    const variantQuantities = new Map<string, number>();
-    for (const item of order.items) {
-      if (!item.variantId) continue;
-      const current = variantQuantities.get(item.variantId) ?? 0;
-      variantQuantities.set(item.variantId, current + item.quantity);
+    if (
+      nextStatus === "CANCELLED" &&
+      order.isPaid &&
+      ["READY", "IN_DELIVERY", "DELIVERED", "COMPLETED"].includes(
+        order.status as string,
+      )
+    ) {
+      await releaseOrderInventoryInTx(tx, orderId, {
+        allowCommittedRelease: true,
+        reason: InventoryReleaseReason.ORDER_CANCELLED,
+      });
     }
-
-    for (const [variantId, quantity] of variantQuantities.entries()) {
-      operations.push(
-        prisma.productVariant.updateMany({
-          where: { id: variantId },
-          data: { stock: { increment: quantity } },
-        }),
-      );
-    }
-  }
-
-  await prisma.$transaction(operations);
+  });
 
   return { success: true };
 }

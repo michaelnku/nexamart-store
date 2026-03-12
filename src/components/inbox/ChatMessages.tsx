@@ -5,21 +5,28 @@ import ChatBox from "./ChatBox";
 import { ChatMessage } from "@/lib/types";
 import { Spinner } from "@/components/ui/spinner";
 
+type PresenceRole = "ADMIN" | "MODERATOR" | "SELLER" | "RIDER" | "USER";
+
 export default function ChatMessages({
   conversationId,
-  agentId,
-  agentName,
   selfUserId,
+  title,
+  subtitle,
+  forceOnline,
+  presenceTargetRoles,
   onOpenMenu,
   onPreviewUpdate,
 }: {
   conversationId: string;
-  agentId?: string | null;
-  agentName?: string | null;
   selfUserId?: string | null;
+  title: string;
+  subtitle?: string;
+  forceOnline?: boolean;
+  presenceTargetRoles?: PresenceRole[];
   onOpenMenu?: () => void;
   onPreviewUpdate?: (payload: {
     content: string;
+    senderId?: string | null;
     senderType: ChatMessage["senderType"];
     createdAt: string;
   }) => void;
@@ -49,7 +56,7 @@ export default function ChatMessages({
     fetch("/api/messages/delivered", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId, targetSenderType: "SUPPORT" }),
+      body: JSON.stringify({ conversationId }),
     }).catch(() => {});
   }, [conversationId]);
 
@@ -58,7 +65,7 @@ export default function ChatMessages({
     fetch("/api/messages/seen", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId, targetSenderType: "SUPPORT" }),
+      body: JSON.stringify({ conversationId }),
     }).catch(() => {});
   }, [conversationId]);
 
@@ -66,9 +73,9 @@ export default function ChatMessages({
     return (
       <div className="flex h-full min-h-[60vh] w-full items-center justify-center">
         <div className="flex items-center gap-3 rounded-xl border bg-background px-5 py-4 shadow-sm">
-          <Spinner className="h-5 w-5 text-[var(--brand-blue)] animate-spin" />
+          <Spinner className="h-5 w-5 animate-spin text-[var(--brand-blue)]" />
           <span className="text-sm font-medium text-muted-foreground">
-            Loading conversation…
+            Loading conversation...
           </span>
         </div>
       </div>
@@ -76,13 +83,15 @@ export default function ChatMessages({
   }
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <ChatBox
         conversationId={conversationId}
         initialMessages={messages}
-        agentId={agentId}
-        agentName={agentName}
         selfUserId={selfUserId}
+        title={title}
+        subtitle={subtitle}
+        forceOnline={forceOnline}
+        presenceTargetRoles={presenceTargetRoles}
         onOpenMenu={onOpenMenu}
         onPreviewUpdate={onPreviewUpdate}
       />

@@ -6,19 +6,14 @@ export async function getUserConversations(userId: string) {
       members: {
         some: { userId },
       },
-
       type: {
-        in: ["SUPPORT", "ORDER", "SYSTEM"],
+        in: ["SUPPORT", "ORDER", "SYSTEM", "PRODUCT_INQUIRY"],
       },
       status: {
         notIn: ["DELETED", "BLOCKED"],
       },
     },
-
-    orderBy: {
-      updatedAt: "desc",
-    },
-
+    orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
     include: {
       agent: {
         select: {
@@ -27,7 +22,37 @@ export async function getUserConversations(userId: string) {
           username: true,
         },
       },
-
+      product: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      store: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      members: {
+        where: {
+          userId: {
+            not: userId,
+          },
+        },
+        select: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              email: true,
+              role: true,
+            },
+          },
+        },
+        take: 1,
+      },
       messages: {
         take: 1,
         orderBy: {
@@ -35,19 +60,30 @@ export async function getUserConversations(userId: string) {
         },
         select: {
           content: true,
+          senderId: true,
           senderType: true,
           createdAt: true,
         },
       },
-
       _count: {
         select: {
+          members: true,
           messages: {
             where: {
               readAt: null,
-              senderType: {
-                not: "USER",
-              },
+              OR: [
+                {
+                  senderId: {
+                    not: userId,
+                  },
+                },
+                {
+                  senderId: null,
+                  senderType: {
+                    in: ["SUPPORT", "SYSTEM"],
+                  },
+                },
+              ],
             },
           },
         },
@@ -55,23 +91,35 @@ export async function getUserConversations(userId: string) {
     },
   });
 
-  return conversations.map((c) => ({
-    id: c.id,
-    subject: c.subject ?? "Conversation",
-
-    agentId: c.agent?.id ?? null,
-
-    agentName: c.agent
-      ? (c.agent.name ?? c.agent.username ?? "Support Agent")
+  return conversations.map((conversation) => ({
+    id: conversation.id,
+    type: conversation.type,
+    subject: conversation.subject ?? "Conversation",
+    agentId: conversation.agent?.id ?? null,
+    agentName: conversation.agent
+      ? (conversation.agent.name ??
+          conversation.agent.username ??
+          "Support Agent")
       : null,
-
-    unreadCount: c._count.messages,
-
-    lastMessage: c.messages[0]
+    participantName: conversation.members[0]
+      ? (conversation.members[0].user.name ??
+          conversation.members[0].user.username ??
+          conversation.members[0].user.email)
+      : null,
+    participantRole: conversation.members[0]?.user.role ?? null,
+    productId: conversation.productId ?? null,
+    productName: conversation.product?.name ?? null,
+    storeId: conversation.storeId ?? null,
+    storeName: conversation.store?.name ?? null,
+    canDelete:
+      conversation.type === "SUPPORT" || conversation._count.members <= 1,
+    unreadCount: conversation._count.messages,
+    lastMessage: conversation.messages[0]
       ? {
-          content: c.messages[0].content,
-          senderType: c.messages[0].senderType,
-          createdAt: c.messages[0].createdAt.toISOString(),
+          content: conversation.messages[0].content,
+          senderId: conversation.messages[0].senderId ?? null,
+          senderType: conversation.messages[0].senderType,
+          createdAt: conversation.messages[0].createdAt.toISOString(),
         }
       : undefined,
   }));

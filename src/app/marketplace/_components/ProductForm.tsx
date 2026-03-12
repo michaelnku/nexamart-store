@@ -30,6 +30,7 @@ import type { Category } from "@/lib/types";
 import { deleteFileAction } from "@/actions/actions";
 import { PriceConverter } from "@/components/currency/PriceConverter";
 import FoodProductSection from "@/components/product/FoodProductSection";
+import { getProductFormDefaults } from "./productFormHelpers";
 
 type ProductFormProps = {
   categories: Category[];
@@ -50,46 +51,37 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
   const [uploading, setUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  const topLevelCategories = categories.filter((c) => !c.parentId);
   const childrenLevel1 = categories.filter((c) => c.parentId === level1);
   const childrenLevel2 = categories.filter((c) => c.parentId === level2);
 
   const form = useForm<productSchemaType>({
     resolver: zodResolver(productSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      brand: "",
-      specifications: "",
-      technicalDetails: [],
-      categoryId: "",
-      images: [],
-      isFoodProduct: isFoodStore,
-      foodDetails: isFoodStore
-        ? {
-            ingredients: [""],
-            preparationTimeMinutes: 1,
-            portionSize: "",
-            spiceLevel: undefined,
-            dietaryTags: [],
-            isPerishable: false,
-            expiresAt: undefined,
-          }
-        : undefined,
-      variants: [
-        {
-          color: isFoodStore ? undefined : "",
-          size: isFoodStore ? undefined : "",
-          priceUSD: 0,
-          stock: 0,
-          sku: "",
-          oldPriceUSD: 0,
-          discount: 0,
-        },
-      ],
-    },
+    defaultValues: getProductFormDefaults({
+      isFoodStore,
+    }) as productSchemaType,
   });
 
   const { control, handleSubmit, setValue, getValues } = form;
+  const categoryError = form.formState.errors.categoryId?.message;
+
+  const getFirstErrorMessage = (value: unknown): string | undefined => {
+    if (!value || typeof value !== "object") return undefined;
+
+    if (
+      "message" in (value as Record<string, unknown>) &&
+      typeof (value as Record<string, unknown>).message === "string"
+    ) {
+      return (value as { message: string }).message;
+    }
+
+    for (const nestedValue of Object.values(value as Record<string, unknown>)) {
+      const message = getFirstErrorMessage(nestedValue);
+      if (message) return message;
+    }
+
+    return undefined;
+  };
 
   const generateVariantSku = (color?: string, size?: string) => {
     const rand = Math.floor(100000 + Math.random() * 900000);
@@ -191,9 +183,7 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
         ...variant,
         color: isFoodStore ? undefined : variant.color,
         size: isFoodStore ? undefined : variant.size,
-        sku:
-          variant.sku?.trim() ||
-          generateSimpleSku(values.name || "PRD"),
+        sku: variant.sku?.trim() || generateSimpleSku(values.name || "PRD"),
       })),
     };
 
@@ -292,7 +282,9 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
           <form
             onSubmit={handleSubmit(onSubmit, (errors) => {
               console.log("FORM ERRORS", errors);
-              toast.error("Please fix the highlighted fields");
+              toast.error(
+                getFirstErrorMessage(errors) ?? "Please fix the highlighted fields",
+              );
             })}
             className="space-y-12"
           >
@@ -315,6 +307,7 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
                     <p className="text-xs text-gray-400 mt-1">
                       {field.value.length}/120 characters
                     </p>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -332,29 +325,35 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
                         className="focus-visible:ring-[var(--brand-blue)]"
                       />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {!isFoodStore && (
-                <FormField
-                  control={control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          rows={4}
-                          {...field}
-                          placeholder="product detail..."
-                          className="focus-visible:ring-[var(--brand-blue)]"
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              )}
+              <FormField
+                control={control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {isFoodStore ? "Menu Description" : "Description"}
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea
+                        rows={isFoodStore ? 5 : 4}
+                        {...field}
+                        placeholder={
+                          isFoodStore
+                            ? "Describe taste, portion, preparation style, and key selling points."
+                            : "Product detail..."
+                        }
+                        className="focus-visible:ring-[var(--brand-blue)]"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               {!isFoodStore && (
                 <FormField
@@ -467,7 +466,7 @@ Dual SIM`}
                   }}
                 >
                   <option value="">Select Category</option>
-                  {categories.map((c) => (
+                  {topLevelCategories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
@@ -506,6 +505,10 @@ Dual SIM`}
                     ))}
                   </select>
                 )}
+
+                {categoryError ? (
+                  <p className="text-sm text-red-500">{categoryError}</p>
+                ) : null}
               </div>
             </section>
 
@@ -569,8 +572,8 @@ Dual SIM`}
                                   setValue(
                                     `variants.${index}.sku`,
                                     generateVariantSku(
+                                      getValues(`variants.${index}.color`),
                                       e.target.value,
-                                      getValues(`variants.${index}.size`),
                                     ),
                                   );
                                 }}
@@ -605,6 +608,7 @@ Dual SIM`}
                               }
                             />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -614,7 +618,9 @@ Dual SIM`}
                       name={`variants.${index}.stock`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Stock</FormLabel>
+                          <FormLabel>
+                            {isFoodStore ? "Available Portions" : "Stock"}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -625,6 +631,7 @@ Dual SIM`}
                               className="focus-visible:ring-[var(--brand-blue)]"
                             />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -690,6 +697,7 @@ Dual SIM`}
                               }}
                             />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -734,6 +742,7 @@ Dual SIM`}
                               }}
                             />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -773,7 +782,20 @@ Dual SIM`}
               )}
             </section>
 
-            {isFoodStore && <FoodProductSection control={control} />}
+            {isFoodStore && (
+              <section className="space-y-4 rounded-2xl border border-orange-200 dark:bg-neutral-900 dark:bg-transparent bg-gradient-to-br from-orange-50 to-white p-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-[var(--brand-black)]">
+                    Food Details
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Add the operational details buyers expect from a
+                    restaurant-quality menu item.
+                  </p>
+                </div>
+                <FoodProductSection control={control} />
+              </section>
+            )}
 
             {/* IMAGES */}
             <section className="space-y-5">

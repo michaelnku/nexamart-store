@@ -1,5 +1,7 @@
 "use server";
 
+import { WalletStatus } from "@/generated/prisma/client";
+import { revalidatePath } from "next/cache";
 import { CurrentUser, CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import {
@@ -8,6 +10,50 @@ import {
 } from "@/lib/ledger/calculateWalletBalance";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
+import { getOrCreateStripeCustomerForUser } from "@/lib/stripe/getOrCreateStripeCustomer";
+
+const BUYER_WALLET_REVALIDATE_PATHS = [
+  "/customer/wallet",
+  "/settings",
+  "/checkout",
+] as const;
+
+const EMPTY_BUYER_WALLET = {
+  id: undefined,
+  balance: 0,
+  pending: 0,
+  totalEarnings: 0,
+  currency: "USD",
+  status: "INACTIVE" as WalletStatus,
+  transactions: [],
+  withdrawals: [],
+};
+
+type ActivateBuyerWalletResult =
+  | {
+      success: true;
+      code: "ACTIVATED" | "ALREADY_ACTIVE";
+      walletId: string;
+      walletStatus: WalletStatus;
+      stripeCustomerId: string;
+      createdStripeCustomer: boolean;
+      createdWallet: boolean;
+    }
+  | {
+      success: false;
+      code:
+        | "UNAUTHORIZED"
+        | "FORBIDDEN"
+        | "ACCOUNT_BLOCKED"
+        | "STRIPE_NOT_CONFIGURED";
+      message: string;
+    };
+
+function revalidateBuyerWalletPaths() {
+  for (const path of BUYER_WALLET_REVALIDATE_PATHS) {
+    revalidatePath(path);
+  }
+}
 
 export async function getBuyerWalletAction() {
   const userId = await CurrentUserId();
@@ -16,10 +62,8 @@ export async function getBuyerWalletAction() {
   if (!userId) throw new Error("Unauthorized");
   if (user?.role !== "USER") throw new Error("Not a buyer");
 
-  const wallet = await prisma.wallet.upsert({
+  const wallet = await prisma.wallet.findUnique({
     where: { userId },
-    update: {},
-    create: { userId },
     include: {
       transactions: {
         orderBy: { createdAt: "desc" },
@@ -27,6 +71,10 @@ export async function getBuyerWalletAction() {
       },
     },
   });
+
+  if (!wallet) {
+    return EMPTY_BUYER_WALLET;
+  }
 
   const [balance, pending] = await Promise.all([
     calculateWalletBalance(wallet.id),
@@ -42,6 +90,122 @@ export async function getBuyerWalletAction() {
     balance,
     pending,
     totalEarnings,
+  };
+}
+
+export async function activateBuyerWalletAction(): Promise<ActivateBuyerWalletResult> {
+  const currentUser = await CurrentUser();
+
+  if (!currentUser?.id) {
+    return {
+      success: false,
+      code: "UNAUTHORIZED",
+      message: "Unauthorized",
+    };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: currentUser.id },
+    select: {
+      id: true,
+      role: true,
+      email: true,
+      name: true,
+      stripeCustomerId: true,
+      isBanned: true,
+      isDeleted: true,
+      deletedAt: true,
+    },
+  });
+
+  if (!user) {
+    return {
+      success: false,
+      code: "UNAUTHORIZED",
+      message: "Unauthorized",
+    };
+  }
+
+  if (user.role !== "USER") {
+    return {
+      success: false,
+      code: "FORBIDDEN",
+      message: "Only buyers can activate a wallet.",
+    };
+  }
+
+  if (user.isBanned || user.isDeleted || user.deletedAt) {
+    return {
+      success: false,
+      code: "ACCOUNT_BLOCKED",
+      message: "This account cannot activate a wallet right now.",
+    };
+  }
+
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return {
+      success: false,
+      code: "STRIPE_NOT_CONFIGURED",
+      message: "Stripe is not configured.",
+    };
+  }
+
+  const existingWallet = await prisma.wallet.findUnique({
+    where: { userId: user.id },
+    select: {
+      id: true,
+      status: true,
+    },
+  });
+
+  const wallet =
+    existingWallet ??
+    (await prisma.wallet.create({
+      data: {
+        userId: user.id,
+        status: "INACTIVE",
+      },
+      select: {
+        id: true,
+        status: true,
+      },
+    }));
+
+  const stripeCustomer = await getOrCreateStripeCustomerForUser(user.id, {
+    user,
+  });
+
+  if (wallet.status === "ACTIVE") {
+    revalidateBuyerWalletPaths();
+
+    return {
+      success: true,
+      code: "ALREADY_ACTIVE",
+      walletId: wallet.id,
+      walletStatus: "ACTIVE",
+      stripeCustomerId: stripeCustomer.stripeCustomerId,
+      createdStripeCustomer: stripeCustomer.created,
+      createdWallet: !existingWallet,
+    };
+  }
+
+  await prisma.wallet.update({
+    where: { id: wallet.id },
+    data: {
+      status: "ACTIVE",
+    },
+  });
+
+  revalidateBuyerWalletPaths();
+
+  return {
+    success: true,
+    code: "ACTIVATED",
+    walletId: wallet.id,
+    walletStatus: "ACTIVE",
+    stripeCustomerId: stripeCustomer.stripeCustomerId,
+    createdStripeCustomer: stripeCustomer.created,
+    createdWallet: !existingWallet,
   };
 }
 
@@ -158,6 +322,7 @@ export const getSellerWalletAction = async () => {
       pending: 0,
       totalEarnings: 0,
       currency: "USD",
+      status: "ACTIVE" as WalletStatus,
       withdrawals: [],
       transactions: [],
     };
@@ -181,6 +346,7 @@ export const getSellerWalletAction = async () => {
     pending,
     totalEarnings: total._sum.amount ?? 0,
     currency: wallet.currency,
+    status: wallet.status,
     withdrawals: wallet.withdrawals,
     transactions: wallet.transactions,
   };
@@ -210,6 +376,7 @@ export const getRiderWalletAction = async () => {
       pending: 0,
       totalEarnings: 0,
       currency: "USD",
+      status: "ACTIVE" as WalletStatus,
       withdrawals: [],
       transactions: [],
     };
@@ -233,6 +400,7 @@ export const getRiderWalletAction = async () => {
     pending,
     totalEarnings: total._sum.amount ?? 0,
     currency: wallet.currency,
+    status: wallet.status,
     withdrawals: wallet.withdrawals,
     transactions: wallet.transactions,
   };

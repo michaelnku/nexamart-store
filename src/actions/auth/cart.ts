@@ -1,6 +1,7 @@
 "use server";
 
 import { CurrentUserId } from "@/lib/currentUser";
+import { getCartAvailabilityError } from "@/lib/inventory/cartAvailability";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
@@ -42,7 +43,7 @@ export const addToCartAction = async (
 
     const variant = await prisma.productVariant.findFirst({
       where: { id: variantId, productId },
-      select: { id: true },
+      select: { id: true, stock: true },
     });
 
     if (!variant) return { error: "Invalid product variant." };
@@ -73,6 +74,16 @@ export const addToCartAction = async (
     const existingItem = await prisma.cartItem.findFirst({
       where: { cartId: cart.id, productId, variantId },
     });
+
+    const requestedQuantity = (existingItem?.quantity ?? 0) + quantity;
+    const stockError = getCartAvailabilityError({
+      stock: variant.stock,
+      requestedQuantity,
+    });
+
+    if (stockError) {
+      return { error: stockError };
+    }
 
     if (existingItem) {
       await prisma.cartItem.update({
@@ -137,6 +148,26 @@ export const updateQuantityAction = async (
   if (!item) return;
 
   const newQty = item.quantity + change;
+
+  if (variantId && change > 0) {
+    const variant = await prisma.productVariant.findFirst({
+      where: { id: variantId, productId },
+      select: { stock: true },
+    });
+
+    if (!variant) {
+      return { error: "Invalid product variant." };
+    }
+
+    const stockError = getCartAvailabilityError({
+      stock: variant.stock,
+      requestedQuantity: newQty,
+    });
+
+    if (stockError) {
+      return { error: stockError };
+    }
+  }
 
   if (newQty <= 0) {
     await prisma.cartItem.delete({ where: { id: item.id } });

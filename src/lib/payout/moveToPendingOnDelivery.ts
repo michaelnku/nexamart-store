@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
-
 const ESCROW_DELAY_MS = 24 * 60 * 60 * 1000;
 
 type PendingMoveResult = { success: true } | { skipped: true; reason: string };
@@ -126,7 +125,7 @@ export async function moveOrderEarningsToPending(
       where: {
         orderId,
         status: "DELIVERED",
-        payoutEligibleAt: null,
+        payoutReleasedAt: null,
       },
       data: {
         payoutEligibleAt: releaseAt,
@@ -139,7 +138,7 @@ export async function moveOrderEarningsToPending(
         where: {
           id: group.id,
           payoutStatus: "PENDING",
-          payoutEligibleAt: null,
+          payoutReleasedAt: null,
         },
         data: {
           payoutEligibleAt: releaseAt,

@@ -157,7 +157,10 @@ export default function CheckoutSummary({ cart, address }: Props) {
     queryFn: async () => {
       const res = await fetch("/api/wallet");
       if (!res.ok) return null;
-      return res.json() as Promise<{ balance: number }>;
+      return res.json() as Promise<{
+        balance: number;
+        status: "ACTIVE" | "INACTIVE";
+      }>;
     },
   });
 
@@ -662,6 +665,8 @@ export default function CheckoutSummary({ cart, address }: Props) {
                   <Loader2 className="animate-spin" />
                 ) : previewError ? (
                   "Cannot Checkout"
+                ) : wallet?.status !== "ACTIVE" ? (
+                  "Activate Wallet First"
                 ) : wallet?.balance === 0 ? (
                   "Wallet Balance is $0.00"
                 ) : wallet && wallet.balance < totalUSD ? (

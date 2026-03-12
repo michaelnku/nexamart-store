@@ -11,16 +11,20 @@ export async function GET() {
 
   const wallet = await prisma.wallet.findUnique({
     where: { userId },
-    select: { id: true },
+    select: { id: true, status: true },
   });
 
-  if (!wallet) {
-    return NextResponse.json({ balance: 0 });
+  if (!wallet || wallet.status !== "ACTIVE") {
+    return NextResponse.json({
+      balance: 0,
+      status: wallet?.status ?? "INACTIVE",
+    });
   }
 
   const balance = await calculateWalletBalance(wallet.id);
 
   return NextResponse.json({
     balance,
+    status: wallet.status,
   });
 }

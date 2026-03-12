@@ -2,6 +2,7 @@
 
 import { DeliveryType } from "@/generated/prisma/client";
 import { CurrentUserId } from "@/lib/currentUser";
+import { getCartAvailabilityError } from "@/lib/inventory/cartAvailability";
 import { prisma } from "@/lib/prisma";
 import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
 import { calculateDrivingDistance } from "@/lib/shipping/mapboxDistance";
@@ -55,7 +56,7 @@ export async function getCheckoutPreviewAction({
             },
           },
           variant: {
-            select: { priceUSD: true },
+            select: { priceUSD: true, stock: true },
           },
         },
       },
@@ -69,6 +70,16 @@ export async function getCheckoutPreviewAction({
   for (const item of cart.items) {
     if (!item.variant) {
       return { error: "Invalid cart item. Please reselect product variant." };
+    }
+
+    const stockError = getCartAvailabilityError({
+      stock: item.variant.stock,
+      requestedQuantity: item.quantity,
+      productName: item.product.name,
+    });
+
+    if (stockError) {
+      return { error: stockError };
     }
   }
 

@@ -7,10 +7,11 @@ import { ServiceContext } from "@/lib/system/serviceContext";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import { processPendingJobs } from "@/worker";
 import { assertValidTransition } from "@/lib/order/orderLifecycle";
+import { commitOrderInventoryInTx } from "@/lib/inventory/reservationService";
+import { getPayoutEligibleAtFrom } from "@/lib/payout/timing";
 
 const PLATFORM_COMMISSION_PERCENT = 15;
 //const PLATFORM_COMMISSION_PERCENT = 12;
-const PAYOUT_HOLD_MS = 24 * 60 * 60 * 1000;
 const FINALIZE_ORDER_JOB_TYPE = "FINALIZE_ORDER";
 const FINALIZE_ORDER_JOB_ID_PREFIX = "finalize-order";
 
@@ -104,6 +105,7 @@ export interface CompleteOrderPaymentCoreParams extends CompleteOrderPaymentPara
   preloadedWallet?: {
     id: string;
     balance: number;
+    status: "ACTIVE" | "INACTIVE";
   } | null;
   assumePaymentReferenceFresh?: boolean;
   skipWalletBalanceCheck?: boolean;
@@ -130,8 +132,6 @@ export async function finalizePostPayment(
   orderId: string,
   context?: ServiceContext,
 ): Promise<void> {
-  const releaseAt = new Date(Date.now() + PAYOUT_HOLD_MS);
-
   const freshOrder = await prisma.order.findUnique({
     where: { id: orderId },
     select: {
@@ -160,6 +160,11 @@ export async function finalizePostPayment(
   }
 
   await prisma.$transaction(async (tx) => {
+    const releaseAt = getPayoutEligibleAtFrom(
+      new Date(),
+      freshOrder.isFoodOrder,
+    );
+
     for (const group of freshOrder.sellerGroups) {
       const platformCommission =
         (group.subtotal * PLATFORM_COMMISSION_PERCENT) / 100;
@@ -307,16 +312,18 @@ export async function completeOrderPaymentCore({
   const buyerWallet =
     method === "WALLET"
       ? preloadedWallet
-        ? { id: preloadedWallet.id }
-        : await tx.wallet.upsert({
+        ? preloadedWallet
+        : await tx.wallet.findUnique({
             where: { userId: order.userId },
-            update: {},
-            create: { userId: order.userId, currency: "USD" },
-            select: { id: true },
+            select: { id: true, balance: true, status: true },
           })
       : null;
 
   if (method === "WALLET" && buyerWallet) {
+    if (buyerWallet.status !== "ACTIVE") {
+      throw new Error("Wallet is not active");
+    }
+
     if (!skipWalletBalanceCheck) {
       const availableBalance =
         preloadedWallet && preloadedWallet.id === buyerWallet.id
@@ -331,6 +338,8 @@ export async function completeOrderPaymentCore({
         throw new Error("Insufficient wallet balance");
       }
     }
+  } else if (method === "WALLET") {
+    throw new Error("Wallet is not active");
   }
 
   if (!transactionRow) {
@@ -369,6 +378,8 @@ export async function completeOrderPaymentCore({
       : `escrow-fund-${order.id}`;
 
   assertValidTransition(order.status, "PAID");
+
+  await commitOrderInventoryInTx(tx, order.id);
 
   await Promise.all([
     tx.order.update({

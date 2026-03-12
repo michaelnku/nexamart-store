@@ -1,6 +1,7 @@
 "use server";
 
 import { CurrentUserId } from "@/lib/currentUser";
+import { getCartAvailabilityError } from "@/lib/inventory/cartAvailability";
 import { prisma } from "@/lib/prisma";
 import { FullProduct } from "@/lib/types";
 import { revalidatePath } from "next/cache";
@@ -97,7 +98,7 @@ export const moveAllWishlistToCartAction = async () => {
             product: {
               select: {
                 store: { select: { type: true } },
-                variants: { select: { id: true, priceUSD: true } },
+                variants: { select: { id: true, priceUSD: true, stock: true } },
               },
             },
           },
@@ -151,13 +152,25 @@ export const moveAllWishlistToCartAction = async () => {
       }
     }
 
+    const movedWishlistItemIds: string[] = [];
+
     await prisma.$transaction(async (tx) => {
+      let movedCount = 0;
+
       for (const item of wishlist.items) {
-        const cheapestVariant = item.product.variants.sort(
+        const sortedVariants = [...item.product.variants].sort(
           (a, b) => a.priceUSD - b.priceUSD,
-        )[0];
+        );
+        const cheapestVariant =
+          sortedVariants.find((variant) => variant.stock > 0) ??
+          sortedVariants[0];
 
         const variantId = cheapestVariant?.id ?? null;
+        const availableStock = cheapestVariant?.stock ?? 0;
+
+        if (!variantId || availableStock <= 0) {
+          continue;
+        }
 
         const existingItem = await tx.cartItem.findFirst({
           where: {
@@ -166,6 +179,16 @@ export const moveAllWishlistToCartAction = async () => {
             variantId,
           },
         });
+
+        const requestedQuantity = (existingItem?.quantity ?? 0) + 1;
+        const stockError = getCartAvailabilityError({
+          stock: availableStock,
+          requestedQuantity,
+        });
+
+        if (stockError) {
+          continue;
+        }
 
         if (existingItem) {
           await tx.cartItem.update({
@@ -182,19 +205,27 @@ export const moveAllWishlistToCartAction = async () => {
             },
           });
         }
+
+        movedCount += 1;
+        movedWishlistItemIds.push(item.id);
       }
 
       await tx.wishlistItem.deleteMany({
         where: {
-          id: { in: wishlist.items.map((item) => item.id) },
+          id: { in: movedWishlistItemIds },
         },
       });
+
+      return movedCount;
     });
 
     revalidatePath("/cart");
     revalidatePath("/customer/wishlist");
 
-    return { success: true, movedCount: wishlist.items.length };
+    return {
+      success: true,
+      movedCount: movedWishlistItemIds.length,
+    };
   } catch (error) {
     console.error("Move all wishlist to cart error:", error);
     return { error: "Failed to move wishlist items to cart" };

@@ -14,9 +14,14 @@ import {
 type Props = {
   productId: string;
   variantId: string | null;
+  availableStock?: number;
 };
 
-const AddToCartControl = ({ productId, variantId = null }: Props) => {
+const AddToCartControl = ({
+  productId,
+  variantId = null,
+  availableStock = 0,
+}: Props) => {
   const [isPending, startTransition] = useTransition();
 
   const toastCart = useCartToast();
@@ -28,13 +33,10 @@ const AddToCartControl = ({ productId, variantId = null }: Props) => {
       )?.quantity ?? 0,
   );
 
-  const add = useCartStore((s) => s.add);
-  const change = useCartStore((s) => s.change);
-  const remove = useCartStore((s) => s.remove);
+  const atStockLimit = availableStock > 0 && qty >= availableStock;
+  const isOutOfStock = availableStock <= 0;
 
   const addItem = () => {
-    add(productId, variantId);
-
     startTransition(async () => {
       const res = await addToCartAction(productId, variantId, 1);
       if (res?.success) toastCart.added();
@@ -44,32 +46,49 @@ const AddToCartControl = ({ productId, variantId = null }: Props) => {
   };
 
   const increase = () => {
-    change(productId, variantId, +1);
     startTransition(async () => {
-      await updateQuantityAction(productId, variantId, +1);
-      toastCart.updated();
+      const res = await updateQuantityAction(productId, variantId, +1);
+      if (res?.success) {
+        useCartStore.getState().sync(res.items);
+        toastCart.updated();
+      }
+      if (res?.error) toastCart.error(res.error);
     });
   };
 
   const decrease = () => {
     if (qty <= 1) {
-      remove(productId, variantId);
-
       startTransition(async () => {
-        await removeFromCartAction(productId, variantId);
-        toastCart.removed();
+        const res = await removeFromCartAction(productId, variantId);
+        if (res?.success) {
+          useCartStore.getState().sync(res.items);
+          toastCart.removed();
+        }
+        if (res?.error) toastCart.error(res.error);
       });
 
       return;
     }
 
-    change(productId, variantId, -1);
-
     startTransition(async () => {
-      await updateQuantityAction(productId, variantId, -1);
-      toastCart.updated();
+      const res = await updateQuantityAction(productId, variantId, -1);
+      if (res?.success) {
+        useCartStore.getState().sync(res.items);
+        toastCart.updated();
+      }
+      if (res?.error) toastCart.error(res.error);
     });
   };
+
+  if (isOutOfStock)
+    return (
+      <Button
+        disabled
+        className="h-11 w-full rounded-lg bg-gray-200 font-semibold text-gray-600 shadow-none hover:bg-gray-200"
+      >
+        OUT OF STOCK
+      </Button>
+    );
 
   if (qty === 0)
     return (
@@ -99,7 +118,7 @@ const AddToCartControl = ({ productId, variantId = null }: Props) => {
 
       <Button
         onClick={increase}
-        disabled={isPending}
+        disabled={isPending || atStockLimit}
         className="h-9 w-9 flex items-center justify-center rounded-lg text-[20px] font-bold
         bg-brand hover:bg-brand-hover text-white transition"
       >

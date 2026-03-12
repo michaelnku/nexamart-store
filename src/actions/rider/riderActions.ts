@@ -7,6 +7,7 @@ import { completeDeliveryAndPayRider } from "@/lib/rider/completeDeliveryPayout"
 import { DeliveryStatus, OrderStatus } from "@/generated/prisma/client";
 import { hashOtp } from "@/lib/otp";
 import { moveOrderEarningsToPending } from "@/lib/payout/moveToPendingOnDelivery";
+import { ensureOrderPayoutReleaseJobInTx } from "@/lib/payout/orderPayoutRelease";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import {
   assertValidTransition,
@@ -20,7 +21,8 @@ import {
   canVerifyDeliveryStatus,
   toRiderClientDeliveryStatus,
 } from "@/lib/rider/types";
-import { ensureVerifiedSeller } from "@/lib/verification/guards";
+import { ensureVerifiedRider } from "@/lib/verification/guards";
+import { getPayoutEligibleAtFrom } from "@/lib/payout/timing";
 
 export async function autoAssignRiderForPaidOrderAction(orderId: string) {
   const userId = await CurrentUserId();
@@ -55,7 +57,7 @@ export async function riderAcceptDeliveryAction(deliveryId: string) {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
 
-  await ensureVerifiedSeller(userId);
+  await ensureVerifiedRider(userId);
 
   const role = await CurrentRole();
   if (role !== "RIDER") return { error: "Forbidden" };
@@ -172,7 +174,6 @@ export async function riderCancelAssignedDeliveryAction(deliveryId: string) {
 
 export async function verifyDeliveryOTPAction(deliveryId: string, otp: string) {
   const MAX_OTP_ATTEMPTS = 5;
-  const ESCROW_DELAY_MS = 24 * 60 * 60 * 1000;
 
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
@@ -242,7 +243,10 @@ export async function verifyDeliveryOTPAction(deliveryId: string, otp: string) {
   }
 
   const confirmedAt = new Date();
-  const payoutEligibleAt = new Date(confirmedAt.getTime() + ESCROW_DELAY_MS);
+  const payoutEligibleAt = getPayoutEligibleAtFrom(
+    confirmedAt,
+    Boolean(delivery.order.isFoodOrder),
+  );
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -284,13 +288,40 @@ export async function verifyDeliveryOTPAction(deliveryId: string, otp: string) {
         },
         tx,
       );
+
+      await ensureOrderPayoutReleaseJobInTx(tx, {
+        orderId: delivery.orderId,
+        releaseAt: payoutEligibleAt,
+      });
     });
 
     try {
-      const res = await moveOrderEarningsToPending(delivery.orderId);
-      console.log("escrow result:", res);
+      const pendingMoveResult = await moveOrderEarningsToPending(delivery.orderId);
+
+      if ("skipped" in pendingMoveResult) {
+        console.warn(
+          "[verifyDeliveryOTPAction] moveOrderEarningsToPending skipped",
+          {
+            orderId: delivery.orderId,
+            deliveryId,
+            reason: pendingMoveResult.reason,
+          },
+        );
+      } else {
+        console.info(
+          "[verifyDeliveryOTPAction] moveOrderEarningsToPending completed",
+          {
+            orderId: delivery.orderId,
+            deliveryId,
+          },
+        );
+      }
     } catch (err) {
-      console.error("moveOrderEarningsToPending failed:", err);
+      console.error("[verifyDeliveryOTPAction] moveOrderEarningsToPending failed", {
+        orderId: delivery.orderId,
+        deliveryId,
+        error: err instanceof Error ? err.message : err,
+      });
     }
 
     return { success: true };

@@ -17,7 +17,6 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { toast } from "sonner";
-import { Separator } from "../ui/separator";
 import {
   Carousel,
   CarouselContent,
@@ -26,6 +25,8 @@ import {
   CarouselNext,
 } from "../ui/carousel";
 import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
+import ProductInformationSections from "./ProductInformationSections";
+import { normalizeFoodDetails } from "@/app/marketplace/_components/productFormHelpers";
 
 type ProductDetailProps = { data: FullProduct };
 
@@ -38,7 +39,7 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   const images = data.images ?? [];
   const mainImage = images[activeIndex]?.imageUrl || "/placeholder.png";
@@ -75,6 +76,8 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
       : data.basePriceUSD;
 
   const priceDisplay = formatBaseUSD(basePriceUSD);
+  const isFoodProduct = Boolean(data.isFoodProduct || data.store?.type === "FOOD");
+  const foodDetails = normalizeFoodDetails(data.foodDetails);
 
   return (
     <main className="max-w-7xl mx-auto space-y-10 py-8 px-3 sm:px-6">
@@ -153,7 +156,9 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
 
           {data.variants.length > 0 && (
             <div className="border rounded-xl shadow bg-white dark:bg-neutral-800 p-5 space-y-3">
-              <h3 className="font-semibold text-lg">Variants</h3>
+              <h3 className="font-semibold text-lg">
+                {isFoodProduct ? "Pricing and Availability" : "Variants"}
+              </h3>
               <div className="space-y-2">
                 {data.variants.map((v, i) => (
                   <div
@@ -161,8 +166,14 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
                     className="flex flex-wrap justify-between items-center border-b last:border-none py-2 text-sm"
                   >
                     <span>
-                      <span className="font-medium ">{v.color}</span>
-                      <span className="font-medium pl-4">{v.size}</span>
+                      {isFoodProduct ? (
+                        <span className="font-medium">Standard serving</span>
+                      ) : (
+                        <>
+                          <span className="font-medium ">{v.color}</span>
+                          <span className="font-medium pl-4">{v.size}</span>
+                        </>
+                      )}
                     </span>
                     <span className="text-gray-500">
                       {formatBaseUSD(v.priceUSD)}
@@ -208,77 +219,11 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
         </div>
       </section>
 
-      {data.description && (
-        <section className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm">
-          <h2 className="font-semibold text-lg p-4">Product Details</h2>
-          <Separator />
-          <p className="p-4 text-gray-700 text-sm sm:text-base leading-relaxed">
-            {data.description}
-          </p>
-        </section>
-      )}
-
-      <section className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm">
-        <h2 className="font-semibold text-lg p-4">
-          Specifications Information
-        </h2>
-        <Separator />
-
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="border rounded-lg shadow-sm">
-            <h3 className="font-semibold text-lg p-4 border-b">Key Features</h3>
-            <div className="p-4">
-              {Array.isArray(data.specifications) &&
-              data.specifications.length > 0 ? (
-                <ul className="list-disc pl-6 space-y-1 text-sm text-gray-700">
-                  {data.specifications.map((s, i) => (
-                    <li key={i}>{s}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-500 text-sm">No data available</p>
-              )}
-            </div>
-          </div>
-
-          <div className="border rounded-lg shadow-sm">
-            <h3 className="font-semibold text-lg p-4 border-b">
-              What's in the box
-            </h3>
-            <div className="p-4">
-              <p className="text-gray-500 text-sm">No data available</p>
-            </div>
-          </div>
-          <div className="border rounded-lg shadow-sm">
-            <h3 className="font-semibold text-lg p-4 border-b">
-              Technical Details
-            </h3>
-            <div className="p-4">
-              {Array.isArray(data.technicalDetails) &&
-              data.technicalDetails.length > 0 ? (
-                <dl className="space-y-3">
-                  {data.technicalDetails.map((item, i) => {
-                    const t = item as { key: string; value: string };
-                    return (
-                      <span
-                        key={i}
-                        className="grid grid-cols-1 sm:grid-cols-[1fr_3fr] gap-2 "
-                      >
-                        <span className="font-semibold">{t.key}:</span>
-                        <span className="text-gray-600 text-sm break-words">
-                          {t.value}
-                        </span>
-                      </span>
-                    );
-                  })}
-                </dl>
-              ) : (
-                <p className="text-gray-500 text-sm">No data available</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+      <ProductInformationSections
+        data={data}
+        isFoodProduct={isFoodProduct}
+        foodDetails={foodDetails}
+      />
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogPortal>

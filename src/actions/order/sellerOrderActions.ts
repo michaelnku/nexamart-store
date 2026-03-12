@@ -1,25 +1,46 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
-import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
-import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import { markSellerGroupReady } from "@/lib/order/markSellerGroupReady";
+import { cancelSellerOrder } from "@/lib/orders/cancelSellerOrder";
+import { sellerCancelOrderInputSchema } from "@/lib/orders/sellerCancellation";
 import {
   assertValidTransition,
   normalizeOrderStatus,
 } from "@/lib/order/orderLifecycle";
 
+const SELLER_ORDER_ACTION_ERROR_MESSAGE =
+  "We couldn't update this order right now. Please refresh and try again.";
+
+export type SellerOrderActionResult = {
+  success?: string;
+  error?: string;
+  alreadyDone?: boolean;
+};
+
+function actionSuccess(
+  success: string,
+  alreadyDone = false,
+): SellerOrderActionResult {
+  return { success, alreadyDone };
+}
+
+function actionError(
+  error = SELLER_ORDER_ACTION_ERROR_MESSAGE,
+): SellerOrderActionResult {
+  return { error };
+}
+
 export const markSellerDispatchedToHubAction = async (
   sellerGroupId: string,
-) => {
+): Promise<SellerOrderActionResult> => {
   const userId = await CurrentUserId();
-  if (!userId) return { error: "Unauthorized" };
+  if (!userId) return actionError();
 
   const role = await CurrentRole();
-  if (role !== "SELLER") return { error: "Forbidden" };
+  if (role !== "SELLER") return actionError();
 
   try {
     const sellerGroup = await prisma.orderSellerGroup.findUnique({
@@ -38,38 +59,41 @@ export const markSellerDispatchedToHubAction = async (
       },
     });
 
-    if (!sellerGroup) return { error: "Order group not found" };
-    if (sellerGroup.sellerId !== userId) return { error: "Forbidden" };
+    if (!sellerGroup) return actionError();
+    if (sellerGroup.sellerId !== userId) return actionError();
+    if (sellerGroup.status === "DISPATCHED_TO_HUB") {
+      return actionSuccess("Seller group was already dispatched to the hub.", true);
+    }
     if (
       sellerGroup.status === "ARRIVED_AT_HUB" ||
       sellerGroup.status === "VERIFIED_AT_HUB"
     ) {
-      return { error: "Group already marked as arrived at hub." };
+      return actionSuccess("Seller group was already dispatched to the hub.", true);
     }
     if (sellerGroup.status === "CANCELLED") {
-      return { error: "Cannot dispatch a cancelled order group." };
+      return actionError();
     }
 
     if (sellerGroup.order.isFoodOrder) {
       const readyResult = await markSellerGroupReady(sellerGroupId, "MANUAL");
 
       if (readyResult.reason === "ALREADY_READY") {
-        return { error: "Food order is already marked as ready." };
+        return actionSuccess("Food order was already marked ready for pickup.", true);
       }
 
       if (readyResult.reason === "NOT_PREPARING") {
-        return { error: "Food order must be preparing before marking ready." };
+        return actionError();
       }
 
       if (!readyResult.updated) {
-        return { error: "Unable to mark food order as ready." };
+        return actionError();
       }
 
       revalidatePath("/marketplace/dashboard/seller/orders");
       revalidatePath(
         `/marketplace/dashboard/seller/orders/${sellerGroup.orderId}`,
       );
-      return { success: "Food order marked ready for rider pickup" };
+      return actionSuccess("Food order marked ready for rider pickup");
     }
 
     await prisma.$transaction(async (tx) => {
@@ -107,27 +131,24 @@ export const markSellerDispatchedToHubAction = async (
     revalidatePath(
       `/marketplace/dashboard/seller/orders/${sellerGroup.orderId}`,
     );
-    return { success: "Package dispatched to hub" };
+    return actionSuccess("Package dispatched to hub");
   } catch (error) {
     console.error("markSellerDispatchedToHubAction error:", error);
-    return {
-      error:
-        error instanceof Error
-          ? error.message
-          : "Failed to dispatch package to hub",
-    };
+    return actionError();
   }
 };
 
 export const acceptOrderAction = async (
   sellerGroupId: string,
   prepTimeMinutes?: number,
-) => {
-  const userId = await CurrentUserId();
-  if (!userId) return { error: "Unauthorized" };
+): Promise<SellerOrderActionResult> => {
+  let userId: string | null = null;
+
+  userId = await CurrentUserId();
+  if (!userId) return actionError();
 
   const role = await CurrentRole();
-  if (role !== "SELLER") return { error: "Forbidden" };
+  if (role !== "SELLER") return actionError();
 
   try {
     const group = await prisma.orderSellerGroup.findUnique({
@@ -147,11 +168,22 @@ export const acceptOrderAction = async (
       },
     });
 
-    if (!group) return { error: "Order group not found" };
-    if (group.sellerId !== userId) return { error: "Forbidden" };
+    if (!group) return actionError();
+    if (group.sellerId !== userId) return actionError();
+
+    if (group.order.status === "PENDING_PAYMENT") {
+      return actionError();
+    }
 
     if (group.status !== "PENDING") {
-      return { error: "Order already processed." };
+      if (
+        ["ACCEPTED", "PREPARING", "READY", "DISPATCHED_TO_HUB", "ARRIVED_AT_HUB", "VERIFIED_AT_HUB"].includes(
+          group.status,
+        )
+      ) {
+        return actionSuccess("This order was already accepted.", true);
+      }
+      return actionError();
     }
 
     if (group.order.isFoodOrder) {
@@ -160,7 +192,7 @@ export const acceptOrderAction = async (
         (prepTimeMinutes as number) < 1 ||
         (prepTimeMinutes as number) > 180
       ) {
-        return { error: "Prep time must be between 1 and 180 minutes." };
+        return actionError();
       }
     }
 
@@ -229,9 +261,17 @@ export const acceptOrderAction = async (
       }
     });
 
-    return { success: "Order accepted" };
+    return actionSuccess("Order accepted");
   } catch (error) {
-    return { error: "Failed to accept order" };
+    console.error("acceptOrderAction failed", {
+      sellerGroupId,
+      sellerId: userId,
+      prepTimeMinutes,
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    return actionError();
   }
 };
 
@@ -239,149 +279,59 @@ export const shipOrderAction = async (sellerGroupId: string) => {
   return markSellerDispatchedToHubAction(sellerGroupId);
 };
 
-export const cancelOrderAction = async (sellerGroupId: string) => {
+export const cancelOrderAction = async (input: {
+  sellerGroupId: string;
+  reason: string;
+  note?: string;
+}): Promise<SellerOrderActionResult> => {
+  let userId: string | null = null;
+
   try {
-    const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
+    userId = await CurrentUserId();
+    if (!userId) return actionError();
 
-    const group = await prisma.orderSellerGroup.findUnique({
-      where: { id: sellerGroupId },
-      include: {
-        order: {
-          include: {
-            delivery: {
-              select: { id: true, riderId: true, status: true },
-            },
-          },
-        },
-      },
-    });
+    const role = await CurrentRole();
+    if (role !== "SELLER") return actionError();
 
-    if (!group) return { error: "Order group not found" };
+    const parsedInput = sellerCancelOrderInputSchema.safeParse(input);
 
-    if (group.status === "CANCELLED") {
-      return { error: "Order group already cancelled." };
+    if (!parsedInput.success) {
+      return actionError();
     }
 
-    if (
-      !["PENDING", "ACCEPTED", "PREPARING", "DISPATCHED_TO_HUB"].includes(
-        group.status,
-      )
-    ) {
-      return { error: "Cannot cancel at this stage." };
-    }
-
-    await prisma.$transaction(async (tx) => {
-      await tx.orderSellerGroup.update({
-        where: { id: sellerGroupId },
-        data: { status: "CANCELLED" },
-      });
-
-      const refundAmount = group.subtotal;
-
-      const buyerWallet = await tx.wallet.upsert({
-        where: { userId: group.order.userId },
-        update: {},
-        create: {
-          userId: group.order.userId,
-          currency: "USD",
-        },
-        select: { id: true },
-      });
-
-      await createEscrowEntryIdempotent(tx, {
-        orderId: group.orderId,
-        userId: group.order.userId,
-        role: "BUYER",
-        entryType: "REFUND",
-        amount: refundAmount,
-        status: "RELEASED",
-        reference: `seller-cancel-refund-${group.id}`,
-      });
-
-      await createDoubleEntryLedger(tx, {
-        orderId: group.orderId,
-        fromWalletId: systemEscrowAccount.walletId,
-        toUserId: group.order.userId,
-        toWalletId: buyerWallet.id,
-        entryType: "REFUND",
-        amount: refundAmount,
-        reference: `seller-cancel-refund-ledger-${group.id}`,
-      });
-
-      await tx.transaction.create({
-        data: {
-          walletId: buyerWallet.id,
-          orderId: group.orderId,
-          userId: group.order.userId,
-          type: "REFUND",
-          amount: refundAmount,
-          status: "SUCCESS",
-          reference: `tx-seller-cancel-refund-${group.id}`,
-          description: `Refund for cancelled items from seller group`,
-        },
-      });
-
-      await tx.orderTimeline.create({
-        data: {
-          orderId: group.orderId,
-          status: group.order.status,
-          message: `One seller cancelled their items. Refund issued.`,
-        },
-      });
-
-      const remainingActiveGroups = await tx.orderSellerGroup.count({
-        where: {
-          orderId: group.orderId,
-          status: { not: "CANCELLED" },
-        },
-      });
-
-      if (remainingActiveGroups === 0) {
-        await tx.order.update({
-          where: { id: group.orderId },
-          data: { status: "CANCELLED" },
-        });
-
-        await tx.orderTimeline.create({
-          data: {
-            orderId: group.orderId,
-            status: "CANCELLED",
-            message: "All seller items cancelled. Order fully cancelled.",
-          },
-        });
-
-        if (group.order.delivery) {
-          await tx.delivery.update({
-            where: { id: group.order.delivery.id },
-            data: { status: "CANCELLED" },
-          });
-
-          if (group.order.delivery.riderId) {
-            await tx.riderProfile.updateMany({
-              where: { userId: group.order.delivery.riderId },
-              data: { isAvailable: true },
-            });
-          }
-        }
-      }
+    const result = await cancelSellerOrder({
+      sellerId: userId,
+      input: parsedInput.data,
     });
 
     revalidatePath("/marketplace/dashboard/seller/orders");
-    revalidatePath(`/marketplace/dashboard/seller/orders/${group.orderId}`);
+    revalidatePath(`/marketplace/dashboard/seller/orders/${result.orderId}`);
     revalidatePath("/marketplace/dashboard/rider/deliveries");
     revalidatePath("/customer/order/history");
-    revalidatePath(`/customer/order/${group.orderId}`);
-    revalidatePath(`/customer/order/track/${group.orderId}`);
+    revalidatePath(`/customer/order/${result.orderId}`);
+    revalidatePath(`/customer/order/track/${result.orderId}`);
 
-    if (group.order.trackingNumber) {
-      revalidatePath(`/customer/order/track/tn/${group.order.trackingNumber}`);
+    if (result.trackingNumber) {
+      revalidatePath(`/customer/order/track/tn/${result.trackingNumber}`);
     }
 
     revalidatePath("/");
 
-    return { success: "Seller items cancelled & refund issued" };
+    return {
+      success: result.alreadyCancelled
+        ? "Order cancellation was already processed"
+        : "Seller cancellation completed successfully",
+      alreadyDone: result.alreadyCancelled,
+    };
   } catch (error) {
-    console.error("cancelOrderAction error:", error);
-    return { error: "Failed to cancel order" };
+    console.error("cancelOrderAction failed", {
+      sellerGroupId: input.sellerGroupId,
+      sellerId: userId,
+      reason: input.reason,
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    return actionError();
   }
 };

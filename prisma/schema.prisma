@@ -46,39 +46,40 @@ model User {
   disputesOpened   Dispute[] @relation("DisputeOpenedBy")
   disputesResolved Dispute[] @relation("DisputeResolvedBy")
 
-  Account               Account[]
-  addresses             Address[]
-  agentProfile          AgentProfile?
-  staffProfile          StaffProfile?
-  cart                  Cart?
-  agentConversations    Conversation[]         @relation("ConversationAgent")
-  couponClaims          CouponClaim[]
-  couponUsages          CouponUsage[]
-  deliveries            Delivery[]             @relation("RiderDeliveries")
-  Notification          Notification[]
-  customerOrders        Order[]                @relation("CustomerOrders")
-  checkoutGroups        CheckoutGroup[]
-  sellerGroups          OrderSellerGroup[]     @relation("SellerGroupBySeller")
-  referralsReceived     Referral?              @relation("Referred")
-  referralsMade         Referral[]             @relation("Referrer")
-  referralCode          ReferralCode?
-  referralRewards       ReferralReward[]       @relation("ReferralRewardBeneficiary")
-  Review                Review[]
-  riderProfile          RiderProfile?
-  riderSchedules        RiderSchedule[]
-  searchHistories       SearchHistory[]
-  Session               Session[]
-  store                 Store?
-  StoreFollower         StoreFollower[]
-  StoreReview           StoreReview[]
-  transactions          Transaction[]
-  userPreference        UserPreference?
-  wallet                Wallet?
-  wishlist              Wishlist?
-  verifications         Verification[]
-  verificationDocuments VerificationDocument[]
-  disputeEvidences      DisputeEvidence[]
-  disputeMessages       DisputeMessage[]
+  Account                 Account[]
+  addresses               Address[]
+  agentProfile            AgentProfile?
+  staffProfile            StaffProfile?
+  cart                    Cart?
+  agentConversations      Conversation[]         @relation("ConversationAgent")
+  couponClaims            CouponClaim[]
+  couponUsages            CouponUsage[]
+  deliveries              Delivery[]             @relation("RiderDeliveries")
+  Notification            Notification[]
+  customerOrders          Order[]                @relation("CustomerOrders")
+  checkoutGroups          CheckoutGroup[]
+  sellerGroups            OrderSellerGroup[]     @relation("SellerGroupBySeller")
+  referralsReceived       Referral?              @relation("Referred")
+  referralsMade           Referral[]             @relation("Referrer")
+  referralCode            ReferralCode?
+  referralRewards         ReferralReward[]       @relation("ReferralRewardBeneficiary")
+  Review                  Review[]
+  riderProfile            RiderProfile?
+  riderSchedules          RiderSchedule[]
+  searchHistories         SearchHistory[]
+  Session                 Session[]
+  store                   Store?
+  StoreFollower           StoreFollower[]
+  StoreReview             StoreReview[]
+  conversationMemberships ConversationMember[]
+  transactions            Transaction[]
+  userPreference          UserPreference?
+  wallet                  Wallet?
+  wishlist                Wishlist?
+  verifications           Verification[]
+  verificationDocuments   VerificationDocument[]
+  disputeEvidences        DisputeEvidence[]
+  disputeMessages         DisputeMessage[]
 }
 
 model Account {
@@ -142,36 +143,38 @@ model PasswordResetAttempt {
 /// * PRODUCTS & CATEGORIES
 /// * ===========================
 model Product {
-  id                     String           @id @default(cuid())
-  name                   String           @db.VarChar(120)
+  id                     String                 @id @default(cuid())
+  name                   String                 @db.VarChar(120)
   description            String
   brand                  String?
   storeId                String
   categoryId             String
-  isPublished            Boolean          @default(true)
-  createdAt              DateTime         @default(now())
-  updatedAt              DateTime         @updatedAt
+  isPublished            Boolean                @default(true)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
   brandId                String?
   discount               Float?
   defaultPrepTimeMinutes Int?
-  specifications         String[]         @default([])
-  technicalDetails       Json             @default("[]")
-  sold                   Int              @default(0)
+  specifications         String[]               @default([])
+  technicalDetails       Json                   @default("[]")
+  sold                   Int                    @default(0)
   basePriceUSD           Float
   oldPriceUSD            Float?
-  averageRating          Float            @default(0)
-  reviewCount            Int              @default(0)
+  averageRating          Float                  @default(0)
+  reviewCount            Int                    @default(0)
   foodDetails            Json?
-  isFoodProduct          Boolean          @default(false)
+  isFoodProduct          Boolean                @default(false)
   cartItems              CartItem[]
+  inventoryReservations  InventoryReservation[]
   orderItems             OrderItem[]
-  Brand                  Brand?           @relation(fields: [brandId], references: [id])
-  category               Category         @relation(fields: [categoryId], references: [id])
-  store                  Store            @relation(fields: [storeId], references: [id])
+  Brand                  Brand?                 @relation(fields: [brandId], references: [id])
+  category               Category               @relation(fields: [categoryId], references: [id])
+  store                  Store                  @relation(fields: [storeId], references: [id])
   images                 ProductImage[]
   variants               ProductVariant[]
   reviews                Review[]
   wishlistItems          WishlistItem[]
+  conversations          Conversation[]
 
   @@index([storeId])
   @@index([categoryId])
@@ -180,18 +183,19 @@ model Product {
 }
 
 model ProductVariant {
-  id          String      @id @default(cuid())
-  productId   String
-  sku         String
-  color       String?
-  size        String?
-  stock       Int         @default(0)
-  discount    Float?
-  oldPriceUSD Float?
-  priceUSD    Float
-  cartItems   CartItem[]
-  orderItems  OrderItem[]
-  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id                    String                 @id @default(cuid())
+  productId             String
+  sku                   String
+  color                 String?
+  size                  String?
+  stock                 Int                    @default(0)
+  discount              Float?
+  oldPriceUSD           Float?
+  priceUSD              Float
+  cartItems             CartItem[]
+  inventoryReservations InventoryReservation[]
+  orderItems            OrderItem[]
+  product               Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([productId, sku])
   @@index([sku])
@@ -343,17 +347,20 @@ model Order {
   deliveryState        String
   deliveryStreet       String
 
+  stockDecrementedAt DateTime?
+
   disputeId String?
 
-  postPaymentFinalized    Boolean            @default(false)
+  postPaymentFinalized    Boolean                @default(false)
   arrivedAtHubConfirmedAt DateTime?
   arrivedAtHubConfirmedBy String?
   checkoutGroupId         String?
   couponUsages            CouponUsage[]
-  delivery                Delivery?          @relation("OrderDelivery")
-  checkoutGroup           CheckoutGroup?     @relation(fields: [checkoutGroupId], references: [id])
-  coupon                  Coupon?            @relation(fields: [couponId], references: [id])
-  customer                User               @relation("CustomerOrders", fields: [userId], references: [id], onDelete: Cascade)
+  delivery                Delivery?              @relation("OrderDelivery")
+  checkoutGroup           CheckoutGroup?         @relation(fields: [checkoutGroupId], references: [id])
+  coupon                  Coupon?                @relation(fields: [couponId], references: [id])
+  customer                User                   @relation("CustomerOrders", fields: [userId], references: [id], onDelete: Cascade)
+  inventoryReservations   InventoryReservation[]
   items                   OrderItem[]
   sellerGroups            OrderSellerGroup[]
   orderTimelines          OrderTimeline[]
@@ -402,12 +409,17 @@ model OrderSellerGroup {
   actualReadyAt             DateTime?
   verified                  Boolean                    @default(false)
   createdAt                 DateTime                   @default(now())
+  cancelledAt               DateTime?
+  cancelledBy               OrderCancelledBy?
+  cancelReason              SellerCancellationReason?
+  cancelNote                String?
   payoutEligibleAt          DateTime?
   payoutLocked              Boolean                    @default(false)
   payoutReleasedAt          DateTime?
   hubInboundCode            String                     @unique
   internalTrackingNumber    String                     @unique
   items                     OrderItem[]                @relation("GroupItems")
+  inventoryReservations     InventoryReservation[]
   order                     Order                      @relation(fields: [orderId], references: [id])
   seller                    User                       @relation("SellerGroupBySeller", fields: [sellerId], references: [id], onDelete: Cascade)
   store                     Store                      @relation(fields: [storeId], references: [id])
@@ -419,19 +431,47 @@ model OrderSellerGroup {
 }
 
 model OrderItem {
-  id            String            @id @default(cuid())
-  orderId       String
-  sellerGroupId String?
-  productId     String
-  variantId     String?
-  quantity      Int
-  price         Float
-  order         Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product       Product           @relation(fields: [productId], references: [id])
-  sellerGroup   OrderSellerGroup? @relation("GroupItems", fields: [sellerGroupId], references: [id])
-  variant       ProductVariant?   @relation(fields: [variantId], references: [id])
+  id                   String                @id @default(cuid())
+  orderId              String
+  sellerGroupId        String?
+  productId            String
+  variantId            String?
+  quantity             Int
+  price                Float
+  inventoryReservation InventoryReservation?
+  order                Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product              Product               @relation(fields: [productId], references: [id])
+  sellerGroup          OrderSellerGroup?     @relation("GroupItems", fields: [sellerGroupId], references: [id])
+  variant              ProductVariant?       @relation(fields: [variantId], references: [id])
 
   @@index([sellerGroupId])
+}
+
+model InventoryReservation {
+  id             String                     @id @default(cuid())
+  orderId        String
+  orderItemId    String                     @unique
+  sellerGroupId  String?
+  productId      String
+  variantId      String
+  quantity       Int
+  status         InventoryReservationStatus @default(RESERVED)
+  reservationKey String                     @unique
+  releaseReason  InventoryReleaseReason?
+  committedAt    DateTime?
+  releasedAt     DateTime?
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+  order          Order                      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem      OrderItem                  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  sellerGroup    OrderSellerGroup?          @relation(fields: [sellerGroupId], references: [id])
+  product        Product                    @relation(fields: [productId], references: [id])
+  variant        ProductVariant             @relation(fields: [variantId], references: [id])
+
+  @@index([orderId, status])
+  @@index([sellerGroupId, status])
+  @@index([variantId, status])
+  @@index([productId])
 }
 
 model CheckoutGroup {
@@ -780,6 +820,7 @@ model Store {
   owner                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   StoreFollower             StoreFollower[]
   StoreReview               StoreReview[]
+  conversations             Conversation[]
 
   @@index([userId])
   @@index([slug])
@@ -843,20 +884,27 @@ model StoreAnalytics {
 /// * MESSAGE SYSTEM
 /// * ===========================
 model Conversation {
-  id        String               @id @default(cuid())
-  userId    String
-  orderId   String?
-  type      ConversationType
-  status    ConversationStatus   @default(OPEN)
-  subject   String?
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
-  agentId   String?
-  agent     User?                @relation("ConversationAgent", fields: [agentId], references: [id])
-  members   ConversationMember[]
-  messages  Message[]
+  id            String               @id @default(cuid())
+  userId        String
+  orderId       String?
+  storeId       String?
+  productId     String?
+  type          ConversationType
+  status        ConversationStatus   @default(OPEN)
+  subject       String?
+  lastMessageAt DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  agentId       String?
+  agent         User?                @relation("ConversationAgent", fields: [agentId], references: [id])
+  store         Store?               @relation(fields: [storeId], references: [id])
+  product       Product?             @relation(fields: [productId], references: [id])
+  members       ConversationMember[]
+  messages      Message[]
 
   @@index([userId, updatedAt])
+  @@index([type, userId, storeId, productId])
+  @@index([lastMessageAt])
 }
 
 model AgentProfile {
@@ -887,6 +935,10 @@ model ConversationMember {
   conversationId String
   userId         String
   conversation   Conversation @relation(fields: [conversationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
 }
 
 /// *
@@ -1272,6 +1324,22 @@ enum WalletStatus {
   INACTIVE
 }
 
+enum InventoryReservationStatus {
+  RESERVED
+  COMMITTED
+  RELEASED
+}
+
+enum InventoryReleaseReason {
+  ORDER_CANCELLED
+  PAYMENT_FAILED
+  PAYMENT_EXPIRED
+  SELLER_CANCELLATION
+  DISPUTE_REVERSAL
+  HUB_TIMEOUT
+  SYSTEM_RECOVERY
+}
+
 enum VerificationStatus {
   PENDING
   IN_REVIEW
@@ -1348,6 +1416,23 @@ enum SellerGroupStatus {
   CANCELLED
 }
 
+enum OrderCancelledBy {
+  SELLER
+  BUYER
+  ADMIN
+  SYSTEM
+}
+
+enum SellerCancellationReason {
+  OUT_OF_STOCK
+  STORE_CLOSED
+  PRICE_ERROR
+  ITEM_UNAVAILABLE
+  DELIVERY_UNAVAILABLE
+  CUSTOMER_REQUEST
+  OTHER
+}
+
 enum DeliveryType {
   HOME_DELIVERY
   STATION_PICKUP
@@ -1393,6 +1478,7 @@ enum TransactionStatus {
   PENDING
   SUCCESS
   FAILED
+  CANCELLED
 }
 
 enum EscrowRole {
@@ -1449,6 +1535,7 @@ enum FulfillmentType {
 enum ConversationType {
   SUPPORT
   ORDER
+  PRODUCT_INQUIRY
   SYSTEM
 }
 

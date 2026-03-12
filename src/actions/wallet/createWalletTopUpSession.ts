@@ -1,8 +1,10 @@
 "use server";
 
-import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
+import { CurrentUserId } from "@/lib/currentUser";
+import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { getAppBaseUrl } from "@/lib/config/appUrl";
+import { getOrCreateStripeCustomerForUser } from "@/lib/stripe/getOrCreateStripeCustomer";
 
 const MIN_TOP_UP_USD = 1;
 const MAX_TOP_UP_USD = 10000;
@@ -10,14 +12,46 @@ const MAX_TOP_UP_USD = 10000;
 export async function createWalletTopUpSession(
   amount: number,
 ): Promise<string> {
-  const [userId, role] = await Promise.all([CurrentUserId(), CurrentRole()]);
+  const userId = await CurrentUserId();
 
   if (!userId) {
     throw new Error("Unauthorized");
   }
 
-  if (role !== "USER") {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      role: true,
+      email: true,
+      name: true,
+      stripeCustomerId: true,
+      isBanned: true,
+      isDeleted: true,
+      deletedAt: true,
+      wallet: {
+        select: {
+          id: true,
+          status: true,
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
+
+  if (user.role !== "USER") {
     throw new Error("Only users can fund wallet");
+  }
+
+  if (user.isBanned || user.isDeleted || user.deletedAt) {
+    throw new Error("This account cannot fund a wallet right now.");
+  }
+
+  if (!user.wallet || user.wallet.status !== "ACTIVE") {
+    throw new Error("Activate your wallet before funding it.");
   }
 
   if (!Number.isFinite(amount)) {
@@ -37,6 +71,10 @@ export async function createWalletTopUpSession(
     throw new Error("Stripe secret key is not configured");
   }
 
+  const stripeCustomer = await getOrCreateStripeCustomerForUser(user.id, {
+    user,
+  });
+
   const unitAmount = normalizedAmount * 100;
   if (unitAmount <= 0) {
     throw new Error("Invalid amount");
@@ -46,6 +84,7 @@ export async function createWalletTopUpSession(
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    customer: stripeCustomer.stripeCustomerId,
     payment_method_types: ["card"],
     line_items: [
       {
