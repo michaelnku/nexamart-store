@@ -62,6 +62,7 @@ export async function getWishlistAction(): Promise<FullProduct[]> {
                   name: true,
                   slug: true,
                   logo: true,
+                  type: true,
                 },
               },
               category: { select: { id: true, name: true } },
@@ -136,7 +137,9 @@ export const moveAllWishlistToCartAction = async () => {
     });
 
     if (cartItems.length > 0) {
-      const cartHasFood = cartItems.some((i) => i.product.store.type === "FOOD");
+      const cartHasFood = cartItems.some(
+        (i) => i.product.store.type === "FOOD",
+      );
       const cartHasNonFood = cartItems.some(
         (i) => i.product.store.type !== "FOOD",
       );
