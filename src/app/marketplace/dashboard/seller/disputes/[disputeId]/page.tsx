@@ -160,12 +160,12 @@ export default async function SellerDisputeDetailPage({
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
         <div className="space-y-6">
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
             <h2 className="mb-4 text-lg font-semibold">Complaint & History</h2>
             <DisputeTimeline items={timeline} />
           </div>
 
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
             <h2 className="mb-3 text-lg font-semibold">Order Context</h2>
             <div className="space-y-2 text-sm">
               <p>
@@ -195,7 +195,7 @@ export default async function SellerDisputeDetailPage({
         <div className="space-y-6">
           <DisputeEvidenceGallery evidence={disputeSummary.evidence} />
 
-          <div className="rounded-xl border bg-white p-5 text-sm text-muted-foreground shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-muted-foreground shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
             Seller response and evidence submission are currently read-only in this
             dashboard. If more context is required, please contact platform support.
           </div>

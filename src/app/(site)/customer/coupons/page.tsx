@@ -72,10 +72,10 @@ export default async function CouponsPage() {
   });
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+    <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <div>
-        <h1 className="text-2xl font-semibold">Coupons</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-2xl font-semibold text-slate-950 dark:text-zinc-100">Coupons</h1>
+        <p className="text-sm text-slate-500 dark:text-zinc-400">
           Claim coupons and apply them at checkout.
         </p>
       </div>

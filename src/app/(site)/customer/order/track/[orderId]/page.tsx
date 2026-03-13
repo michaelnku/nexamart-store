@@ -16,7 +16,7 @@ export default async function TrackOrderPage({
   if (!userId) {
     return (
       <main className="min-h-full flex items-center justify-center px-4">
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-zinc-400">
           Please{" "}
           <Link href="/login" className="text-blue-600 underline">
             login

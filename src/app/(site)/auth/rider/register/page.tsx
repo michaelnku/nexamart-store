@@ -2,7 +2,7 @@ import RiderRgisterForm from "@/app/(site)/_components/RiderRgisterForm";
 
 const page = () => {
   return (
-    <div>
+    <div className="bg-white dark:bg-neutral-950">
       <RiderRgisterForm />
     </div>
   );

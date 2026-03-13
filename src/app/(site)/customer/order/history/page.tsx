@@ -9,7 +9,7 @@ export default async function OrdersPage() {
   const userId = await CurrentUserId();
   if (!userId) {
     return (
-      <p className="py-40 text-center text-lg text-gray-500">
+      <p className="py-40 text-center text-lg text-gray-500 dark:text-zinc-400">
         Login required to view orders
       </p>
     );
@@ -37,7 +37,9 @@ export default async function OrdersPage() {
   if (orders.length === 0) {
     return (
       <div className="py-40 text-center">
-        <p className="mb-4 text-lg text-gray-500">You have no orders yet</p>
+        <p className="mb-4 text-lg text-gray-500 dark:text-zinc-400">
+          You have no orders yet
+        </p>
         <Link href="/">
           <Button className="bg-[var(--brand-blue)] font-medium text-white hover:bg-[var(--brand-blue-hover)]">
             Start Shopping

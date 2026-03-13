@@ -68,14 +68,16 @@ export default async function OrderSuccessSessionPage({
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-4">
         <AutoRefreshOrderStatus />
-        <div className="space-y-3 text-center">
+        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
-          <h1 className="text-xl font-semibold">Payment received</h1>
+          <h1 className="text-xl font-semibold text-slate-950 dark:text-zinc-100">
+            Payment received
+          </h1>
           <div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-zinc-400">
               Your order is being finalized. This can take a few seconds.
             </p>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-zinc-400">
               You can wait here while we prepare your order slip, do not refresh
               or close this tab.
             </p>
@@ -91,10 +93,12 @@ export default async function OrderSuccessSessionPage({
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-4">
-      <div className="space-y-3 text-center">
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
-        <h1 className="text-xl font-semibold">Payment received</h1>
-        <p className="text-sm text-gray-600">
+        <h1 className="text-xl font-semibold text-slate-950 dark:text-zinc-100">
+          Payment received
+        </h1>
+        <p className="text-sm text-gray-600 dark:text-zinc-400">
           Your order is ready. Open your order slip to view tracking details.
         </p>
         <Button asChild className="w-full sm:w-auto mr-6">

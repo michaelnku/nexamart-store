@@ -7,8 +7,8 @@ export default async function ReviewsRatingsPage() {
 
   if (!userId) {
     return (
-      <main className="max-w-5xl mx-auto px-4 py-12">
-        <p className="text-center text-gray-500 text-lg">
+      <main className="mx-auto max-w-5xl px-4 py-12">
+        <p className="text-center text-lg text-gray-500 dark:text-zinc-400">
           Login required to manage your reviews.
         </p>
       </main>

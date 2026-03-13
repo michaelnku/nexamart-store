@@ -129,7 +129,7 @@ function PremiumNotice({
         toneClassName,
       )}
     >
-      <div className="shrink-0 mt-0.5 rounded-full bg-white/70 p-2 backdrop-blur dark:bg-white/10">
+      <div className="mt-0.5">
         <Icon className="h-4 w-4 shrink-0" />
       </div>
       <div className="space-y-1">

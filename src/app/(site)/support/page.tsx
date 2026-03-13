@@ -8,5 +8,9 @@ export default async function SupportPage() {
 
   const tickets = await getUserTickets(userId);
 
-  return <SupportTicketsPage tickets={tickets} />;
+  return (
+    <div className="bg-white dark:bg-neutral-950">
+      <SupportTicketsPage tickets={tickets} />
+    </div>
+  );
 }

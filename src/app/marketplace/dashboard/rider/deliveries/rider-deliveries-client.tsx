@@ -9,7 +9,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Bike, Loader2, MapPin, PackageSearch, ShieldCheck } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -21,6 +21,24 @@ import {
   RIDER_DELIVERY_STATUS_TABS,
   RiderDeliveryStatusKey,
 } from "@/lib/rider/types";
+
+const styles = {
+  section: "mx-auto max-w-5xl space-y-6 px-4 py-6",
+  premiumSurface:
+    "rounded-2xl border border-slate-200/80 bg-white shadow-[0_22px_60px_-40px_rgba(15,23,42,0.35)] dark:border-zinc-800 dark:bg-zinc-950",
+  tintedSurface:
+    "rounded-xl border border-slate-200/70 bg-slate-50/80 dark:border-zinc-800 dark:bg-zinc-900/70",
+  eyebrow:
+    "inline-flex w-fit items-center rounded-full border border-[#3c9ee0]/15 bg-[#3c9ee0]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#2c7fb8] dark:border-[#3c9ee0]/25 dark:bg-[#3c9ee0]/12 dark:text-[#7fc6f5]",
+  token:
+    "inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold tracking-[0.18em] text-slate-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300",
+  primaryAction:
+    "h-10 rounded-xl border border-[#3c9ee0]/20 bg-[#3c9ee0] px-4 text-white shadow-[0_14px_34px_-20px_rgba(60,158,224,0.95)] transition hover:bg-[#318bc4] hover:shadow-[0_18px_36px_-20px_rgba(49,139,196,0.95)]",
+  dangerAction:
+    "h-10 rounded-xl border border-red-200 bg-red-50 px-4 text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50",
+  verifyAction:
+    "h-10 rounded-xl border border-green-200 bg-green-600 px-4 text-white shadow-[0_14px_34px_-20px_rgba(22,163,74,0.95)] transition hover:bg-green-700 dark:border-green-900/60",
+};
 
 export default function RiderDeliveriesClient() {
   const router = useRouter();
@@ -172,12 +190,33 @@ export default function RiderDeliveriesClient() {
   };
 
   return (
-    <main className="max-w-5xl mx-auto py-6 px-4 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Deliveries</h1>
-        <p className="text-sm text-gray-500">
-          Track your assigned and in-progress deliveries.
-        </p>
+    <main className={styles.section}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2">
+          <span className={styles.eyebrow}>Rider Operations</span>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-zinc-100">
+              Deliveries
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-zinc-400">
+              Track assigned trips, ongoing fulfillment, and verified handoffs.
+            </p>
+          </div>
+        </div>
+
+        <div className={`${styles.tintedSurface} flex items-center gap-3 px-4 py-3`}>
+          <div className="rounded-xl bg-[#3c9ee0]/10 p-2 text-[#3c9ee0] dark:bg-[#3c9ee0]/15">
+            <Bike className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-zinc-500">
+              Active Bucket
+            </p>
+            <p className="text-lg font-semibold text-slate-950 dark:text-zinc-100">
+              {RIDER_CLIENT_STATUS_LABELS[activeKey]}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -192,10 +231,10 @@ export default function RiderDeliveriesClient() {
                   `/marketplace/dashboard/rider/deliveries?status=${tab.key}`,
                 )
               }
-              className={`px-4 py-2 rounded-full text-sm border transition ${
+              className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
                 isActive
-                  ? "bg-[#3c9ee0] text-white border-[#3c9ee0]"
-                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  ? "border-[#3c9ee0] bg-[#3c9ee0] text-white shadow-[0_14px_34px_-20px_rgba(60,158,224,0.95)]"
+                  : "border-slate-200 bg-white text-gray-700 hover:border-[#3c9ee0]/30 hover:bg-[#3c9ee0]/[0.05] dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:border-[#3c9ee0]/35 dark:hover:bg-[#3c9ee0]/10"
               }`}
               type="button"
             >
@@ -206,7 +245,7 @@ export default function RiderDeliveriesClient() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20 border dark:bg-neutral-950 rounded-xl shadow-sm">
+        <div className={`flex items-center justify-center py-20 ${styles.premiumSurface}`}>
           <Spinner />
         </div>
       ) : isFailure ? (
@@ -214,8 +253,16 @@ export default function RiderDeliveriesClient() {
           Failed to load deliveries
         </p>
       ) : deliveries.length === 0 ? (
-        <div className="border dark:bg-neutral-950 rounded-xl shadow-sm p-8 text-center text-gray-500">
-          No deliveries in this category.
+        <div className={`${styles.premiumSurface} p-10 text-center`}>
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#3c9ee0]/15 bg-[#3c9ee0]/10 text-[#3c9ee0] dark:border-[#3c9ee0]/20 dark:bg-[#3c9ee0]/12">
+            <PackageSearch className="h-6 w-6" />
+          </div>
+          <p className="text-base font-semibold text-slate-900 dark:text-zinc-100">
+            No deliveries in this category
+          </p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">
+            Assigned and completed delivery activity will appear here as your queue changes.
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -235,171 +282,204 @@ export default function RiderDeliveriesClient() {
             return (
               <div
                 key={delivery.id}
-                className="border dark:bg-neutral-950 rounded-xl shadow-sm p-5 hover:shadow-md transition"
+                className={`${styles.premiumSurface} p-5 transition hover:shadow-[0_24px_60px_-38px_rgba(15,23,42,0.4)]`}
               >
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <div>
-                    <p className="text-sm text-gray-500">Order</p>
-                    <p className="font-semibold">
-                      {order?.trackingNumber ?? order?.id}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {order?.createdAt
-                        ? new Date(order.createdAt).toDateString()
-                        : "-"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-500">Customer</p>
-                    <p className="font-medium">
-                      {order?.customer?.name ?? "Unknown"}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {order?.customer?.email ?? "-"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-500">Fee</p>
-                    <p className="font-semibold text-[var(--brand-blue)]">
-                      {formattedFee}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-500">Status</p>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        RIDER_CLIENT_STATUS_STYLES[delivery.clientStatus]
-                      }`}
-                    >
-                      {RIDER_CLIENT_STATUS_LABELS[delivery.clientStatus]}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-4 text-sm text-gray-600">
-                  <span className="font-medium text-gray-700">Address:</span>{" "}
-                  {order?.deliveryAddress ?? "-"}
-                </div>
-
-                {delivery.clientStatus === "ASSIGNED" && (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Button
-                      onClick={() => handleAccept(delivery.id)}
-                      disabled={
-                        (isAcceptPending &&
-                          acceptingDeliveryId === delivery.id) ||
-                        (isCancelPending &&
-                          cancellingDeliveryId === delivery.id)
-                      }
-                      className="bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white"
-                    >
-                      {isAcceptPending &&
-                      acceptingDeliveryId === delivery.id ? (
-                        <span className="inline-flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Accepting...
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-xl border border-[#3c9ee0]/15 bg-[#3c9ee0]/10 p-3 text-[#3c9ee0] dark:border-[#3c9ee0]/20 dark:bg-[#3c9ee0]/12">
+                        <Bike className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <span className={styles.token}>
+                          {order?.trackingNumber ?? order?.id}
                         </span>
-                      ) : (
-                        "Accept Delivery"
-                      )}
-                    </Button>
-
-                    <Button
-                      variant="destructive"
-                      onClick={() => handleCancelAssigned(delivery.id)}
-                      disabled={
-                        (isCancelPending &&
-                          cancellingDeliveryId === delivery.id) ||
-                        (isAcceptPending && acceptingDeliveryId === delivery.id)
-                      }
-                    >
-                      {isCancelPending &&
-                      cancellingDeliveryId === delivery.id ? (
-                        <span className="inline-flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Cancelling...
-                        </span>
-                      ) : (
-                        "Cancel Delivery"
-                      )}
-                    </Button>
-                  </div>
-                )}
-
-                {canVerifyClientDeliveryStatus(delivery.clientStatus) && (
-                  <div className="mt-4 space-y-2">
-                    <label
-                      htmlFor={`otp-${delivery.id}`}
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      Verify customer OTP
-                    </label>
-
-                    <p
-                      className={`text-xs ${
-                        isLocked ? "text-red-600" : "text-gray-500"
-                      }`}
-                    >
-                      {isLocked
-                        ? "Delivery locked after 3 invalid OTP attempts."
-                        : `${attemptsLeft} attempt${attemptsLeft === 1 ? "" : "s"} left`}
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        id={`otp-${delivery.id}`}
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="Enter 6-digit OTP"
-                        value={otpByDeliveryId[delivery.id] ?? ""}
-                        disabled={isLocked}
-                        onChange={(e) => {
-                          const next = e.target.value
-                            .replace(/\D/g, "")
-                            .slice(0, 6);
-                          setOtpByDeliveryId((prev) => ({
-                            ...prev,
-                            [delivery.id]: next,
-                          }));
-                          setOtpErrorByDeliveryId((prev) => ({
-                            ...prev,
-                            [delivery.id]: "",
-                          }));
-                        }}
-                        className="h-10 w-full rounded-md border border-gray-300 px-3 text-sm outline-none focus:border-[var(--brand-blue)] focus:ring-2 focus:ring-[var(--brand-blue)]/20"
-                      />
-
-                      <Button
-                        onClick={() => handleVerifyOtp(delivery.id)}
-                        disabled={
-                          isLocked ||
-                          (isVerifyPending &&
-                            verifyingDeliveryId === delivery.id)
-                        }
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        {isVerifyPending &&
-                        verifyingDeliveryId === delivery.id ? (
-                          <span className="inline-flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Verifying...
-                          </span>
-                        ) : (
-                          "Verify OTP & Deliver"
-                        )}
-                      </Button>
+                        <p className="text-xs text-gray-400 dark:text-zinc-500">
+                          {order?.createdAt
+                            ? new Date(order.createdAt).toDateString()
+                            : "-"}
+                        </p>
+                      </div>
                     </div>
 
-                    {otpErrorByDeliveryId[delivery.id] && (
-                      <p className="text-xs text-red-600">
-                        {otpErrorByDeliveryId[delivery.id]}
-                      </p>
-                    )}
+                    <div className={`${styles.tintedSurface} grid gap-4 p-4 sm:grid-cols-3`}>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-zinc-500">
+                          Customer
+                        </p>
+                        <p className="font-medium text-slate-900 dark:text-zinc-100">
+                          {order?.customer?.name ?? "Unknown"}
+                        </p>
+                        <p className="text-xs text-gray-400 dark:text-zinc-500">
+                          {order?.customer?.email ?? "-"}
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-zinc-500">
+                          Fee
+                        </p>
+                        <p className="text-xl font-bold tracking-tight text-[var(--brand-blue)]">
+                          {formattedFee}
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-zinc-500">
+                          Status
+                        </p>
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                            RIDER_CLIENT_STATUS_STYLES[delivery.clientStatus]
+                          }`}
+                        >
+                          {RIDER_CLIENT_STATUS_LABELS[delivery.clientStatus]}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2 rounded-xl border border-slate-200/70 bg-slate-50/70 px-4 py-3 text-sm text-gray-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300">
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#3c9ee0]" />
+                      <div>
+                        <span className="font-medium text-slate-700 dark:text-zinc-200">
+                          Address:
+                        </span>{" "}
+                        {order?.deliveryAddress ?? "-"}
+                      </div>
+                    </div>
                   </div>
-                )}
+
+                  <div className="lg:w-[280px] lg:shrink-0">
+                    <div className="space-y-3">
+                      {delivery.clientStatus === "ASSIGNED" && (
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                          <Button
+                            onClick={() => handleAccept(delivery.id)}
+                            disabled={
+                              (isAcceptPending &&
+                                acceptingDeliveryId === delivery.id) ||
+                              (isCancelPending &&
+                                cancellingDeliveryId === delivery.id)
+                            }
+                            className={styles.primaryAction}
+                          >
+                            {isAcceptPending &&
+                            acceptingDeliveryId === delivery.id ? (
+                              <span className="inline-flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Accepting...
+                              </span>
+                            ) : (
+                              "Accept Delivery"
+                            )}
+                          </Button>
+
+                          <Button
+                            variant="destructive"
+                            onClick={() => handleCancelAssigned(delivery.id)}
+                            disabled={
+                              (isCancelPending &&
+                                cancellingDeliveryId === delivery.id) ||
+                              (isAcceptPending &&
+                                acceptingDeliveryId === delivery.id)
+                            }
+                            className={styles.dangerAction}
+                          >
+                            {isCancelPending &&
+                            cancellingDeliveryId === delivery.id ? (
+                              <span className="inline-flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Cancelling...
+                              </span>
+                            ) : (
+                              "Cancel Delivery"
+                            )}
+                          </Button>
+                        </div>
+                      )}
+
+                      {canVerifyClientDeliveryStatus(delivery.clientStatus) && (
+                        <div className={`${styles.tintedSurface} space-y-3 p-4`}>
+                          <div className="flex items-start gap-2">
+                            <div className="rounded-lg bg-green-100 p-2 text-green-700 dark:bg-green-950/40 dark:text-green-300">
+                              <ShieldCheck className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <label
+                                htmlFor={`otp-${delivery.id}`}
+                                className="text-sm font-semibold text-slate-900 dark:text-zinc-100"
+                              >
+                                Verify customer OTP
+                              </label>
+                              <p
+                                className={`text-xs ${
+                                  isLocked
+                                    ? "text-red-600 dark:text-red-400"
+                                    : "text-gray-500 dark:text-zinc-400"
+                                }`}
+                              >
+                                {isLocked
+                                  ? "Delivery locked after 3 invalid OTP attempts."
+                                  : `${attemptsLeft} attempt${attemptsLeft === 1 ? "" : "s"} left`}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-2">
+                            <input
+                              id={`otp-${delivery.id}`}
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="Enter 6-digit OTP"
+                              value={otpByDeliveryId[delivery.id] ?? ""}
+                              disabled={isLocked}
+                              onChange={(e) => {
+                                const next = e.target.value
+                                  .replace(/\D/g, "")
+                                  .slice(0, 6);
+                                setOtpByDeliveryId((prev) => ({
+                                  ...prev,
+                                  [delivery.id]: next,
+                                }));
+                                setOtpErrorByDeliveryId((prev) => ({
+                                  ...prev,
+                                  [delivery.id]: "",
+                                }));
+                              }}
+                              className="h-10 w-full rounded-xl border border-gray-300 bg-white px-3 text-sm outline-none focus:border-[var(--brand-blue)] focus:ring-2 focus:ring-[var(--brand-blue)]/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                            />
+
+                            <Button
+                              onClick={() => handleVerifyOtp(delivery.id)}
+                              disabled={
+                                isLocked ||
+                                (isVerifyPending &&
+                                  verifyingDeliveryId === delivery.id)
+                              }
+                              className={styles.verifyAction}
+                            >
+                              {isVerifyPending &&
+                              verifyingDeliveryId === delivery.id ? (
+                                <span className="inline-flex items-center gap-2">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Verifying...
+                                </span>
+                              ) : (
+                                "Verify OTP & Deliver"
+                              )}
+                            </Button>
+                          </div>
+
+                          {otpErrorByDeliveryId[delivery.id] && (
+                            <p className="text-xs text-red-600 dark:text-red-400">
+                              {otpErrorByDeliveryId[delivery.id]}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             );
           })}

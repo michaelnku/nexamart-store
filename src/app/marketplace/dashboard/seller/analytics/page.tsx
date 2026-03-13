@@ -72,23 +72,23 @@ const SellerAnalyticsPage = () => {
   };
 
   return (
-    <main className="space-y-8 light:bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-semibold light:text-gray-900">Analytics</h1>
+    <main className="min-h-screen space-y-8 bg-gray-50 px-4 py-6 text-slate-950 dark:bg-zinc-950 dark:text-zinc-100">
+      <h1 className="text-2xl font-semibold">Analytics</h1>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border border-gray-200 shadow-sm">
+        <Card className="border border-gray-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <CardHeader className="flex items-center gap-2">
-            <Package className="w-5 h-5 light:text-gray-500" />
-            <CardTitle className="text-sm font-medium light:text-gray-700">
+            <Package className="h-5 w-5 text-gray-500 dark:text-zinc-400" />
+            <CardTitle className="text-sm font-medium text-slate-700 dark:text-zinc-300">
               Products
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold light:text-gray-900">
+            <p className="text-2xl font-semibold text-slate-950 dark:text-zinc-100">
               {performance.products.total}
             </p>
-            <p className="text-sm text-gray-500 flex items-center gap-1">
+            <p className="flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-400">
               {getTrendIcon(performance.products.growth)}
               {performance.products.growth > 0
                 ? `+${performance.products.growth}%`
@@ -98,18 +98,18 @@ const SellerAnalyticsPage = () => {
           </CardContent>
         </Card>
 
-        <Card className="border border-gray-200  shadow-sm">
+        <Card className="border border-gray-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <CardHeader className="flex items-center gap-2">
-            <ShoppingBag className="w-5 h-5 light:text-gray-500" />
-            <CardTitle className="text-sm font-medium light:text-gray-700">
+            <ShoppingBag className="h-5 w-5 text-gray-500 dark:text-zinc-400" />
+            <CardTitle className="text-sm font-medium text-slate-700 dark:text-zinc-300">
               Orders
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold light:text-gray-900">
+            <p className="text-2xl font-semibold text-slate-950 dark:text-zinc-100">
               {performance.orders.total}
             </p>
-            <p className="text-sm text-gray-500 flex items-center gap-1">
+            <p className="flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-400">
               {getTrendIcon(performance.orders.growth)}
               {performance.orders.growth > 0
                 ? `+${performance.orders.growth}%`
@@ -119,18 +119,18 @@ const SellerAnalyticsPage = () => {
           </CardContent>
         </Card>
 
-        <Card className="border border-gray-200  shadow-sm">
+        <Card className="border border-gray-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <CardHeader className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5 light:text-gray-500" />
-            <CardTitle className="text-sm font-medium light:text-gray-700">
+            <DollarSign className="h-5 w-5 text-gray-500 dark:text-zinc-400" />
+            <CardTitle className="text-sm font-medium text-slate-700 dark:text-zinc-300">
               Revenue
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold light:text-gray-900">
+            <p className="text-2xl font-semibold text-slate-950 dark:text-zinc-100">
               ₦{performance.revenue.total.toLocaleString()}
             </p>
-            <p className="text-sm text-gray-500 flex items-center gap-1">
+            <p className="flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-400">
               {getTrendIcon(performance.revenue.growth)}
               {performance.revenue.growth > 0
                 ? `+${performance.revenue.growth}%`
@@ -140,15 +140,15 @@ const SellerAnalyticsPage = () => {
           </CardContent>
         </Card>
 
-        <Card className="border border-gray-200  shadow-sm">
+        <Card className="border border-gray-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <CardHeader className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium light:text-gray-700">
+            <CardTitle className="text-sm font-medium text-slate-700 dark:text-zinc-300">
               Sales Trend
             </CardTitle>
           </CardHeader>
           <CardContent>
             <select
-              className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm light:text-gray-700 light:bg-white"
+              className="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-slate-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
             >
@@ -161,9 +161,9 @@ const SellerAnalyticsPage = () => {
       </div>
 
       {/* Line Chart */}
-      <Card className="border border-gray-200 light:bg-white shadow-sm">
+      <Card className="border border-gray-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <CardHeader>
-          <CardTitle className="text-gray-800 font-medium">
+          <CardTitle className="font-medium text-gray-800 dark:text-zinc-100">
             Revenue & Sales Trend
           </CardTitle>
         </CardHeader>
@@ -207,9 +207,9 @@ const SellerAnalyticsPage = () => {
       </Card>
 
       {/* Top Selling Products */}
-      <Card className="border border-gray-200 light:bg-white shadow-sm">
+      <Card className="border border-gray-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <CardHeader>
-          <CardTitle className="text-gray-800 font-medium">
+          <CardTitle className="font-medium text-gray-800 dark:text-zinc-100">
             Top Selling Products
           </CardTitle>
         </CardHeader>
@@ -228,11 +228,11 @@ const SellerAnalyticsPage = () => {
                   className="rounded-md object-cover"
                 />
                 <div>
-                  <p className="font-medium text-gray-900">{product.name}</p>
-                  <p className="text-sm text-gray-500">Sold: {product.sold}</p>
+                  <p className="font-medium text-gray-900 dark:text-zinc-100">{product.name}</p>
+                  <p className="text-sm text-gray-500 dark:text-zinc-400">Sold: {product.sold}</p>
                 </div>
               </div>
-              <p className="font-semibold text-gray-800">
+              <p className="font-semibold text-gray-800 dark:text-zinc-100">
                 ₦{product.revenue.toLocaleString()}
               </p>
             </div>

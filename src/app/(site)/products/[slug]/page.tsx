@@ -113,7 +113,11 @@ export default async function Page({ params }: PageProps) {
 
   const product = await getProductById(productId);
   if (!product || product.variants.length === 0) {
-    return <div>Product not found</div>;
+    return (
+      <div className="px-4 py-16 text-center text-slate-600 dark:text-zinc-400">
+        Product not found
+      </div>
+    );
   }
 
   const canonicalSlug = createProductSlug(product.name, product.id);
@@ -155,9 +159,11 @@ export default async function Page({ params }: PageProps) {
         foodDetails={foodDetails}
       />
 
-      <section className="max-w-[1200px] mx-auto px-3 sm:px-6 lg:px-4 pb-10">
-        <div className="bg-white border rounded-xl shadow-sm p-6 space-y-4">
-          <h2 className="text-xl font-semibold">Verified Reviews</h2>
+      <section className="mx-auto max-w-[1200px] px-4 pb-10 sm:px-6 lg:px-8">
+        <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <h2 className="text-xl font-semibold text-slate-950 dark:text-zinc-100">
+            Verified Reviews
+          </h2>
           <ReviewList productId={product.id} />
         </div>
       </section>

@@ -6,15 +6,17 @@ export default async function CategoryPage() {
   const cats = await getHierarchicalCategories();
 
   return (
-    <main className="max-w-6xl mx-auto px-6 py-6 space-y-10">
-      <h1 className="text-2xl font-bold mb-6">Browse Categories</h1>
+    <main className="mx-auto max-w-6xl space-y-10 px-4 py-6 sm:px-6 lg:px-8">
+      <h1 className="mb-6 text-2xl font-bold text-slate-950 dark:text-zinc-100">
+        Browse Categories
+      </h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
         {cats.map((cat) => (
           <Link
             href={`/category/${cat.slug}`}
             key={cat.id}
-            className="p-4 rounded-xl border hover:shadow-lg transition flex flex-col items-center text-center"
+            className="flex flex-col items-center rounded-xl border border-slate-200 p-4 text-center transition hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-950/60"
           >
             {cat.iconImage && (
               <Image
@@ -24,7 +26,9 @@ export default async function CategoryPage() {
                 alt={cat.name}
               />
             )}
-            <span className="mt-2 font-medium">{cat.name}</span>
+            <span className="mt-2 font-medium text-slate-950 dark:text-zinc-100">
+              {cat.name}
+            </span>
           </Link>
         ))}
       </div>

@@ -17,7 +17,7 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <p className="text-center mt-24 text-red-500 min-h-full py-62">
+      <p className="mt-24 min-h-full py-62 text-center text-red-500 dark:text-red-400">
         Invalid reset link
       </p>
     );
@@ -37,8 +37,8 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <main className="min-h-full flex items-center justify-center bg-gray-50 dark:bg-neutral-950 px-4 ">
-      <div className="w-full max-w-md bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-lg p-8 space-y-7">
+    <main className="flex min-h-full items-center justify-center bg-gray-50 px-4 dark:bg-neutral-950">
+      <div className="w-full max-w-md space-y-7 rounded-2xl border border-gray-200 bg-white p-8 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
         <h1
           className="text-2xl font-semibold mb-4"
           style={{ color: "var(--brand-blue)" }}
@@ -53,7 +53,7 @@ export default function ResetPasswordPage() {
             placeholder="New password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border px-3 py-2 rounded"
+            className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-slate-950 dark:border-neutral-700 dark:bg-neutral-950 dark:text-zinc-100"
           />
 
           <Button
@@ -72,7 +72,7 @@ export default function ResetPasswordPage() {
           </Button>
         </form>
 
-        {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
+        {error && <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
       </div>
     </main>
   );

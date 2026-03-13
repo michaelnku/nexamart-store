@@ -7,7 +7,7 @@ export default function ModeratorSettingsRoutePage() {
   const modules = MarketplaceSettingsModules.MODERATOR.cards;
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-6 text-slate-950 dark:text-zinc-100">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">Moderator Settings</h1>
         <p className="text-sm text-muted-foreground">
@@ -16,7 +16,7 @@ export default function ModeratorSettingsRoutePage() {
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {modules.map((module) => (
-          <Card key={module.href}>
+          <Card key={module.href} className="dark:border-zinc-800 dark:bg-zinc-950">
             <CardHeader>
               <CardTitle className="text-base">{module.title}</CardTitle>
             </CardHeader>

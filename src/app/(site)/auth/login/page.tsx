@@ -12,7 +12,7 @@ export default async function LoginPage() {
   }
 
   return (
-    <main>
+    <main className="bg-white dark:bg-neutral-950">
       <LoginForm />
     </main>
   );

@@ -85,12 +85,12 @@ export default async function OrderDetailsPage({
 
   if (!order) {
     return (
-      <p className="min-h-full py-40 text-center text-red-500">Order not found</p>
+      <p className="min-h-full py-40 text-center text-red-500 dark:text-red-400">Order not found</p>
     );
   }
 
   if (order.userId !== userId) {
-    return <p>Unauthorized</p>;
+    return <p className="text-slate-600 dark:text-zinc-400">Unauthorized</p>;
   }
 
   const deliveryAddress = [
@@ -234,7 +234,7 @@ export default async function OrderDetailsPage({
 
   return (
     <div className="mx-auto max-w-4xl py-10">
-      <div className="mx-auto max-w-6xl rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+      <div className="mx-auto max-w-6xl rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-100">
         A one-time delivery code will be sent to your phone number. Please call
         it out to the rider at the delivery point for order:{" "}
         <span className="font-semibold">{trackingNumber}</span>.

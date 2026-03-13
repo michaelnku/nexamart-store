@@ -2,9 +2,9 @@
 
 export default function ForbiddenPage() {
   return (
-    <main className="min-h-screen px-4 py-10 sm:px-6">
+    <main className="min-h-screen bg-white px-4 py-10 dark:bg-neutral-950 sm:px-6">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-2xl flex-col items-center justify-center text-center">
-        <h1 className="text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
+        <h1 className="text-3xl font-bold leading-tight text-slate-950 dark:text-zinc-100 sm:text-4xl md:text-5xl">
           403 - Forbidden
         </h1>
         <p className="mt-4 max-w-xl text-sm text-muted-foreground sm:text-base md:text-lg">

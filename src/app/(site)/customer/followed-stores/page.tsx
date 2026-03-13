@@ -38,16 +38,16 @@ export default async function FollowedSellersPage() {
   }));
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+    <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <div>
-        <h1 className="text-2xl font-semibold">Followed Sellers</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-2xl font-semibold text-slate-950 dark:text-zinc-100">Followed Sellers</h1>
+        <p className="text-sm text-slate-500 dark:text-zinc-400">
           Stores you follow for updates and new products.
         </p>
       </div>
 
       {stores.length === 0 ? (
-        <div className="py-24 text-center text-muted-foreground">
+        <div className="rounded-2xl border border-dashed border-slate-200 py-24 text-center text-muted-foreground dark:border-zinc-800 dark:bg-zinc-950/50">
           You haven't followed any sellers yet.
         </div>
       ) : (

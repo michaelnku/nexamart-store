@@ -179,10 +179,10 @@ export default async function SellerOrderDetails({
           <h1 className="text-2xl font-bold tracking-tight">
             Order #{order.id.slice(-6)}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">
             Placed on {new Date(order.createdAt).toLocaleDateString()}
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-zinc-400">
             Store: <span className="font-medium">{group.store?.name}</span>
           </p>
         </div>
@@ -202,14 +202,14 @@ export default async function SellerOrderDetails({
           <DisputeSummaryCard dispute={dispute} title="Seller Dispute Summary" />
 
           <div className="grid gap-6 lg:grid-cols-[1.15fr,0.85fr]">
-            <div className="rounded-xl border bg-white p-5 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
               <h2 className="mb-4 text-lg font-semibold">Dispute Timeline</h2>
               <DisputeTimeline items={disputeTimeline} />
             </div>
 
             <div className="space-y-6">
               <DisputeEvidenceGallery evidence={dispute.evidence} />
-              <div className="rounded-xl border bg-white p-5 text-sm text-muted-foreground shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-muted-foreground shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                 Seller response and evidence submission are not enabled from this
                 dashboard yet. Please review the dispute details and contact support
                 if additional documentation is required.
@@ -219,28 +219,28 @@ export default async function SellerOrderDetails({
         </div>
       ) : null}
 
-      <div className="space-y-3 rounded-xl border bg-white p-5 shadow-sm">
+      <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <h2 className="text-lg font-semibold">Buyer Information</h2>
         <p className="text-sm">{order.customer?.name}</p>
         <p className="text-sm">{order.customer?.email}</p>
         <p className="mt-2 text-sm font-medium">Delivery Address</p>
-        <p className="text-sm text-gray-700">{deliveryAddress}</p>
+        <p className="text-sm text-gray-700 dark:text-zinc-300">{deliveryAddress}</p>
         {order.delivery ? (
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-gray-700 dark:text-zinc-300">
             Delivery status: {order.delivery.status.replaceAll("_", " ")}
           </p>
         ) : null}
       </div>
 
-      <div className="space-y-6 rounded-xl border bg-white p-5 shadow-sm">
+      <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <h2 className="text-lg font-semibold">Items Purchased</h2>
 
         {group.items.map((item) => (
           <div
             key={item.id}
-            className="flex gap-4 border-b pb-4 last:border-none"
+            className="flex gap-4 border-b border-slate-200 pb-4 last:border-none dark:border-zinc-800"
           >
-            <div className="relative h-24 w-24 overflow-hidden rounded-md bg-gray-100">
+            <div className="relative h-24 w-24 overflow-hidden rounded-md bg-gray-100 dark:bg-zinc-800">
               <Image
                 fill
                 src={item.product.images[0]?.imageUrl ?? "/placeholder.png"}
@@ -253,12 +253,12 @@ export default async function SellerOrderDetails({
               <p className="font-medium">{item.product.name}</p>
 
               {item.variant ? (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-zinc-400">
                   {item.variant.color} {item.variant.size}
                 </p>
               ) : null}
 
-              <p className="mt-1 font-semibold text-gray-900">
+              <p className="mt-1 font-semibold text-gray-900 dark:text-zinc-100">
                 {formatBaseUSD(item.price)} × {item.quantity}
               </p>
             </div>

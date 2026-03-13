@@ -42,7 +42,7 @@ export default function RedirectingPage() {
   }, [user, router]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-white dark:bg-neutral-950">
       <Image
         src="https://ijucjait38.ufs.sh/f/rO7LkXAj4RVlnNw2KuOByscQRmqV3jX4rStz8G2Mv0IpxKJA"
         alt="logo"
@@ -50,7 +50,7 @@ export default function RedirectingPage() {
         height={75}
         className="rounded-full shadow-lg animate-pulse ring-2 ring-brand ring-offset-2"
       />
-      <p className="text-gray-600 text-sm">Preparing your experience...</p>
+      <p className="text-sm text-gray-600 dark:text-zinc-400">Preparing your experience...</p>
     </div>
   );
 }

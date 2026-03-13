@@ -2,10 +2,10 @@ import StartVerificationButton from "@/components/verification/StartVerification
 
 export default function RidererVerificationPage() {
   return (
-    <div className="max-w-xl mx-auto py-12">
-      <h1 className="text-2xl font-semibold mb-4">Verify Your Rider Profile</h1>
+    <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white px-6 py-12 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <h1 className="mb-4 text-2xl font-semibold text-slate-950 dark:text-zinc-100">Verify Your Rider Profile</h1>
 
-      <p className="text-gray-600 mb-6">
+      <p className="mb-6 text-gray-600 dark:text-zinc-400">
         Complete identity verification to activate your profile and start
         operating.
       </p>

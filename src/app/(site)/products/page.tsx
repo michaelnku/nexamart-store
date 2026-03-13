@@ -80,12 +80,14 @@ export default async function ProductsPage({
   });
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-      <h1 className="text-xl font-semibold">{sortTitle} Products</h1>
+    <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+      <h1 className="text-xl font-semibold text-slate-950 dark:text-zinc-100">
+        {sortTitle} Products
+      </h1>
 
       {products.length === 0 ? (
-        <div className="rounded-xl border bg-card p-8 text-center">
-          <p className="text-base font-medium">
+        <div className="rounded-xl border border-slate-200 bg-card p-8 text-center dark:border-zinc-800 dark:bg-zinc-950">
+          <p className="text-base font-medium text-slate-950 dark:text-zinc-100">
             {hasBudgetFilter
               ? "No products found for this budget. Try another budget-friendly range."
               : "No products found."}

@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/button";
 export default async function CheckoutPage() {
   const userId = await CurrentUserId();
   if (!userId)
-    return <p className="text-center p-10 min-h-full">Login to continue</p>;
+    return (
+      <p className="min-h-full p-10 text-center text-slate-600 dark:text-zinc-400">
+        Login to continue
+      </p>
+    );
 
   const cart = await prisma.cart.findUnique({
     where: { userId },
@@ -38,8 +42,8 @@ export default async function CheckoutPage() {
 
   if (!cart)
     return (
-      <div className="min-h-full px-4 py-24 text-center space-y-4">
-        <p className="text-gray-500">Your cart is empty.</p>
+      <div className="min-h-full space-y-4 px-4 py-24 text-center">
+        <p className="text-gray-500 dark:text-zinc-400">Your cart is empty.</p>
         <Button asChild variant="outline">
           <Link href="/customer/order/history">View Orders</Link>
         </Button>
