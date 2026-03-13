@@ -10,7 +10,7 @@ type AuditDbClient = PrismaClient | Prisma.TransactionClient;
 function sanitizeAuditMetadataValue(
   value: AuditMetadata | Date | undefined,
   depth = 0,
-): Prisma.InputJsonValue | undefined {
+): Prisma.InputJsonValue | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
   if (depth > 4) return "[max-depth]";
@@ -45,6 +45,21 @@ function sanitizeAuditMetadataValue(
   return next;
 }
 
+function sanitizeAuditMetadataObject(
+  value: Record<string, AuditMetadata>,
+): Prisma.InputJsonObject {
+  const next: Prisma.InputJsonObject = {};
+
+  for (const [key, entry] of Object.entries(value)) {
+    const sanitized = sanitizeAuditMetadataValue(entry);
+    if (sanitized !== undefined) {
+      next[key] = sanitized;
+    }
+  }
+
+  return next;
+}
+
 export async function createAuditLog(
   input: CreateAuditLogInput,
   db: AuditDbClient = prisma,
@@ -56,7 +71,7 @@ export async function createAuditLog(
   }
 
   const metadata = input.metadata
-    ? (sanitizeAuditMetadataValue(input.metadata) as Prisma.InputJsonObject)
+    ? sanitizeAuditMetadataObject(input.metadata)
     : undefined;
 
   return db.auditLog.create({
