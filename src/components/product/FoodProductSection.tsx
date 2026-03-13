@@ -47,6 +47,12 @@ export default function FoodProductSection({ control }: Props) {
     setDietaryTagsInput((dietaryTags ?? []).join(", "));
   }, [dietaryTags]);
 
+  useEffect(() => {
+    if (fields.length === 0) {
+      append("");
+    }
+  }, [append, fields.length]);
+
   return (
     <section className="space-y-6">
       <div className="rounded-2xl border border-orange-200/80 bg-white/80 p-4 text-sm text-muted-foreground shadow-sm dark:border-orange-900/50 dark:bg-zinc-950/60 dark:text-zinc-300">
@@ -173,9 +179,7 @@ export default function FoodProductSection({ control }: Props) {
                 value={dietaryTagsInput}
                 placeholder="Halal, Vegan, Gluten-Free"
                 onChange={(e) => {
-                  const rawValue = e.target.value;
-                  setDietaryTagsInput(rawValue);
-                  field.onChange(parseCommaSeparatedList(rawValue));
+                  setDietaryTagsInput(e.target.value);
                 }}
                 onBlur={() => {
                   const normalizedTags = parseCommaSeparatedList(

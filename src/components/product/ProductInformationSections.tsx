@@ -18,6 +18,7 @@ type ProductInformationSectionsProps = {
   isFoodProduct?: boolean;
   foodDetails?: FoodDetails | null;
   foodEmptyState?: React.ReactNode;
+  generalEmptyState?: React.ReactNode;
 };
 
 function getMeaningfulItems(values?: string[]) {
@@ -47,15 +48,22 @@ export default function ProductInformationSections({
   isFoodProduct = false,
   foodDetails,
   foodEmptyState,
+  generalEmptyState,
 }: ProductInformationSectionsProps) {
   const details = normalizeFoodDetails(foodDetails ?? data.foodDetails);
   const ingredients = getMeaningfulItems(details?.ingredients);
   const dietaryTags = getMeaningfulItems(details?.dietaryTags);
   const portionSize = details?.portionSize?.trim();
   const hasFoodDetails = hasFoodMetadata(details);
+  const specifications = Array.isArray(data.specifications)
+    ? data.specifications.filter(
+        (specification) => typeof specification === "string" && specification.trim().length > 0,
+      )
+    : [];
   const technicalDetails = Array.isArray(data.technicalDetails)
     ? data.technicalDetails
     : [];
+  const hasGeneralDetails = specifications.length > 0 || technicalDetails.length > 0;
 
   return (
     <div className="space-y-8">
@@ -186,57 +194,68 @@ export default function ProductInformationSections({
           <Separator />
 
           <div className="grid gap-6 p-4 sm:p-5 lg:grid-cols-2">
-            <div className="rounded-2xl border shadow-sm">
-              <h3 className="border-b p-4 text-base font-semibold">
-                Key Features
-              </h3>
-              <div className="p-4">
-                {Array.isArray(data.specifications) &&
-                data.specifications.length > 0 ? (
-                  <ul className="list-disc space-y-2 pl-5 text-sm text-gray-700 dark:text-zinc-300">
-                    {data.specifications.map((specification, index) => (
-                      <li key={index}>{specification}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No specifications provided.
-                  </p>
-                )}
-              </div>
-            </div>
+            {hasGeneralDetails ? (
+              <>
+                <div className="rounded-2xl border shadow-sm">
+                  <h3 className="border-b p-4 text-base font-semibold">
+                    Key Features
+                  </h3>
+                  <div className="p-4">
+                    {specifications.length > 0 ? (
+                      <ul className="list-disc space-y-2 pl-5 text-sm text-gray-700 dark:text-zinc-300">
+                        {specifications.map((specification, index) => (
+                          <li key={index}>{specification}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No specifications provided.
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-            <div className="rounded-2xl border shadow-sm">
-              <h3 className="border-b p-4 text-base font-semibold">
-                Technical Details
-              </h3>
-              <div className="p-4">
-                {technicalDetails.length > 0 ? (
-                  <dl className="space-y-3">
-                    {technicalDetails.map((item, index) => {
-                      const detail = item as { key: string; value: string };
-                      return (
-                        <div
-                          key={index}
-                          className="grid gap-1 sm:grid-cols-[minmax(120px,0.8fr)_1.6fr] sm:gap-3"
-                        >
-                          <dt className="text-sm font-semibold text-slate-900 dark:text-zinc-100">
-                            {detail.key}
-                          </dt>
-                          <dd className="text-sm text-slate-600 dark:text-zinc-400">
-                            {detail.value}
-                          </dd>
-                        </div>
-                      );
-                    })}
-                  </dl>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No technical details provided.
-                  </p>
+                <div className="rounded-2xl border shadow-sm">
+                  <h3 className="border-b p-4 text-base font-semibold">
+                    Technical Details
+                  </h3>
+                  <div className="p-4">
+                    {technicalDetails.length > 0 ? (
+                      <dl className="space-y-3">
+                        {technicalDetails.map((item, index) => {
+                          const detail = item as { key: string; value: string };
+                          return (
+                            <div
+                              key={index}
+                              className="grid gap-1 sm:grid-cols-[minmax(120px,0.8fr)_1.6fr] sm:gap-3"
+                            >
+                              <dt className="text-sm font-semibold text-slate-900 dark:text-zinc-100">
+                                {detail.key}
+                              </dt>
+                              <dd className="text-sm text-slate-600 dark:text-zinc-400">
+                                {detail.value}
+                              </dd>
+                            </div>
+                          );
+                        })}
+                      </dl>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No technical details provided.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="lg:col-span-2">
+                {generalEmptyState ?? (
+                  <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+                    No additional product details have been provided yet.
+                  </div>
                 )}
               </div>
-            </div>
+            )}
           </div>
         </section>
       )}

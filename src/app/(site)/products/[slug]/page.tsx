@@ -1,6 +1,6 @@
 import ProductPublicDetail from "@/components/product/PublicProductDetail";
 import ReviewList from "@/components/reviews/ReviewList";
-import { CurrentUserId } from "@/lib/currentUser";
+import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { createProductSlug } from "@/lib/search/productSlug";
 import { redirect } from "next/navigation";
@@ -106,6 +106,7 @@ export async function generateMetadata({
 
 export default async function Page({ params }: PageProps) {
   const userId = await CurrentUserId();
+  const userRole = await CurrentRole();
 
   const rawSlug = (await params).slug;
 
@@ -155,6 +156,7 @@ export default async function Page({ params }: PageProps) {
         isWishlisted={isWishlisted}
         cartItems={cart?.items ?? []}
         userId={userId}
+        userRole={userRole}
         isFoodProduct={isFoodProduct}
         foodDetails={foodDetails}
       />

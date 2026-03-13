@@ -2,15 +2,8 @@
 
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Trash, Edit, X } from "lucide-react";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogOverlay,
-  DialogPortal,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import Link from "next/link";
+import { ArrowRight, ClipboardList, Edit, Trash } from "lucide-react";
 import { FullProduct } from "@/lib/types";
 import { deleteProductAction } from "@/actions/auth/product";
 import { useRouter } from "next/navigation";
@@ -27,6 +20,7 @@ import {
 import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
 import ProductInformationSections from "./ProductInformationSections";
 import { normalizeFoodDetails } from "@/app/marketplace/_components/productFormHelpers";
+import { MarketplaceImagePreview } from "@/components/media/MarketplaceImagePreview";
 
 type ProductDetailProps = { data: FullProduct };
 
@@ -37,12 +31,21 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
   const isOwner = user?.role === "SELLER" && data.store?.userId === user.id;
 
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [, startTransition] = useTransition();
 
   const images = data.images ?? [];
   const mainImage = images[activeIndex]?.imageUrl || "/placeholder.png";
+
+  const previewImages = useMemo(
+    () =>
+      images.map((img, index) => ({
+        id: `${data.id}-${index}`,
+        src: img.imageUrl,
+        alt: `${data.name} image ${index + 1}`,
+      })),
+    [images, data.id, data.name],
+  );
 
   const totalStock = useMemo(
     () => data.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
@@ -76,24 +79,59 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
       : data.basePriceUSD;
 
   const priceDisplay = formatBaseUSD(basePriceUSD);
-  const isFoodProduct = Boolean(data.isFoodProduct || data.store?.type === "FOOD");
+  const isFoodProduct = Boolean(
+    data.isFoodProduct || data.store?.type === "FOOD",
+  );
   const foodDetails = normalizeFoodDetails(data.foodDetails);
+  const updateHref = `/marketplace/dashboard/seller/products/${data.id}/update`;
+  const emptyDetailsState = isOwner ? (
+    <div className="rounded-[24px] border border-dashed border-sky-200 bg-[linear-gradient(145deg,#f8fbff_0%,#eef6ff_55%,#ffffff_100%)] p-8 text-center shadow-sm dark:border-sky-900/40 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.94)_0%,rgba(10,20,40,0.96)_55%,rgba(2,6,23,0.98)_100%)]">
+      <div className="mx-auto flex max-w-lg flex-col items-center gap-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#3c9ee0]/10 text-[#3c9ee0] dark:bg-sky-500/15 dark:text-sky-300">
+          <ClipboardList className="h-6 w-6" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold text-slate-950 dark:text-white">
+            Add more product details
+          </h3>
+          <p className="text-sm leading-6 text-slate-600 dark:text-zinc-300">
+            This listing is missing the supporting details buyers expect. Add richer information to improve trust and conversion.
+          </p>
+        </div>
+        <Button
+          asChild
+          className="rounded-xl bg-[#3c9ee0] px-5 text-white hover:bg-[#318bc4]"
+        >
+          <Link href={updateHref}>
+            Update Product Details
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+    </div>
+  ) : undefined;
 
   return (
-    <main className="max-w-7xl mx-auto space-y-10 py-8 px-3 sm:px-6">
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-10 bg-white dark:bg-neutral-900 border rounded-xl shadow p-5">
+    <main className="mx-auto max-w-7xl space-y-10 px-3 py-8 sm:px-6">
+      <section className="grid grid-cols-1 gap-10 rounded-xl border bg-white p-5 shadow dark:bg-neutral-900 lg:grid-cols-2">
         <div className="space-y-4">
-          <div
-            className="relative aspect-square bg-white rounded-xl overflow-hidden cursor-pointer border"
-            onClick={() => setIsModalOpen(true)}
+          <MarketplaceImagePreview
+            images={previewImages}
+            initialIndex={activeIndex}
+            variant="product"
+            title={data.name}
+            description="Preview product images"
+            triggerClassName="rounded-xl"
           >
-            <Image
-              src={mainImage}
-              alt={data.name}
-              fill
-              className="object-contain hover:scale-[1.02] transition"
-            />
-          </div>
+            <div className="relative aspect-square overflow-hidden rounded-xl border bg-white cursor-pointer">
+              <Image
+                src={mainImage}
+                alt={data.name}
+                fill
+                className="object-contain transition hover:scale-[1.02]"
+              />
+            </div>
+          </MarketplaceImagePreview>
 
           <div className="relative">
             <Carousel className="w-full">
@@ -102,7 +140,7 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
                   <CarouselItem key={i} className="basis-1/6 min-w-[72px]">
                     <button
                       onClick={() => setActiveIndex(i)}
-                      className={`relative w-full aspect-square rounded-lg overflow-hidden border transition ${
+                      className={`relative aspect-square w-full overflow-hidden rounded-lg border transition ${
                         activeIndex === i
                           ? "border-[#3c9ee0] ring-2 ring-[#3c9ee0]"
                           : "border-gray-300 hover:border-gray-500"
@@ -111,7 +149,7 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
                       <Image
                         fill
                         src={img.imageUrl}
-                        alt=""
+                        alt={`${data.name} thumbnail ${i + 1}`}
                         className="object-cover"
                       />
                     </button>
@@ -119,59 +157,59 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
                 ))}
               </CarouselContent>
 
-              <CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2 z-20 bg-white shadow hover:bg-gray-100 text-gray-700 border rounded-full size-8" />
-              <CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2 z-20 bg-white shadow hover:bg-gray-100 text-gray-700 border rounded-full size-8" />
+              <CarouselPrevious className="absolute left-1 top-1/2 z-20 size-8 -translate-y-1/2 rounded-full border bg-white text-gray-700 shadow hover:bg-gray-100" />
+              <CarouselNext className="absolute right-1 top-1/2 z-20 size-8 -translate-y-1/2 rounded-full border bg-white text-gray-700 shadow hover:bg-gray-100" />
             </Carousel>
           </div>
         </div>
 
-        <div className="space-y-6 flex flex-col">
-          <h1 className="text-2xl sm:text-3xl font-semibold leading-snug">
+        <div className="flex flex-col space-y-6">
+          <h1 className="text-2xl font-semibold leading-snug sm:text-3xl">
             {data.name}
           </h1>
 
           {data.brand && (
-            <p className="text-gray-600 text-sm">
+            <p className="text-sm text-gray-600">
               Brand: <span className="font-medium">{data.brand}</span>
             </p>
           )}
 
-          <div className="p-5 border rounded-xl shadow bg-[#f8fafc] space-y-2">
-            <p className="text-3xl sm:text-4xl font-bold text-[#111]">
+          <div className="space-y-2 rounded-xl border bg-[#f8fafc] p-5 shadow">
+            <p className="text-3xl font-bold text-[#111] sm:text-4xl">
               {priceDisplay}
             </p>
             {savingsPercent && (
-              <span className="inline-block bg-yellow-300 text-yellow-900 px-2 py-1 text-xs rounded font-bold shadow">
+              <span className="inline-block rounded bg-yellow-300 px-2 py-1 text-xs font-bold text-yellow-900 shadow">
                 Save {savingsPercent}
               </span>
             )}
             <p
-              className={`text-sm ${
+              className={`text-sm font-medium ${
                 inStock ? "text-green-700" : "text-red-600"
-              } font-medium`}
+              }`}
             >
               {inStock ? `In Stock — ${totalStock} available` : "Out of Stock"}
             </p>
           </div>
 
           {data.variants.length > 0 && (
-            <div className="border rounded-xl shadow bg-white dark:bg-neutral-800 p-5 space-y-3">
-              <h3 className="font-semibold text-lg">
+            <div className="space-y-3 rounded-xl border bg-white p-5 shadow dark:bg-neutral-800">
+              <h3 className="text-lg font-semibold">
                 {isFoodProduct ? "Pricing and Availability" : "Variants"}
               </h3>
               <div className="space-y-2">
                 {data.variants.map((v, i) => (
                   <div
                     key={i}
-                    className="flex flex-wrap justify-between items-center border-b last:border-none py-2 text-sm"
+                    className="flex flex-wrap items-center justify-between border-b py-2 text-sm last:border-none"
                   >
                     <span>
                       {isFoodProduct ? (
                         <span className="font-medium">Standard serving</span>
                       ) : (
                         <>
-                          <span className="font-medium ">{v.color}</span>
-                          <span className="font-medium pl-4">{v.size}</span>
+                          <span className="font-medium">{v.color}</span>
+                          <span className="pl-4 font-medium">{v.size}</span>
                         </>
                       )}
                     </span>
@@ -179,7 +217,7 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
                       {formatBaseUSD(v.priceUSD)}
                     </span>
                     <span className="text-gray-500">Stock: {v.stock}</span>
-                    <span className="text-gray-400 text-xs">SKU: {v.sku}</span>
+                    <span className="text-xs text-gray-400">SKU: {v.sku}</span>
                   </div>
                 ))}
               </div>
@@ -195,9 +233,9 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
                       `/marketplace/dashboard/seller/products/${data.id}/update`,
                     );
                   }}
-                  className="w-full bg-[#3c9ee0] hover:bg-[#318bc4] py-4 text-lg rounded-xl shadow flex items-center gap-2 justify-center"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#3c9ee0] py-4 text-lg shadow hover:bg-[#318bc4]"
                 >
-                  <Edit className="w-5 h-5" /> Edit Product
+                  <Edit className="h-5 w-5" /> Edit Product
                 </Button>
               )}
             </div>
@@ -209,9 +247,9 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
                   size="icon"
                   onClick={handleDeleteProduct}
                   disabled={isDeleting}
-                  className="rounded-full shadow shrink-0"
+                  className="shrink-0 rounded-full shadow"
                 >
-                  <Trash className="w-5 h-5" />
+                  <Trash className="h-5 w-5" />
                 </Button>
               )}
             </div>
@@ -223,44 +261,9 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
         data={data}
         isFoodProduct={isFoodProduct}
         foodDetails={foodDetails}
+        foodEmptyState={emptyDetailsState}
+        generalEmptyState={emptyDetailsState}
       />
-
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogPortal>
-          <DialogOverlay className="fixed inset-0 z-50" />
-          <DialogContent className="z-50 border-none shadow-none bg-white p-0 max-w-5xl w-full flex flex-col items-center justify-center">
-            <DialogTitle className="sr-only">Image Preview</DialogTitle>
-            <DialogTitle className="pt-4 -ml-64">Product Image</DialogTitle>
-
-            <DialogClose asChild>
-              <button className="absolute hidden top-4 right-4 text-white hover:text-gray-300">
-                <X className="w-7 h-7" />
-              </button>
-            </DialogClose>
-
-            <Carousel className="w-full max-w-4xl">
-              <CarouselContent>
-                {images.map((img, i) => (
-                  <CarouselItem key={i} className="flex justify-center">
-                    <div className="relative w-full h-[75vh]">
-                      <Image
-                        src={img.imageUrl}
-                        alt="preview"
-                        fill
-                        className="object-contain"
-                      />
-                    </div>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-
-              <CarouselPrevious className="left-5 bg-white text-black shadow hover:bg-gray-100 transition opacity-100" />
-              <CarouselNext className="right-5 bg-white text-black shadow hover:bg-gray-100 transition opacity-100" />
-            </Carousel>
-          </DialogContent>
-        </DialogPortal>
-      </Dialog>
     </main>
   );
 }
-

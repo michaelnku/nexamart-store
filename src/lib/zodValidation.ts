@@ -93,7 +93,7 @@ export type ChangePasswordSchemaType = z.infer<typeof changePasswordSchema>;
 export const foodDetailsSchema = z
   .object({
     ingredients: z
-      .array(z.string().min(1))
+      .array(z.string().min(1, "This field is required."))
       .min(1, "At least one ingredient is required"),
 
     preparationTimeMinutes: z
@@ -143,17 +143,17 @@ const baseProductSchema = z.object({
     .min(3, "Product name is too short")
     .max(120, "Product name must be under 120 characters"),
   brand: z.string().optional(),
-  description: z.string().min(1),
+  description: z.string().min(1, "Description is required"),
 
   specifications: z.string().optional(),
   technicalDetails: z.array(technicalDetailSchema).optional(),
 
-  categoryId: z.string().min(1),
+  categoryId: z.string().min(1, "Category is required"),
 
   oldPriceUSD: z.number().optional(),
   discount: z.number().optional(),
 
-  images: z.array(productImageSchema).min(1),
+  images: z.array(productImageSchema).min(1, "At least one image is required"),
 
   variants: z
     .array(productVariantSchema)

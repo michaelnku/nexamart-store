@@ -108,8 +108,19 @@ export default function ProductForm({
     }) as productSchemaType,
   });
 
-  const { control, getValues, handleSubmit, setValue, watch } = form;
+  const {
+    control,
+    getValues,
+    handleSubmit,
+    setError: setFieldError,
+    clearErrors,
+    setValue,
+    watch,
+  } = form;
   const watchedImages = watch("images");
+  const categoryError = form.formState.errors.categoryId?.message;
+  const imagesError = form.formState.errors.images?.message;
+  const variantsError = form.formState.errors.variants?.message;
 
   const { fields, append, remove, replace } = useFieldArray({
     control,
@@ -139,22 +150,94 @@ export default function ProductForm({
     return `${colorToken}-${sizeToken}-${rand}`;
   };
 
-  const getFirstErrorMessage = (value: unknown): string | undefined => {
+  const getFirstErrorDetail = (
+    value: unknown,
+    path: string[] = [],
+  ): { message: string; path: string[] } | undefined => {
     if (!value || typeof value !== "object") return undefined;
 
     if (
       "message" in (value as Record<string, unknown>) &&
       typeof (value as Record<string, unknown>).message === "string"
     ) {
-      return (value as { message: string }).message;
+      return {
+        message: (value as { message: string }).message,
+        path,
+      };
     }
 
-    for (const nestedValue of Object.values(value as Record<string, unknown>)) {
-      const message = getFirstErrorMessage(nestedValue);
-      if (message) return message;
+    for (const [key, nestedValue] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      const detail = getFirstErrorDetail(nestedValue, [...path, key]);
+      if (detail) return detail;
     }
 
     return undefined;
+  };
+
+  const normalizeErrorMessage = (message: string) => {
+    if (message === "Too small: expected string to have >= 1 characters") {
+      return "This field is required.";
+    }
+
+    return message;
+  };
+
+  const formatErrorPath = (path: string[]) => {
+    const [root, second, third] = path;
+
+    if (root === "categoryId") return "Category";
+    if (root === "images") return "Product Images";
+    if (root === "variants") {
+      if (typeof second === "undefined") return "Variants";
+      const variantLabel = `Variant ${Number(second) + 1}`;
+      if (third === "priceUSD") return `${variantLabel} Price`;
+      if (third === "stock") return `${variantLabel} Stock`;
+      if (third === "color") return `${variantLabel} Color`;
+      if (third === "size") return `${variantLabel} Size`;
+      if (third === "sku") return `${variantLabel} SKU`;
+      if (third === "oldPriceUSD") return `${variantLabel} Old Price`;
+      if (third === "discount") return `${variantLabel} Discount`;
+      return variantLabel;
+    }
+
+    if (root === "foodDetails") {
+      if (second === "ingredients") {
+        return `Food Details > Ingredient ${Number(third) + 1}`;
+      }
+      if (second === "preparationTimeMinutes") {
+        return "Food Details > Preparation Time";
+      }
+      if (second === "portionSize") return "Food Details > Portion Size";
+      if (second === "spiceLevel") return "Food Details > Spice Level";
+      if (second === "dietaryTags") return "Food Details > Dietary Tags";
+      if (second === "expiresAt") return "Food Details > Expiry Date";
+      return "Food Details";
+    }
+
+    if (root === "technicalDetails") {
+      const detailLabel =
+        typeof second === "undefined"
+          ? "Technical Details"
+          : `Technical Detail ${Number(second) + 1}`;
+      if (third === "key") return `${detailLabel} Label`;
+      if (third === "value") return `${detailLabel} Value`;
+      return detailLabel;
+    }
+
+    if (root === "name") return "Product Name";
+    if (root === "brand") return "Brand";
+    if (root === "description") return "Description";
+    if (root === "specifications") return "Specifications";
+
+    return path
+      .map((segment) =>
+        segment
+          .replace(/([A-Z])/g, " $1")
+          .replace(/^\w/, (char) => char.toUpperCase()),
+      )
+      .join(" > ");
   };
 
   const hasDuplicateSkus = (variants: { sku: string }[]) => {
@@ -214,14 +297,24 @@ export default function ProductForm({
 
   const onSubmit = (values: productSchemaType) => {
     if (!values.categoryId) {
+      setFieldError("categoryId", {
+        type: "manual",
+        message: "Please select a category.",
+      });
       toast.error("Please select a category");
       return;
     }
+    clearErrors("categoryId");
 
     if (!values.images.length) {
+      setFieldError("images", {
+        type: "manual",
+        message: "Upload at least one product image.",
+      });
       toast.error("Upload at least one product image");
       return;
     }
+    clearErrors("images");
 
     if (isUploadingImages) {
       toast.error("Wait for images to finish uploading");
@@ -249,19 +342,33 @@ export default function ProductForm({
     };
 
     if (!normalizedValues.variants.length) {
+      setFieldError("variants", {
+        type: "manual",
+        message: "At least one variant is required.",
+      });
       toast.error("At least one variant is required");
       return;
     }
+    clearErrors("variants");
 
     if (isFoodStore && normalizedValues.variants.length !== 1) {
+      setFieldError("variants", {
+        type: "manual",
+        message: "Food products can only have one pricing option.",
+      });
       toast.error("Food products can only have one pricing option.");
       return;
     }
 
     if (hasDuplicateSkus(normalizedValues.variants)) {
+      setFieldError("variants", {
+        type: "manual",
+        message: "Each variant must have a unique SKU.",
+      });
       toast.error("Each variant must have a unique SKU.");
       return;
     }
+    clearErrors("variants");
 
     startTransition(async () => {
       try {
@@ -337,9 +444,11 @@ export default function ProductForm({
         <Form {...form}>
           <form
             onSubmit={handleSubmit(onSubmit, (errors) => {
+              const errorDetail = getFirstErrorDetail(errors);
               toast.error(
-                getFirstErrorMessage(errors) ??
-                  "Please fix the highlighted fields",
+                errorDetail
+                  ? `${formatErrorPath(errorDetail.path)}: ${normalizeErrorMessage(errorDetail.message)}`
+                  : "Please fix the highlighted fields",
               );
             })}
             className="mt-4 space-y-8"
@@ -439,6 +548,11 @@ export default function ProductForm({
                       </option>
                     ))}
                   </select>
+                  {categoryError ? (
+                    <p className="text-sm font-medium text-destructive">
+                      {categoryError}
+                    </p>
+                  ) : null}
                 </div>
 
                 {childrenLevel1.length > 0 ? (
@@ -603,6 +717,11 @@ Dual SIM`}
                   : "Define each purchasable combination with the right pricing and stock."
               }
             >
+              {variantsError ? (
+                <p className="text-sm font-medium text-destructive">
+                  {variantsError}
+                </p>
+              ) : null}
               {fields.map((field, index) => (
                 <div
                   key={field.id}
@@ -876,6 +995,11 @@ Dual SIM`}
               title="Product Images"
               description="Crop, refine, and upload polished visuals for stronger marketplace presentation."
             >
+              {imagesError ? (
+                <p className="text-sm font-medium text-destructive">
+                  {imagesError}
+                </p>
+              ) : null}
               <ProductImageUploader
                 value={watchedImages ?? []}
                 maxImages={10}
