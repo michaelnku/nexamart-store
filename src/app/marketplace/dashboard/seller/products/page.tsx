@@ -35,19 +35,21 @@ const page = async () => {
   });
 
   return (
-    <div className="dark:bg-zinc-900 max-w-7xl mx-auto px-4 py-6 space-y-8 shadow rounded-lg">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold ">Products</h1>
-        <Link
-          href={"/marketplace/dashboard/seller/products/new"}
-          className="flex text-blue-700 font-semibold p-4 gap-1"
-        >
-          <Plus />
-          <p className="hidden md:block"> New Product</p>
-        </Link>
+    <main className="px-4 py-6">
+      <div className="dark:bg-zinc-900 max-w-7xl mx-auto space-y-8 shadow rounded-lg">
+        <div className="flex justify-between items-center px-4">
+          <h1 className="text-2xl font-semibold ">Products</h1>
+          <Link
+            href={"/marketplace/dashboard/seller/products/new"}
+            className="flex text-blue-700 font-semibold p-4 gap-1"
+          >
+            <Plus />
+            <p className="hidden md:block"> New Product</p>
+          </Link>
+        </div>
+        <ProductGrid products={products} />
       </div>
-      <ProductGrid products={products} />
-    </div>
+    </main>
   );
 };
 

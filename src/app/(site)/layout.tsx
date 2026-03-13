@@ -13,9 +13,9 @@ export default async function SiteLayout({
   const userId = user?.id;
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col pt-16">
       <SiteLayoutClient user={user} />
-      <main className="flex flex-1 min-h-0 pt-16">
+      <main className="flex flex-1 min-h-0">
         <div className="h-full min-h-0 w-full overflow-x-hidden [&_.h-full]:h-full [&_.min-h-full]:min-h-full">
           <NotificationListener userId={userId!} />
           {children}

@@ -23,23 +23,25 @@ const SocialLogin = () => {
   return (
     <div>
       <div className="flex items-center my-5">
-        <div className="flex-grow border-t border-gray-300" />
-        <span className="mx-3 text-gray-500 text-sm">or</span>
-        <div className="flex-grow border-t border-gray-300" />
+        <div className="flex-grow border-t border-gray-300 dark:border-zinc-700" />
+        <span className="mx-3 text-sm text-gray-500 dark:text-zinc-400">or</span>
+        <div className="flex-grow border-t border-gray-300 dark:border-zinc-700" />
       </div>
 
       <button
         type="button"
         onClick={() => loginSocial("google")}
         disabled={loading}
-        className={`w-full flex items-center justify-center gap-3 border border-gray-300 py-2 rounded-lg transition ${
-          loading ? "bg-gray-100 cursor-not-allowed" : "hover:bg-gray-100"
+        className={`w-full flex items-center justify-center gap-3 rounded-lg border border-gray-300 py-2 transition dark:border-zinc-700 dark:bg-zinc-950 ${
+          loading
+            ? "cursor-not-allowed bg-gray-100 dark:bg-zinc-900"
+            : "hover:bg-gray-100 dark:hover:bg-zinc-900"
         }`}
       >
         {loading ? (
           <div className="flex items-center gap-3">
             <svg
-              className="animate-spin h-5 w-5 text-gray-600"
+              className="h-5 w-5 animate-spin text-gray-600 dark:text-zinc-300"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -58,12 +60,14 @@ const SocialLogin = () => {
                 d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"
               />
             </svg>
-            <span className="text-gray-700 font-medium">Redirecting...</span>
+            <span className="font-medium text-gray-700 dark:text-zinc-200">
+              Redirecting...
+            </span>
           </div>
         ) : (
           <>
             <FcGoogle className="text-xl" />
-            <span className="text-gray-700 font-medium">
+            <span className="font-medium text-gray-700 dark:text-zinc-200">
               Continue with Google
             </span>
           </>

@@ -42,7 +42,7 @@ export default function AddressSelectionModal({
 }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="dark:border-zinc-800 dark:bg-neutral-950">
         <DialogHeader>
           <DialogTitle>Select Delivery Address</DialogTitle>
           <DialogDescription>
@@ -60,19 +60,19 @@ export default function AddressSelectionModal({
               className={`w-full rounded-lg border p-3 text-left transition ${
                 selectedAddressId === item.id
                   ? "border-[var(--brand-blue)] bg-[var(--brand-blue)]/10"
-                  : "border-gray-200 hover:border-gray-300"
+                  : "border-gray-200 hover:border-gray-300 dark:border-zinc-800 dark:hover:border-zinc-700"
               } ${selecting ? "cursor-not-allowed opacity-60" : ""}`}
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="font-medium">{item.fullName}</p>
                 {item.isDefault ? (
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600 dark:bg-zinc-800 dark:text-zinc-300">
                     DEFAULT
                   </span>
                 ) : null}
               </div>
-              <p className="text-sm text-gray-600">{item.phone}</p>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-zinc-300">{item.phone}</p>
+              <p className="text-sm text-gray-600 dark:text-zinc-300">
                 {item.street}, {item.city}
                 {item.state ? `, ${item.state}` : ""}
                 {item.country ? `, ${item.country}` : ""}

@@ -26,7 +26,7 @@ import { DialogTitle } from "@radix-ui/react-dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { DialogHeader } from "../ui/dialog";
 import { useLogout } from "@/hooks/useLogout";
-import { CartBadge } from "../marketplace/BadgeCounts";
+import { CartBadge, WishlistBadge } from "../marketplace/BadgeCounts";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import CurrencySelector from "../currency/CurrencySelector";
 import { UserDTO } from "@/lib/types";
@@ -62,8 +62,8 @@ export default function SiteNavbar({
         className="
     fixed top-0 left-0 right-0 z-50 w-full
     bg-black/90 backdrop-blur-lg text-white
-    border-b shadow-lg
-     dark:bg-neutral-950
+    border-b border-white/10 shadow-lg
+    dark:border-white/8 dark:bg-neutral-950
   "
       >
         <div className="flex items-center justify-between gap-2 sm:gap-4 h-16 px-3 sm:px-4 lg:px-8 xl:px-12">
@@ -96,7 +96,7 @@ export default function SiteNavbar({
               <DropdownMenuTrigger asChild>
                 <button
                   aria-label="Open account menu"
-                  className="flex items-center gap-2 text-left hover:text-[#3c9ee0] transition-colors duration-200"
+                  className="flex items-center gap-2 text-left transition-colors duration-200 hover:text-[#3c9ee0]"
                 >
                   <Avatar size="sm">
                     {avatarUrl ? (
@@ -105,7 +105,7 @@ export default function SiteNavbar({
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                   <span className="hidden xl:flex flex-col leading-tight">
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-gray-400 dark:text-zinc-400">
                       {user
                         ? `Welcome back, ${user.name?.split(" ")[0] || user.username}`
                         : "Welcome"}
@@ -266,24 +266,36 @@ export default function SiteNavbar({
 
             <Link
               href="/customer/order/history"
-              className="hidden xl:flex flex-col leading-tight hover:text-[#3c9ee0] transition"
+              className="hidden xl:flex flex-col leading-tight transition hover:text-[#3c9ee0]"
             >
-              <span className="text-xs text-gray-400">Orders</span>
+              <span className="text-xs text-gray-400 dark:text-zinc-400">Orders</span>
               <span className="font-semibold">Returns & History</span>
             </Link>
 
             <CurrencySelector />
 
+            {user?.role === "USER" && (
+              <Link
+                href="/wishlist"
+                className="transition hover:text-[#3c9ee0] dark:hover:text-[var(--brand-blue)]"
+              >
+                <WishlistBadge />
+              </Link>
+            )}
+
+            {user?.role === "USER" && (
+              <Link
+                href="/cart"
+                className="transition hover:text-[#3c9ee0] dark:hover:text-[var(--brand-blue)]"
+              >
+                <CartBadge />
+              </Link>
+            )}
+
             {user && (
               <div className="flex items-center gap-4">
                 <NotificationMenu />
               </div>
-            )}
-
-            {user?.role === "USER" && (
-              <Link href="/cart" className="hover:text-[#3c9ee0]">
-                <CartBadge />
-              </Link>
             )}
 
             <ModeToggle />
@@ -291,16 +303,28 @@ export default function SiteNavbar({
 
           <div className="flex lg:hidden items-center gap-3">
             <CurrencySelector />
+            {user?.role === "USER" && (
+              <Link
+                href="/wishlist"
+                className="transition hover:text-[#3c9ee0] dark:hover:text-[var(--brand-blue)]"
+              >
+                <WishlistBadge />
+              </Link>
+            )}
+
+            {user?.role === "USER" && (
+              <Link
+                href="/cart"
+                className="transition hover:text-[#3c9ee0] dark:hover:text-[var(--brand-blue)]"
+              >
+                <CartBadge />
+              </Link>
+            )}
+
             {user && (
               <div className="flex items-center gap-4">
                 <NotificationMenu />
               </div>
-            )}
-
-            {user?.role === "USER" && (
-              <Link href="/cart">
-                <CartBadge />
-              </Link>
             )}
 
             <ModeToggle />
@@ -310,7 +334,7 @@ export default function SiteNavbar({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full hover:bg-muted transition"
+                  className="rounded-full transition hover:bg-muted dark:hover:bg-zinc-800"
                 >
                   <Menu className="w-5 h-5" />
                 </Button>
@@ -326,7 +350,7 @@ export default function SiteNavbar({
                   </VisuallyHidden>
                 </DialogHeader>
 
-                <div className="p-5 flex items-center gap-3 border-b">
+                <div className="flex items-center gap-3 border-b p-5 dark:border-zinc-800">
                   {avatarUrl ? (
                     <Image
                       src={avatarUrl}
@@ -336,8 +360,8 @@ export default function SiteNavbar({
                       className="rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center">
-                      <span className="text-xs font-semibold text-gray-700">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-300 dark:bg-zinc-800">
+                      <span className="text-xs font-semibold text-gray-700 dark:text-zinc-200">
                         {initials}
                       </span>
                     </div>
@@ -348,7 +372,7 @@ export default function SiteNavbar({
                         ? `Welcome back, ${user.name?.split(" ")[0] || user.username}`
                         : "Welcome to NexaMart"}
                     </div>
-                    <p className="text-sm text-gray-500">{user?.email}</p>
+                    <p className="text-sm text-gray-500 dark:text-zinc-400">{user?.email}</p>
                   </span>
                 </div>
 

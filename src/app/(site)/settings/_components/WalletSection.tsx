@@ -55,11 +55,11 @@ export default function WalletSection() {
 
         {/* STATS */}
         <div className="flex gap-6 text-sm">
-          <div className="flex items-center gap-2 text-gray-600">
+          <div className="flex items-center gap-2 text-gray-600 dark:text-zinc-300">
             <ArrowDownCircle className="w-4 h-4 text-emerald-500" />
             {credits} credits
           </div>
-          <div className="flex items-center gap-2 text-gray-600">
+          <div className="flex items-center gap-2 text-gray-600 dark:text-zinc-300">
             <ArrowUpCircle className="w-4 h-4 text-red-500" />
             {debits} debits
           </div>
@@ -67,7 +67,7 @@ export default function WalletSection() {
 
         {/* RECENT ACTIVITY */}
         {recentTx.length > 0 && (
-          <div className="border-t pt-4 space-y-3">
+          <div className="space-y-3 border-t pt-4 dark:border-zinc-800">
             <p className="text-sm font-medium">Recent activity</p>
 
             {recentTx.map((tx) => {
@@ -78,7 +78,7 @@ export default function WalletSection() {
                   key={tx.id}
                   className="flex items-center justify-between text-sm"
                 >
-                  <span className="text-gray-600 truncate">
+                  <span className="truncate text-gray-600 dark:text-zinc-300">
                     {tx.description ?? tx.type.toLowerCase().replace(/_/g, " ")}
                   </span>
 
@@ -100,7 +100,7 @@ export default function WalletSection() {
         <Link href="/wallet">
           <Button
             variant="outline"
-            className="w-full border-[#3c9ee0] text-[#3c9ee0] hover:bg-[#3c9ee0]/10"
+            className="w-full border-[#3c9ee0] text-[#3c9ee0] hover:bg-[#3c9ee0]/10 dark:border-[#3c9ee0]/70 dark:hover:bg-[#3c9ee0]/12"
           >
             View full wallet
           </Button>

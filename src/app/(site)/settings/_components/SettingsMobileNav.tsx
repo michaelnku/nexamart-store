@@ -9,7 +9,7 @@ type Props = {
 
 export default function SettingsMobileNav({ active, onChange }: Props) {
   return (
-    <div className="px-2 md:hidden sticky top-0 z-20 bg-background border-b">
+    <div className="sticky top-0 z-20 border-b bg-background px-2 dark:border-zinc-800 md:hidden">
       <div className="flex gap-2 overflow-x-auto px-2 py-3 scrollbar-hide">
         {settingsNav.map((item) => {
           const Icon = item.icon;
@@ -22,7 +22,7 @@ export default function SettingsMobileNav({ active, onChange }: Props) {
                 ${
                   active === item.key
                     ? "bg-[#3c9ee0] text-white"
-                    : "bg-gray-100 text-gray-700"
+                    : "bg-gray-100 text-gray-700 dark:bg-zinc-800 dark:text-zinc-300"
                 }`}
             >
               <Icon className="w-4 h-4" />

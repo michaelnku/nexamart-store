@@ -27,7 +27,7 @@ export default function SecuritySection() {
 
             <div className="flex-1">
               <p className="font-medium">Password</p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-zinc-400">
                 Change your password to keep your account secure.
               </p>
 
@@ -39,6 +39,8 @@ export default function SecuritySection() {
                   text-[var(--brand-blue)]
                   hover:bg-[var(--brand-blue)]
                   hover:text-white
+                  dark:border-[var(--brand-blue)]/70
+                  dark:hover:bg-[var(--brand-blue)]/90
                   transition
                 "
                 onClick={() => setOpen(true)}
@@ -53,7 +55,7 @@ export default function SecuritySection() {
             <ShieldCheck className="w-5 h-5 text-[var(--brand-blue)]" />
             <div className="flex-1">
               <p className="font-medium">Two-Factor Authentication</p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-zinc-400">
                 Add an extra layer of security to your account.
               </p>
 
@@ -68,7 +70,7 @@ export default function SecuritySection() {
             <Lock className="w-5 h-5 text-[var(--brand-blue)]" />
             <div className="flex-1">
               <p className="font-medium">Active Sessions</p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-zinc-400">
                 Manage devices currently logged into your account.
               </p>
 
@@ -79,7 +81,7 @@ export default function SecuritySection() {
           </div>
 
           {/* SIGN OUT */}
-          <div className="border-t pt-4">
+          <div className="border-t pt-4 dark:border-zinc-800">
             <Button
               variant="destructive"
               className="w-full flex items-center gap-2"
@@ -94,7 +96,7 @@ export default function SecuritySection() {
 
       {/* CHANGE PASSWORD MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md dark:border-zinc-800 dark:bg-neutral-950">
           <DialogHeader>
             <DialogTitle>Change Password</DialogTitle>
             <DialogDescription>

@@ -25,7 +25,7 @@ export default function MarketplaceSettingsShell({ role, children }: Props) {
 
   return (
     <div className="h-full min-h-full bg-background py-4 flex flex-col">
-      <div className="px-2 md:hidden sticky top-0 z-20 bg-background border-b">
+      <div className="sticky top-0 z-20 border-b bg-background px-2 dark:border-zinc-800 md:hidden">
         <div className="flex gap-2 overflow-x-auto px-2 py-3 scrollbar-hide">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -36,7 +36,9 @@ export default function MarketplaceSettingsShell({ role, children }: Props) {
                 key={item.href}
                 href={item.href}
                 className={`flex items-center gap-2 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition ${
-                  active ? "bg-[#3c9ee0] text-white" : "bg-gray-100 text-gray-700"
+                  active
+                    ? "bg-[#3c9ee0] text-white"
+                    : "bg-gray-100 text-gray-700 dark:bg-zinc-800 dark:text-zinc-300"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -48,7 +50,7 @@ export default function MarketplaceSettingsShell({ role, children }: Props) {
       </div>
 
       <div className="max-w-6xl w-full mx-auto flex-1 flex gap-8 px-4 py-8">
-        <aside className="hidden md:block w-64 shrink-0 border-r bg-background">
+        <aside className="hidden w-64 shrink-0 border-r bg-background dark:border-zinc-800 md:block">
           <ul className="p-4 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -61,7 +63,7 @@ export default function MarketplaceSettingsShell({ role, children }: Props) {
                     className={`flex items-center gap-3 w-full text-left px-4 py-2 rounded-md text-sm font-medium transition ${
                       active
                         ? "bg-[#3c9ee0]/10 text-[#3c9ee0]"
-                        : "text-gray-700 hover:bg-gray-100"
+                        : "text-gray-700 hover:bg-gray-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     }`}
                   >
                     <Icon className="w-4 h-4" />

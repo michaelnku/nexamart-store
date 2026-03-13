@@ -403,7 +403,7 @@ export default function AddressForm({
                     ${
                       active
                         ? "border-[var(--brand-blue)] bg-[var(--brand-blue)]/10 text-[var(--brand-blue)]"
-                        : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                        : "border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
                     }`}
                 >
                   {label === "HOME" && "🏠 Home"}
@@ -535,9 +535,9 @@ export default function AddressForm({
               }
             />
             {loading ? (
-              <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-500" />
+              <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-500 dark:text-zinc-400" />
             ) : (
-              <MapPin className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <MapPin className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-zinc-500" />
             )}
           </div>
 
@@ -545,10 +545,10 @@ export default function AddressForm({
             <div
               id="address-suggestions-list"
               role="listbox"
-              className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-md border bg-white shadow-lg"
+              className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-md border bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950"
             >
               {loading && (
-                <div className="px-3 py-2 text-sm text-gray-500">
+                <div className="px-3 py-2 text-sm text-gray-500 dark:text-zinc-400">
                   Loading...
                 </div>
               )}
@@ -561,7 +561,7 @@ export default function AddressForm({
                 !error &&
                 suggestions.length === 0 &&
                 addressQuery.trim() && (
-                  <div className="px-3 py-2 text-sm text-gray-500">
+                  <div className="px-3 py-2 text-sm text-gray-500 dark:text-zinc-400">
                     No results found.
                   </div>
                 )}
@@ -578,7 +578,7 @@ export default function AddressForm({
                     className={`w-full px-3 py-2 text-left text-sm transition ${
                       index === activeIndex
                         ? "bg-[var(--brand-blue)]/10 text-[var(--brand-blue)]"
-                        : "hover:bg-gray-100"
+                        : "hover:bg-gray-100 dark:hover:bg-zinc-900"
                     }`}
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => onSelectSuggestion(suggestion)}
@@ -687,10 +687,10 @@ export default function AddressForm({
           control={form.control}
           name="isDefault"
           render={({ field }) => (
-            <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center justify-between rounded-lg border p-3 dark:border-zinc-800">
               <div>
                 <p className="font-medium text-sm">Set as default address</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-zinc-400">
                   Used automatically during checkout.
                 </p>
               </div>

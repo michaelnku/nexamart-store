@@ -59,7 +59,7 @@ export default function PreferencesSection({ preferences }: Props) {
           <Globe className="w-5 h-5 text-[var(--brand-blue)]" />
           <div className="flex-1">
             <p className="font-medium">Currency</p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-zinc-400">
               Choose how prices are displayed across NexaMart.
             </p>
 
@@ -71,8 +71,9 @@ export default function PreferencesSection({ preferences }: Props) {
                 updatePreferencesAction({ currency: value });
               }}
               className="
-                mt-2 w-full max-w-xs rounded-md border px-3 py-2 text-sm
+                mt-2 w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-slate-900
                 focus:outline-none focus:ring-2 focus:ring-[var(--brand-blue)]
+                dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100
               "
             >
               <option value="USD">USD – US Dollar</option>
@@ -89,7 +90,7 @@ export default function PreferencesSection({ preferences }: Props) {
           <div className="flex-1 space-y-4">
             <div>
               <p className="font-medium">Email Notifications</p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-zinc-400">
                 Control which emails you receive from NexaMart.
               </p>
             </div>
@@ -123,10 +124,10 @@ export default function PreferencesSection({ preferences }: Props) {
             />
 
             {/* SECURITY (LOCKED) */}
-            <div className="flex items-center justify-between rounded-lg border bg-gray-50 dark:bg-background p-3">
+            <div className="flex items-center justify-between rounded-lg border bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-900">
               <div>
                 <p className="font-medium text-sm">Security Alerts</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-zinc-400">
                   Password changes and suspicious activity (always enabled).
                 </p>
               </div>
@@ -140,7 +141,7 @@ export default function PreferencesSection({ preferences }: Props) {
           <Moon className="w-5 h-5 text-[var(--brand-blue)]" />
           <div className="flex-1">
             <p className="font-medium">Appearance</p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-zinc-400">
               Choose how NexaMart looks on your device.
             </p>
 
@@ -165,7 +166,7 @@ export default function PreferencesSection({ preferences }: Props) {
                       "flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition",
                       active
                         ? "border-[var(--brand-blue)] bg-[var(--brand-blue)]/10 text-[var(--brand-blue)]"
-                        : "border-gray-300 text-gray-600 hover:bg-gray-50",
+                        : "border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900",
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -193,10 +194,10 @@ function PreferenceRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border p-3">
+    <div className="flex items-center justify-between rounded-lg border p-3 dark:border-zinc-800">
       <div>
         <p className="font-medium text-sm">{label}</p>
-        <p className="text-xs text-gray-500">{description}</p>
+        <p className="text-xs text-gray-500 dark:text-zinc-400">{description}</p>
       </div>
       <Switch checked={checked} onCheckedChange={onChange} />
     </div>

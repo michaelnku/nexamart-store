@@ -17,7 +17,7 @@ export default async function MessagesPage({
     : null;
 
   return (
-    <div className="h-[calc(100dvh-4rem)] min-h-0 overflow-hidden mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto h-[calc(100dvh-4rem)] min-h-0 max-w-5xl overflow-hidden px-4 py-4 sm:px-6 lg:px-8">
       <InboxLayout
         conversations={conversations}
         currentUserId={userId}

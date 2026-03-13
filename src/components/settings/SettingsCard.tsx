@@ -9,7 +9,7 @@ type Props = {
 
 export default function SettingsCard({ title, children }: Props) {
   return (
-    <Card className="rounded-xl shadow-sm">
+    <Card className="rounded-xl border-slate-200/80 bg-white shadow-sm dark:border-zinc-800 dark:bg-neutral-950">
       <div className="px-6 pt-5 pb-2">
         <h2 className="text-lg font-semibold text-[#3c9ee0]">{title}</h2>
       </div>

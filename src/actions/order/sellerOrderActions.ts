@@ -18,13 +18,15 @@ export type SellerOrderActionResult = {
   success?: string;
   error?: string;
   alreadyDone?: boolean;
+  warning?: string;
 };
 
 function actionSuccess(
   success: string,
   alreadyDone = false,
+  warning?: string,
 ): SellerOrderActionResult {
-  return { success, alreadyDone };
+  return { success, alreadyDone, warning };
 }
 
 function actionError(
@@ -93,7 +95,11 @@ export const markSellerDispatchedToHubAction = async (
       revalidatePath(
         `/marketplace/dashboard/seller/orders/${sellerGroup.orderId}`,
       );
-      return actionSuccess("Food order marked ready for rider pickup");
+      return actionSuccess(
+        "Food order marked ready for rider pickup",
+        false,
+        readyResult.warningMessage,
+      );
     }
 
     await prisma.$transaction(async (tx) => {

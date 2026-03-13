@@ -29,6 +29,10 @@ export async function generateDeliveryOTP(
     delivery.otpExpiresAt &&
     delivery.otpExpiresAt > now
   ) {
+    console.info("[generateDeliveryOTP] skipped: active otp already exists", {
+      deliveryId,
+      otpExpiresAt: delivery.otpExpiresAt.toISOString(),
+    });
     return null;
   }
 
@@ -45,6 +49,11 @@ export async function generateDeliveryOTP(
       isLocked: false,
       lockedAt: null,
     },
+  });
+
+  console.info("[generateDeliveryOTP] otp generated", {
+    deliveryId,
+    otpExpiresAt: otpExpiresAt.toISOString(),
   });
 
   return otp;

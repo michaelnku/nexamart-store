@@ -39,7 +39,7 @@ export default function HistoryPage() {
 
   if (isLoading) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-10 space-y-8">
+      <main className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="space-y-2">
           <Skeleton className="h-7 w-60" />
           <Skeleton className="h-4 w-72" />
@@ -60,7 +60,7 @@ export default function HistoryPage() {
 
   if (!products.length) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-24 text-center space-y-4">
+      <main className="mx-auto max-w-7xl space-y-4 px-4 py-10 text-center sm:px-6 sm:py-12 lg:px-8">
         <h1 className="text-2xl font-semibold">Nothing viewed yet</h1>
         <p className="text-muted-foreground max-w-md mx-auto">
           Products you explore will appear here so you can easily find them
@@ -78,7 +78,7 @@ export default function HistoryPage() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-10 space-y-8">
+    <main className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Last Viewed</h1>

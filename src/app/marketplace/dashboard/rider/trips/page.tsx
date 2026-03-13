@@ -15,16 +15,16 @@ export default async function RiderTripsPage() {
   const { deliveries } = data;
 
   return (
-    <main className="max-w-5xl mx-auto py-6 px-4 space-y-6">
+    <main className="mx-auto max-w-5xl space-y-6 px-4 py-6 text-slate-950 dark:text-zinc-100">
       <div>
         <h1 className="text-2xl font-semibold">My Trips</h1>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-zinc-400">
           Your assigned deliveries ready for pickup.
         </p>
       </div>
 
       {deliveries.length === 0 ? (
-        <div className="border dark:bg-neutral-950 rounded-xl shadow-sm p-8 text-center text-gray-500">
+        <div className="rounded-xl border p-8 text-center text-gray-500 shadow-sm dark:border-zinc-800 dark:bg-neutral-950 dark:text-zinc-400">
           No assigned deliveries yet.
         </div>
       ) : (
@@ -35,15 +35,15 @@ export default async function RiderTripsPage() {
               <Link
                 key={delivery.id}
                 href={`/marketplace/dashboard/rider/deliveries/${delivery.id}`}
-                className="block border dark:bg-neutral-950 rounded-xl shadow-sm p-5 hover:shadow-md transition"
+                className="block rounded-xl border p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-neutral-950"
               >
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
-                    <p className="text-sm text-gray-500">Order</p>
+                    <p className="text-sm text-gray-500 dark:text-zinc-400">Order</p>
                     <p className="font-semibold">
                       {order?.trackingNumber ?? order?.id}
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-gray-400 dark:text-zinc-500">
                       {order?.createdAt
                         ? new Date(order.createdAt).toDateString()
                         : "-"}
@@ -51,17 +51,17 @@ export default async function RiderTripsPage() {
                   </div>
 
                   <div>
-                    <p className="text-sm text-gray-500">Customer</p>
+                    <p className="text-sm text-gray-500 dark:text-zinc-400">Customer</p>
                     <p className="font-medium">
                       {order?.customer?.name ?? "Unknown"}
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-gray-400 dark:text-zinc-500">
                       {order?.customer?.email ?? "-"}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-sm text-gray-500">Status</p>
+                    <p className="text-sm text-gray-500 dark:text-zinc-400">Status</p>
                     <p className="font-medium">
                       {delivery.status
                         .replaceAll("_", " ")
@@ -71,8 +71,8 @@ export default async function RiderTripsPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 text-sm text-gray-600">
-                  <span className="font-medium text-gray-700">Address:</span>{" "}
+                <div className="mt-4 text-sm text-gray-600 dark:text-zinc-300">
+                  <span className="font-medium text-gray-700 dark:text-zinc-200">Address:</span>{" "}
                   {order?.deliveryAddress ?? "-"}
                 </div>
               </Link>

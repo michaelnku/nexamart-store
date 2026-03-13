@@ -63,7 +63,7 @@ export default async function RecommendedPage() {
     recommendedProducts.length > 0 ? recommendedProducts : fallbackProducts;
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+    <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold">Recommended For You</h1>
 

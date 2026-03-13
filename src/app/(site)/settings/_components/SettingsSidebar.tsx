@@ -9,7 +9,7 @@ type Props = {
 
 export default function SettingsSidebar({ active, onChange }: Props) {
   return (
-    <aside className="hidden md:block w-64 shrink-0 border-r bg-background hidden md:block">
+    <aside className="hidden w-64 shrink-0 border-r bg-background dark:border-zinc-800 md:block">
       <ul className="p-4 space-y-1">
         {settingsNav.map((item) => {
           const Icon = item.icon;
@@ -22,7 +22,7 @@ export default function SettingsSidebar({ active, onChange }: Props) {
                   ${
                     active === item.key
                       ? "bg-[#3c9ee0]/10 text-[#3c9ee0]"
-                      : "text-gray-700 hover:bg-gray-100"
+                      : "text-gray-700 hover:bg-gray-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                   }`}
               >
                 <Icon className="w-4 h-4" />

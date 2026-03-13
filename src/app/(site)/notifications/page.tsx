@@ -10,7 +10,7 @@ export default function NotificationsPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 max-w-7xl mx-auto py-20 px-8">
+      <div className="mx-auto max-w-7xl space-y-4 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <Skeleton className="h-20 w-full rounded-xl" />
         <Skeleton className="h-20 w-full rounded-xl" />
         <Skeleton className="h-20 w-full rounded-xl" />
@@ -20,7 +20,7 @@ export default function NotificationsPage() {
 
   if (!data?.notifications?.length) {
     return (
-      <div className="max-w-7xl mx-auto flex flex-col justify-center items-center py-20 ">
+      <div className="mx-auto flex max-w-7xl flex-col items-center justify-center px-4 py-10 text-center sm:px-6 sm:py-12 lg:px-8">
         <p className="text-lg font-semibold">No notifications</p>
         <p className="text-sm text-muted-foreground">
           When activity happens on your account it will appear here.
@@ -32,7 +32,7 @@ export default function NotificationsPage() {
   const notifications: NotificationDTO[] = data?.notifications ?? [];
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto px-8 py-8">
+    <div className="mx-auto max-w-7xl space-y-4 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <h1 className="text-xl font-semibold">Notification Center</h1>
 
       <span className="flex justify-center items-center">

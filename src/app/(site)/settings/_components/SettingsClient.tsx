@@ -30,7 +30,7 @@ export default function SettingsClient({ addresses, preferences }: Props) {
     <div className="h-full min-h-full bg-background flex flex-col">
       <SettingsMobileNav active={active} onChange={setActive} />
 
-      <div className="max-w-6xl w-full mx-auto flex-1 flex gap-8 px-4 py-12">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 gap-8 px-4 py-6 sm:px-6 sm:py-8">
         <SettingsSidebar active={active} onChange={setActive} />
 
         <main className="flex-1 min-w-0">

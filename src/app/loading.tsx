@@ -29,7 +29,7 @@ export default function Loading() {
         </div>
 
         <p
-          className="text-xs text-gray-500 font-medium tracking-wide"
+          className="text-xs font-medium tracking-wide text-gray-500 dark:text-zinc-400"
           aria-live="polite"
         >
           Preparing your shopping experience...
@@ -37,7 +37,7 @@ export default function Loading() {
       </div>
 
       {/* FOOTER */}
-      <footer className="text-center text-[11px] text-gray-400 mb-4 sm:mb-6">
+      <footer className="mb-4 text-center text-[11px] text-gray-400 dark:text-zinc-500 sm:mb-6">
         Powered by{" "}
         <strong className="text-[#3c9ee0]">NEXLAB TECHNOLOGIES</strong>
       </footer>

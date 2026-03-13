@@ -60,7 +60,7 @@ export default function AddressSection({ addresses }: Props) {
       <SettingsCard title="Addresses">
         <div className="space-y-5">
           {addresses.length === 0 ? (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-zinc-400">
               You have not added any delivery addresses yet.
             </p>
           ) : (
@@ -69,14 +69,15 @@ export default function AddressSection({ addresses }: Props) {
                 <Card
                   key={address.id}
                   className={cn(
-                    "relative min-w-0 border  transition",
-                    address.isDefault && "border-[#3c9ee0] bg-[#3c9ee0]/5",
+                    "relative min-w-0 border transition dark:border-zinc-800 dark:bg-zinc-950",
+                    address.isDefault &&
+                      "border-[#3c9ee0] bg-[#3c9ee0]/5 dark:border-[#3c9ee0]/60 dark:bg-[#3c9ee0]/10",
                   )}
                 >
                   {/* BADGES */}
                   <div className="absolute top-3 right-3 flex gap-2">
                     {/* LABEL */}
-                    <span className="rounded-full bg-gray-100 px-2 py-[2px] text-xs font-medium text-gray-700">
+                    <span className="rounded-full bg-gray-100 px-2 py-[2px] text-xs font-medium text-gray-700 dark:bg-zinc-800 dark:text-zinc-300">
                       {address.label}
                     </span>
 
@@ -97,12 +98,12 @@ export default function AddressSection({ addresses }: Props) {
                         <span className="truncate">{address.fullName}</span>
                       </div>
 
-                      <p className="text-sm text-gray-700 break-words">
+                      <p className="break-words text-sm text-gray-700 dark:text-zinc-300">
                         {address.street}, {address.city}
                         {address.state && `, ${address.state}`}
                       </p>
 
-                      <p className="text-sm text-gray-500">{address.phone}</p>
+                      <p className="text-sm text-gray-500 dark:text-zinc-400">{address.phone}</p>
                     </div>
 
                     {/* ACTIONS */}
@@ -122,7 +123,7 @@ export default function AddressSection({ addresses }: Props) {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-red-600"
+                        className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
                         onClick={() => setDeleteTarget(address)}
                       >
                         <Trash2 className="w-4 h-4 mr-1" />
@@ -138,7 +139,7 @@ export default function AddressSection({ addresses }: Props) {
           {/* ADD */}
           <Button
             variant="outline"
-            className="w-full border-dashed border-[#3c9ee0] text-[#3c9ee0] py-6 hover:bg-[#3c9ee0]/10"
+            className="w-full border-dashed border-[#3c9ee0] py-6 text-[#3c9ee0] hover:bg-[#3c9ee0]/10 dark:border-[#3c9ee0]/60 dark:hover:bg-[#3c9ee0]/12"
             onClick={() => {
               setEditing(null);
               setOpenForm(true);

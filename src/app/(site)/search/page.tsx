@@ -25,7 +25,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   if (!query) {
     return (
-      <main className="max-w-7xl min-h-full mx-auto px-4 py-10 space-y-8">
+      <main className="mx-auto min-h-full max-w-7xl space-y-8 px-4 py-10 text-slate-950 dark:text-zinc-100">
         <section>
           <h2 className="font-semibold mb-3">Trending searches</h2>
           <div className="flex flex-wrap gap-2">
@@ -51,8 +51,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   if (query.length < 2) {
     return (
-      <div className="max-w-7xl min-h-full text-center mx-auto py-10">
-        <p className="text-gray-500 text-sm">
+      <div className="mx-auto min-h-full max-w-7xl py-10 text-center">
+        <p className="text-sm text-gray-500 dark:text-zinc-400">
           Please enter at least 2 characters to search.
         </p>
       </div>
@@ -69,15 +69,15 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const categories = results.categories ?? [];
 
   return (
-    <main className="max-w-7xl min-h-full mx-auto px-4 py-10 space-y-6">
+    <main className="mx-auto min-h-full max-w-7xl space-y-6 px-4 py-10 text-slate-950 dark:text-zinc-100">
       {/* HEADER */}
       <div>
         <h1 className="text-xl font-semibold">
           Search results for{" "}
-          <span className="text-[var(--brand-blue)]">â€œ{query}â€</span>
+          <span className="text-[var(--brand-blue)]">&ldquo;{query}&rdquo;</span>
         </h1>
 
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">
           {results.products.length} products found
         </p>
       </div>

@@ -125,11 +125,11 @@ function PremiumNotice({
   return (
     <div
       className={cn(
-        "flex gap-3 rounded-[20px] border px-4 py-4 shadow-[0_14px_40px_-32px_rgba(15,23,42,0.5)] sm:rounded-2xl",
+        "flex gap-4 rounded-[20px] border px-4 py-4 shadow-[0_14px_40px_-32px_rgba(15,23,42,0.5)] sm:rounded-2xl",
         toneClassName,
       )}
     >
-      <div className="mt-0.5 rounded-xl bg-white/70 p-2 backdrop-blur dark:bg-white/10">
+      <div className="shrink-0 mt-0.5 rounded-full bg-white/70 p-2 backdrop-blur dark:bg-white/10">
         <Icon className="h-4 w-4 shrink-0" />
       </div>
       <div className="space-y-1">

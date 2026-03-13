@@ -18,6 +18,7 @@ export type MarkSellerGroupReadyResult = {
   updated: boolean;
   orderId: string | null;
   reason: MarkReadyReason;
+  warningMessage?: string;
 };
 
 export async function markSellerGroupReadyTx(
@@ -119,8 +120,36 @@ export async function markSellerGroupReady(
     markSellerGroupReadyTx(tx, sellerGroupId, source),
   );
 
+  console.info("[markSellerGroupReady] transaction result", {
+    sellerGroupId,
+    source,
+    updated: result.updated,
+    orderId: result.orderId,
+    reason: result.reason,
+  });
+
   if (result.updated && result.orderId) {
-    await autoAssignRider(result.orderId);
+    console.info("[markSellerGroupReady] triggering autoAssignRider", {
+      sellerGroupId,
+      orderId: result.orderId,
+      source,
+    });
+    const assignmentResult = await autoAssignRider(result.orderId);
+
+    if (assignmentResult.warningMessage) {
+      return {
+        ...result,
+        warningMessage: assignmentResult.warningMessage,
+      };
+    }
+  } else {
+    console.info("[markSellerGroupReady] autoAssignRider skipped", {
+      sellerGroupId,
+      source,
+      updated: result.updated,
+      orderId: result.orderId,
+      reason: result.reason,
+    });
   }
 
   return result;

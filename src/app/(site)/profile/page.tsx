@@ -26,7 +26,7 @@ function ProfilePageSkeleton() {
           <Skeleton className="h-4 w-72" />
         </header>
 
-        <section className="rounded-2xl bg-white p-6 shadow-md">
+        <section className="rounded-2xl bg-white p-6 shadow-md dark:bg-neutral-950">
           <div className="flex items-start gap-4">
             <Skeleton className="h-16 w-16 rounded-full" />
             <div className="min-w-0 space-y-2">
@@ -35,18 +35,18 @@ function ProfilePageSkeleton() {
               <Skeleton className="h-6 w-20 rounded-full" />
             </div>
           </div>
-          <div className="mt-6 border-t border-gray-100 pt-4">
+          <div className="mt-6 border-t border-gray-100 pt-4 dark:border-zinc-800">
             <Skeleton className="h-4 w-14" />
             <Skeleton className="mt-2 h-4 w-36" />
           </div>
         </section>
 
-        <section className="rounded-2xl bg-white p-6 shadow-md">
+        <section className="rounded-2xl bg-white p-6 shadow-md dark:bg-neutral-950">
           <Skeleton className="h-6 w-24" />
           <Skeleton className="mt-2 h-4 w-72" />
         </section>
 
-        <section className="rounded-2xl bg-white p-6 shadow-md">
+        <section className="rounded-2xl bg-white p-6 shadow-md dark:bg-neutral-950">
           <Skeleton className="h-5 w-16" />
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Skeleton className="h-10 w-full sm:w-52" />
@@ -98,10 +98,10 @@ async function ProfilePageContent() {
     <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold text-black dark:text-gray-400">
+          <h1 className="text-2xl font-semibold text-black dark:text-white">
             My Profile
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-zinc-400">
             Manage your personal account information and security.
           </p>
         </header>

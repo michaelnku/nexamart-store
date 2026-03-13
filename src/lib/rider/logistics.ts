@@ -6,8 +6,15 @@ import { sendDeliveryOtpToCustomer } from "@/lib/delivery/sendDeliveryOtpToCusto
 import { DeliveryStatus } from "@/generated/prisma/edge";
 import { createNotification } from "../notifications/createNotification";
 
-export async function autoAssignRider(orderId: string) {
-  console.log("AUTO ASSIGN CALLED", orderId);
+export type AutoAssignRiderResult = {
+  assigned: boolean;
+  warningMessage?: string;
+};
+
+export async function autoAssignRider(
+  orderId: string,
+): Promise<AutoAssignRiderResult> {
+  console.info("[autoAssignRider] start", { orderId });
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -30,25 +37,54 @@ export async function autoAssignRider(orderId: string) {
     },
   });
 
-  if (!order) return;
+  if (!order) {
+    console.info("[autoAssignRider] skipped: order not found", { orderId });
+    return { assigned: false };
+  }
 
-  if (order.delivery?.riderId) return;
+  if (order.delivery?.riderId) {
+    console.info("[autoAssignRider] skipped: delivery already assigned", {
+      orderId,
+      deliveryId: order.delivery.id,
+      riderId: order.delivery.riderId,
+      deliveryStatus: order.delivery.status,
+    });
+    return { assigned: false };
+  }
 
-  if (!order.sellerGroups.length) return;
+  if (!order.sellerGroups.length) {
+    console.info("[autoAssignRider] skipped: no seller groups", { orderId });
+    return { assigned: false };
+  }
 
   if (order.isFoodOrder) {
     const activeGroups = order.sellerGroups.filter(
       (group) => group.status !== "CANCELLED",
     );
-    if (!activeGroups.length) return;
+    if (!activeGroups.length) {
+      console.info("[autoAssignRider] skipped: no active food seller groups", {
+        orderId,
+      });
+      return { assigned: false };
+    }
     if (activeGroups.some((group) => group.status !== "READY")) {
-      return;
+      console.info("[autoAssignRider] skipped: food order not fully ready", {
+        orderId,
+        sellerGroupStatuses: activeGroups.map((group) => group.status),
+      });
+      return { assigned: false };
     }
   } else {
     const activeGroups = order.sellerGroups.filter(
       (group) => group.status !== "CANCELLED",
     );
-    if (!activeGroups.length) return;
+    if (!activeGroups.length) {
+      console.info(
+        "[autoAssignRider] skipped: no active non-food seller groups",
+        { orderId },
+      );
+      return { assigned: false };
+    }
     if (
       activeGroups.some(
         (group) =>
@@ -56,11 +92,18 @@ export async function autoAssignRider(orderId: string) {
           group.status !== "ARRIVED_AT_HUB",
       )
     ) {
-      return;
+      console.info(
+        "[autoAssignRider] skipped: non-food order not ready for dispatch",
+        {
+          orderId,
+          sellerGroupStatuses: activeGroups.map((group) => group.status),
+        },
+      );
+      return { assigned: false };
     }
   }
 
-  console.log("Checking available riders...");
+  console.info("[autoAssignRider] looking for available rider", { orderId });
 
   const riderProfile = await prisma.riderProfile.findFirst({
     where: {
@@ -73,19 +116,23 @@ export async function autoAssignRider(orderId: string) {
   });
 
   if (!riderProfile) {
-    console.log("NO AVAILABLE RIDER FOUND");
-    return;
+    console.warn("[autoAssignRider] skipped: no available rider found", {
+      orderId,
+    });
+    return { assigned: false };
   }
 
-  console.log("Rider found:", riderProfile);
+  console.info("[autoAssignRider] rider selected", {
+    orderId,
+    riderId: riderProfile.userId,
+  });
 
   const riderId = riderProfile.userId;
   const assignedAt = new Date();
   let generatedOtp: string | null = null;
+  let assignedDeliveryId: string | null = null;
 
   await prisma.$transaction(async (tx) => {
-    let assignedDeliveryId: string | null = null;
-
     if (order.delivery?.id) {
       const deliveryAssigned = await tx.delivery.updateMany({
         where: {
@@ -101,6 +148,11 @@ export async function autoAssignRider(orderId: string) {
       });
 
       if (deliveryAssigned.count !== 1) {
+        console.warn("[autoAssignRider] existing delivery assignment failed", {
+          orderId,
+          deliveryId: order.delivery.id,
+          riderId,
+        });
         return;
       }
       assignedDeliveryId = order.delivery.id;
@@ -129,9 +181,18 @@ export async function autoAssignRider(orderId: string) {
       });
 
       assignedDeliveryId = createdDelivery.id;
+      console.info("[autoAssignRider] delivery created and assigned", {
+        orderId,
+        deliveryId: createdDelivery.id,
+        riderId,
+      });
     }
 
     if (!assignedDeliveryId) {
+      console.warn("[autoAssignRider] aborted: no delivery id after assignment", {
+        orderId,
+        riderId,
+      });
       return;
     }
 
@@ -146,6 +207,13 @@ export async function autoAssignRider(orderId: string) {
 
     generatedOtp = await generateDeliveryOTP(tx, assignedDeliveryId);
 
+    console.info("[autoAssignRider] delivery assignment transaction complete", {
+      orderId,
+      deliveryId: assignedDeliveryId,
+      riderId,
+      otpGenerated: Boolean(generatedOtp),
+    });
+
     await createOrderTimelineIfMissing(
       {
         orderId,
@@ -155,6 +223,10 @@ export async function autoAssignRider(orderId: string) {
       tx,
     );
   });
+
+  if (!assignedDeliveryId) {
+    return { assigned: false };
+  }
 
   await createNotification({
     userId: riderId,
@@ -200,22 +272,61 @@ export async function autoAssignRider(orderId: string) {
   });
 
   if (generatedOtp) {
-    void sendDeliveryOtpToCustomer(
+    console.info("[autoAssignRider] sending delivery otp to customer", {
+      orderId,
+      riderId,
+      hasDeliveryPhone: Boolean(order.deliveryPhone),
+    });
+    const otpSendResult = await sendDeliveryOtpToCustomer(
       order.userId,
       order.deliveryPhone,
       generatedOtp,
-    )
-      .then(() => {
-        console.log("OTP sent to customer");
-      })
-      .catch((error) => {
-        console.error("Failed to send OTP to customer:", error);
+    );
+
+    if (!otpSendResult.success) {
+      console.warn("[autoAssignRider] delivery otp send unavailable", {
+        orderId,
+        riderId,
+        deliveryId: assignedDeliveryId,
+        code: otpSendResult.code,
+        message: otpSendResult.message,
       });
+
+      await createOrderTimelineIfMissing({
+        orderId,
+        status: "READY",
+        message:
+          "OTP service temporarily unavailable. Rider assigned successfully, but customer OTP delivery needs attention.",
+      });
+
+      return {
+        assigned: true,
+        warningMessage:
+          "OTP service temporarily unavailable. Rider assigned successfully, but the customer did not receive the delivery OTP automatically.",
+      };
+    }
+
+    console.info("[autoAssignRider] delivery otp send completed", {
+      orderId,
+      riderId,
+      channel: otpSendResult.channel,
+    });
 
     await createOrderTimelineIfMissing({
       orderId,
       status: "READY",
       message: "Delivery OTP has been sent to customer.",
     });
+  } else {
+    console.warn(
+      "[autoAssignRider] otp send skipped: reusable otp already exists",
+      {
+        orderId,
+        riderId,
+        deliveryId: assignedDeliveryId,
+      },
+    );
   }
+
+  return { assigned: true };
 }

@@ -8,24 +8,24 @@ export default async function SearchHistoryPage() {
   ]);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
+    <div className="mx-auto max-w-4xl space-y-10 px-4 py-8 text-slate-950 dark:text-zinc-100">
       <h1 className="text-2xl font-semibold">Search History</h1>
 
       {/* RECENT SEARCHES */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
+        <h2 className="mb-3 text-sm font-semibold uppercase text-gray-500 dark:text-zinc-400">
           Recent Searches
         </h2>
 
         {recent.length === 0 ? (
-          <p className="text-sm text-gray-500">No recent searches</p>
+          <p className="text-sm text-gray-500 dark:text-zinc-400">No recent searches</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {recent.map((item) => (
               <Link
                 key={item.id}
                 href={`/search?q=${encodeURIComponent(item.query)}`}
-                className="px-3 py-1 rounded-full bg-muted text-sm hover:bg-muted/70 transition"
+                className="rounded-full bg-muted px-3 py-1 text-sm transition hover:bg-muted/70 dark:bg-zinc-800 dark:hover:bg-zinc-700"
               >
                 {item.query}
               </Link>
@@ -36,7 +36,7 @@ export default async function SearchHistoryPage() {
 
       {/* TRENDING SEARCHES */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
+        <h2 className="mb-3 text-sm font-semibold uppercase text-gray-500 dark:text-zinc-400">
           Trending Searches
         </h2>
 

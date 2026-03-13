@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { IconCountBadge } from "@/components/ui/icon-count-badge";
 import {
   Bell,
   ShoppingCart,
@@ -8,55 +9,23 @@ import {
   BadgeCheck,
   ShieldAlert,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useCartStore } from "@/stores/useCartstore";
 import { useWishlistStore } from "@/stores/useWishlistStore";
 import { useCurrentUserQuery } from "@/stores/useCurrentUserQuery";
 import { UserDTO } from "@/lib/types";
 
-/* =========================
-   Animated Counter Badge
-========================= */
-
-const AnimatedBadge = ({ count }: { count: number }) => {
-  const display = count > 99 ? "99+" : count;
-
-  return (
-    <AnimatePresence>
-      <motion.span
-        key={display}
-        initial={{ scale: 0, y: -6 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0 }}
-        transition={{ type: "spring", stiffness: 280, damping: 18 }}
-        className="
-          absolute -top-2 -right-2
-          h-5 min-w-[20px] px-1
-          flex items-center justify-center
-          rounded-full
-          text-[11px] font-semibold
-          text-white
-          bg-gradient-to-br from-red-500 to-red-600
-          shadow-md
-          ring-2 ring-background
-        "
-      >
-        {display}
-      </motion.span>
-    </AnimatePresence>
-  );
-};
-
-/* =========================
-   Notification Badge
-========================= */
-
 const NotificationBadge = ({ count = 0 }: { count?: number }) => {
   return (
-    <div className="relative inline-flex items-center">
-      <Bell className="h-6 w-6 transition-colors hover:text-primary" />
-      {count > 0 && <AnimatedBadge count={count} />}
-    </div>
+    <IconCountBadge count={count}>
+      <Bell
+        className={`h-5 w-5 transition ${
+          count > 0
+            ? "stroke-blue-700 dark:stroke-[var(--brand-blue)]"
+            : "stroke-gray-400 dark:stroke-zinc-500"
+        }`}
+      />
+    </IconCountBadge>
   );
 };
 
@@ -70,17 +39,15 @@ const CartBadge = () => {
   );
 
   return (
-    <div className="relative inline-flex items-center cursor-pointer">
+    <IconCountBadge count={count} className="cursor-pointer">
       <ShoppingCart
         className={`h-5 w-5 transition ${
           count > 0
-            ? "stroke-blue-600 drop-shadow-[0_0_4px_rgba(59,130,246,0.5)]"
-            : "stroke-gray-400 hover:stroke-primary"
+            ? "stroke-blue-700 dark:stroke-[var(--brand-blue)]"
+            : "stroke-gray-400 hover:stroke-primary dark:stroke-zinc-500"
         }`}
       />
-
-      {count > 0 && <AnimatedBadge count={count} />}
-    </div>
+    </IconCountBadge>
   );
 };
 
@@ -92,17 +59,15 @@ const WishlistBadge = () => {
   const count = useWishlistStore((s) => s.items.length);
 
   return (
-    <div className="relative flex items-center justify-center cursor-pointer">
+    <IconCountBadge count={count} className="cursor-pointer justify-center">
       <Heart
         className={`h-5 w-5 transition ${
           count > 0
             ? "fill-red-500 stroke-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.45)]"
-            : "stroke-gray-600 hover:stroke-red-500"
+            : "stroke-gray-600 hover:stroke-red-500 dark:stroke-zinc-400"
         }`}
       />
-
-      {count > 0 && <AnimatedBadge count={count} />}
-    </div>
+    </IconCountBadge>
   );
 };
 
@@ -222,7 +187,6 @@ const VerifiedBadge = ({ user: providedUser }: { user?: UserDTO | null }) => {
 };
 
 export {
-  AnimatedBadge,
   WishlistBadge,
   CartBadge,
   NotificationBadge,
