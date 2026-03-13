@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +11,7 @@ import { updateProductAction } from "@/actions/auth/product";
 import { deleteProductImageAction } from "@/actions/actions";
 import { PriceConverter } from "@/components/currency/PriceConverter";
 import FoodProductSection from "@/components/product/FoodProductSection";
+import { ProductImageUploader } from "@/components/product/ProductImageUploader";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Category, FullProduct } from "@/lib/types";
 import { productSchema, type productSchemaType } from "@/lib/zodValidation";
-import { UploadButton } from "@/utils/uploadthing";
 
 import {
   createEmptyVariant,
@@ -62,7 +61,9 @@ export default function UpdateProductForm({
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string>();
   const [uploading, setUploading] = useState(false);
+  const [isImageProcessing, setIsImageProcessing] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const isUploadingImages = uploading || isImageProcessing;
 
   const form = useForm<productSchemaType>({
     resolver: zodResolver(productSchema),
@@ -73,8 +74,12 @@ export default function UpdateProductForm({
   });
 
   const { control, handleSubmit, setValue, getValues, watch } = form;
-  const childrenLevel1 = categories.filter((category) => category.parentId === level1);
-  const childrenLevel2 = categories.filter((category) => category.parentId === level2);
+  const childrenLevel1 = categories.filter(
+    (category) => category.parentId === level1,
+  );
+  const childrenLevel2 = categories.filter(
+    (category) => category.parentId === level2,
+  );
   const watchedImages = watch("images");
 
   const { fields, append, remove, replace } = useFieldArray({
@@ -98,7 +103,8 @@ export default function UpdateProductForm({
     setValue("isFoodProduct", isFoodStore);
 
     if (isFoodStore) {
-      const currentVariant = getValues("variants")[0] ?? createEmptyVariant(true);
+      const currentVariant =
+        getValues("variants")[0] ?? createEmptyVariant(true);
       replace([
         {
           ...currentVariant,
@@ -143,7 +149,7 @@ export default function UpdateProductForm({
       return;
     }
 
-    if (uploading) {
+    if (isUploadingImages) {
       toast.error("Wait for image uploads to finish");
       return;
     }
@@ -154,7 +160,7 @@ export default function UpdateProductForm({
       description: values.description.trim(),
       brand: values.brand?.trim() || "",
       foodDetails: isFoodStore ? values.foodDetails : undefined,
-      technicalDetails: isFoodStore ? [] : values.technicalDetails ?? [],
+      technicalDetails: isFoodStore ? [] : (values.technicalDetails ?? []),
       specifications: isFoodStore ? "" : (values.specifications ?? "").trim(),
       variants: values.variants.map((variant) => ({
         ...variant,
@@ -185,7 +191,10 @@ export default function UpdateProductForm({
 
     startTransition(async () => {
       try {
-        const response = await updateProductAction(initialData.id, normalizedValues);
+        const response = await updateProductAction(
+          initialData.id,
+          normalizedValues,
+        );
         if (response?.error) {
           setError(response.error);
           toast.error(response.error);
@@ -223,7 +232,7 @@ export default function UpdateProductForm({
   };
 
   return (
-    <main className="flex justify-center bg-neutral-50 px-3 py-4 dark:bg-neutral-950">
+    <main className="flex justify-center px-3 py-4 dark:bg-neutral-950">
       <div className="w-full max-w-5xl space-y-8 rounded-[28px] border bg-white p-4 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.35)] sm:p-6 lg:p-8 dark:bg-zinc-950">
         <div className="rounded-[24px] bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_48%,#0f766e_100%)] p-6 text-white">
           <h1 className="text-2xl font-semibold sm:text-3xl">Update Product</h1>
@@ -268,7 +277,9 @@ export default function UpdateProductForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {isFoodStore ? "Kitchen / Brand (optional)" : "Brand (optional)"}
+                      {isFoodStore
+                        ? "Kitchen / Brand (optional)"
+                        : "Brand (optional)"}
                     </FormLabel>
                     <FormControl>
                       <Input {...field} />
@@ -359,7 +370,9 @@ export default function UpdateProductForm({
 
             {!isFoodStore ? (
               <section className="space-y-6 rounded-[24px] border p-5 sm:p-6">
-                <h2 className="text-lg font-semibold">Specifications and Technical Details</h2>
+                <h2 className="text-lg font-semibold">
+                  Specifications and Technical Details
+                </h2>
 
                 <FormField
                   control={control}
@@ -382,7 +395,9 @@ export default function UpdateProductForm({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => appendTechnicalDetail({ key: "", value: "" })}
+                      onClick={() =>
+                        appendTechnicalDetail({ key: "", value: "" })
+                      }
                     >
                       <Plus className="mr-1 h-4 w-4" />
                       Add Detail
@@ -450,11 +465,16 @@ export default function UpdateProductForm({
 
             <section className="space-y-6 rounded-[24px] border p-5 sm:p-6">
               <h2 className="text-lg font-semibold">
-                {isFoodStore ? "Pricing and Availability" : "Variants and Inventory"}
+                {isFoodStore
+                  ? "Pricing and Availability"
+                  : "Variants and Inventory"}
               </h2>
 
               {fields.map((field, index) => (
-                <div key={field.id} className="space-y-4 rounded-[22px] border bg-slate-50/70 p-4">
+                <div
+                  key={field.id}
+                  className="space-y-4 rounded-[22px] border bg-slate-50/70 p-4"
+                >
                   {!isFoodStore && fields.length > 1 ? (
                     <div className="flex justify-end">
                       <Button
@@ -525,7 +545,9 @@ export default function UpdateProductForm({
                   ) : null}
 
                   <PriceConverter
-                    onUSDChange={(usd) => setValue(`variants.${index}.priceUSD`, usd)}
+                    onUSDChange={(usd) =>
+                      setValue(`variants.${index}.priceUSD`, usd)
+                    }
                   />
 
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -554,7 +576,9 @@ export default function UpdateProductForm({
                       name={`variants.${index}.stock`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{isFoodStore ? "Available Portions" : "Stock"}</FormLabel>
+                          <FormLabel>
+                            {isFoodStore ? "Available Portions" : "Stock"}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -584,7 +608,10 @@ export default function UpdateProductForm({
                               {...field}
                               onChange={(event) =>
                                 field.onChange(
-                                  Math.max(0, Math.round(Number(event.target.value || 0))),
+                                  Math.max(
+                                    0,
+                                    Math.round(Number(event.target.value || 0)),
+                                  ),
                                 )
                               }
                             />
@@ -607,7 +634,10 @@ export default function UpdateProductForm({
                               {...field}
                               onChange={(event) =>
                                 field.onChange(
-                                  Math.max(0, Math.round(Number(event.target.value || 0))),
+                                  Math.max(
+                                    0,
+                                    Math.round(Number(event.target.value || 0)),
+                                  ),
                                 )
                               }
                             />
@@ -649,64 +679,27 @@ export default function UpdateProductForm({
             <section className="space-y-6 rounded-[24px] border p-5 sm:p-6">
               <h2 className="text-lg font-semibold">Product Images</h2>
 
-              <UploadButton
-                endpoint="productImages"
-                onUploadBegin={() => setUploading(true)}
-                onClientUploadComplete={(response) => {
-                  setUploading(false);
-                  const uploadedImages = response.map((file) => ({
-                    url: file.url,
-                    key: file.key,
-                  }));
-
-                  setValue("images", [...(getValues("images") ?? []), ...uploadedImages]);
-                  toast.success("Images uploaded");
+              <ProductImageUploader
+                value={watchedImages ?? []}
+                maxImages={10}
+                aspect={1}
+                disabled={isPending}
+                storeType={storeType}
+                onChange={(nextImages) =>
+                  setValue("images", nextImages, { shouldValidate: true })
+                }
+                onDelete={deleteImage}
+                onProcessingChange={(processing) => {
+                  setUploading(processing);
+                  setIsImageProcessing(processing);
                 }}
-                onUploadError={() => {
-                  setUploading(false);
-                  toast.error("Image upload failed");
-                }}
-                className="ut-button:rounded-full ut-button:border ut-button:border-sky-400/30 ut-button:bg-[var(--brand-blue)] ut-button:px-6 ut-button:py-2 ut-button:text-sm ut-button:text-white"
               />
-
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {watchedImages?.map((image) => {
-                  const isDeleting = deletingKeys.has(image.key);
-
-                  return (
-                    <div
-                      key={image.key}
-                      className="relative aspect-square overflow-hidden rounded-2xl border"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => deleteImage(image.key)}
-                        disabled={isDeleting}
-                        className="absolute right-2 top-2 z-10 rounded-full bg-red-600 p-1.5 text-white disabled:opacity-60"
-                      >
-                        {isDeleting ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash className="h-4 w-4" />
-                        )}
-                      </button>
-
-                      <Image
-                        src={image.url}
-                        alt="Product image"
-                        fill
-                        className={`object-cover transition ${isDeleting ? "opacity-50" : ""}`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
             </section>
 
             <Button
               type="submit"
-              disabled={isPending || uploading}
-              className="w-full rounded-2xl py-6 text-base font-semibold"
+              disabled={isPending || isUploadingImages}
+              className="w-full rounded-xl bg-[var(--brand-blue)] py-3 text-lg font-semibold text-white shadow-md hover:bg-[var(--brand-blue-hover)] disabled:opacity-60"
             >
               {isPending ? (
                 <>

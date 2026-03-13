@@ -82,6 +82,9 @@ export default function RiderDeliveriesClient() {
     !isLoading && !isFailure
       ? data.activeKey
       : (status as RiderDeliveryStatusKey);
+  const activeTabLabel =
+    RIDER_DELIVERY_STATUS_TABS.find((tab) => tab.key === activeKey)?.label ??
+    "Assigned";
   const currency = "USD";
 
   const handleAccept = (deliveryId: string) => {
@@ -213,7 +216,7 @@ export default function RiderDeliveriesClient() {
               Active Bucket
             </p>
             <p className="text-lg font-semibold text-slate-950 dark:text-zinc-100">
-              {RIDER_CLIENT_STATUS_LABELS[activeKey]}
+              {activeTabLabel}
             </p>
           </div>
         </div>

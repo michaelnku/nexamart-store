@@ -22,14 +22,13 @@ import { useRouter } from "next/navigation";
 import { productSchema, productSchemaType } from "@/lib/zodValidation";
 import { createProductAction } from "@/actions/auth/product";
 
-import { UploadButton } from "@/utils/uploadthing";
-import Image from "next/image";
 import { toast } from "sonner";
 
 import type { Category } from "@/lib/types";
 import { deleteFileAction } from "@/actions/actions";
 import { PriceConverter } from "@/components/currency/PriceConverter";
 import FoodProductSection from "@/components/product/FoodProductSection";
+import { ProductImageUploader } from "@/components/product/ProductImageUploader";
 import { getProductFormDefaults } from "./productFormHelpers";
 
 type ProductFormProps = {
@@ -49,7 +48,9 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
 
   const [error, setError] = useState<string>();
   const [uploading, setUploading] = useState(false);
+  const [isImageProcessing, setIsImageProcessing] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const isUploadingImages = uploading || isImageProcessing;
 
   const topLevelCategories = categories.filter((c) => !c.parentId);
   const childrenLevel1 = categories.filter((c) => c.parentId === level1);
@@ -205,7 +206,7 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
       return;
     }
 
-    if (uploading) {
+    if (isUploadingImages) {
       toast.error("Wait for images to finish uploading");
       return;
     }
@@ -801,76 +802,26 @@ Dual SIM`}
             <section className="space-y-5">
               <h2 className="font-semibold text-xl">Product Images</h2>
 
-              <UploadButton
-                endpoint="productImages"
-                onUploadBegin={() => setUploading(true)}
-                onClientUploadComplete={(res) => {
-                  setUploading(false);
-
-                  const uploaded = res.map((f) => ({
-                    url: f.url,
-                    key: f.key,
-                  }));
-
-                  setValue("images", [
-                    ...(getValues("images") ?? []),
-                    ...uploaded,
-                  ]);
-
-                  toast.success("Images uploaded");
+              <ProductImageUploader
+                value={watchedImages ?? []}
+                maxImages={10}
+                aspect={1}
+                disabled={isPending}
+                storeType={storeType}
+                onChange={(nextImages) =>
+                  setValue("images", nextImages, { shouldValidate: true })
+                }
+                onDelete={deleteImage}
+                onProcessingChange={(processing) => {
+                  setUploading(processing);
+                  setIsImageProcessing(processing);
                 }}
-                className="
- ut-button:bg-[var(--brand-blue)]
-    ut-button:text-white
-    ut-button:border
-    ut-button:border-blue-500/30
-    ut-button:rounded-full
-    ut-button:px-6
-    ut-button:py-2
-    ut-button:text-sm
-    hover:ut-button:bg-blue-500/20
-  "
               />
-
-              <div className="flex flex-wrap gap-4">
-                {watchedImages?.map((img) => {
-                  const isDeleting = deletingKeys.has(img.key);
-
-                  return (
-                    <div
-                      key={img.key}
-                      className="relative w-40 h-40 rounded-lg overflow-hidden border"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => deleteImage(img.key)}
-                        disabled={isDeleting}
-                        className="absolute top-2 right-2 z-10 bg-red-600 text-white p-1 rounded-full disabled:opacity-60"
-                      >
-                        {isDeleting ? (
-                          <Loader2 className="animate-spin w-4 h-4" />
-                        ) : (
-                          <Trash className="w-4 h-4" />
-                        )}
-                      </button>
-
-                      <Image
-                        src={img.url}
-                        alt="product image"
-                        fill
-                        className={`object-cover transition ${
-                          isDeleting ? "opacity-50" : ""
-                        }`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
             </section>
 
             <Button
               type="submit"
-              disabled={isPending || uploading}
+              disabled={isPending || isUploadingImages}
               className="w-full text-lg py-3 rounded-xl font-semibold
                 bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white 
                 shadow-md disabled:opacity-60"
