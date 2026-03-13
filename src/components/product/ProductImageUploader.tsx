@@ -2,23 +2,19 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import type { Area } from "react-easy-crop";
 import {
   AlertCircle,
   Grip,
   ImagePlus,
   Loader2,
-  Sparkles,
   Trash2,
   UploadCloud,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ProductImageCropDialog } from "@/components/product/ProductImageCropDialog";
-import { ProductImageEnhancer } from "@/components/product/ProductImageEnhancer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { getCroppedImageFile } from "@/lib/image/imageCrop";
 import type { JsonFile } from "@/lib/types";
 import { uploadFiles } from "@/utils/uploadthing";
 
@@ -49,11 +45,6 @@ type ProductImageUploaderProps = {
   onProcessingChange?: (processing: boolean) => void;
 };
 
-type EnhancementItem = {
-  originalFile: File;
-  originalPreviewUrl: string;
-};
-
 export function ProductImageUploader({
   value,
   onChange,
@@ -69,19 +60,16 @@ export function ProductImageUploader({
   const [isDragActive, setIsDragActive] = useState(false);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [currentItem, setCurrentItem] = useState<QueueItem | null>(null);
-  const [enhancementItem, setEnhancementItem] =
-    useState<EnhancementItem | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [enhancing, setEnhancing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
 
   const slotsRemaining = Math.max(0, maxImages - value.length);
-  const totalBusy = disabled || processing || enhancing;
+  const totalBusy = disabled || processing;
 
   useEffect(() => {
-    onProcessingChange?.(processing || enhancing);
-  }, [enhancing, onProcessingChange, processing]);
+    onProcessingChange?.(processing);
+  }, [onProcessingChange, processing]);
 
   useEffect(() => {
     if (currentItem || queue.length === 0) return;
@@ -119,20 +107,8 @@ export function ProductImageUploader({
     setUploadProgress(0);
   };
 
-  const clearEnhancementItem = () => {
-    setEnhancing(false);
-
-    if (enhancementItem?.originalPreviewUrl) {
-      revokeObjectUrl(enhancementItem.originalPreviewUrl);
-    }
-
-    setEnhancementItem(null);
-    setUploadProgress(0);
-  };
-
   const resetQueue = () => {
     clearCurrentItem();
-    clearEnhancementItem();
     setQueue((currentQueue) => {
       currentQueue.forEach((item) => {
         revokeObjectUrl(item.previewUrl);
@@ -199,45 +175,8 @@ export function ProductImageUploader({
     toast.message("Image crop cancelled");
   };
 
-  const handleCropConfirm = async (
-    croppedAreaPixels: Area,
-    rotation: number,
-  ) => {
-    if (!currentItem) return;
-
-    setProcessing(true);
-    setUploadProgress(0);
-
-    try {
-      const processedFile = await getCroppedImageFile(
-        currentItem.previewUrl,
-        currentItem.file,
-        {
-          crop: croppedAreaPixels,
-          rotation,
-          targetWidth: 1200,
-          targetHeight: 1200,
-        },
-      );
-      const processedPreviewUrl = URL.createObjectURL(processedFile);
-      objectUrlsRef.current.add(processedPreviewUrl);
-
-      clearCurrentItem();
-      setEnhancementItem({
-        originalFile: processedFile,
-        originalPreviewUrl: processedPreviewUrl,
-      });
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to prepare image");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
   const finalizeUpload = async (file: File) => {
     setProcessing(true);
-    setEnhancing(false);
     setUploadProgress(0);
 
     try {
@@ -254,7 +193,6 @@ export function ProductImageUploader({
       }));
 
       onChange([...value, ...uploadedImages]);
-      clearEnhancementItem();
       clearCurrentItem();
       toast.success("Image uploaded");
     } catch (error) {
@@ -266,7 +204,7 @@ export function ProductImageUploader({
   };
 
   const handleDelete = async (key: string) => {
-    if (!onDelete || deletingKeys.has(key) || processing || enhancing) return;
+    if (!onDelete || deletingKeys.has(key) || processing) return;
 
     setDeletingKeys((current) => new Set(current).add(key));
 
@@ -288,23 +226,10 @@ export function ProductImageUploader({
         file={currentItem?.file ?? null}
         imageUrl={currentItem?.previewUrl ?? null}
         aspect={aspect}
+        storeType={storeType}
         disabled={processing}
         queueCount={(currentItem ? 1 : 0) + queue.length}
         onCancel={handleCropCancel}
-        onConfirm={handleCropConfirm}
-      />
-      <ProductImageEnhancer
-        open={Boolean(enhancementItem)}
-        originalFile={enhancementItem?.originalFile ?? null}
-        originalPreviewUrl={enhancementItem?.originalPreviewUrl ?? null}
-        storeType={storeType}
-        disabled={processing}
-        onBusyChange={setEnhancing}
-        onCancel={() => {
-          setEnhancing(false);
-          clearEnhancementItem();
-          toast.message("Image review cancelled");
-        }}
         onConfirm={finalizeUpload}
       />
 
@@ -395,10 +320,6 @@ export function ProductImageUploader({
               </p>
               <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-zinc-400">
                 <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 ring-1 ring-slate-200 dark:bg-zinc-900/80 dark:ring-zinc-700">
-                  <Sparkles className="h-3.5 w-3.5 text-[#3c9ee0]" />
-                  1:1 thumbnail crop
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 ring-1 ring-slate-200 dark:bg-zinc-900/80 dark:ring-zinc-700">
                   <UploadCloud className="h-3.5 w-3.5 text-slate-500 dark:text-zinc-400" />
                   Client-side compression
                 </span>
@@ -467,12 +388,6 @@ export function ProductImageUploader({
               : "."}
           </div>
         ) : null}
-        {enhancementItem ? (
-          <div className="relative mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-200">
-            Review the cropped image and optionally run AI Clean Background
-            before upload.
-          </div>
-        ) : null}
       </div>
 
       {value.length > 0 ? (
@@ -505,7 +420,7 @@ export function ProductImageUploader({
                   <button
                     type="button"
                     aria-label={`Remove image ${index + 1}`}
-                    disabled={isDeleting || processing || enhancing}
+                    disabled={isDeleting || processing}
                     onClick={() => handleDelete(image.key)}
                     className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-900 shadow-lg transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-950/90 dark:text-zinc-100 dark:hover:bg-zinc-900"
                   >

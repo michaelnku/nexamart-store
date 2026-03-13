@@ -129,14 +129,20 @@ export function ProductImageEnhancer({
 
       if (requestId !== requestIdRef.current) return;
 
-      if (response.error || !response.dataUrl || !response.mimeType) {
-        throw new Error(response.error ?? "Enhancement failed.");
+      if ("error" in response) {
+        throw new Error(response.error);
+      }
+
+      const { dataUrl: enhancedDataUrl, mimeType } = response;
+
+      if (!enhancedDataUrl || !mimeType) {
+        throw new Error("Enhancement failed.");
       }
 
       const nextFile = await dataUrlToFile(
-        response.dataUrl,
+        enhancedDataUrl,
         originalFile.name.replace(/\.[^/.]+$/, "") + "-clean-background.webp",
-        response.mimeType,
+        mimeType,
       );
       const nextPreviewUrl = URL.createObjectURL(nextFile);
 
