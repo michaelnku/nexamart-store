@@ -1,5 +1,7 @@
 "use server";
 
+import { UserRole } from "@/generated/prisma/client";
+import { createAuditLog } from "@/lib/audit/service";
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import {
@@ -180,6 +182,23 @@ export async function resolveOrderDisputeAction(
         status: "RETURN_REQUESTED",
       });
 
+      await createAuditLog(
+        {
+          actorId: adminId,
+          actorRole: UserRole.ADMIN,
+          actionType: "DISPUTE_RESOLVED",
+          targetEntityType: "DISPUTE",
+          targetEntityId: activeDispute.id,
+          summary: "Resolved dispute into return-and-refund flow.",
+          metadata: {
+            orderId,
+            resolution: "RETURN_AND_REFUND",
+            disputeStatus: "WAITING_FOR_RETURN",
+          },
+        },
+        tx,
+      );
+
       return { success: true, nextStep: "RETURN_REQUESTED" };
     }
 
@@ -228,6 +247,23 @@ export async function resolveOrderDisputeAction(
         message: "The dispute was resolved in favor of the seller.",
         status: "COMPLETED",
       });
+
+      await createAuditLog(
+        {
+          actorId: adminId,
+          actorRole: UserRole.ADMIN,
+          actionType: "DISPUTE_RESOLVED",
+          targetEntityType: "DISPUTE",
+          targetEntityId: activeDispute.id,
+          summary: "Resolved dispute in favor of the seller.",
+          metadata: {
+            orderId,
+            resolution: "RELEASE_TO_SELLER",
+            disputeStatus: "RESOLVED",
+          },
+        },
+        tx,
+      );
 
       return { success: true, nextStep: "COMPLETED" };
     }
@@ -290,6 +326,24 @@ export async function resolveOrderDisputeAction(
           : "Your dispute was resolved and the affected items were refunded.",
         status: wholeOrder ? "REFUNDED" : "COMPLETED",
       });
+
+      await createAuditLog(
+        {
+          actorId: adminId,
+          actorRole: UserRole.ADMIN,
+          actionType: "DISPUTE_RESOLVED",
+          targetEntityType: "DISPUTE",
+          targetEntityId: activeDispute.id,
+          summary: "Resolved dispute with buyer refund.",
+          metadata: {
+            orderId,
+            resolution: "REFUND_BUYER",
+            refundAmount: finalRefundAmount,
+            finalOrderStatus: wholeOrder ? "REFUNDED" : "COMPLETED",
+          },
+        },
+        tx,
+      );
 
       return { success: true, nextStep: wholeOrder ? "REFUNDED" : "COMPLETED" };
     }
@@ -378,6 +432,24 @@ export async function resolveOrderDisputeAction(
         message: "Your dispute was resolved and a partial refund has been issued.",
         status: "COMPLETED",
       });
+
+      await createAuditLog(
+        {
+          actorId: adminId,
+          actorRole: UserRole.ADMIN,
+          actionType: "DISPUTE_RESOLVED",
+          targetEntityType: "DISPUTE",
+          targetEntityId: activeDispute.id,
+          summary: "Resolved dispute with partial refund.",
+          metadata: {
+            orderId,
+            resolution: "PARTIAL_REFUND",
+            refundAmount,
+            finalOrderStatus: "COMPLETED",
+          },
+        },
+        tx,
+      );
 
       return { success: true, nextStep: "COMPLETED" };
     }
@@ -528,6 +600,23 @@ export async function confirmReturnReceivedAction(orderId: string) {
         : "Returned items were confirmed and the refund was issued.",
       status: wholeOrder ? "REFUNDED" : "COMPLETED",
     });
+
+    await createAuditLog(
+      {
+        actorId: adminId,
+        actorRole: UserRole.ADMIN,
+        actionType: "DISPUTE_RETURN_CONFIRMED",
+        targetEntityType: "DISPUTE",
+        targetEntityId: activeDispute.id,
+        summary: "Confirmed returned items and completed the dispute refund.",
+        metadata: {
+          orderId,
+          refundAmount,
+          finalOrderStatus: wholeOrder ? "REFUNDED" : "COMPLETED",
+        },
+      },
+      tx,
+    );
 
     return { success: true, nextStep: wholeOrder ? "REFUNDED" : "COMPLETED" };
   });

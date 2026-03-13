@@ -1,6 +1,8 @@
 "use server";
 
-import { CurrentRole } from "@/lib/currentUser";
+import { UserRole } from "@/generated/prisma/client";
+import { createAuditLog } from "@/lib/audit/service";
+import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
@@ -249,5 +251,25 @@ export async function approveRiderWithdrawalCore(
 }
 
 export async function approveRiderWithdrawalAction(withdrawalId: string) {
-  return approveRiderWithdrawalCore(withdrawalId, { skipRoleCheck: false });
+  const actorId = await CurrentUserId();
+  const result = await approveRiderWithdrawalCore(withdrawalId, {
+    skipRoleCheck: false,
+  });
+
+  if (result.success) {
+    await createAuditLog({
+      actorId,
+      actorRole: UserRole.ADMIN,
+      actionType: "RIDER_WITHDRAWAL_APPROVED",
+      targetEntityType: "WITHDRAWAL",
+      targetEntityId: result.withdrawalId,
+      summary: "Approved rider withdrawal payout.",
+      metadata: {
+        amount: result.amount,
+        transferId: result.transferId,
+      },
+    });
+  }
+
+  return result;
 }

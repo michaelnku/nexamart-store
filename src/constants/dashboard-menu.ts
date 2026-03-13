@@ -262,7 +262,7 @@ export const DashboardMenu = {
         },
         {
           name: "Audit Logs",
-          href: "/marketplace/dashboard/admin/audit",
+          href: "/marketplace/dashboard/admin/audit-logs",
           icon: FileChartColumn,
         },
       ],

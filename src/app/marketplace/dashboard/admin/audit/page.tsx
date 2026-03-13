@@ -1,5 +1,5 @@
-const page = () => {
-  return <div>coming soon...</div>;
-};
+import { redirect } from "next/navigation";
 
-export default page;
+export default function AdminAuditRedirectPage() {
+  redirect("/marketplace/dashboard/admin/audit-logs");
+}

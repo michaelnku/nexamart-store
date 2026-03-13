@@ -1,6 +1,7 @@
 "use server";
 
-import { CurrentRole } from "@/lib/currentUser";
+import { createAuditLog } from "@/lib/audit/service";
+import { CurrentUser, CurrentRole } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
@@ -41,8 +42,8 @@ async function getAvailableReleasedCommission(): Promise<number> {
 export async function requestPlatformWithdrawalAction(
   amount: number,
 ): Promise<PlatformWithdrawalRequestResult> {
-  const role = await CurrentRole();
-  if (role !== "ADMIN") {
+  const [role, currentUser] = await Promise.all([CurrentRole(), CurrentUser()]);
+  if (role !== "ADMIN" || !currentUser) {
     return {
       success: false,
       code: "UNAUTHORIZED",
@@ -106,6 +107,19 @@ export async function requestPlatformWithdrawalAction(
     });
 
     return created;
+  });
+
+  await createAuditLog({
+    actorId: currentUser.id,
+    actorRole: currentUser.role,
+    actionType: "PLATFORM_WITHDRAWAL_REQUESTED",
+    targetEntityType: "WITHDRAWAL",
+    targetEntityId: withdrawal.id,
+    summary: "Requested a platform treasury withdrawal.",
+    metadata: {
+      amount: withdrawal.amount,
+      availableCommission,
+    },
   });
 
   return {

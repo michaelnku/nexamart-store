@@ -8,6 +8,7 @@ import {
   USER_ROLE_LABELS,
   isProtectedAdminRole,
 } from "@/lib/admin/user-management.shared";
+import { createAuditLog } from "@/lib/audit/service";
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 
@@ -74,6 +75,19 @@ export async function updateAdminManagedUserRole(input: {
       where: { id: targetUser.id },
       data: {
         role,
+      },
+    });
+
+    await createAuditLog({
+      actorId: currentUser.id,
+      actorRole: currentUser.role,
+      actionType: "USER_ROLE_UPDATED",
+      targetEntityType: "USER",
+      targetEntityId: targetUser.id,
+      summary: `Updated user role from ${USER_ROLE_LABELS[targetUser.role]} to ${USER_ROLE_LABELS[role]}.`,
+      metadata: {
+        previousRole: targetUser.role,
+        nextRole: role,
       },
     });
 

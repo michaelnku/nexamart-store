@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma";
+import { createAuditLog } from "@/lib/audit/service";
 import { CurrentUser } from "@/lib/currentUser";
 import {
   createCouponSchema,
@@ -54,6 +55,21 @@ export async function createCouponAction(data: createCouponSchemaType) {
         validTo: payload.validTo ?? null,
         isActive: payload.isActive ?? true,
         createdByAdmin: true,
+      },
+    });
+
+    await createAuditLog({
+      actorId: auth.user.id,
+      actorRole: auth.user.role,
+      actionType: "COUPON_CREATED",
+      targetEntityType: "COUPON",
+      targetEntityId: coupon.id,
+      summary: `Created coupon ${coupon.code}.`,
+      metadata: {
+        code: coupon.code,
+        type: coupon.type,
+        value: coupon.value,
+        appliesTo: coupon.appliesTo,
       },
     });
 
@@ -110,6 +126,21 @@ export async function updateCouponAction(data: updateCouponSchemaType) {
       },
     });
 
+    await createAuditLog({
+      actorId: auth.user.id,
+      actorRole: auth.user.role,
+      actionType: "COUPON_UPDATED",
+      targetEntityType: "COUPON",
+      targetEntityId: coupon.id,
+      summary: `Updated coupon ${coupon.code}.`,
+      metadata: {
+        code: coupon.code,
+        type: coupon.type,
+        isActive: coupon.isActive,
+        isDeleted: coupon.isDeleted,
+      },
+    });
+
     return { coupon };
   } catch {
     return { error: "Failed to update coupon" };
@@ -125,6 +156,18 @@ export async function toggleCouponActiveAction(id: string, isActive: boolean) {
     data: { isActive },
   });
 
+  await createAuditLog({
+    actorId: auth.user.id,
+    actorRole: auth.user.role,
+    actionType: "COUPON_STATUS_CHANGED",
+    targetEntityType: "COUPON",
+    targetEntityId: id,
+    summary: `${isActive ? "Activated" : "Deactivated"} coupon.`,
+    metadata: {
+      isActive,
+    },
+  });
+
   return { success: true };
 }
 
@@ -137,6 +180,15 @@ export async function softDeleteCouponAction(id: string) {
     data: { isDeleted: true, deletedAt: new Date(), isActive: false },
   });
 
+  await createAuditLog({
+    actorId: auth.user.id,
+    actorRole: auth.user.role,
+    actionType: "COUPON_DELETED",
+    targetEntityType: "COUPON",
+    targetEntityId: id,
+    summary: "Archived coupon.",
+  });
+
   return { success: true };
 }
 
@@ -147,6 +199,15 @@ export async function restoreCouponAction(id: string) {
   await prisma.coupon.update({
     where: { id },
     data: { isDeleted: false, deletedAt: null },
+  });
+
+  await createAuditLog({
+    actorId: auth.user.id,
+    actorRole: auth.user.role,
+    actionType: "COUPON_RESTORED",
+    targetEntityType: "COUPON",
+    targetEntityId: id,
+    summary: "Restored coupon.",
   });
 
   return { success: true };

@@ -1,6 +1,7 @@
 "use server";
 
-import { CurrentRole } from "@/lib/currentUser";
+import { createAuditLog } from "@/lib/audit/service";
+import { CurrentUser } from "@/lib/currentUser";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { updateSiteConfigurationFields } from "./siteConfig";
@@ -32,8 +33,8 @@ const platformSettingsSchema = z.object({
 export async function updatePlatformSettings(
   formData: FormData,
 ): Promise<void> {
-  const role = await CurrentRole();
-  if (role !== "ADMIN") {
+  const currentUser = await CurrentUser();
+  if (!currentUser || currentUser.role !== "ADMIN") {
     throw new Error("Unauthorized");
   }
 
@@ -72,6 +73,17 @@ export async function updatePlatformSettings(
   }
 
   await updateSiteConfigurationFields(updates);
+
+  await createAuditLog({
+    actorId: currentUser.id,
+    actorRole: currentUser.role,
+    actionType: "PLATFORM_SETTINGS_UPDATED",
+    targetEntityType: "SITE_CONFIGURATION",
+    summary: "Updated platform settings.",
+    metadata: {
+      updatedFields: Object.keys(updates),
+    },
+  });
 
   revalidatePath("/settings/admin");
   revalidatePath("/settings/admin/platform");

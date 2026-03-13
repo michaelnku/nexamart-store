@@ -1,6 +1,7 @@
 "use server";
 
-import { CurrentRole } from "@/lib/currentUser";
+import { createAuditLog } from "@/lib/audit/service";
+import { CurrentUser, CurrentRole } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { Prisma } from "@/generated/prisma";
@@ -90,8 +91,8 @@ async function allocateCommissionRows(
 export async function approvePlatformWithdrawalAction(
   withdrawalId: string,
 ): Promise<ApprovePlatformWithdrawalResult> {
-  const role = await CurrentRole();
-  if (role !== "ADMIN") {
+  const [role, currentUser] = await Promise.all([CurrentRole(), CurrentUser()]);
+  if (role !== "ADMIN" || !currentUser) {
     return {
       success: false,
       code: "UNAUTHORIZED",
@@ -272,6 +273,19 @@ export async function approvePlatformWithdrawalAction(
       message,
     };
   }
+
+  await createAuditLog({
+    actorId: currentUser.id,
+    actorRole: currentUser.role,
+    actionType: "PLATFORM_WITHDRAWAL_APPROVED",
+    targetEntityType: "WITHDRAWAL",
+    targetEntityId: withdrawalId,
+    summary: "Approved a platform treasury withdrawal.",
+    metadata: {
+      amount: withdrawal.amount,
+      payoutId,
+    },
+  });
 
   return {
     success: true,

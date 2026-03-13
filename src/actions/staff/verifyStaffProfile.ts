@@ -1,6 +1,7 @@
 "use server";
 
 import { UserRole } from "@/generated/prisma/client";
+import { createAuditLog } from "@/lib/audit/service";
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 
@@ -22,6 +23,18 @@ export async function verifyStaffProfileAction(
         verifiedAt: new Date(),
         verificationMethod,
         verificationStatus: "VERIFIED",
+      },
+    });
+
+    await createAuditLog({
+      actorId: currentUser.id,
+      actorRole: currentUser.role,
+      actionType: "STAFF_VERIFICATION_GRANTED",
+      targetEntityType: "STAFF_PROFILE",
+      targetEntityId: staffUserId,
+      summary: "Granted staff verification.",
+      metadata: {
+        verificationMethod,
       },
     });
 
@@ -47,6 +60,15 @@ export async function clearStaffVerificationAction(staffUserId: string) {
         verificationMethod: null,
         verificationStatus: "PENDING",
       },
+    });
+
+    await createAuditLog({
+      actorId: currentUser.id,
+      actorRole: currentUser.role,
+      actionType: "STAFF_VERIFICATION_CLEARED",
+      targetEntityType: "STAFF_PROFILE",
+      targetEntityId: staffUserId,
+      summary: "Cleared staff verification.",
     });
 
     return { success: true };

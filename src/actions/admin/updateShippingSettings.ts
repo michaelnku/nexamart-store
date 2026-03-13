@@ -1,6 +1,7 @@
 "use server";
 
-import { CurrentRole } from "@/lib/currentUser";
+import { createAuditLog } from "@/lib/audit/service";
+import { CurrentUser } from "@/lib/currentUser";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { updateSiteConfigurationFields } from "./siteConfig";
@@ -30,8 +31,8 @@ const shippingSettingsSchema = z.object({
 export async function updateShippingSettings(
   formData: FormData,
 ): Promise<void> {
-  const role = await CurrentRole();
-  if (role !== "ADMIN") {
+  const currentUser = await CurrentUser();
+  if (!currentUser || currentUser.role !== "ADMIN") {
     throw new Error("Unauthorized");
   }
 
@@ -57,6 +58,17 @@ export async function updateShippingSettings(
   }
 
   await updateSiteConfigurationFields(parsed.data);
+
+  await createAuditLog({
+    actorId: currentUser.id,
+    actorRole: currentUser.role,
+    actionType: "SHIPPING_SETTINGS_UPDATED",
+    targetEntityType: "SITE_CONFIGURATION",
+    summary: "Updated shipping settings.",
+    metadata: {
+      updatedFields: Object.keys(parsed.data),
+    },
+  });
 
   revalidatePath("/settings/admin");
   revalidatePath("/settings/admin/shipping");

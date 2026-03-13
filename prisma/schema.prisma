@@ -80,6 +80,25 @@ model User {
   verificationDocuments   VerificationDocument[]
   disputeEvidences        DisputeEvidence[]
   disputeMessages         DisputeMessage[]
+  auditLogsAsActor        AuditLog[]             @relation("AuditLogActor")
+}
+
+model AuditLog {
+  id               String   @id @default(cuid())
+  actorId          String?
+  actorRole        UserRole
+  actionType       String   @db.VarChar(80)
+  targetEntityType String   @db.VarChar(80)
+  targetEntityId   String?  @db.VarChar(191)
+  summary          String   @db.VarChar(255)
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  actor            User?    @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([actorId])
+  @@index([actionType, createdAt])
+  @@index([targetEntityType, createdAt])
 }
 
 model Account {

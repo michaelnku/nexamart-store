@@ -1,6 +1,7 @@
 "use server";
 
 import { CurrentUser } from "@/lib/currentUser";
+import { createAuditLog } from "@/lib/audit/service";
 import { prisma } from "@/lib/prisma";
 import { CategorySchemaType, categorySchema } from "@/lib/zodValidation";
 import { revalidatePath } from "next/cache";
@@ -46,6 +47,19 @@ export const adminAddProductCategoriesAction = async (
       },
     });
 
+    await createAuditLog({
+      actorId: user.id,
+      actorRole: user.role,
+      actionType: "CATEGORY_CREATED",
+      targetEntityType: "CATEGORY",
+      targetEntityId: category.id,
+      summary: `Created category ${category.name}.`,
+      metadata: {
+        slug: category.slug,
+        parentId: category.parentId,
+      },
+    });
+
     revalidatePath("/marketplace/dashboard/admin/products");
     return { success: "Category created successfully", category };
   } catch (err) {
@@ -87,6 +101,19 @@ export const adminUpdateCategoryAction = async (
       },
     });
 
+    await createAuditLog({
+      actorId: user.id,
+      actorRole: user.role,
+      actionType: "CATEGORY_UPDATED",
+      targetEntityType: "CATEGORY",
+      targetEntityId: updatedCategory.id,
+      summary: `Updated category ${updatedCategory.name}.`,
+      metadata: {
+        slug: updatedCategory.slug,
+        parentId: updatedCategory.parentId,
+      },
+    });
+
     revalidatePath("/dashboard/admin/categories");
     return { success: "Category updated successfully", updatedCategory };
   } catch (err) {
@@ -123,6 +150,15 @@ export const adminDeleteCategoryAction = async (categoryId: string) => {
       return { error: "Cannot delete category with subcategories" };
 
     await prisma.category.delete({ where: { id: categoryId } });
+
+    await createAuditLog({
+      actorId: user.id,
+      actorRole: user.role,
+      actionType: "CATEGORY_DELETED",
+      targetEntityType: "CATEGORY",
+      targetEntityId: categoryId,
+      summary: "Deleted category.",
+    });
 
     revalidatePath("/dashboard/admin/categories");
     return { success: "Category deleted successfully" };

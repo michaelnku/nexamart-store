@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
 import { SenderType } from "@/generated/prisma/client";
+import { createAuditLog } from "@/lib/audit/service";
+import { CurrentUser } from "@/lib/currentUser";
 
 export async function assignAgentAction({
   conversationId,
@@ -11,6 +13,11 @@ export async function assignAgentAction({
   conversationId: string;
   agentId: string;
 }) {
+  const currentUser = await CurrentUser();
+  if (!currentUser || currentUser.role !== "ADMIN") {
+    return { error: "Unauthorized" };
+  }
+
   if (!agentId) return { error: "Missing agent id" };
 
   try {
@@ -43,6 +50,18 @@ export async function assignAgentAction({
       "agent-assigned",
       { agentId },
     );
+
+    await createAuditLog({
+      actorId: currentUser.id,
+      actorRole: currentUser.role,
+      actionType: "SUPPORT_AGENT_ASSIGNED",
+      targetEntityType: "CONVERSATION",
+      targetEntityId: conversationId,
+      summary: "Assigned a support agent to a conversation.",
+      metadata: {
+        agentId,
+      },
+    });
 
     return { success: true };
   } catch {

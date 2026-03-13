@@ -2,6 +2,7 @@
 
 import { Prisma } from "@/generated/prisma";
 import { CurrentUser } from "@/lib/currentUser";
+import { createAuditLog } from "@/lib/audit/service";
 import { prisma } from "@/lib/prisma";
 import { JsonFile } from "@/lib/types";
 import { heroBannerSchema, HeroBannerInput } from "@/lib/zodValidation";
@@ -23,7 +24,7 @@ export const createHeroBannerAction = async (values: HeroBannerInput) => {
 
   const data = parsed.data;
 
-  await prisma.heroBanner.create({
+  const banner = await prisma.heroBanner.create({
     data: {
       title: data.title,
       subtitle: data.subtitle || null,
@@ -41,6 +42,21 @@ export const createHeroBannerAction = async (values: HeroBannerInput) => {
       isActive: data.isActive,
       startsAt: data.startsAt ?? null,
       endsAt: data.endsAt ?? null,
+    },
+  });
+
+  await createAuditLog({
+    actorId: user.id,
+    actorRole: user.role,
+    actionType: "HERO_BANNER_CREATED",
+    targetEntityType: "HERO_BANNER",
+    targetEntityId: banner.id,
+    summary: `Created hero banner${data.title ? `: ${data.title}` : "."}`,
+    metadata: {
+      title: data.title || null,
+      placement: data.placement,
+      isActive: data.isActive,
+      position: data.position,
     },
   });
 
@@ -107,6 +123,21 @@ export const updateHeroBannerAction = async (
     },
   });
 
+  await createAuditLog({
+    actorId: user.id,
+    actorRole: user.role,
+    actionType: "HERO_BANNER_UPDATED",
+    targetEntityType: "HERO_BANNER",
+    targetEntityId: id,
+    summary: `Updated hero banner${data.title ? `: ${data.title}` : "."}`,
+    metadata: {
+      title: data.title || null,
+      placement: data.placement,
+      isActive: data.isActive,
+      position: data.position,
+    },
+  });
+
   revalidatePath("/");
   revalidatePath("/marketplace/dashboard/admin/marketing/banners");
 
@@ -138,6 +169,19 @@ export const deleteHeroBannerAction = async (id: string) => {
 
   await prisma.heroBanner.delete({
     where: { id },
+  });
+
+  await createAuditLog({
+    actorId: user.id,
+    actorRole: user.role,
+    actionType: "HERO_BANNER_DELETED",
+    targetEntityType: "HERO_BANNER",
+    targetEntityId: id,
+    summary: `Deleted hero banner${banner.title ? `: ${banner.title}` : "."}`,
+    metadata: {
+      title: banner.title || null,
+      placement: banner.placement,
+    },
   });
 
   revalidatePath("/");

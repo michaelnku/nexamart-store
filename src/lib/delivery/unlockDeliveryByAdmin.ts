@@ -1,11 +1,12 @@
 "use server";
 
+import { createAuditLog } from "@/lib/audit/service";
+import { CurrentUser, CurrentRole } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { CurrentRole } from "@/lib/currentUser";
 
 export async function unlockDeliveryByAdmin(deliveryId: string) {
-  const role = await CurrentRole();
-  if (role !== "ADMIN") {
+  const [role, currentUser] = await Promise.all([CurrentRole(), CurrentUser()]);
+  if (role !== "ADMIN" || !currentUser) {
     return { error: "Forbidden" };
   }
 
@@ -16,6 +17,15 @@ export async function unlockDeliveryByAdmin(deliveryId: string) {
       otpAttempts: 0,
       lockedAt: null,
     },
+  });
+
+  await createAuditLog({
+    actorId: currentUser.id,
+    actorRole: currentUser.role,
+    actionType: "DELIVERY_UNLOCKED",
+    targetEntityType: "DELIVERY",
+    targetEntityId: deliveryId,
+    summary: "Unlocked a delivery after admin review.",
   });
 
   return { success: true };
