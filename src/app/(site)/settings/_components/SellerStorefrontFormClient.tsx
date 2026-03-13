@@ -1,18 +1,17 @@
 "use client";
 
-import Image from "next/image";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
+
 import { updateSellerStorefrontModule } from "@/actions/settings/sellerModules";
 import { deleteBannerAction, deleteLogoAction } from "@/actions/actions";
-import { UploadButton } from "@/utils/uploadthing";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
-import { useAddressAutocomplete } from "@/hooks/useAddressAutocomplete";
-import Link from "next/link";
+import { MarketplaceMediaUploader } from "@/components/media/MarketplaceMediaUploader";
 
 type Props = {
   initialTagline: string;
@@ -39,59 +38,93 @@ export default function SellerStorefrontFormClient({
 
   const [tagline, setTagline] = useState(initialTagline);
 
-  const [uploading, setUploading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [isLogoProcessing, setIsLogoProcessing] = useState(false);
+  const [isBannerProcessing, setIsBannerProcessing] = useState(false);
+  const [isDeletingLogo, setIsDeletingLogo] = useState(false);
+  const [isDeletingBanner, setIsDeletingBanner] = useState(false);
+
   const [isPending, startTransition] = useTransition();
 
-  const [addressSelectionValid, setAddressSelectionValid] = useState(true);
-  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
-  const { suggestions, loading, error, search, clear } =
-    useAddressAutocomplete();
+  const isProcessing = isLogoProcessing || isBannerProcessing;
+  const isDeleting = isDeletingLogo || isDeletingBanner;
+  const isBusy = isPending || isProcessing || isDeleting;
 
-  const handleDeleteBanner = async () => {
-    if (!bannerKey) return;
+  const logoFiles = useMemo(
+    () => (logoUrl && logoKey ? [{ url: logoUrl, key: logoKey }] : []),
+    [logoUrl, logoKey],
+  );
+
+  const bannerFiles = useMemo(
+    () => (bannerUrl && bannerKey ? [{ url: bannerUrl, key: bannerKey }] : []),
+    [bannerUrl, bannerKey],
+  );
+
+  const runDelete = async ({
+    key,
+    setDeleting,
+    deleteAction,
+    reset,
+    successMessage,
+    errorMessage,
+  }: {
+    key: string;
+    setDeleting: (value: boolean) => void;
+    deleteAction: (fileKey: string) => Promise<unknown>;
+    reset: () => void;
+    successMessage: string;
+    errorMessage: string;
+  }) => {
+    if (!key) return;
 
     setDeleting(true);
 
     try {
-      await deleteBannerAction(bannerKey);
-
-      setBannerUrl("");
-      setBannerKey("");
-
-      toast.success("Banner removed");
+      await deleteAction(key);
+      reset();
+      toast.success(successMessage);
     } catch {
-      toast.error("Failed to delete banner");
+      toast.error(errorMessage);
+    } finally {
+      setDeleting(false);
     }
-
-    setDeleting(false);
   };
 
   const handleDeleteLogo = async () => {
-    if (!logoKey) return;
+    await runDelete({
+      key: logoKey,
+      setDeleting: setIsDeletingLogo,
+      deleteAction: deleteLogoAction,
+      reset: () => {
+        setLogoUrl("");
+        setLogoKey("");
+      },
+      successMessage: "Logo removed",
+      errorMessage: "Failed to delete logo",
+    });
+  };
 
-    setDeleting(true);
-
-    try {
-      await deleteLogoAction(logoKey);
-
-      setLogoUrl("");
-      setLogoKey("");
-
-      toast.success("Logo removed");
-    } catch {
-      toast.error("Failed to delete logo");
-    }
-
-    setDeleting(false);
+  const handleDeleteBanner = async () => {
+    await runDelete({
+      key: bannerKey,
+      setDeleting: setIsDeletingBanner,
+      deleteAction: deleteBannerAction,
+      reset: () => {
+        setBannerUrl("");
+        setBannerKey("");
+      },
+      successMessage: "Banner removed",
+      errorMessage: "Failed to delete banner",
+    });
   };
 
   const handleSave = () => {
+    if (isBusy) return;
+
     startTransition(async () => {
       try {
         const formData = new FormData();
 
-        formData.append("tagline", tagline ?? "");
+        formData.append("tagline", tagline.trim());
         formData.append("logo", logoUrl ?? "");
         formData.append("logoKey", logoKey ?? "");
         formData.append("bannerImage", bannerUrl ?? "");
@@ -107,180 +140,113 @@ export default function SellerStorefrontFormClient({
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-slate-200 shadow-sm">
+      <CardHeader className="space-y-2">
         <CardTitle>Storefront Appearance</CardTitle>
-        <p>
+
+        <p className="text-sm text-muted-foreground">
           Verification status:{" "}
           <span
-            className={`${isStoreVerified ? "text-green-600" : "text-yellow-600"}`}
+            className={
+              isStoreVerified
+                ? "font-medium text-green-600"
+                : "font-medium text-yellow-600"
+            }
           >
-            {" "}
-            {isStoreVerified === true ? "Verified" : "Pending"}
-            <span>
-              {isStoreVerified === true && (
-                <>
-                  {" "}
-                  -{" "}
-                  <Link
-                    href="/settings/verification"
-                    className="text-blue-600 hover:underline"
-                  >
-                    {" "}
-                    View details
-                  </Link>
-                </>
-              )}
-            </span>
+            {isStoreVerified ? "Verified" : "Pending"}
           </span>
-          <span>
-            {isStoreVerified === false && (
-              <>
-                {" "}
-                -{" "}
-                <Link
-                  href="/settings/verification"
-                  className="text-blue-600 hover:underline"
-                >
-                  {" "}
-                  Start verification process
-                </Link>
-              </>
-            )}
-          </span>
+          {" — "}
+          <Link
+            href="/settings/verification"
+            className="font-medium text-blue-600 hover:underline"
+          >
+            {isStoreVerified ? "View details" : "Start verification process"}
+          </Link>
         </p>
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* LOGO */}
         <div className="space-y-3">
           <Label>Store Logo</Label>
 
-          <div className="flex items-center gap-4">
-            <div className="relative w-24 h-24 rounded-full overflow-hidden border">
-              {logoUrl ? (
-                <Image src={logoUrl} alt="logo" fill className="object-cover" />
-              ) : (
-                <div className="flex items-center justify-center h-full text-gray-400">
-                  No Logo
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              {logoUrl && (
-                <Button variant="outline" size="sm" onClick={handleDeleteLogo}>
-                  {deleting ? "Deleting..." : "Remove"}
-                </Button>
-              )}
-
-              <UploadButton
-                endpoint="storeLogo"
-                onUploadBegin={() => setUploading(true)}
-                onClientUploadComplete={(res) => {
-                  setUploading(false);
-
-                  const file = res[0];
-
-                  setLogoUrl(file.url);
-                  setLogoKey(file.key);
-
-                  toast.success("Logo updated!");
-                }}
-                className="
-    ut-button:bg-blue-500/10
-    ut-button:text-blue-600
-    ut-button:border
-    ut-button:border-blue-500/30
-    ut-button:rounded-full
-    ut-button:px-5
-    ut-button:py-2
-    ut-button:text-sm
-    hover:ut-button:bg-blue-500/20
-  "
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* BANNER */}
-        <div className="space-y-3">
-          <Label>Banner Image</Label>
-
-          <div className="relative w-full h-40 bg-gray-100 border rounded-xl overflow-hidden">
-            {bannerUrl ? (
-              <Image
-                src={bannerUrl}
-                alt="banner"
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-400">
-                No Banner
-              </div>
-            )}
-
-            {uploading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-white">
-                <Loader2 className="animate-spin w-6 h-6" />
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            {bannerUrl && (
-              <Button variant="outline" size="sm" onClick={handleDeleteBanner}>
-                {deleting ? "Deleting..." : "Remove"}
-              </Button>
-            )}
-
-            <UploadButton
-              endpoint="storeBanner"
-              onUploadBegin={() => setUploading(true)}
-              onClientUploadComplete={(res) => {
-                setUploading(false);
-
-                const file = res[0];
-
-                setBannerUrl(file.url);
-                setBannerKey(file.key);
-
-                toast.success("Banner updated!");
-              }}
-              className="
-    ut-button:bg-muted
-    ut-button:text-foreground
-    ut-button:border
-    ut-button:border-border
-    ut-button:rounded-md
-    ut-button:px-4
-    ut-button:py-2
-    ut-button:text-sm
-    hover:ut-button:bg-muted/70
-  "
-            />
-          </div>
-        </div>
-
-        {/* TAGLINE */}
-
-        <div className="space-y-2">
-          <Label>Storefront Tagline</Label>
-
-          <Input
-            placeholder="Example: Quality you can trust"
-            value={tagline}
-            onChange={(e) => setTagline(e.target.value)}
+          <MarketplaceMediaUploader
+            value={logoFiles}
+            endpoint="storeLogo"
+            maxImages={1}
+            aspect={1}
+            disabled={isPending || isDeletingLogo}
+            title="Store logo"
+            tip="A clean logo helps your storefront feel more credible."
+            helperText="Crop, refine, resize, and upload one polished logo for your store identity."
+            emptyText="No logo uploaded yet."
+            uploadButtonText="Choose Logo"
+            uploadSuccessMessage="Logo updated!"
+            queuePrefixText="Preparing"
+            previewLabel={() => "Logo"}
+            previewContainerClassName="h-28 w-28 rounded-full"
+            previewImageClassName="object-cover"
+            gridClassName="grid-cols-1"
+            onChange={(images) => {
+              const nextLogo = images[0];
+              setLogoUrl(nextLogo?.url ?? "");
+              setLogoKey(nextLogo?.key ?? "");
+            }}
+            onDelete={handleDeleteLogo}
+            onProcessingChange={setIsLogoProcessing}
           />
         </div>
 
-        <Button
-          onClick={handleSave}
-          disabled={isPending || uploading}
-          className="w-full"
-        >
-          {isPending ? "Saving..." : "Save Changes"}
+        <div className="space-y-3">
+          <Label>Banner Image</Label>
+
+          <MarketplaceMediaUploader
+            value={bannerFiles}
+            endpoint="storeBanner"
+            maxImages={1}
+            aspect={16 / 7}
+            disabled={isPending || isDeletingBanner}
+            title="Store banner"
+            tip="A clean branded banner improves storefront perception and trust."
+            helperText="Crop, refine, resize, and upload one wide banner for your storefront header."
+            emptyText="No banner uploaded yet."
+            uploadButtonText="Choose Banner"
+            uploadSuccessMessage="Banner updated!"
+            queuePrefixText="Preparing"
+            previewLabel={() => "Banner"}
+            previewContainerClassName="aspect-[16/7] rounded-2xl"
+            previewImageClassName="object-cover"
+            gridClassName="grid-cols-1"
+            onChange={(images) => {
+              const nextBanner = images[0];
+              setBannerUrl(nextBanner?.url ?? "");
+              setBannerKey(nextBanner?.key ?? "");
+            }}
+            onDelete={handleDeleteBanner}
+            onProcessingChange={setIsBannerProcessing}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="storefront-tagline">Storefront Tagline</Label>
+          <Input
+            id="storefront-tagline"
+            placeholder="Example: Quality you can trust"
+            value={tagline}
+            onChange={(e) => setTagline(e.target.value)}
+            disabled={isPending}
+            maxLength={120}
+          />
+          <p className="text-xs text-muted-foreground">
+            Keep it short, clear, and brand-friendly.
+          </p>
+        </div>
+
+        <Button onClick={handleSave} disabled={isBusy} className="w-full">
+          {isPending
+            ? "Saving..."
+            : isProcessing
+              ? "Processing media..."
+              : "Save Changes"}
         </Button>
       </CardContent>
     </Card>

@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 
@@ -66,21 +64,21 @@ function PremiumStatCard({
   const content = (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-[22px] border border-slate-200/80 bg-white p-4 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.45)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_30px_70px_-38px_rgba(15,23,42,0.5)] dark:border-zinc-800 dark:bg-zinc-950 sm:rounded-[24px] sm:p-5",
+        "group relative flex h-full min-h-[148px] flex-col overflow-hidden rounded-[22px] border border-slate-200/80 bg-white p-4 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.45)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_30px_70px_-38px_rgba(15,23,42,0.5)] dark:border-zinc-800 dark:bg-zinc-950 sm:min-h-[164px] sm:rounded-[24px] sm:p-5",
         href ? "cursor-pointer" : "",
       )}
     >
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-white/0 via-white/70 to-white/0 opacity-70" />
-      <div className="flex items-start justify-between gap-3 sm:gap-4">
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-slate-600 dark:text-zinc-400">
+      <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+        <div className="min-w-0 flex-1 space-y-2">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-zinc-400 sm:text-sm sm:normal-case sm:tracking-normal">
             {title}
           </p>
-          <p className="break-words text-xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-2xl">
+          <p className="break-words text-lg font-semibold leading-tight tracking-tight text-slate-950 dark:text-white sm:text-2xl lg:text-[1.75rem]">
             {value}
           </p>
           {description ? (
-            <p className="text-xs leading-5 text-slate-500 dark:text-zinc-500">
+            <p className="max-w-[34ch] text-xs leading-5 text-slate-500 dark:text-zinc-500 sm:text-sm">
               {description}
             </p>
           ) : null}
@@ -88,7 +86,7 @@ function PremiumStatCard({
 
         <div
           className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-sm sm:h-12 sm:w-12 sm:rounded-2xl",
+            "flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-xl border shadow-sm sm:h-12 sm:w-12 sm:rounded-2xl",
             tintClassName,
           )}
         >

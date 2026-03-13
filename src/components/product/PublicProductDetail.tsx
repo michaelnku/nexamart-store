@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { ShieldCheck, Store, Truck } from "lucide-react";
+import type { UserRole } from "@/generated/prisma/client";
 import { FoodDetails, FullProduct } from "@/lib/types";
 import { useState, useEffect, useRef, useMemo } from "react";
 import WishlistButton from "./WishlistButton";
@@ -36,6 +37,7 @@ type Props = {
   }[];
   isWishlisted: boolean;
   userId?: string | null;
+  userRole?: UserRole | null;
   isFoodProduct?: boolean;
   foodDetails?: FoodDetails | null;
 };
@@ -69,6 +71,7 @@ export default function ProductPublicDetail({
   cartItems,
   isWishlisted,
   userId,
+  userRole,
   isFoodProduct,
   foodDetails,
 }: Props) {
@@ -157,6 +160,8 @@ export default function ProductPublicDetail({
   }, [activeIndex]);
 
   const normalizedFoodDetails = normalizeFoodDetails(foodDetails);
+  const isSellerViewer = userRole === "SELLER";
+  const isOwner = Boolean(userId && userId === data.store.userId);
 
   return (
     <main className="mx-auto w-full max-w-7xl space-y-10 px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -257,13 +262,15 @@ export default function ProductPublicDetail({
                 </div>
               </div>
 
-              <div className="shrink-0">
-                <WishlistButton
-                  productId={data.id}
-                  userId={userId}
-                  isWishlisted={isWishlisted}
-                />
-              </div>
+              {!isSellerViewer ? (
+                <div className="shrink-0">
+                  <WishlistButton
+                    productId={data.id}
+                    userId={userId}
+                    isWishlisted={isWishlisted}
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 dark:border-neutral-800 dark:bg-neutral-950/40">
@@ -377,11 +384,25 @@ export default function ProductPublicDetail({
             )}
 
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-              <AddToCartControl
-                productId={data.id}
-                variantId={selectedVariant?.id ?? null}
-                availableStock={selectedVariant?.stock ?? 0}
-              />
+              {isOwner ? (
+                <Link
+                  href={`/marketplace/dashboard/seller/products/${data.id}/update`}
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-[#3c9ee0] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#2f8dcd] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3c9ee0] focus-visible:ring-offset-2"
+                >
+                  Update Product
+                </Link>
+              ) : !isSellerViewer ? (
+                <AddToCartControl
+                  productId={data.id}
+                  variantId={selectedVariant?.id ?? null}
+                  availableStock={selectedVariant?.stock ?? 0}
+                />
+              ) : (
+                <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+                  Seller accounts can preview this listing, but cart actions are
+                  reserved for customers.
+                </p>
+              )}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">

@@ -1,6 +1,1 @@
-import { DashboardPageLoading } from "@/components/skeletons/route-loading";
-
-export default function Loading() {
-  return <DashboardPageLoading />;
-}
-
+export { default } from "@/app/marketplace/dashboard/admin/_components/AdminUsersPageLoading";
