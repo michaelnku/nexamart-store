@@ -1,60 +1,105 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { type ReactNode, useEffect, useState, useTransition } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
-} from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Loader2, Plus, Trash } from "lucide-react";
-
 import { useRouter } from "next/navigation";
-import { productSchema, productSchemaType } from "@/lib/zodValidation";
-import { createProductAction } from "@/actions/auth/product";
-
 import { toast } from "sonner";
 
-import type { Category } from "@/lib/types";
 import { deleteFileAction } from "@/actions/actions";
+import { createProductAction } from "@/actions/auth/product";
 import { PriceConverter } from "@/components/currency/PriceConverter";
 import FoodProductSection from "@/components/product/FoodProductSection";
 import { ProductImageUploader } from "@/components/product/ProductImageUploader";
-import { getProductFormDefaults } from "./productFormHelpers";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import type { Category } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { productSchema, type productSchemaType } from "@/lib/zodValidation";
+
+import {
+  createEmptyVariant,
+  getProductFormDefaults,
+} from "./productFormHelpers";
 
 type ProductFormProps = {
   categories: Category[];
   storeType: "GENERAL" | "FOOD";
 };
 
-const ProductForm = ({ categories, storeType }: ProductFormProps) => {
+const sectionCardClassName =
+  "space-y-6 rounded-[26px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.22)] backdrop-blur sm:p-6 dark:border-zinc-800 dark:bg-zinc-950/80";
+
+function FormSection({
+  title,
+  description,
+  className,
+  children,
+  action,
+}: {
+  title: string;
+  description?: string;
+  className?: string;
+  children: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <section className={cn(sectionCardClassName, className)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-slate-950 dark:text-white">
+            {title}
+          </h2>
+          {description ? (
+            <p className="max-w-2xl text-sm leading-6 text-slate-600 dark:text-zinc-400">
+              {description}
+            </p>
+          ) : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+export default function ProductForm({
+  categories,
+  storeType,
+}: ProductFormProps) {
   const router = useRouter();
   const isFoodStore = storeType === "FOOD";
 
   const [level1, setLevel1] = useState<string | null>(null);
   const [level2, setLevel2] = useState<string | null>(null);
   const [level3, setLevel3] = useState<string | null>(null);
-
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
-
   const [error, setError] = useState<string>();
   const [uploading, setUploading] = useState(false);
   const [isImageProcessing, setIsImageProcessing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const isUploadingImages = uploading || isImageProcessing;
 
-  const topLevelCategories = categories.filter((c) => !c.parentId);
-  const childrenLevel1 = categories.filter((c) => c.parentId === level1);
-  const childrenLevel2 = categories.filter((c) => c.parentId === level2);
+  const topLevelCategories = categories.filter(
+    (category) => !category.parentId,
+  );
+  const childrenLevel1 = categories.filter(
+    (category) => category.parentId === level1,
+  );
+  const childrenLevel2 = categories.filter(
+    (category) => category.parentId === level2,
+  );
 
   const form = useForm<productSchemaType>({
     resolver: zodResolver(productSchema),
@@ -63,8 +108,36 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
     }) as productSchemaType,
   });
 
-  const { control, handleSubmit, setValue, getValues } = form;
-  const categoryError = form.formState.errors.categoryId?.message;
+  const { control, getValues, handleSubmit, setValue, watch } = form;
+  const watchedImages = watch("images");
+
+  const { fields, append, remove, replace } = useFieldArray({
+    control,
+    name: "variants",
+  });
+  const {
+    fields: technicalFields,
+    append: appendTechnicalDetail,
+    remove: removeTechnicalDetail,
+  } = useFieldArray({
+    control,
+    name: "technicalDetails",
+  });
+
+  const generateSimpleSku = (name: string) => {
+    const prefix = (name || "PRD")
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .slice(0, 3)
+      .toUpperCase();
+    return `${prefix || "PRD"}-${Math.floor(100000 + Math.random() * 900000)}`;
+  };
+
+  const generateVariantSku = (color?: string, size?: string) => {
+    const rand = Math.floor(100000 + Math.random() * 900000);
+    const colorToken = (color || "NA").slice(0, 2).toUpperCase();
+    const sizeToken = (size || "NA").slice(0, 2).toUpperCase();
+    return `${colorToken}-${sizeToken}-${rand}`;
+  };
 
   const getFirstErrorMessage = (value: unknown): string | undefined => {
     if (!value || typeof value !== "object") return undefined;
@@ -84,55 +157,27 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
     return undefined;
   };
 
-  const generateVariantSku = (color?: string, size?: string) => {
-    const rand = Math.floor(100000 + Math.random() * 900000);
-    const c = (color || "NA").slice(0, 2).toUpperCase();
-    const s = (size || "NA").slice(0, 2).toUpperCase();
-    return `${c}-${s}-${rand}`;
+  const hasDuplicateSkus = (variants: { sku: string }[]) => {
+    const skus = variants.map((variant) => variant.sku.trim());
+    return new Set(skus).size !== skus.length;
   };
-
-  const generateSimpleSku = (name: string) => {
-    const rand = Math.floor(100000 + Math.random() * 900000);
-    return `${name.slice(0, 3).toUpperCase()}-${rand}`;
-  };
-
-  const { fields, append, remove, replace } = useFieldArray({
-    control,
-    name: "variants",
-  });
-
-  const {
-    fields: techFields,
-    append: appendTech,
-    remove: removeTech,
-  } = useFieldArray({
-    control,
-    name: "technicalDetails",
-  });
 
   useEffect(() => {
-    const finalId = level3 || level2 || level1 || "";
-    setValue("categoryId", finalId);
+    setValue("categoryId", level3 || level2 || level1 || "");
   }, [level1, level2, level3, setValue]);
 
   useEffect(() => {
     setValue("isFoodProduct", isFoodStore);
+
     if (!isFoodStore) {
       setValue("foodDetails", undefined);
       return;
     }
 
-    const variants = getValues("variants");
-    const firstVariant = variants?.[0] ?? {
-      sku: "",
-      priceUSD: 0,
-      stock: 0,
-      oldPriceUSD: 0,
-      discount: 0,
-    };
+    const currentVariant = getValues("variants")[0] ?? createEmptyVariant(true);
     replace([
       {
-        ...firstVariant,
+        ...currentVariant,
         color: undefined,
         size: undefined,
       },
@@ -153,61 +198,23 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
   }, [getValues, isFoodStore, replace, setValue]);
 
   useEffect(() => {
-    const variants = getValues("variants");
     const productName = getValues("name");
 
-    variants?.forEach((v, index) => {
-      if (!v.sku) {
-        const hasOptions = !isFoodStore && Boolean(v.color || v.size);
+    getValues("variants").forEach((variant, index) => {
+      if (!variant.sku) {
+        const nextSku =
+          !isFoodStore && (variant.color || variant.size)
+            ? generateVariantSku(variant.color, variant.size)
+            : generateSimpleSku(productName);
 
-        setValue(
-          `variants.${index}.sku`,
-          hasOptions
-            ? generateVariantSku(v.color, v.size)
-            : generateSimpleSku(productName),
-        );
+        setValue(`variants.${index}.sku`, nextSku);
       }
     });
   }, [getValues, isFoodStore, setValue]);
 
-  const hasDuplicateSkus = (variants: { sku: string }[]) => {
-    const skus = variants.map((v) => v.sku.trim());
-    return new Set(skus).size !== skus.length;
-  };
-
   const onSubmit = (values: productSchemaType) => {
-    const normalizedValues: productSchemaType = {
-      ...values,
-      isFoodProduct: isFoodStore,
-      foodDetails: isFoodStore ? values.foodDetails : undefined,
-      variants: values.variants.map((variant) => ({
-        ...variant,
-        color: isFoodStore ? undefined : variant.color,
-        size: isFoodStore ? undefined : variant.size,
-        sku: variant.sku?.trim() || generateSimpleSku(values.name || "PRD"),
-      })),
-    };
-
-    const variants = normalizedValues.variants;
     if (!values.categoryId) {
       toast.error("Please select a category");
-      return;
-    }
-
-    if (!variants || variants.length === 0) {
-      toast.error("At least one variant is required");
-      return;
-    }
-
-    if (hasDuplicateSkus(variants)) {
-      toast.error(
-        "Duplicate SKUs detected. Each variant must have a unique SKU.",
-      );
-      return;
-    }
-
-    if (isUploadingImages) {
-      toast.error("Wait for images to finish uploading");
       return;
     }
 
@@ -216,24 +223,59 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
       return;
     }
 
-    if (isFoodStore && variants.length !== 1) {
-      toast.error("FOOD products must have exactly one variant");
+    if (isUploadingImages) {
+      toast.error("Wait for images to finish uploading");
+      return;
+    }
+
+    const normalizedValues: productSchemaType = {
+      ...values,
+      isFoodProduct: isFoodStore,
+      description: values.description.trim(),
+      brand: values.brand?.trim() || "",
+      foodDetails: isFoodStore ? values.foodDetails : undefined,
+      technicalDetails: isFoodStore ? [] : (values.technicalDetails ?? []),
+      specifications: isFoodStore ? "" : (values.specifications ?? "").trim(),
+      variants: values.variants.map((variant) => ({
+        ...variant,
+        color: isFoodStore ? undefined : variant.color?.trim() || "",
+        size: isFoodStore ? undefined : variant.size?.trim() || "",
+        sku:
+          variant.sku?.trim() ||
+          (isFoodStore
+            ? generateSimpleSku(values.name)
+            : generateVariantSku(variant.color, variant.size)),
+      })),
+    };
+
+    if (!normalizedValues.variants.length) {
+      toast.error("At least one variant is required");
+      return;
+    }
+
+    if (isFoodStore && normalizedValues.variants.length !== 1) {
+      toast.error("Food products can only have one pricing option.");
+      return;
+    }
+
+    if (hasDuplicateSkus(normalizedValues.variants)) {
+      toast.error("Each variant must have a unique SKU.");
       return;
     }
 
     startTransition(async () => {
       try {
-        const res = await createProductAction(normalizedValues);
-        if (res?.error) {
-          setError(res.error);
-          toast.error(res.error);
+        const response = await createProductAction(normalizedValues);
+        if (response?.error) {
+          setError(response.error);
+          toast.error(response.error);
           return;
         }
 
         toast.success("Product created successfully");
         router.push("/marketplace/dashboard/seller/products");
       } catch {
-        toast.error("Something went wrong");
+        toast.error("Something went wrong while creating this product.");
       }
     });
   };
@@ -241,71 +283,88 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
   const deleteImage = async (key: string) => {
     if (deletingKeys.has(key)) return;
 
-    setDeletingKeys((prev) => new Set(prev).add(key));
-
+    setDeletingKeys((previous) => new Set(previous).add(key));
     try {
       await deleteFileAction(key);
-
       setValue(
         "images",
-        getValues("images").filter((img) => img.key !== key),
+        getValues("images").filter((image) => image.key !== key),
       );
-
       toast.success("Image deleted");
     } catch {
       toast.error("Failed to delete image");
     } finally {
-      setDeletingKeys((prev) => {
-        const next = new Set(prev);
+      setDeletingKeys((previous) => {
+        const next = new Set(previous);
         next.delete(key);
         return next;
       });
     }
   };
 
-  const watchedImages = form.watch("images");
-
   return (
-    <main className="flex justify-center dark:bg-neutral-950">
-      <div className="w-full max-w-4xl border px-8 py-4 rounded-2xl shadow space-y-10">
-        <h1 className="text-3xl font-bold text-center text-[var(--brand-blue)]">
-          New Product
-        </h1>
+    <main className="flex justify-center  px-3 py-4 dark:bg-neutral-950">
+      <div className="w-full max-w-6xl rounded-[32px] border border-white/70 bg-white/85 p-3 shadow-[0_30px_100px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-4 lg:p-5 dark:border-zinc-800 dark:bg-zinc-950/85">
+        <div className="rounded-[28px] border border-white/15 bg-[linear-gradient(135deg,#020617_0%,#1d4ed8_42%,#0f766e_100%)] px-5 py-6 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:px-6 sm:py-7">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.28em] text-sky-100/80">
+                NexaMart Seller Workspace
+              </p>
+              <h1 className="mt-3 text-2xl font-semibold sm:text-3xl">
+                New Product
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100/85 sm:text-base">
+                {isFoodStore
+                  ? "Create a service-ready menu listing with clean details, accurate pricing, and polished imagery."
+                  : "Launch a polished product listing with strong merchandising, accurate stock, and marketplace-ready visuals."}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-slate-100 backdrop-blur">
+              Store type:{" "}
+              <span className="font-semibold text-white">{storeType}</span>
+            </div>
+          </div>
+        </div>
 
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle />
+        {error ? (
+          <Alert variant="destructive" className="mt-4 rounded-2xl">
+            <AlertCircle className="h-4 w-4" />
             <AlertTitle>{error}</AlertTitle>
           </Alert>
-        )}
+        ) : null}
 
         <Form {...form}>
           <form
             onSubmit={handleSubmit(onSubmit, (errors) => {
-              console.log("FORM ERRORS", errors);
               toast.error(
-                getFirstErrorMessage(errors) ?? "Please fix the highlighted fields",
+                getFirstErrorMessage(errors) ??
+                  "Please fix the highlighted fields",
               );
             })}
-            className="space-y-12"
+            className="mt-4 space-y-8"
           >
-            {/* PRODUCT INFO */}
-            <section className="space-y-5">
+            <FormSection
+              title="Product Information"
+              description="Cover the fundamentals clearly so customers can evaluate your product quickly."
+            >
               <FormField
                 control={control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Product Name</FormLabel>
+                    <FormLabel>
+                      {isFoodStore ? "Menu Item Name" : "Product Name"}
+                    </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="e.g., Samsung TV 55 inch"
                         {...field}
                         maxLength={120}
+                        placeholder="e.g. Samsung TV 55 inch"
                         className="focus-visible:ring-[var(--brand-blue)]"
                       />
                     </FormControl>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="mt-1 text-xs text-slate-500 dark:text-zinc-500">
                       {field.value.length}/120 characters
                     </p>
                     <FormMessage />
@@ -318,11 +377,15 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
                 name="brand"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Brand (optional)</FormLabel>
+                    <FormLabel>
+                      {isFoodStore
+                        ? "Kitchen / Brand (optional)"
+                        : "Brand (optional)"}
+                    </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Nike / LG / Generic / None"
                         {...field}
+                        placeholder="Nike / LG / Generic / None"
                         className="focus-visible:ring-[var(--brand-blue)]"
                       />
                     </FormControl>
@@ -341,12 +404,12 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
                     </FormLabel>
                     <FormControl>
                       <Textarea
-                        rows={isFoodStore ? 5 : 4}
                         {...field}
+                        rows={isFoodStore ? 5 : 4}
                         placeholder={
                           isFoodStore
                             ? "Describe taste, portion, preparation style, and key selling points."
-                            : "Product detail..."
+                            : "Describe the product clearly."
                         }
                         className="focus-visible:ring-[var(--brand-blue)]"
                       />
@@ -356,180 +419,210 @@ const ProductForm = ({ categories, storeType }: ProductFormProps) => {
                 )}
               />
 
-              {!isFoodStore && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <FormLabel>Category</FormLabel>
+                  <select
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground"
+                    value={level1 ?? ""}
+                    onChange={(event) => {
+                      const value = event.target.value || null;
+                      setLevel1(value);
+                      setLevel2(null);
+                      setLevel3(null);
+                    }}
+                  >
+                    <option value="">Select category</option>
+                    {topLevelCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {childrenLevel1.length > 0 ? (
+                  <select
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground"
+                    value={level2 ?? ""}
+                    onChange={(event) => {
+                      const value = event.target.value || null;
+                      setLevel2(value);
+                      setLevel3(null);
+                    }}
+                  >
+                    <option value="">Select subcategory</option>
+                    {childrenLevel1.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+
+                {childrenLevel2.length > 0 ? (
+                  <select
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground"
+                    value={level3 ?? ""}
+                    onChange={(event) => setLevel3(event.target.value || null)}
+                  >
+                    <option value="">Select sub-subcategory</option>
+                    {childrenLevel2.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+              </div>
+            </FormSection>
+
+            {!isFoodStore ? (
+              <FormSection
+                title="Specifications and Technical Details"
+                description="Surface the details that matter most for comparison shoppers and high-intent buyers."
+                action={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      appendTechnicalDetail({ key: "", value: "" })
+                    }
+                  >
+                    <Plus className="mr-1 h-4 w-4" />
+                    Add Detail
+                  </Button>
+                }
+              >
                 <FormField
                   control={control}
                   name="specifications"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Specifications (one per line)</FormLabel>
+                      <FormLabel>Key Features (one per line)</FormLabel>
                       <FormControl>
                         <Textarea
-                          rows={4}
+                          {...field}
+                          rows={5}
                           placeholder={`5000mAh battery
 6.5-inch AMOLED display
 Snapdragon processor
 Dual SIM`}
-                          {...field}
-                          className="focus-visible:ring-[var(--brand-blue)] whitespace-pre-wrap"
+                          className="focus-visible:ring-[var(--brand-blue)]"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              )}
 
-              {!isFoodStore && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-[var(--brand-black)]">
-                      Technical Details
-                    </h3>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => appendTech({ key: "", value: "" })}
-                    >
-                      <Plus className="w-4 h-4 mr-1" /> Add Detail
-                    </Button>
-                  </div>
+                <div className="space-y-4">
+                  <h3 className="font-medium text-slate-900 dark:text-white">
+                    Technical Details
+                  </h3>
 
-                  {techFields.length === 0 && (
-                    <p className="text-sm text-gray-500">
+                  {technicalFields.length === 0 ? (
+                    <p className="text-sm text-slate-500 dark:text-zinc-400">
                       No technical details added yet.
                     </p>
-                  )}
+                  ) : null}
 
-                  <div className="space-y-3">
-                    {techFields.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="grid grid-cols-1 md:grid-cols-[2fr,3fr,auto] gap-3 items-center"
-                      >
-                        <FormField
-                          control={control}
-                          name={`technicalDetails.${index}.key`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Label</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  placeholder="Processor / Material / Model number..."
-                                  className="focus-visible:ring-[var(--brand-blue)]"
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={control}
-                          name={`technicalDetails.${index}.value`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Value</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  placeholder="Snapdragon 720 / Stainless steel..."
-                                  className="focus-visible:ring-[var(--brand-blue)]"
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => removeTech(index)}
-                          className="mt-5 text-red-500 hover:text-red-600"
-                        >
-                          <Trash className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* CATEGORY */}
-              <div className="space-y-4">
-                <select
-                  className="border p-2 rounded-md w-full"
-                  value={level1 || ""}
-                  onChange={(e) => {
-                    setLevel1(e.target.value || null);
-                    setLevel2(null);
-                    setLevel3(null);
-                  }}
-                >
-                  <option value="">Select Category</option>
-                  {topLevelCategories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-
-                {childrenLevel1.length > 0 && (
-                  <select
-                    className="border p-2 rounded-md w-full"
-                    value={level2 || ""}
-                    onChange={(e) => {
-                      setLevel2(e.target.value || null);
-                      setLevel3(null);
-                    }}
-                  >
-                    <option value="">Select Subcategory</option>
-                    {childrenLevel1.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-
-                {childrenLevel2.length > 0 && (
-                  <select
-                    className="border p-2 rounded-md w-full"
-                    value={level3 || ""}
-                    onChange={(e) => setLevel3(e.target.value || null)}
-                  >
-                    <option value="">Select Sub-Sub Category</option>
-                    {childrenLevel2.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-
-                {categoryError ? (
-                  <p className="text-sm text-red-500">{categoryError}</p>
-                ) : null}
-              </div>
-            </section>
-
-            {/* VARIANTS */}
-            <section className="space-y-6">
-              <h2 className="font-semibold text-xl">Variants Section</h2>
-              {fields.map((_, index) => (
-                <div key={index} className="border rounded-lg p-5 space-y-5">
-                  {!isFoodStore && fields.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => remove(index)}
-                      className="text-red-500"
+                  {technicalFields.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="grid gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 md:grid-cols-[1.2fr_1.6fr_auto] dark:border-zinc-800 dark:bg-zinc-900/80"
                     >
-                      <Trash />
-                    </button>
-                  )}
+                      <FormField
+                        control={control}
+                        name={`technicalDetails.${index}.key`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Label</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                className="focus-visible:ring-[var(--brand-blue)]"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                  {!isFoodStore && (
-                    <div className="grid md:grid-cols-2 gap-5">
+                      <FormField
+                        control={control}
+                        name={`technicalDetails.${index}.value`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Value</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                className="focus-visible:ring-[var(--brand-blue)]"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex items-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeTechnicalDetail(index)}
+                        >
+                          <Trash className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </FormSection>
+            ) : (
+              <FormSection
+                title="Food Details"
+                description="Add the operational details buyers expect from a restaurant-quality menu item."
+                className="border-orange-200 bg-gradient-to-br from-orange-50 to-white dark:border-orange-900/40 dark:bg-[linear-gradient(135deg,rgba(124,45,18,0.28)_0%,rgba(23,23,23,0.92)_48%,rgba(9,9,11,0.96)_100%)]"
+              >
+                <FoodProductSection control={control} />
+              </FormSection>
+            )}
+
+            <FormSection
+              title={
+                isFoodStore
+                  ? "Pricing and Availability"
+                  : "Variants and Inventory"
+              }
+              description={
+                isFoodStore
+                  ? "Maintain one clear pricing option with reliable stock visibility for customers."
+                  : "Define each purchasable combination with the right pricing and stock."
+              }
+            >
+              {fields.map((field, index) => (
+                <div
+                  key={field.id}
+                  className="space-y-5 rounded-[22px] border border-slate-200/80 bg-slate-50/80 p-5 dark:border-zinc-800 dark:bg-zinc-900/70"
+                >
+                  {!isFoodStore && fields.length > 1 ? (
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(index)}
+                      >
+                        <Trash className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {!isFoodStore ? (
+                    <div className="grid gap-5 md:grid-cols-2">
                       <FormField
                         control={control}
                         name={`variants.${index}.color`}
@@ -541,18 +634,19 @@ Dual SIM`}
                                 {...field}
                                 placeholder="Black"
                                 className="focus-visible:ring-[var(--brand-blue)]"
-                                onChange={(e) => {
-                                  field.onChange(e);
+                                onChange={(event) => {
+                                  field.onChange(event);
                                   setValue(
                                     `variants.${index}.sku`,
                                     generateVariantSku(
-                                      e.target.value,
+                                      event.target.value,
                                       getValues(`variants.${index}.size`),
                                     ),
                                   );
                                 }}
                               />
                             </FormControl>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -566,25 +660,26 @@ Dual SIM`}
                             <FormControl>
                               <Input
                                 {...field}
-                                className="focus-visible:ring-[var(--brand-blue)]"
                                 placeholder="M / L / XL"
-                                onChange={(e) => {
-                                  field.onChange(e);
+                                className="focus-visible:ring-[var(--brand-blue)]"
+                                onChange={(event) => {
+                                  field.onChange(event);
                                   setValue(
                                     `variants.${index}.sku`,
                                     generateVariantSku(
                                       getValues(`variants.${index}.color`),
-                                      e.target.value,
+                                      event.target.value,
                                     ),
                                   );
                                 }}
                               />
                             </FormControl>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
                     </div>
-                  )}
+                  ) : null}
 
                   <PriceConverter
                     onUSDChange={(usd) =>
@@ -592,7 +687,7 @@ Dual SIM`}
                     }
                   />
 
-                  <div className="grid md:grid-cols-2 gap-5">
+                  <div className="grid gap-5 md:grid-cols-2">
                     <FormField
                       control={control}
                       name={`variants.${index}.priceUSD`}
@@ -602,10 +697,10 @@ Dual SIM`}
                           <FormControl>
                             <Input
                               type="number"
-                              className="focus-visible:ring-[var(--brand-blue)]"
                               {...field}
-                              onChange={(e) =>
-                                field.onChange(Number(e.target.value))
+                              className="focus-visible:ring-[var(--brand-blue)]"
+                              onChange={(event) =>
+                                field.onChange(Number(event.target.value))
                               }
                             />
                           </FormControl>
@@ -626,10 +721,10 @@ Dual SIM`}
                             <Input
                               type="number"
                               {...field}
-                              onChange={(e) =>
-                                field.onChange(Number(e.target.value))
-                              }
                               className="focus-visible:ring-[var(--brand-blue)]"
+                              onChange={(event) =>
+                                field.onChange(Number(event.target.value))
+                              }
                             />
                           </FormControl>
                           <FormMessage />
@@ -638,26 +733,25 @@ Dual SIM`}
                     />
                   </div>
 
-                  {/* OLD PRICE / DISCOUNT */}
-                  <div className="grid md:grid-cols-2 gap-5">
+                  <div className="grid gap-5 md:grid-cols-2">
                     <FormField
                       control={control}
                       name={`variants.${index}.oldPriceUSD`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Old Price (Optional)</FormLabel>
+                          <FormLabel>Old Price (optional)</FormLabel>
                           <FormControl>
                             <Input
-                              className="focus-visible:ring-[var(--brand-blue)]"
                               type="number"
                               step={1}
                               {...field}
-                              onChange={(e) => {
-                                const old = Math.max(
+                              className="focus-visible:ring-[var(--brand-blue)]"
+                              onChange={(event) => {
+                                const oldPrice = Math.max(
                                   0,
-                                  Math.round(Number(e.target.value || 0)),
+                                  Math.round(Number(event.target.value || 0)),
                                 );
-                                field.onChange(old);
+                                field.onChange(oldPrice);
 
                                 const discount = Math.max(
                                   0,
@@ -668,7 +762,6 @@ Dual SIM`}
                                     ),
                                   ),
                                 );
-
                                 const price = Math.max(
                                   0,
                                   Math.round(
@@ -679,20 +772,21 @@ Dual SIM`}
                                   ),
                                 );
 
-                                if (old > 0 && discount > 0) {
-                                  const newPrice = old - (old * discount) / 100;
+                                if (oldPrice > 0 && discount > 0) {
+                                  const nextPrice =
+                                    oldPrice - (oldPrice * discount) / 100;
                                   setValue(
                                     `variants.${index}.priceUSD`,
-                                    Math.max(0, Math.round(newPrice)),
+                                    Math.max(0, Math.round(nextPrice)),
                                   );
                                 }
 
-                                if (old > 0 && price > 0) {
-                                  const newDiscount =
-                                    ((old - price) / old) * 100;
+                                if (oldPrice > 0 && price > 0) {
+                                  const nextDiscount =
+                                    ((oldPrice - price) / oldPrice) * 100;
                                   setValue(
                                     `variants.${index}.discount`,
-                                    Math.max(0, Math.round(newDiscount)),
+                                    Math.max(0, Math.round(nextDiscount)),
                                   );
                                 }
                               }}
@@ -708,21 +802,21 @@ Dual SIM`}
                       name={`variants.${index}.discount`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Discount % (Optional)</FormLabel>
+                          <FormLabel>Discount % (optional)</FormLabel>
                           <FormControl>
                             <Input
-                              className="focus-visible:ring-[var(--brand-blue)]"
                               type="number"
                               step={1}
                               {...field}
-                              onChange={(e) => {
+                              className="focus-visible:ring-[var(--brand-blue)]"
+                              onChange={(event) => {
                                 const discount = Math.max(
                                   0,
-                                  Math.round(Number(e.target.value || 0)),
+                                  Math.round(Number(event.target.value || 0)),
                                 );
                                 field.onChange(discount);
 
-                                const old = Math.max(
+                                const oldPrice = Math.max(
                                   0,
                                   Math.round(
                                     Number(
@@ -733,11 +827,12 @@ Dual SIM`}
                                   ),
                                 );
 
-                                if (old > 0 && discount > 0) {
-                                  const newPrice = old - (old * discount) / 100;
+                                if (oldPrice > 0 && discount > 0) {
+                                  const nextPrice =
+                                    oldPrice - (oldPrice * discount) / 100;
                                   setValue(
                                     `variants.${index}.priceUSD`,
-                                    Math.max(0, Math.round(newPrice)),
+                                    Math.max(0, Math.round(nextPrice)),
                                   );
                                 }
                               }}
@@ -758,50 +853,29 @@ Dual SIM`}
                         <FormControl>
                           <Input disabled {...field} />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
               ))}
 
-              {!isFoodStore && (
+              {!isFoodStore ? (
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() =>
-                    append({
-                      color: "",
-                      size: "",
-                      priceUSD: 0,
-                      stock: 0,
-                      sku: "",
-                    })
-                  }
+                  onClick={() => append(createEmptyVariant(false))}
                 >
-                  <Plus className="mr-2 h-4 w-4" /> Add Variant
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Variant
                 </Button>
-              )}
-            </section>
+              ) : null}
+            </FormSection>
 
-            {isFoodStore && (
-              <section className="space-y-4 rounded-2xl border border-orange-200 dark:bg-neutral-900 dark:bg-transparent bg-gradient-to-br from-orange-50 to-white p-6">
-                <div>
-                  <h2 className="text-xl font-semibold text-[var(--brand-black)]">
-                    Food Details
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Add the operational details buyers expect from a
-                    restaurant-quality menu item.
-                  </p>
-                </div>
-                <FoodProductSection control={control} />
-              </section>
-            )}
-
-            {/* IMAGES */}
-            <section className="space-y-5">
-              <h2 className="font-semibold text-xl">Product Images</h2>
-
+            <FormSection
+              title="Product Images"
+              description="Crop, refine, and upload polished visuals for stronger marketplace presentation."
+            >
               <ProductImageUploader
                 value={watchedImages ?? []}
                 maxImages={10}
@@ -817,17 +891,18 @@ Dual SIM`}
                   setIsImageProcessing(processing);
                 }}
               />
-            </section>
+            </FormSection>
 
             <Button
               type="submit"
               disabled={isPending || isUploadingImages}
-              className="w-full text-lg py-3 rounded-xl font-semibold
-                bg-[var(--brand-blue)] hover:bg-[var(--brand-blue-hover)] text-white 
-                shadow-md disabled:opacity-60"
+              className="w-full rounded-xl bg-[var(--brand-blue)] py-3 text-lg font-semibold text-white shadow-md hover:bg-[var(--brand-blue-hover)] disabled:opacity-60"
             >
               {isPending ? (
-                <Loader2 className="animate-spin" />
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating product...
+                </>
               ) : (
                 "Create Product"
               )}
@@ -837,6 +912,4 @@ Dual SIM`}
       </div>
     </main>
   );
-};
-
-export default ProductForm;
+}

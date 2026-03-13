@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Loader2, Plus, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { updateProductAction } from "@/actions/auth/product";
 import { deleteProductImageAction } from "@/actions/actions";
+import { updateProductAction } from "@/actions/auth/product";
 import { PriceConverter } from "@/components/currency/PriceConverter";
 import FoodProductSection from "@/components/product/FoodProductSection";
 import { ProductImageUploader } from "@/components/product/ProductImageUploader";
@@ -25,6 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Category, FullProduct } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { productSchema, type productSchemaType } from "@/lib/zodValidation";
 
 import {
@@ -38,6 +45,42 @@ type UpdateProductProps = {
   categories: Category[];
   storeType: "GENERAL" | "FOOD";
 };
+
+const sectionCardClassName =
+  "space-y-6 rounded-[26px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.22)] backdrop-blur sm:p-6 dark:border-zinc-800 dark:bg-zinc-950/80";
+
+function FormSection({
+  title,
+  description,
+  className,
+  children,
+  action,
+}: {
+  title: string;
+  description?: string;
+  className?: string;
+  children: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <section className={cn(sectionCardClassName, className)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-slate-950 dark:text-white">
+            {title}
+          </h2>
+          {description ? (
+            <p className="max-w-2xl text-sm leading-6 text-slate-600 dark:text-zinc-400">
+              {description}
+            </p>
+          ) : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export default function UpdateProductForm({
   initialData,
@@ -232,29 +275,48 @@ export default function UpdateProductForm({
   };
 
   return (
-    <main className="flex justify-center px-3 py-4 dark:bg-neutral-950">
-      <div className="w-full max-w-5xl space-y-8 rounded-[28px] border bg-white p-4 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.35)] sm:p-6 lg:p-8 dark:bg-zinc-950">
-        <div className="rounded-[24px] bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_48%,#0f766e_100%)] p-6 text-white">
-          <h1 className="text-2xl font-semibold sm:text-3xl">Update Product</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100/85 sm:text-base">
-            {isFoodStore
-              ? "Keep menu information complete and service-ready with description, prep time, ingredients, and stock."
-              : "Maintain a polished product listing with accurate variants, specs, inventory, and images."}
-          </p>
+    <main className="flex h-full min-h-0 justify-center overflow-hidden  px-3 py-4 ">
+      <div className="flex h-full min-h-0 w-full max-w-6xl flex-col overflow-hidden rounded-[32px] border border-white/70  p-3 shadow-[0_30px_100px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-4 lg:p-5 dark:border-zinc-800 dark:bg-zinc-950/85">
+        <div className="rounded-[28px] border border-white/15 bg-[linear-gradient(135deg,#020617_0%,#1d4ed8_42%,#0f766e_100%)] px-5 py-6 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:px-6 sm:py-7">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.28em] text-sky-100/80">
+                NexaMart Seller Workspace
+              </p>
+              <h1 className="mt-3 text-2xl font-semibold sm:text-3xl">
+                Update Product
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100/85 sm:text-base">
+                {isFoodStore
+                  ? "Keep menu information complete and service-ready with description, prep time, ingredients, pricing, and stock."
+                  : "Maintain a polished listing with accurate variants, specifications, inventory, and presentation-ready product images."}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-slate-100 backdrop-blur">
+              Last saved product:{" "}
+              <span className="font-semibold text-white">
+                {initialData.name}
+              </span>
+            </div>
+          </div>
         </div>
 
         {error ? (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="mt-4 rounded-2xl">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>{error}</AlertTitle>
           </Alert>
         ) : null}
 
         <Form {...form}>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            <section className="space-y-6 rounded-[24px] border p-5 sm:p-6">
-              <h2 className="text-lg font-semibold">Product Information</h2>
-
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="mt-4 min-h-0 flex-1 space-y-8 overflow-y-auto pr-1"
+          >
+            <FormSection
+              title="Product Information"
+              description="Keep the essentials clean and descriptive so buyers can quickly understand what they are purchasing."
+            >
               <FormField
                 control={control}
                 name="name"
@@ -366,14 +428,26 @@ export default function UpdateProductForm({
                   </select>
                 ) : null}
               </div>
-            </section>
+            </FormSection>
 
             {!isFoodStore ? (
-              <section className="space-y-6 rounded-[24px] border p-5 sm:p-6">
-                <h2 className="text-lg font-semibold">
-                  Specifications and Technical Details
-                </h2>
-
+              <FormSection
+                title="Specifications and Technical Details"
+                description="Surface the details that matter most for comparison shoppers and high-intent buyers."
+                action={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      appendTechnicalDetail({ key: "", value: "" })
+                    }
+                  >
+                    <Plus className="mr-1 h-4 w-4" />
+                    Add Detail
+                  </Button>
+                }
+              >
                 <FormField
                   control={control}
                   name="specifications"
@@ -389,25 +463,14 @@ export default function UpdateProductForm({
                 />
 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-medium">Technical Details</h3>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        appendTechnicalDetail({ key: "", value: "" })
-                      }
-                    >
-                      <Plus className="mr-1 h-4 w-4" />
-                      Add Detail
-                    </Button>
-                  </div>
+                  <h3 className="font-medium text-slate-900 dark:text-white">
+                    Technical Details
+                  </h3>
 
                   {technicalFields.map((item, index) => (
                     <div
                       key={item.id}
-                      className="grid gap-3 rounded-2xl border p-4 md:grid-cols-[1.2fr_1.6fr_auto]"
+                      className="grid gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 md:grid-cols-[1.2fr_1.6fr_auto] dark:border-zinc-800 dark:bg-zinc-900/80"
                     >
                       <FormField
                         control={control}
@@ -450,30 +513,33 @@ export default function UpdateProductForm({
                     </div>
                   ))}
                 </div>
-              </section>
+              </FormSection>
             ) : (
-              <section className="space-y-4 rounded-[24px] border border-orange-200 bg-gradient-to-br from-orange-50 to-white p-5 sm:p-6">
-                <div>
-                  <h2 className="text-lg font-semibold">Food Details</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Keep menu information complete and restaurant-ready.
-                  </p>
-                </div>
+              <FormSection
+                title="Food Details"
+                description="Keep menu information complete and restaurant-ready."
+                className="border-orange-200 bg-gradient-to-br from-orange-50 to-white dark:border-orange-900/40 dark:from-orange-950/20 dark:to-zinc-950/80"
+              >
                 <FoodProductSection control={control} />
-              </section>
+              </FormSection>
             )}
 
-            <section className="space-y-6 rounded-[24px] border p-5 sm:p-6">
-              <h2 className="text-lg font-semibold">
-                {isFoodStore
+            <FormSection
+              title={
+                isFoodStore
                   ? "Pricing and Availability"
-                  : "Variants and Inventory"}
-              </h2>
-
+                  : "Variants and Inventory"
+              }
+              description={
+                isFoodStore
+                  ? "Maintain one clear pricing option with reliable stock visibility for customers."
+                  : "Keep your variant options, pricing, discounts, and stock aligned."
+              }
+            >
               {fields.map((field, index) => (
                 <div
                   key={field.id}
-                  className="space-y-4 rounded-[22px] border bg-slate-50/70 p-4"
+                  className="space-y-4 rounded-[22px] border border-slate-200/80 bg-slate-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/70"
                 >
                   {!isFoodStore && fields.length > 1 ? (
                     <div className="flex justify-end">
@@ -674,11 +740,12 @@ export default function UpdateProductForm({
                   Add Variant
                 </Button>
               ) : null}
-            </section>
+            </FormSection>
 
-            <section className="space-y-6 rounded-[24px] border p-5 sm:p-6">
-              <h2 className="text-lg font-semibold">Product Images</h2>
-
+            <FormSection
+              title="Product Images"
+              description="Review and refine each image before upload so your listing stays consistent across cards, search, and detail pages."
+            >
               <ProductImageUploader
                 value={watchedImages ?? []}
                 maxImages={10}
@@ -694,22 +761,24 @@ export default function UpdateProductForm({
                   setIsImageProcessing(processing);
                 }}
               />
-            </section>
+            </FormSection>
 
-            <Button
-              type="submit"
-              disabled={isPending || isUploadingImages}
-              className="w-full rounded-xl bg-[var(--brand-blue)] py-3 text-lg font-semibold text-white shadow-md hover:bg-[var(--brand-blue-hover)] disabled:opacity-60"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Updating product...
-                </>
-              ) : (
-                "Update Product"
-              )}
-            </Button>
+            <div className="sticky bottom-0 z-10 -mx-1 border-t border-slate-200/80 bg-white/95 px-1 pb-1 pt-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+              <Button
+                type="submit"
+                disabled={isPending || isUploadingImages}
+                className="w-full rounded-xl bg-[var(--brand-blue)] py-3 text-lg font-semibold text-white shadow-md hover:bg-[var(--brand-blue-hover)] disabled:opacity-60"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Updating product...
+                  </>
+                ) : (
+                  "Update Product"
+                )}
+              </Button>
+            </div>
           </form>
         </Form>
       </div>

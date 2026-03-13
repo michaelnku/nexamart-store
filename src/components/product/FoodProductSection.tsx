@@ -48,8 +48,8 @@ export default function FoodProductSection({ control }: Props) {
   }, [dietaryTags]);
 
   return (
-    <section className="space-y-6 dark:bg-neutral-950">
-      <div className="rounded-2xl border border-orange-200 bg-white/80 dark:bg-neutral-900 p-4 text-sm text-muted-foreground shadow-sm">
+    <section className="space-y-6">
+      <div className="rounded-2xl border border-orange-200/80 bg-white/80 p-4 text-sm text-muted-foreground shadow-sm dark:border-orange-900/50 dark:bg-zinc-950/60 dark:text-zinc-300">
         Add a clear restaurant-style info so buyers know what to expect before
         ordering.
       </div>
@@ -70,7 +70,7 @@ export default function FoodProductSection({ control }: Props) {
         {fields.map((field, index) => (
           <div
             key={field.id}
-            className="flex items-center gap-2 rounded-2xl border bg-white dark:bg-neutral-900 p-3 shadow-sm"
+            className="flex items-center gap-2 rounded-2xl border border-orange-100/80 bg-white p-3 shadow-sm dark:border-zinc-800/80 dark:bg-zinc-950/70"
           >
             <FormField
               control={control}
@@ -195,10 +195,10 @@ export default function FoodProductSection({ control }: Props) {
         control={control}
         name="foodDetails.isPerishable"
         render={({ field }) => (
-          <FormItem className="flex items-center justify-between rounded-2xl border bg-white dark:bg-neutral-900 p-4 shadow-sm">
+          <FormItem className="flex items-center justify-between rounded-2xl border border-orange-100/80 bg-white p-4 shadow-sm dark:border-zinc-800/80 dark:bg-zinc-950/70">
             <div>
               <FormLabel>Perishable Item</FormLabel>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground dark:text-zinc-400">
                 Mark dishes that are best consumed quickly after preparation.
               </p>
             </div>
