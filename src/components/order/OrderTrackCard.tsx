@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
 import { Truck, MapPin, Copy } from "lucide-react";
-import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { OrderTrackDTO } from "@/lib/types";
 import OrderTimeline from "./OrderTimeline";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ type Props = {
 };
 
 export default function OrderTrackCard({ order }: Props) {
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const delivery = order.delivery;
 
   const statusColors: Record<string, string> = {
@@ -121,7 +122,7 @@ export default function OrderTrackCard({ order }: Props) {
             <p className="text-sm text-gray-500">
               {order.items.length} item
               {order.items.length > 1 && "s"} •{" "}
-              {formatBaseUSD(order.totalAmount)}
+              {formatMoneyFromUSD(order.totalAmount)}
             </p>
 
             <p className="text-xs text-gray-500">
@@ -156,7 +157,7 @@ export default function OrderTrackCard({ order }: Props) {
             </p>
 
             <p className="min-w-0 sm:col-span-2">
-              <strong>Shipping Fee:</strong> {formatBaseUSD(order.shippingFee)}
+              <strong>Shipping Fee:</strong> {formatMoneyFromUSD(order.shippingFee)}
             </p>
 
             {delivery?.rider && (

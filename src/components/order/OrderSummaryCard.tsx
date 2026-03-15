@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { CheckCircle, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { ClearCartOnSuccess } from "@/app/(site)/customer/order/success/[orderId]/ClearCartOnSuccess";
 import { OrderSummaryDTO } from "@/lib/types";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ type Props = {
 };
 
 const OrderSummaryCard = ({ order }: Props) => {
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const trackingNumber = order.trackingNumber ?? "NEX-ORD-XXXXX";
   const deliveryTypeLabel = order.deliveryType
     ? order.deliveryType.replaceAll("_", " ")
@@ -160,7 +161,7 @@ const OrderSummaryCard = ({ order }: Props) => {
                 )}
 
                 <p className="font-semibold mt-1 text-lg text-[#3c9ee0]">
-                  {formatBaseUSD(item.price)} {""}
+                  {formatMoneyFromUSD(item.price)} {""}
                   <span className="text-gray-600 font-normal">
                     x {item.quantity}
                   </span>
@@ -171,7 +172,7 @@ const OrderSummaryCard = ({ order }: Props) => {
         </div>
 
         <div className="text-right text-xl font-bold text-[#3c9ee0]">
-          Total Paid: {formatBaseUSD(order.totalAmount)}
+          Total Paid: {formatMoneyFromUSD(order.totalAmount)}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 pt-2">

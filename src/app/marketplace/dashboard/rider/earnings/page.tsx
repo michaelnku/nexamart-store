@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getRiderEarningsAction } from "@/actions/rider/getRiderEarningsAction";
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Bike, CheckCircle2, PackageSearch, Wallet } from "lucide-react";
 
@@ -90,6 +91,7 @@ function RiderEarningsSkeleton() {
 }
 
 export default function RiderEarningsPage() {
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["rider-earnings"],
     queryFn: async () => getRiderEarningsAction(),
@@ -108,12 +110,6 @@ export default function RiderEarningsPage() {
   }
 
   const { totalEarnings, pendingEscrow, completed, deliveries } = data;
-
-  const formatMoney = (v: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(v);
 
   return (
     <main className={`${styles.section} text-slate-950 dark:text-zinc-100`}>
@@ -146,19 +142,19 @@ export default function RiderEarningsPage() {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MetricCard
           label="Total Earnings"
-          value={formatMoney(totalEarnings)}
+          value={formatMoneyFromUSD(totalEarnings)}
           accent="text-[var(--brand-blue)]"
           icon={Wallet}
         />
         <MetricCard
           label="Pending Escrow"
-          value={formatMoney(pendingEscrow)}
+          value={formatMoneyFromUSD(pendingEscrow)}
           accent="text-amber-600"
           icon={Bike}
         />
         <MetricCard
           label="Completed"
-          value={formatMoney(completed)}
+          value={formatMoneyFromUSD(completed)}
           accent="text-green-600"
           icon={CheckCircle2}
         />
@@ -233,7 +229,7 @@ export default function RiderEarningsPage() {
                       </td>
 
                       <td className="p-6 text-right text-base font-bold text-[var(--brand-blue)]">
-                        {formatMoney(d.fee)}
+                        {formatMoneyFromUSD(d.fee)}
                       </td>
 
                       <td className="p-6 text-right">
@@ -281,7 +277,7 @@ export default function RiderEarningsPage() {
                       Delivery Fee
                     </p>
                     <p className="text-xl font-bold tracking-tight text-[var(--brand-blue)]">
-                      {formatMoney(d.fee)}
+                      {formatMoneyFromUSD(d.fee)}
                     </p>
                   </div>
                 </div>

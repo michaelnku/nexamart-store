@@ -17,7 +17,7 @@ import {
   CarouselPrevious,
   CarouselNext,
 } from "../ui/carousel";
-import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import ProductInformationSections from "./ProductInformationSections";
 import { normalizeFoodDetails } from "@/app/marketplace/_components/productFormHelpers";
 import { MarketplaceImagePreview } from "@/components/media/MarketplaceImagePreview";
@@ -25,6 +25,7 @@ import { MarketplaceImagePreview } from "@/components/media/MarketplaceImagePrev
 type ProductDetailProps = { data: FullProduct };
 
 export default function SellerProductDetail({ data }: ProductDetailProps) {
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const router = useRouter();
   const user = useCurrentUser();
 
@@ -78,7 +79,7 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
       ? Math.min(...data.variants.map((v) => v.priceUSD))
       : data.basePriceUSD;
 
-  const priceDisplay = formatBaseUSD(basePriceUSD);
+  const priceDisplay = formatMoneyFromUSD(basePriceUSD);
   const isFoodProduct = Boolean(
     data.isFoodProduct || data.store?.type === "FOOD",
   );
@@ -214,7 +215,7 @@ export default function SellerProductDetail({ data }: ProductDetailProps) {
                       )}
                     </span>
                     <span className="text-gray-500">
-                      {formatBaseUSD(v.priceUSD)}
+                      {formatMoneyFromUSD(v.priceUSD)}
                     </span>
                     <span className="text-gray-500">Stock: {v.stock}</span>
                     <span className="text-xs text-gray-400">SKU: {v.sku}</span>

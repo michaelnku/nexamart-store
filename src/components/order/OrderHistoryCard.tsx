@@ -6,7 +6,7 @@ import Image from "next/image";
 import DisputeStatusBadge from "@/components/disputes/DisputeStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { OrderHistoryDTO } from "@/lib/types";
 import { getOrderStatusLabel } from "@/lib/order/statusLabel";
 
@@ -15,6 +15,7 @@ type Props = {
 };
 
 export default function OrderHistoryCard({ orders }: Props) {
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const formatOrderDate = (value: string) =>
     new Date(value).toLocaleDateString("en-US", {
       timeZone: "UTC",
@@ -54,7 +55,7 @@ export default function OrderHistoryCard({ orders }: Props) {
                     TOTAL:
                     <span className="font-medium text-gray-900 dark:text-gray-400">
                       {" "}
-                      {formatBaseUSD(order.totalAmount)}
+                      {formatMoneyFromUSD(order.totalAmount)}
                     </span>
                   </p>
                   {order.isFoodOrder && order.prepTimeMinutes ? (

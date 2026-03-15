@@ -1,5 +1,6 @@
 "use client";
 
+import { convertFromUSD as convertFromUSDValue } from "@/lib/currency/convertFromUSD";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -32,13 +33,7 @@ export const useCurrencyStore = create<CurrencyStore>()(
 
       convertFromUSD: (amount) => {
         const { currency, rates, ratesLoaded } = get();
-
-        if (!ratesLoaded || currency === "USD") return Math.round(amount);
-
-        const rate = rates[currency];
-        if (!rate) return Math.round(amount);
-
-        return Math.round(amount * rate);
+        return convertFromUSDValue(amount, currency, rates, ratesLoaded);
       },
 
       convertToUSD: (amount) => {

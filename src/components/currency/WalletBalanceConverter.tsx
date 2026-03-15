@@ -1,18 +1,19 @@
 "use client";
 
-import { useCurrencyStore } from "@/stores/useCurrencyStore";
-import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
+import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
+import { useCurrencyStore } from "@/stores/useCurrencyStore";
 
 type Props = {
   usdBalance: number;
 };
 
 export function WalletBalanceConverter({ usdBalance }: Props) {
-  const { currency, convertFromUSD } = useCurrencyStore();
-
-  const converted = convertFromUSD(usdBalance);
-
+  const { currency } = useCurrencyStore();
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const [showBalance, setShowBalnce] = useState(false);
 
   return (
@@ -31,15 +32,12 @@ export function WalletBalanceConverter({ usdBalance }: Props) {
         <>
           <div className="flex items-baseline gap-2 ">
             <span className="text-2xl font-bold text-[var(--brand-blue)] transition-all duration-300">
-              {converted.toLocaleString()}
-            </span>
-            <span className="text-sm font-medium text-gray-500">
-              {currency}
+              {formatMoneyFromUSD(usdBalance)}
             </span>
           </div>
           {currency !== "USD" && (
             <p className="text-xs text-muted-foreground">
-              ≈ ${usdBalance.toFixed(2)} USD
+              {formatBaseUSD(usdBalance)} USD
             </p>
           )}
         </>
@@ -49,11 +47,10 @@ export function WalletBalanceConverter({ usdBalance }: Props) {
     </div>
   );
 }
+
 export function SellerWalletBalanceConverter({ usdBalance }: Props) {
-  const { currency, convertFromUSD } = useCurrencyStore();
-
-  const converted = convertFromUSD(usdBalance);
-
+  const { currency } = useCurrencyStore();
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const [showBalance, setShowBalnce] = useState(false);
 
   return (
@@ -72,15 +69,12 @@ export function SellerWalletBalanceConverter({ usdBalance }: Props) {
         <>
           <div className="flex items-baseline gap-2 ">
             <span className="text-2xl font-bold text-[var(--brand-blue)] transition-all duration-300">
-              {converted.toLocaleString()}
-            </span>
-            <span className="text-sm font-medium text-gray-500">
-              {currency}
+              {formatMoneyFromUSD(usdBalance)}
             </span>
           </div>
           {currency !== "USD" && (
             <p className="text-xs text-muted-foreground">
-              ≈ ${usdBalance.toFixed(2)} USD
+              {formatBaseUSD(usdBalance)} USD
             </p>
           )}
         </>

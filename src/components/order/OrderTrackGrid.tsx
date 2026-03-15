@@ -4,8 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { OrderTrackDTO } from "@/lib/types";
-import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
 import { getOrderStatusLabel } from "@/lib/order/statusLabel";
 
 type Props = {
@@ -21,6 +21,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function OrderTrackGrid({ orders }: Props) {
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
   return (
     <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
       <h1 className="text-2xl font-semibold">Active Orders</h1>
@@ -70,7 +71,7 @@ export default function OrderTrackGrid({ orders }: Props) {
               {/* META */}
               <div className="text-xs text-gray-600 dark:text-gray-400">
                 <p>
-                  <strong>Total:</strong> {formatBaseUSD(order.totalAmount)}
+                  <strong>Total:</strong> {formatMoneyFromUSD(order.totalAmount)}
                 </p>
                 <p>
                   <strong>Tracking:</strong>{" "}

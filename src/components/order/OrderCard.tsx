@@ -13,7 +13,7 @@ import DisputeTimeline from "@/components/disputes/DisputeTimeline";
 import RaiseDisputeDialog from "@/components/disputes/RaiseDisputeDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { buildDisputeTimeline, canCustomerRaiseDispute } from "@/lib/disputes/ui";
 import { getOrderStatusLabel } from "@/lib/order/statusLabel";
 import { OrderDetailDTO } from "@/lib/types";
@@ -45,6 +45,7 @@ const refundStatusTone: Record<string, string> = {
 };
 
 export default function OrderCard({ order }: Props) {
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const [dialogOpen, setDialogOpen] = useState(false);
   const canReview = order.status === "DELIVERED" || order.status === "COMPLETED";
   const canRaiseDispute = canCustomerRaiseDispute(order);
@@ -136,7 +137,7 @@ export default function OrderCard({ order }: Props) {
             </p>
             <p>
               <span className="font-semibold">Shipping Fee: </span>
-              {formatBaseUSD(order.shippingFee)}
+              {formatMoneyFromUSD(order.shippingFee)}
             </p>
             <p>
               <span className="font-semibold">Order Date: </span>
@@ -283,7 +284,7 @@ export default function OrderCard({ order }: Props) {
                     ) : null}
 
                     <p className="font-semibold text-[#3c9ee0]">
-                      {formatBaseUSD(item.price)}
+                      {formatMoneyFromUSD(item.price)}
                       <span className="text-gray-500"> × {item.quantity}</span>
                     </p>
                   </div>
@@ -292,14 +293,14 @@ export default function OrderCard({ order }: Props) {
             </div>
 
             <p className="text-right text-lg font-bold dark:text-gray-400">
-              Subtotal: {formatBaseUSD(group.subtotal)}
+              Subtotal: {formatMoneyFromUSD(group.subtotal)}
             </p>
           </div>
         ))}
       </section>
 
       <div className="text-right text-2xl font-bold dark:text-gray-400">
-        Total: {formatBaseUSD(order.totalAmount)}
+        Total: {formatMoneyFromUSD(order.totalAmount)}
       </div>
 
       <section className="flex flex-col gap-4 sm:flex-row">

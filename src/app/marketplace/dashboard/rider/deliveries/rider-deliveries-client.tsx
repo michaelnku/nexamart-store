@@ -21,6 +21,7 @@ import {
   RIDER_DELIVERY_STATUS_TABS,
   RiderDeliveryStatusKey,
 } from "@/lib/rider/types";
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 
 const styles = {
   section: "mx-auto max-w-5xl space-y-6 px-4 py-6",
@@ -41,6 +42,7 @@ const styles = {
 };
 
 export default function RiderDeliveriesClient() {
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
@@ -85,8 +87,6 @@ export default function RiderDeliveriesClient() {
   const activeTabLabel =
     RIDER_DELIVERY_STATUS_TABS.find((tab) => tab.key === activeKey)?.label ??
     "Assigned";
-  const currency = "USD";
-
   const handleAccept = (deliveryId: string) => {
     setAcceptingDeliveryId(deliveryId);
 
@@ -277,10 +277,7 @@ export default function RiderDeliveriesClient() {
                 : 0;
             const attemptsLeft = Math.max(0, 5 - otpAttempts);
             const isLocked = Boolean(delivery.isLocked);
-            const formattedFee = new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency,
-            }).format(delivery.fee ?? 0);
+            const formattedFee = formatMoneyFromUSD(delivery.fee ?? 0);
 
             return (
               <div

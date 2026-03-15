@@ -563,10 +563,7 @@ export default function WalletDashboard({ role }: WalletDashboardProps) {
                 <Clock size={18} className="text-gray-400" />
               </div>
               <h2 className="mt-2 break-words text-2xl font-semibold text-[var(--brand-blue)] sm:text-3xl">
-                {new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: wallet.currency,
-                }).format(wallet.pending)}
+                {formatMoneyFromUSD(wallet.pending)}
               </h2>
             </div>
 
@@ -576,10 +573,7 @@ export default function WalletDashboard({ role }: WalletDashboardProps) {
                 <TrendingUp size={18} className="text-gray-400" />
               </div>
               <h2 className="mt-2 break-words text-2xl font-semibold text-[var(--brand-blue)] sm:text-3xl">
-                {new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: wallet.currency,
-                }).format(wallet.totalEarnings)}
+                {formatMoneyFromUSD(wallet.totalEarnings)}
               </h2>
             </div>
           </section>
@@ -618,10 +612,7 @@ export default function WalletDashboard({ role }: WalletDashboardProps) {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium text-[var(--brand-blue)]">
-                          {new Intl.NumberFormat("en-US", {
-                            style: "currency",
-                            currency: wallet.currency,
-                          }).format(w.amount)}
+                          {formatMoneyFromUSD(w.amount)}
                         </p>
                         <p className="mt-1 text-xs text-gray-500">
                           {new Date(w.createdAt).toDateString()}
@@ -651,10 +642,7 @@ export default function WalletDashboard({ role }: WalletDashboardProps) {
                           {new Date(w.createdAt).toDateString()}
                         </td>
                         <td className="whitespace-nowrap p-4 font-medium text-[var(--brand-blue)]">
-                          {new Intl.NumberFormat("en-US", {
-                            style: "currency",
-                            currency: wallet.currency,
-                          }).format(w.amount)}
+                          {formatMoneyFromUSD(w.amount)}
                         </td>
                         <td className="p-4">{formatStatus(w.status)}</td>
                       </tr>

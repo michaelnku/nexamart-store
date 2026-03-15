@@ -8,7 +8,7 @@ import DisputeTimeline from "@/components/disputes/DisputeTimeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CurrentUser } from "@/lib/currentUser";
-import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
+import { getServerFormatMoneyFromUSD } from "@/lib/currency/getServerFormatMoneyFromUSD";
 import { buildDisputeTimeline } from "@/lib/disputes/ui";
 import { prisma } from "@/lib/prisma";
 
@@ -36,6 +36,7 @@ export default async function SellerOrderDetails({
   params: Promise<{ orderId: string }>;
 }) {
   const { orderId } = await params;
+  const formatMoneyFromUSD = await getServerFormatMoneyFromUSD();
 
   const user = await CurrentUser();
   if (!user) {
@@ -243,7 +244,7 @@ export default async function SellerOrderDetails({
           <div className={`${styles.tintedSurface} p-4`}>
             <p className={styles.metaLabel}>Subtotal</p>
             <p className="mt-1 text-lg font-bold tracking-tight text-[var(--brand-blue)]">
-              {formatBaseUSD(group.subtotal)}
+              {formatMoneyFromUSD(group.subtotal)}
             </p>
           </div>
         </div>
@@ -320,7 +321,7 @@ export default async function SellerOrderDetails({
                   ) : null}
 
                   <p className="text-sm font-semibold text-slate-800 dark:text-zinc-200">
-                    {formatBaseUSD(item.price)} × {item.quantity}
+                    {formatMoneyFromUSD(item.price)} × {item.quantity}
                   </p>
                 </div>
               </div>
@@ -330,7 +331,7 @@ export default async function SellerOrderDetails({
           <div className="mt-6 flex items-center justify-between border-t border-slate-200 pt-4 text-lg font-bold dark:border-zinc-800">
             <span className="text-slate-800 dark:text-zinc-200">Subtotal</span>
             <span className="text-[var(--brand-blue)]">
-              {formatBaseUSD(group.subtotal)}
+              {formatMoneyFromUSD(group.subtotal)}
             </span>
           </div>
         </div>
@@ -377,3 +378,4 @@ export default async function SellerOrderDetails({
     </div>
   );
 }
+

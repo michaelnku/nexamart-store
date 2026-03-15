@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getSellerEarningsAction } from "@/actions/seller/getSellerEarningsAction";
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BanknoteArrowUp, CircleDollarSign, PackageSearch, Wallet } from "lucide-react";
 
@@ -92,6 +93,7 @@ function SellerEarningsSkeleton() {
 }
 
 export default function SellerEarningsPage() {
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["seller-earnings"],
     queryFn: async () => getSellerEarningsAction(),
@@ -108,12 +110,6 @@ export default function SellerEarningsPage() {
   }
 
   const { totalRevenue, totalEarnings, pendingEscrow, released, groups } = data;
-
-  const formatMoney = (v: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(v);
 
   return (
     <main className={`${styles.section} text-slate-950 dark:text-zinc-100`}>
@@ -146,25 +142,25 @@ export default function SellerEarningsPage() {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Revenue"
-          value={formatMoney(totalRevenue)}
+          value={formatMoneyFromUSD(totalRevenue)}
           accent="text-slate-950 dark:text-zinc-100"
           icon={CircleDollarSign}
         />
         <MetricCard
           label="Total Earnings"
-          value={formatMoney(totalEarnings)}
+          value={formatMoneyFromUSD(totalEarnings)}
           accent="text-[var(--brand-blue)]"
           icon={Wallet}
         />
         <MetricCard
           label="Pending Escrow"
-          value={formatMoney(pendingEscrow)}
+          value={formatMoneyFromUSD(pendingEscrow)}
           accent="text-amber-600"
           icon={BanknoteArrowUp}
         />
         <MetricCard
           label="Released"
-          value={formatMoney(released)}
+          value={formatMoneyFromUSD(released)}
           accent="text-green-600"
           icon={CircleDollarSign}
         />
@@ -240,15 +236,15 @@ export default function SellerEarningsPage() {
                       </td>
 
                       <td className="p-6 text-right font-medium">
-                        {formatMoney(g.revenue)}
+                        {formatMoneyFromUSD(g.revenue)}
                       </td>
 
                       <td className="p-6 text-right font-medium text-red-500">
-                        -{formatMoney(g.commission)}
+                        -{formatMoneyFromUSD(g.commission)}
                       </td>
 
                       <td className="p-6 text-right text-base font-bold text-[var(--brand-blue)]">
-                        {formatMoney(g.earnings)}
+                        {formatMoneyFromUSD(g.earnings)}
                       </td>
 
                       <td className="p-6 text-right">
@@ -297,7 +293,7 @@ export default function SellerEarningsPage() {
                         Revenue
                       </p>
                       <p className="text-sm font-medium text-slate-700 dark:text-zinc-200">
-                        {formatMoney(g.revenue)}
+                        {formatMoneyFromUSD(g.revenue)}
                       </p>
                     </div>
                     <div className="space-y-1">
@@ -305,7 +301,7 @@ export default function SellerEarningsPage() {
                         Commission
                       </p>
                       <p className="text-sm font-medium text-red-500">
-                        -{formatMoney(g.commission)}
+                        -{formatMoneyFromUSD(g.commission)}
                       </p>
                     </div>
                     <div className="space-y-1">
@@ -313,7 +309,7 @@ export default function SellerEarningsPage() {
                         Earnings
                       </p>
                       <p className="text-base font-bold text-[var(--brand-blue)]">
-                        {formatMoney(g.earnings)}
+                        {formatMoneyFromUSD(g.earnings)}
                       </p>
                     </div>
                   </div>

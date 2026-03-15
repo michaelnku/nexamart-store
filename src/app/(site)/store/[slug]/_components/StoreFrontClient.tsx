@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { formatBaseUSD } from "@/lib/currency/formatBaseUSD";
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import {
   MarketplaceBannerImagePreview,
   MarketplaceLogoImagePreview,
@@ -60,6 +60,7 @@ export default function StoreFrontClient({
   followAction,
   ownerBanner,
 }: StoreFrontClientProps) {
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
   const badgeClass = getPerformanceBadgeClass(performanceBadge);
 
   return (
@@ -159,7 +160,7 @@ export default function StoreFrontClient({
                         {product.name}
                       </p>
                       <p className="text-lg font-semibold text-blue-600">
-                        {formatBaseUSD(product.basePriceUSD)}
+                        {formatMoneyFromUSD(product.basePriceUSD)}
                       </p>
                     </div>
                   </Link>
