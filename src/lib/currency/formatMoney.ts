@@ -3,12 +3,12 @@ import { CURRENCY_PRECISION } from "./currencyPrecision";
 
 const symbols: Record<string, string> = {
   USD: "$",
-  NGN: "₦",
-  GBP: "£",
-  EUR: "€",
+  NGN: "Naira ",
+  GBP: "GBP ",
+  EUR: "EUR ",
   KES: "KSh",
   ZAR: "R",
-  CAD: "$",
+  CAD: "CA$",
 };
 
 export function formatMoney(amount: number, currency: string) {

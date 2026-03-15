@@ -39,6 +39,10 @@ import {
   getCategoryLevels,
   getProductFormDefaults,
 } from "./productFormHelpers";
+import {
+  clampNonNegativeUSD,
+  normalizeDiscountPercent,
+} from "./productPricingFormUtils";
 
 type UpdateProductProps = {
   initialData: FullProduct;
@@ -626,6 +630,7 @@ export default function UpdateProductForm({
                           <FormControl>
                             <Input
                               type="number"
+                              step="0.01"
                               {...field}
                               onChange={(event) =>
                                 field.onChange(Number(event.target.value))
@@ -670,16 +675,43 @@ export default function UpdateProductForm({
                           <FormControl>
                             <Input
                               type="number"
-                              step={1}
+                              step="0.01"
                               {...field}
-                              onChange={(event) =>
-                                field.onChange(
-                                  Math.max(
-                                    0,
-                                    Math.round(Number(event.target.value || 0)),
+                              onChange={(event) => {
+                                const oldPrice = clampNonNegativeUSD(
+                                  Number(event.target.value || 0),
+                                );
+                                field.onChange(oldPrice);
+
+                                const discount = normalizeDiscountPercent(
+                                  Number(
+                                    getValues(`variants.${index}.discount`) || 0,
                                   ),
-                                )
-                              }
+                                );
+                                const price = clampNonNegativeUSD(
+                                  Number(
+                                    getValues(`variants.${index}.priceUSD`) || 0,
+                                  ),
+                                );
+
+                                if (oldPrice > 0 && discount > 0) {
+                                  const nextPrice =
+                                    oldPrice - (oldPrice * discount) / 100;
+                                  setValue(
+                                    `variants.${index}.priceUSD`,
+                                    clampNonNegativeUSD(nextPrice),
+                                  );
+                                }
+
+                                if (oldPrice > 0 && price > 0) {
+                                  const nextDiscount =
+                                    ((oldPrice - price) / oldPrice) * 100;
+                                  setValue(
+                                    `variants.${index}.discount`,
+                                    normalizeDiscountPercent(nextDiscount),
+                                  );
+                                }
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -696,16 +728,30 @@ export default function UpdateProductForm({
                           <FormControl>
                             <Input
                               type="number"
-                              step={1}
+                              step="0.01"
                               {...field}
-                              onChange={(event) =>
-                                field.onChange(
-                                  Math.max(
-                                    0,
-                                    Math.round(Number(event.target.value || 0)),
+                              onChange={(event) => {
+                                const discount = normalizeDiscountPercent(
+                                  Number(event.target.value || 0),
+                                );
+                                field.onChange(discount);
+
+                                const oldPrice = clampNonNegativeUSD(
+                                  Number(
+                                    getValues(`variants.${index}.oldPriceUSD`) ||
+                                      0,
                                   ),
-                                )
-                              }
+                                );
+
+                                if (oldPrice > 0 && discount > 0) {
+                                  const nextPrice =
+                                    oldPrice - (oldPrice * discount) / 100;
+                                  setValue(
+                                    `variants.${index}.priceUSD`,
+                                    clampNonNegativeUSD(nextPrice),
+                                  );
+                                }
+                              }}
                             />
                           </FormControl>
                           <FormMessage />

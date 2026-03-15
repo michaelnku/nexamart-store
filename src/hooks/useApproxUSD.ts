@@ -1,3 +1,5 @@
+"use client";
+
 import { useCurrencyStore } from "@/stores/useCurrencyStore";
 
 export function useApproxUSD(amountInSelectedCurrency: number) {

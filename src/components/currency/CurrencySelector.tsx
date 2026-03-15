@@ -6,11 +6,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  CURRENCY_LABELS,
+  SUPPORTED_CURRENCIES,
+  setCurrencyCookie,
+} from "@/lib/currency/currencyConfig";
 import { useCurrencyStore } from "@/stores/useCurrencyStore";
 import { Globe } from "lucide-react";
 import { useEffect, useState } from "react";
-
-const currencies = ["USD", "NGN", "GBP", "EUR", "KES", "ZAR", "CAD"];
 
 export default function CurrencySelector() {
   const { currency, setCurrency } = useCurrencyStore();
@@ -26,18 +29,21 @@ export default function CurrencySelector() {
         <Globe className="w-4 h-4" /> {currency}
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="w-32">
-        {currencies.map((c) => (
+      <DropdownMenuContent className="w-48">
+        {SUPPORTED_CURRENCIES.map((c) => (
           <DropdownMenuItem
             key={c}
-            onClick={() => setCurrency(c)}
+            onClick={() => {
+              setCurrency(c);
+              setCurrencyCookie(c);
+            }}
             className={
               c === currency
                 ? "bg-[#3c9ee0]/15 text-[#3c9ee0] font-semibold"
                 : ""
             }
           >
-            {c}
+            {c} - {CURRENCY_LABELS[c]}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

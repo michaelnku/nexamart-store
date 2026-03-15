@@ -1,13 +1,6 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Package,
-  ShoppingBag,
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
-} from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 import {
   LineChart,
@@ -19,7 +12,16 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import Image from "next/image";
+import {
+  Package,
+  ShoppingBag,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
+
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const mockAnalyticsData = [
   { name: "Jan", sales: 120, revenue: 45000 },
@@ -62,12 +64,17 @@ const performance = {
 
 const SellerAnalyticsPage = () => {
   const [period, setPeriod] = useState("Monthly");
+  const formatMoneyFromUSD = useFormatMoneyFromUSD();
 
   const getTrendIcon = (growth: number) => {
-    if (growth > 0)
-      return <TrendingUp className="w-4 h-4 text-green-500 inline-block" />;
-    if (growth < 0)
-      return <TrendingDown className="w-4 h-4 text-red-500 inline-block" />;
+    if (growth > 0) {
+      return <TrendingUp className="inline-block h-4 w-4 text-green-500" />;
+    }
+
+    if (growth < 0) {
+      return <TrendingDown className="inline-block h-4 w-4 text-red-500" />;
+    }
+
     return null;
   };
 
@@ -75,8 +82,7 @@ const SellerAnalyticsPage = () => {
     <main className="min-h-screen space-y-8 bg-gray-50 px-4 py-6 text-slate-950 dark:bg-zinc-950 dark:text-zinc-100">
       <h1 className="text-2xl font-semibold">Analytics</h1>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="border border-gray-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <CardHeader className="flex items-center gap-2">
             <Package className="h-5 w-5 text-gray-500 dark:text-zinc-400" />
@@ -128,7 +134,7 @@ const SellerAnalyticsPage = () => {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold text-slate-950 dark:text-zinc-100">
-              ₦{performance.revenue.total.toLocaleString()}
+              {formatMoneyFromUSD(performance.revenue.total)}
             </p>
             <p className="flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-400">
               {getTrendIcon(performance.revenue.growth)}
@@ -150,7 +156,7 @@ const SellerAnalyticsPage = () => {
             <select
               className="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-slate-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
               value={period}
-              onChange={(e) => setPeriod(e.target.value)}
+              onChange={(event) => setPeriod(event.target.value)}
             >
               <option>Daily</option>
               <option>Weekly</option>
@@ -160,7 +166,6 @@ const SellerAnalyticsPage = () => {
         </Card>
       </div>
 
-      {/* Line Chart */}
       <Card className="border border-gray-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <CardHeader>
           <CardTitle className="font-medium text-gray-800 dark:text-zinc-100">
@@ -172,8 +177,17 @@ const SellerAnalyticsPage = () => {
             <LineChart data={mockAnalyticsData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
               <XAxis dataKey="name" stroke="#6b7280" />
-              <YAxis stroke="#6b7280" />
-              <Tooltip />
+              <YAxis
+                stroke="#6b7280"
+                tickFormatter={(value) => formatMoneyFromUSD(Number(value))}
+              />
+              <Tooltip
+                formatter={(value, name) =>
+                  name === "revenue"
+                    ? formatMoneyFromUSD(Number(value))
+                    : value
+                }
+              />
               <Legend />
               <defs>
                 <linearGradient id="revenueLine" x1="0" y1="0" x2="0" y2="1">
@@ -206,7 +220,6 @@ const SellerAnalyticsPage = () => {
         </CardContent>
       </Card>
 
-      {/* Top Selling Products */}
       <Card className="border border-gray-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <CardHeader>
           <CardTitle className="font-medium text-gray-800 dark:text-zinc-100">
@@ -228,12 +241,16 @@ const SellerAnalyticsPage = () => {
                   className="rounded-md object-cover"
                 />
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-zinc-100">{product.name}</p>
-                  <p className="text-sm text-gray-500 dark:text-zinc-400">Sold: {product.sold}</p>
+                  <p className="font-medium text-gray-900 dark:text-zinc-100">
+                    {product.name}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-zinc-400">
+                    Sold: {product.sold}
+                  </p>
                 </div>
               </div>
               <p className="font-semibold text-gray-800 dark:text-zinc-100">
-                ₦{product.revenue.toLocaleString()}
+                {formatMoneyFromUSD(product.revenue)}
               </p>
             </div>
           ))}

@@ -1,15 +1,23 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
+import { Globe, Mail, Moon, Sun, Laptop } from "lucide-react";
+import { toast } from "sonner";
+
+import { updatePreferencesAction } from "@/actions/preferenceActions";
 import SettingsCard from "@/components/settings/SettingsCard";
 import { Switch } from "@/components/ui/switch";
-import { useCurrencyStore } from "@/stores/useCurrencyStore";
-import { Globe, Mail, Moon, Sun, Laptop } from "lucide-react";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
-import { updatePreferencesAction } from "@/actions/preferenceActions";
+import {
+  CURRENCY_LABELS,
+  getCurrencyCookieValue,
+  isSupportedCurrency,
+  SUPPORTED_CURRENCIES,
+  setCurrencyCookie,
+} from "@/lib/currency/currencyConfig";
 import { PreferencesInput } from "@/lib/types";
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { useCurrencyStore } from "@/stores/useCurrencyStore";
 
 type Props = {
   preferences: PreferencesInput | null;
@@ -30,8 +38,13 @@ export default function PreferencesSection({ preferences }: Props) {
   useEffect(() => {
     setMounted(true);
 
-    if (preferences?.currency) {
+    const cookieCurrency = getCurrencyCookieValue();
+
+    if (cookieCurrency) {
+      setCurrency(cookieCurrency);
+    } else if (isSupportedCurrency(preferences?.currency)) {
       setCurrency(preferences.currency);
+      setCurrencyCookie(preferences.currency);
     }
 
     if (preferences?.theme) {
@@ -45,7 +58,7 @@ export default function PreferencesSection({ preferences }: Props) {
     try {
       setEmailPrefs((p) => ({ ...p, [key]: value }));
       await updatePreferencesAction({ [key]: value });
-    } catch (error) {
+    } catch {
       setEmailPrefs((p) => ({ ...p, [key]: value }));
       toast.error("Failed to save preference");
     }
@@ -54,7 +67,6 @@ export default function PreferencesSection({ preferences }: Props) {
   return (
     <SettingsCard title="Preferences">
       <div className="space-y-10">
-        {/* ================= CURRENCY ================= */}
         <div className="flex items-start gap-4">
           <Globe className="w-5 h-5 text-[var(--brand-blue)]" />
           <div className="flex-1">
@@ -65,9 +77,14 @@ export default function PreferencesSection({ preferences }: Props) {
 
             <select
               value={currency}
-              onChange={(e) => {
-                const value = e.target.value;
+              onChange={(event) => {
+                const value = event.target.value;
+                if (!isSupportedCurrency(value)) {
+                  return;
+                }
+
                 setCurrency(value);
+                setCurrencyCookie(value);
                 updatePreferencesAction({ currency: value });
               }}
               className="
@@ -76,15 +93,15 @@ export default function PreferencesSection({ preferences }: Props) {
                 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100
               "
             >
-              <option value="USD">USD – US Dollar</option>
-              <option value="NGN">NGN – Nigerian Naira</option>
-              <option value="GBP">GBP – Pounds Sterling</option>
-              <option value="EUR">EUR – Euro</option>
+              {SUPPORTED_CURRENCIES.map((supportedCurrency) => (
+                <option key={supportedCurrency} value={supportedCurrency}>
+                  {supportedCurrency} - {CURRENCY_LABELS[supportedCurrency]}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
-        {/* ================= EMAIL ================= */}
         <div className="flex items-start gap-4">
           <Mail className="w-5 h-5 text-[var(--brand-blue)]" />
           <div className="flex-1 space-y-4">
@@ -99,31 +116,30 @@ export default function PreferencesSection({ preferences }: Props) {
               label="Order & Delivery Updates"
               description="Order confirmations, shipping and delivery updates."
               checked={emailPrefs.emailOrderUpdates}
-              onChange={(v) => onToggle("emailOrderUpdates", v)}
+              onChange={(value) => onToggle("emailOrderUpdates", value)}
             />
 
             <PreferenceRow
               label="Wallet & Payment Alerts"
               description="Wallet funding, payments, refunds and withdrawals."
               checked={emailPrefs.emailWalletAlerts}
-              onChange={(v) => onToggle("emailWalletAlerts", v)}
+              onChange={(value) => onToggle("emailWalletAlerts", value)}
             />
 
             <PreferenceRow
               label="Promotions & Deals"
               description="Discounts, sales, special offers."
               checked={emailPrefs.emailPromotions}
-              onChange={(v) => onToggle("emailPromotions", v)}
+              onChange={(value) => onToggle("emailPromotions", value)}
             />
 
             <PreferenceRow
               label="Product Recommendations"
               description="Personalized product suggestions."
               checked={emailPrefs.emailRecommendations}
-              onChange={(v) => onToggle("emailRecommendations", v)}
+              onChange={(value) => onToggle("emailRecommendations", value)}
             />
 
-            {/* SECURITY (LOCKED) */}
             <div className="flex items-center justify-between rounded-lg border bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-900">
               <div>
                 <p className="font-medium text-sm">Security Alerts</p>
@@ -136,7 +152,6 @@ export default function PreferencesSection({ preferences }: Props) {
           </div>
         </div>
 
-        {/* ================= THEME ================= */}
         <div className="flex items-start gap-4">
           <Moon className="w-5 h-5 text-[var(--brand-blue)]" />
           <div className="flex-1">
@@ -145,7 +160,7 @@ export default function PreferencesSection({ preferences }: Props) {
               Choose how NexaMart looks on your device.
             </p>
 
-            <div className="mt-3 grid grid-cols-3 gap-2 max-w-sm">
+            <div className="mt-3 grid max-w-sm grid-cols-3 gap-2">
               {[
                 { key: "light", label: "Light", icon: Sun },
                 { key: "dark", label: "Dark", icon: Moon },
@@ -191,7 +206,7 @@ function PreferenceRow({
   label: string;
   description: string;
   checked: boolean;
-  onChange: (v: boolean) => void;
+  onChange: (value: boolean) => void;
 }) {
   return (
     <div className="flex items-center justify-between rounded-lg border p-3 dark:border-zinc-800">

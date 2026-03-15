@@ -32,6 +32,10 @@ import {
   createEmptyVariant,
   getProductFormDefaults,
 } from "./productFormHelpers";
+import {
+  clampNonNegativeUSD,
+  normalizeDiscountPercent,
+} from "./productPricingFormUtils";
 
 type ProductFormProps = {
   categories: Category[];
@@ -816,6 +820,7 @@ Dual SIM`}
                           <FormControl>
                             <Input
                               type="number"
+                              step="0.01"
                               {...field}
                               className="focus-visible:ring-[var(--brand-blue)]"
                               onChange={(event) =>
@@ -862,32 +867,23 @@ Dual SIM`}
                           <FormControl>
                             <Input
                               type="number"
-                              step={1}
+                              step="0.01"
                               {...field}
                               className="focus-visible:ring-[var(--brand-blue)]"
                               onChange={(event) => {
-                                const oldPrice = Math.max(
-                                  0,
-                                  Math.round(Number(event.target.value || 0)),
+                                const oldPrice = clampNonNegativeUSD(
+                                  Number(event.target.value || 0),
                                 );
                                 field.onChange(oldPrice);
 
-                                const discount = Math.max(
-                                  0,
-                                  Math.round(
-                                    Number(
-                                      getValues(`variants.${index}.discount`) ||
-                                        0,
-                                    ),
+                                const discount = normalizeDiscountPercent(
+                                  Number(
+                                    getValues(`variants.${index}.discount`) || 0,
                                   ),
                                 );
-                                const price = Math.max(
-                                  0,
-                                  Math.round(
-                                    Number(
-                                      getValues(`variants.${index}.priceUSD`) ||
-                                        0,
-                                    ),
+                                const price = clampNonNegativeUSD(
+                                  Number(
+                                    getValues(`variants.${index}.priceUSD`) || 0,
                                   ),
                                 );
 
@@ -896,7 +892,7 @@ Dual SIM`}
                                     oldPrice - (oldPrice * discount) / 100;
                                   setValue(
                                     `variants.${index}.priceUSD`,
-                                    Math.max(0, Math.round(nextPrice)),
+                                    clampNonNegativeUSD(nextPrice),
                                   );
                                 }
 
@@ -905,7 +901,7 @@ Dual SIM`}
                                     ((oldPrice - price) / oldPrice) * 100;
                                   setValue(
                                     `variants.${index}.discount`,
-                                    Math.max(0, Math.round(nextDiscount)),
+                                    normalizeDiscountPercent(nextDiscount),
                                   );
                                 }
                               }}
@@ -925,24 +921,19 @@ Dual SIM`}
                           <FormControl>
                             <Input
                               type="number"
-                              step={1}
+                              step="0.01"
                               {...field}
                               className="focus-visible:ring-[var(--brand-blue)]"
                               onChange={(event) => {
-                                const discount = Math.max(
-                                  0,
-                                  Math.round(Number(event.target.value || 0)),
+                                const discount = normalizeDiscountPercent(
+                                  Number(event.target.value || 0),
                                 );
                                 field.onChange(discount);
 
-                                const oldPrice = Math.max(
-                                  0,
-                                  Math.round(
-                                    Number(
-                                      getValues(
-                                        `variants.${index}.oldPriceUSD`,
-                                      ) || 0,
-                                    ),
+                                const oldPrice = clampNonNegativeUSD(
+                                  Number(
+                                    getValues(`variants.${index}.oldPriceUSD`) ||
+                                      0,
                                   ),
                                 );
 
@@ -951,7 +942,7 @@ Dual SIM`}
                                     oldPrice - (oldPrice * discount) / 100;
                                   setValue(
                                     `variants.${index}.priceUSD`,
-                                    Math.max(0, Math.round(nextPrice)),
+                                    clampNonNegativeUSD(nextPrice),
                                   );
                                 }
                               }}

@@ -1,15 +1,21 @@
 "use client";
 
 import { convertFromUSD as convertFromUSDValue } from "@/lib/currency/convertFromUSD";
+import { convertToUSD as convertToUSDValue } from "@/lib/currency/convertToUSD";
+import {
+  DEFAULT_CURRENCY,
+  isSupportedCurrency,
+  type SupportedCurrency,
+} from "@/lib/currency/currencyConfig";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 type CurrencyStore = {
-  currency: string;
+  currency: SupportedCurrency;
   rates: Record<string, number>;
   ratesLoaded: boolean;
 
-  setCurrency: (currency: string) => void;
+  setCurrency: (currency: SupportedCurrency) => void;
   setRates: (rates: Record<string, number>) => void;
 
   convertToUSD: (amount: number) => number;
@@ -19,15 +25,18 @@ type CurrencyStore = {
 export const useCurrencyStore = create<CurrencyStore>()(
   persist(
     (set, get) => ({
-      currency: "USD",
-      rates: { USD: 1 },
+      currency: DEFAULT_CURRENCY,
+      rates: { [DEFAULT_CURRENCY]: 1 },
       ratesLoaded: false,
 
-      setCurrency: (currency) => set({ currency }),
+      setCurrency: (currency) =>
+        set({
+          currency: isSupportedCurrency(currency) ? currency : DEFAULT_CURRENCY,
+        }),
 
       setRates: (rates) =>
         set({
-          rates: { USD: 1, ...rates },
+          rates: { [DEFAULT_CURRENCY]: 1, ...rates },
           ratesLoaded: true,
         }),
 
@@ -38,23 +47,26 @@ export const useCurrencyStore = create<CurrencyStore>()(
 
       convertToUSD: (amount) => {
         const { currency, rates, ratesLoaded } = get();
-
-        if (!ratesLoaded || currency === "USD") return Math.round(amount);
-
-        const rate = rates[currency];
-        if (!rate || rate === 0) return Math.round(amount);
-
-        return Math.round(amount / rate);
+        return convertToUSDValue(amount, currency, rates, ratesLoaded);
       },
     }),
     {
       name: "currency-store",
-      version: 3,
-      migrate: () => ({
-        currency: "USD",
-        rates: { USD: 1 },
-        ratesLoaded: false,
-      }),
+      version: 4,
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<CurrencyStore> | undefined;
+
+        return {
+          currency: isSupportedCurrency(state?.currency)
+            ? state.currency
+            : DEFAULT_CURRENCY,
+          rates:
+            state?.rates && typeof state.rates === "object"
+              ? { [DEFAULT_CURRENCY]: 1, ...state.rates }
+              : { [DEFAULT_CURRENCY]: 1 },
+          ratesLoaded: Boolean(state?.ratesLoaded),
+        };
+      },
     }
   )
 );

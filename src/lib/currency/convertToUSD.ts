@@ -1,17 +1,17 @@
-export function convertFromUSD(
-  amountUSD: number,
+export function convertToUSD(
+  amount: number,
   currency: string,
   rates: Record<string, number>,
   ratesLoaded = true,
 ) {
   if (!ratesLoaded || currency === "USD") {
-    return amountUSD;
+    return amount;
   }
 
   const rate = rates[currency];
-  if (!rate) {
-    return amountUSD;
+  if (!rate || rate <= 0) {
+    return amount;
   }
 
-  return amountUSD * rate;
+  return amount / rate;
 }

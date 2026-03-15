@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { CurrentUser } from "@/lib/currentUser";
-import CurrencyRateBootstrap from "@/components/currency/CurrencyRateBootstrap";
 import MarketplaceLayoutClient from "./layout-client";
 import NotificationListener from "@/components/notifications/NotificationListener";
 
@@ -18,7 +17,6 @@ export default async function MarketPlaceLayout({
 
   return (
     <MarketplaceLayoutClient user={user}>
-      <CurrencyRateBootstrap />
       <NotificationListener userId={userId!} />
       {children}
     </MarketplaceLayoutClient>
