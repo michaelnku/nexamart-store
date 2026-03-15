@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
+import { OtpProviderUnavailableError } from "@/lib/otp";
+import { hasConfiguredOtpMessagingProvider } from "@/lib/otp/config";
 import { sendOtpSms } from "@/services/sendOtpSms";
 
 export type DeliveryOtpSendResult =
@@ -60,14 +62,9 @@ export async function sendDeliveryOtpToCustomer(
     };
   }
 
-  const hasSmsProvider =
-    Boolean(process.env.TWILIO_ACCOUNT_SID) &&
-    Boolean(process.env.TWILIO_AUTH_TOKEN) &&
-    Boolean(process.env.TWILIO_PHONE_NUMBER);
-
-  if (!hasSmsProvider) {
+  if (!hasConfiguredOtpMessagingProvider()) {
     console.warn(
-      "[sendDeliveryOtpToCustomer] skipped sms: twilio env not configured",
+      "[sendDeliveryOtpToCustomer] skipped sms: otp provider not configured",
       {
         userId: user.id,
         phone,
@@ -100,7 +97,10 @@ export async function sendDeliveryOtpToCustomer(
     });
     return {
       success: false,
-      code: "OTP_SERVICE_UNAVAILABLE",
+      code:
+        error instanceof OtpProviderUnavailableError
+          ? "SMS_PROVIDER_UNAVAILABLE"
+          : "OTP_SERVICE_UNAVAILABLE",
       message: "OTP service temporarily unavailable.",
     };
   }

@@ -7,3 +7,7 @@ export function generateOtp(): string {
 export function hashOtp(otp: string): string {
   return crypto.createHash("sha256").update(otp).digest("hex");
 }
+
+export * from "./types";
+export * from "./errors";
+export * from "./service";

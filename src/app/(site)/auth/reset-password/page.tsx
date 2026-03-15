@@ -17,9 +17,11 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <p className="mt-24 min-h-full py-62 text-center text-red-500 dark:text-red-400">
-        Invalid reset link
-      </p>
+      <main className="flex min-h-[calc(100dvh-8rem)] items-center justify-center bg-gray-50 px-4 py-10 dark:bg-neutral-950 sm:px-6 sm:py-16">
+        <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-8 text-center shadow-lg dark:border-red-900/50 dark:bg-neutral-900">
+          <p className="text-red-500 dark:text-red-400">Invalid reset link</p>
+        </div>
+      </main>
     );
   }
 
@@ -37,7 +39,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <main className="flex min-h-full items-center justify-center bg-gray-50 px-4 dark:bg-neutral-950">
+    <main className="flex min-h-[calc(100dvh-8rem)] items-center justify-center bg-gray-50 px-4 py-10 dark:bg-neutral-950 sm:px-6 sm:py-16">
       <div className="w-full max-w-md space-y-7 rounded-2xl border border-gray-200 bg-white p-8 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
         <h1
           className="text-2xl font-semibold mb-4"

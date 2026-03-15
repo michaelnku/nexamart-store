@@ -102,6 +102,9 @@ const Footer = () => {
             { label: "About NexaMart", href: "/about" },
             { label: "Careers", href: "/careers" },
             { label: "Partnerships", href: "/partners" },
+            { label: "Privacy Policy", href: "/privacy-policy" },
+            { label: "Terms of Service", href: "/terms-of-service" },
+            { label: "Contact", href: "/contact" },
           ]}
         />
       </div>
