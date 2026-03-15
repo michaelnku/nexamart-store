@@ -1,21 +1,14 @@
-import { CURRENCY_LOCALE } from "./currencyLocale";
-import { CURRENCY_PRECISION } from "./currencyPrecision";
-
-const symbols: Record<string, string> = {
-  USD: "$",
-  NGN: "Naira ",
-  GBP: "GBP ",
-  EUR: "EUR ",
-  KES: "KSh",
-  ZAR: "R",
-  CAD: "CA$",
-};
+import {
+  CURRENCY_LOCALE,
+  CURRENCY_PRECISION,
+  CURRENCY_SYMBOLS,
+} from "./currencyConfig";
 
 export function formatMoney(amount: number, currency: string) {
   const locale = CURRENCY_LOCALE[currency] ?? "en-US";
   const decimals = CURRENCY_PRECISION[currency] ?? 0;
 
-  return `${symbols[currency] ?? ""}${amount.toLocaleString(locale, {
+  return `${CURRENCY_SYMBOLS[currency] ?? ""}${amount.toLocaleString(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })}`;
