@@ -93,6 +93,7 @@ const Footer = () => {
             { label: "Help Center", href: "/help" },
             { label: "Track Order", href: "/customer/order/track" },
             { label: "Refund Policy", href: "/help/refunds" },
+            { label: "Contact Us", href: "/contact" },
           ]}
         />
 
@@ -104,7 +105,6 @@ const Footer = () => {
             { label: "Partnerships", href: "/partners" },
             { label: "Privacy Policy", href: "/privacy-policy" },
             { label: "Terms of Service", href: "/terms-of-service" },
-            { label: "Contact", href: "/contact" },
           ]}
         />
       </div>

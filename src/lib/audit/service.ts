@@ -33,7 +33,7 @@ function sanitizeAuditMetadataValue(
       .filter((entry) => entry !== undefined) as Prisma.InputJsonArray;
   }
 
-  const next: Prisma.InputJsonObject = {};
+  const next: Record<string, Prisma.InputJsonValue | null> = {};
 
   for (const [key, entry] of Object.entries(value)) {
     const sanitized = sanitizeAuditMetadataValue(entry, depth + 1);
@@ -42,13 +42,13 @@ function sanitizeAuditMetadataValue(
     }
   }
 
-  return next;
+  return next as Prisma.InputJsonObject;
 }
 
 function sanitizeAuditMetadataObject(
   value: Record<string, AuditMetadata>,
 ): Prisma.InputJsonObject {
-  const next: Prisma.InputJsonObject = {};
+  const next: Record<string, Prisma.InputJsonValue | null> = {};
 
   for (const [key, entry] of Object.entries(value)) {
     const sanitized = sanitizeAuditMetadataValue(entry);
@@ -57,7 +57,7 @@ function sanitizeAuditMetadataObject(
     }
   }
 
-  return next;
+  return next as Prisma.InputJsonObject;
 }
 
 export async function createAuditLog(
