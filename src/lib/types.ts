@@ -349,6 +349,13 @@ export type AdminDisputeDetailDTO = {
   createdAt: string;
   updatedAt: string;
   isFoodOrder: boolean;
+  deliveryType?: DeliveryType;
+  orderTrackingNumber?: string | null;
+  openedByName?: string | null;
+  resolvedByName?: string | null;
+  refundRecordedAt?: string | null;
+  attentionLevel?: "NORMAL" | "HIGH" | "CRITICAL";
+  attentionAgeHours?: number;
   customer: {
     id?: string;
     name?: string | null;

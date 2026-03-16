@@ -186,6 +186,11 @@ export const DashboardMenu = {
           icon: BarChart2,
         },
         {
+          name: "Operations Analytics",
+          href: "/marketplace/dashboard/admin/operations",
+          icon: Activity,
+        },
+        {
           name: "Revenue Reports",
           href: "/marketplace/dashboard/admin/revenue",
           icon: Landmark,

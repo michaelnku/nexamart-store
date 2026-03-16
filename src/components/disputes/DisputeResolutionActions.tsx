@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import {
@@ -41,6 +42,7 @@ function isTerminalStatus(status: AdminDisputeDetailDTO["status"]): boolean {
 
 export default function DisputeResolutionActions({ dispute }: Props) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [confirmAction, setConfirmAction] = useState<ActionType>(null);
   const [partialOpen, setPartialOpen] = useState(false);
@@ -69,6 +71,9 @@ export default function DisputeResolutionActions({ dispute }: Props) {
         }
 
         toast.success("Dispute action completed successfully.");
+        await queryClient.invalidateQueries({
+          queryKey: ["admin-disputes-dashboard"],
+        });
         setConfirmAction(null);
         router.refresh();
       } catch (error) {

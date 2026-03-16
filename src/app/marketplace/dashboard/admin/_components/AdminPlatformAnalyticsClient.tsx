@@ -2,9 +2,6 @@
 
 import {
   AlertTriangle,
-  ArrowDownRight,
-  ArrowRight,
-  ArrowUpRight,
   BarChart3,
   Building2,
   Coins,
@@ -20,12 +17,17 @@ import {
 import { useState } from "react";
 
 import { AnalyticsDateRangeFilter } from "@/components/analytics/AnalyticsDateRangeFilter";
-import { AnalyticsLineChart } from "@/components/analytics/AnalyticsLineChart";
 import {
   DashboardHero,
   PremiumPanel,
   PremiumStatCard,
 } from "@/app/marketplace/_components/PremiumDashboard";
+import {
+  AnalyticsBreakdownList,
+  AnalyticsChangeFooter,
+  AnalyticsRankedList,
+  AnalyticsTrendPanel,
+} from "@/app/marketplace/dashboard/admin/_components/AdminAnalyticsPanels";
 import {
   Empty,
   EmptyDescription,
@@ -41,13 +43,7 @@ import {
   AnalyticsDatePreset,
   applyAnalyticsPreset,
 } from "@/lib/analytics/date-range";
-import {
-  formatAnalyticsCount,
-  formatAnalyticsPercent,
-  getChangeTone,
-} from "@/lib/analytics/format";
-import type { PlatformAnalyticsResponse } from "@/lib/services/admin/adminPlatformAnalyticsService";
-import { cn } from "@/lib/utils";
+import { formatAnalyticsCount } from "@/lib/analytics/format";
 
 type AdminPlatformAnalyticsClientProps = {
   initialRange: {
@@ -56,193 +52,6 @@ type AdminPlatformAnalyticsClientProps = {
     endDate: string;
   };
 };
-
-function ChangeBadge({ value }: { value: number | null }) {
-  const tone = getChangeTone(value);
-
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-3 rounded-xl px-3 py-2",
-        tone === "positive" &&
-          "bg-emerald-50/90 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300",
-        tone === "negative" &&
-          "bg-rose-50/90 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300",
-        tone === "muted" &&
-          "bg-slate-100/80 text-slate-600 dark:bg-zinc-900 dark:text-zinc-300",
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/80 shadow-sm dark:bg-zinc-950/80">
-          {tone === "negative" ? (
-            <ArrowDownRight className="h-3.5 w-3.5" />
-          ) : tone === "muted" ? (
-            <ArrowRight className="h-3.5 w-3.5" />
-          ) : (
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          )}
-        </span>
-        <div className="space-y-0.5">
-          <p className="text-[11px] font-medium uppercase tracking-[0.16em] opacity-70">
-            Period change
-          </p>
-          <p className="text-sm font-semibold">
-            {value === null ? "No prior data" : formatAnalyticsPercent(value)}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TrendPanel({
-  title,
-  description,
-  data,
-  dataKey,
-  color,
-  formatter,
-}: {
-  title: string;
-  description: string;
-  data: PlatformAnalyticsResponse["trends"]["gmv"];
-  dataKey: string;
-  color: string;
-  formatter: (value: number) => string;
-}) {
-  const chartData = data.map((item) => ({
-    label: item.label,
-    [dataKey]: item.value,
-  }));
-
-  return (
-    <PremiumPanel title={title} description={description}>
-      <AnalyticsLineChart
-        data={chartData}
-        xKey="label"
-        yAxisFormatter={formatter}
-        series={[
-          {
-            key: dataKey,
-            label: title,
-            color,
-            valueFormatter: formatter,
-          },
-        ]}
-      />
-    </PremiumPanel>
-  );
-}
-
-function BreakdownList({
-  title,
-  description,
-  rows,
-  valueFormatter,
-}: {
-  title: string;
-  description: string;
-  rows: { key: string; label: string; count?: number; value?: number }[];
-  valueFormatter: (value: number) => string;
-}) {
-  const max = Math.max(
-    ...rows.map((row) => row.count ?? row.value ?? 0),
-    0,
-  );
-
-  return (
-    <PremiumPanel title={title} description={description}>
-      <div className="space-y-4">
-        {rows.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-zinc-400">
-            No data for this range.
-          </p>
-        ) : null}
-        {rows.map((row) => {
-          const numericValue = row.count ?? row.value ?? 0;
-          const width = max > 0 ? `${(numericValue / max) * 100}%` : "0%";
-
-          return (
-            <div key={row.key} className="space-y-2">
-              <div className="flex items-center justify-between gap-4 text-sm">
-                <span className="font-medium text-slate-700 dark:text-zinc-200">
-                  {row.label}
-                </span>
-                <span className="text-slate-500 dark:text-zinc-400">
-                  {valueFormatter(numericValue)}
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100 dark:bg-zinc-900">
-                <div
-                  className="h-2 rounded-full bg-[linear-gradient(90deg,#0f766e_0%,#38bdf8_100%)]"
-                  style={{ width }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </PremiumPanel>
-  );
-}
-
-function RankedList({
-  title,
-  description,
-  rows,
-  primaryFormatter,
-  secondaryLabel,
-}: {
-  title: string;
-  description: string;
-  rows: {
-    key: string;
-    label: string;
-    value: number;
-    secondaryValue?: number;
-  }[];
-  primaryFormatter: (value: number) => string;
-  secondaryLabel?: (value: number) => string;
-}) {
-  return (
-    <PremiumPanel title={title} description={description}>
-      <div className="space-y-4">
-        {rows.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-zinc-400">
-            No data for this range.
-          </p>
-        ) : null}
-        {rows.map((row, index) => (
-          <div
-            key={row.key}
-            className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200/80 px-4 py-3 dark:border-zinc-800"
-          >
-            <div className="min-w-0">
-              <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700 dark:bg-zinc-900 dark:text-zinc-200">
-                  {index + 1}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-900 dark:text-white">
-                    {row.label}
-                  </p>
-                  {typeof row.secondaryValue === "number" && secondaryLabel ? (
-                    <p className="text-xs text-slate-500 dark:text-zinc-400">
-                      {secondaryLabel(row.secondaryValue)}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-            <div className="text-right font-semibold text-slate-900 dark:text-white">
-              {primaryFormatter(row.value)}
-            </div>
-          </div>
-        ))}
-      </div>
-    </PremiumPanel>
-  );
-}
 
 function LoadingState() {
   return (
@@ -429,7 +238,7 @@ export default function AdminPlatformAnalyticsClient({
             tintClassName={item.tintClassName}
             footer={
               "change" in item ? (
-                <ChangeBadge value={item.change ?? null} />
+                <AnalyticsChangeFooter value={item.change ?? null} />
               ) : undefined
             }
           />
@@ -457,7 +266,7 @@ export default function AdminPlatformAnalyticsClient({
       ) : (
         <>
           <section className="grid gap-6 xl:grid-cols-2">
-            <TrendPanel
+            <AnalyticsTrendPanel
               title="GMV Over Time"
               description="Paid order value grouped across the selected range."
               data={analytics.trends.gmv}
@@ -465,7 +274,7 @@ export default function AdminPlatformAnalyticsClient({
               color="#0f766e"
               formatter={formatMoney}
             />
-            <TrendPanel
+            <AnalyticsTrendPanel
               title="Platform Revenue Over Time"
               description="Released platform commission grouped by payout recognition date."
               data={analytics.trends.platformRevenue}
@@ -473,7 +282,7 @@ export default function AdminPlatformAnalyticsClient({
               color="#0284c7"
               formatter={formatMoney}
             />
-            <TrendPanel
+            <AnalyticsTrendPanel
               title="Orders Over Time"
               description="Paid marketplace order count trend."
               data={analytics.trends.orders}
@@ -481,7 +290,7 @@ export default function AdminPlatformAnalyticsClient({
               color="#7c3aed"
               formatter={(value) => formatAnalyticsCount(value)}
             />
-            <TrendPanel
+            <AnalyticsTrendPanel
               title="New Users Over Time"
               description="Customer account creation trend for the selected window."
               data={analytics.trends.newUsers}
@@ -489,7 +298,7 @@ export default function AdminPlatformAnalyticsClient({
               color="#0f172a"
               formatter={(value) => formatAnalyticsCount(value)}
             />
-            <TrendPanel
+            <AnalyticsTrendPanel
               title="New Sellers Over Time"
               description="Seller account creation trend for the selected window."
               data={analytics.trends.newSellers}
@@ -497,7 +306,7 @@ export default function AdminPlatformAnalyticsClient({
               color="#c2410c"
               formatter={(value) => formatAnalyticsCount(value)}
             />
-            <TrendPanel
+            <AnalyticsTrendPanel
               title="Payouts Over Time"
               description="Released seller and rider payouts grouped by payout release date."
               data={analytics.trends.payouts}
@@ -508,19 +317,19 @@ export default function AdminPlatformAnalyticsClient({
           </section>
 
           <section className="grid gap-6 xl:grid-cols-3">
-            <BreakdownList
+            <AnalyticsBreakdownList
               title="Orders By Status"
               description="Current order outcomes for paid marketplace orders in range."
               rows={analytics.breakdowns.orderStatuses}
               valueFormatter={(value) => formatAnalyticsCount(value)}
             />
-            <BreakdownList
+            <AnalyticsBreakdownList
               title="Payment Method Breakdown"
               description="Payment mix from paid marketplace orders."
               rows={analytics.breakdowns.paymentMethods}
               valueFormatter={(value) => formatAnalyticsCount(value)}
             />
-            <BreakdownList
+            <AnalyticsBreakdownList
               title="Delivery Type Breakdown"
               description="How customers fulfilled paid orders across the marketplace."
               rows={analytics.breakdowns.deliveryTypes}
@@ -529,7 +338,7 @@ export default function AdminPlatformAnalyticsClient({
           </section>
 
           <section className="grid gap-6 xl:grid-cols-2">
-            <RankedList
+            <AnalyticsRankedList
               title="Category Breakdown"
               description="Top categories ranked by captured order-item GMV."
               rows={analytics.breakdowns.categories}
@@ -538,7 +347,7 @@ export default function AdminPlatformAnalyticsClient({
                 `${formatAnalyticsCount(value)} order${value === 1 ? "" : "s"}`
               }
             />
-            <RankedList
+            <AnalyticsRankedList
               title="Top Sellers"
               description="Sellers ranked by seller-group GMV in the selected period."
               rows={analytics.breakdowns.topSellers}
@@ -547,7 +356,7 @@ export default function AdminPlatformAnalyticsClient({
                 `${formatAnalyticsCount(value)} order${value === 1 ? "" : "s"}`
               }
             />
-            <RankedList
+            <AnalyticsRankedList
               title="Top Products"
               description="Products ranked by captured order-item revenue."
               rows={analytics.breakdowns.topProducts}
@@ -556,7 +365,7 @@ export default function AdminPlatformAnalyticsClient({
                 `${formatAnalyticsCount(value)} unit${value === 1 ? "" : "s"}`
               }
             />
-            <RankedList
+            <AnalyticsRankedList
               title="Top Customers"
               description="Customers ranked by spend across paid marketplace orders."
               rows={analytics.breakdowns.topCustomers}

@@ -162,38 +162,39 @@ model PasswordResetAttempt {
 /// * PRODUCTS & CATEGORIES
 /// * ===========================
 model Product {
-  id                     String                 @id @default(cuid())
-  name                   String                 @db.VarChar(120)
-  description            String
-  brand                  String?
-  storeId                String
-  categoryId             String
-  isPublished            Boolean                @default(true)
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
-  brandId                String?
-  discount               Float?
-  defaultPrepTimeMinutes Int?
-  specifications         String[]               @default([])
-  technicalDetails       Json                   @default("[]")
-  sold                   Int                    @default(0)
-  basePriceUSD           Float
-  oldPriceUSD            Float?
-  averageRating          Float                  @default(0)
-  reviewCount            Int                    @default(0)
-  foodDetails            Json?
-  isFoodProduct          Boolean                @default(false)
-  cartItems              CartItem[]
-  inventoryReservations  InventoryReservation[]
-  orderItems             OrderItem[]
-  Brand                  Brand?                 @relation(fields: [brandId], references: [id])
-  category               Category               @relation(fields: [categoryId], references: [id])
-  store                  Store                  @relation(fields: [storeId], references: [id])
-  images                 ProductImage[]
-  variants               ProductVariant[]
-  reviews                Review[]
-  wishlistItems          WishlistItem[]
-  conversations          Conversation[]
+  id                          String                    @id @default(cuid())
+  name                        String                    @db.VarChar(120)
+  description                 String
+  brand                       String?
+  storeId                     String
+  categoryId                  String
+  isPublished                 Boolean                   @default(true)
+  createdAt                   DateTime                  @default(now())
+  updatedAt                   DateTime                  @updatedAt
+  brandId                     String?
+  discount                    Float?
+  defaultPrepTimeMinutes      Int?
+  specifications              String[]                  @default([])
+  technicalDetails            Json                      @default("[]")
+  sold                        Int                       @default(0)
+  basePriceUSD                Float
+  oldPriceUSD                 Float?
+  averageRating               Float                     @default(0)
+  reviewCount                 Int                       @default(0)
+  foodDetails                 Json?
+  isFoodProduct               Boolean                   @default(false)
+  cartItems                   CartItem[]
+  inventoryReservations       InventoryReservation[]
+  orderItems                  OrderItem[]
+  Brand                       Brand?                    @relation(fields: [brandId], references: [id])
+  category                    Category                  @relation(fields: [categoryId], references: [id])
+  store                       Store                     @relation(fields: [storeId], references: [id])
+  images                      ProductImage[]
+  variants                    ProductVariant[]
+  reviews                     Review[]
+  wishlistItems               WishlistItem[]
+  conversations               Conversation[]
+  featuredPlacements          FeaturedProductPlacement[]
 
   @@index([storeId])
   @@index([categoryId])
@@ -804,43 +805,44 @@ model DisputeSellerGroupImpact {
 /// * STORE & BRAND
 /// * ===========================
 model Store {
-  id                        String             @id @default(cuid())
-  userId                    String             @unique
-  name                      String
-  slug                      String             @unique
-  logo                      String?
-  description               String?
-  location                  String?
-  address                   String?
-  logoKey                   String?
-  shippingRatePerMile       Float              @default(0.8)
-  latitude                  Float?
-  longitude                 Float?
-  isActive                  Boolean            @default(false)
-  isSuspended               Boolean            @default(false)
-  suspensionReason          String?
-  suspendedAt               DateTime?
-  isVerified                Boolean            @default(false)
-  verifiedAt                DateTime?
-  verificationMethod        String?
-  bannerImage               String?
-  bannerKey                 String?
-  tagline                   String?
-  emailNotificationsEnabled Boolean            @default(true)
-  createdAt                 DateTime           @default(now())
-  updatedAt                 DateTime           @updatedAt
-  type                      StoreType          @default(GENERAL)
-  fulfillmentType           FulfillmentType    @default(PHYSICAL)
-  deletedAt                 DateTime?
-  isDeleted                 Boolean            @default(false)
-  stripeAccountId           String?            @unique
-  Brand                     Brand[]
-  storeGroups               OrderSellerGroup[]
-  products                  Product[]
-  owner                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  StoreFollower             StoreFollower[]
-  StoreReview               StoreReview[]
-  conversations             Conversation[]
+  id                          String                  @id @default(cuid())
+  userId                      String                  @unique
+  name                        String
+  slug                        String                  @unique
+  logo                        String?
+  description                 String?
+  location                    String?
+  address                     String?
+  logoKey                     String?
+  shippingRatePerMile         Float                   @default(0.8)
+  latitude                    Float?
+  longitude                   Float?
+  isActive                    Boolean                 @default(false)
+  isSuspended                 Boolean                 @default(false)
+  suspensionReason            String?
+  suspendedAt                 DateTime?
+  isVerified                  Boolean                 @default(false)
+  verifiedAt                  DateTime?
+  verificationMethod          String?
+  bannerImage                 String?
+  bannerKey                   String?
+  tagline                     String?
+  emailNotificationsEnabled   Boolean                 @default(true)
+  createdAt                   DateTime                @default(now())
+  updatedAt                   DateTime                @updatedAt
+  type                        StoreType               @default(GENERAL)
+  fulfillmentType             FulfillmentType         @default(PHYSICAL)
+  deletedAt                   DateTime?
+  isDeleted                   Boolean                 @default(false)
+  stripeAccountId             String?                 @unique
+  Brand                       Brand[]
+  storeGroups                 OrderSellerGroup[]
+  products                    Product[]
+  owner                       User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  StoreFollower               StoreFollower[]
+  StoreReview                 StoreReview[]
+  conversations               Conversation[]
+  featuredPlacements          FeaturedStorePlacement[]
 
   @@index([userId])
   @@index([slug])
@@ -1245,22 +1247,121 @@ model HeroBanner {
 
   lottieUrl String?
 
-  position Int     @default(0)
-  isActive Boolean @default(true)
+  position        Int     @default(0)
+  isActive        Boolean @default(true)
+  impressionCount Int     @default(0)
+  clickCount      Int     @default(0)
 
-  startsAt DateTime?
-  endsAt   DateTime?
+  startsAt         DateTime?
+  endsAt           DateTime?
+  lastImpressionAt DateTime?
+  lastClickAt      DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  deletedAt DateTime?
-  isDeleted Boolean         @default(false)
-  placement BannerPlacement @default(HOMEPAGE)
+  deletedAt          DateTime?
+  isDeleted          Boolean                  @default(false)
+  placement          BannerPlacement          @default(HOMEPAGE)
+  dailyStats         HeroBannerDailyStats[]
+  marketingCampaigns MarketingCampaign[]
 
   @@index([placement])
   @@index([isActive])
   @@index([position])
+  @@index([startsAt])
+  @@index([endsAt])
+}
+
+model HeroBannerDailyStats {
+  id          String   @id @default(cuid())
+  bannerId    String
+  date        DateTime
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  banner HeroBanner @relation(fields: [bannerId], references: [id], onDelete: Cascade)
+
+  @@unique([bannerId, date])
+  @@index([bannerId])
+  @@index([date])
+}
+
+model MarketingCampaign {
+  id           String                  @id @default(cuid())
+  name         String
+  slug         String                  @unique
+  description  String?
+  status       MarketingCampaignStatus @default(DRAFT)
+  themeKey     String?
+  accentColor  String?
+  notes        String?
+  heroBannerId String?
+  startsAt     DateTime?
+  endsAt       DateTime?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  heroBanner         HeroBanner?               @relation(fields: [heroBannerId], references: [id], onDelete: SetNull)
+  featuredStores     FeaturedStorePlacement[]
+  featuredProducts   FeaturedProductPlacement[]
+
+  @@index([status])
+  @@index([heroBannerId])
+  @@index([startsAt])
+  @@index([endsAt])
+}
+
+model FeaturedStorePlacement {
+  id          String               @id @default(cuid())
+  campaignId  String
+  storeId     String
+  slot        MarketingPlacementSlot
+  isEnabled   Boolean              @default(true)
+  priority    Int                  @default(0)
+  tagLabel    String?
+  notes       String?
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  campaign MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  store    Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, storeId, slot])
+  @@index([slot, isEnabled])
+  @@index([campaignId, slot, isEnabled])
+  @@index([storeId, slot, isEnabled])
+  @@index([priority])
+  @@index([startsAt])
+  @@index([endsAt])
+}
+
+model FeaturedProductPlacement {
+  id          String               @id @default(cuid())
+  campaignId  String
+  productId   String
+  slot        MarketingPlacementSlot
+  isEnabled   Boolean              @default(true)
+  priority    Int                  @default(0)
+  tagLabel    String?
+  notes       String?
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  campaign MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  product  Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, productId, slot])
+  @@index([slot, isEnabled])
+  @@index([campaignId, slot, isEnabled])
+  @@index([productId, slot, isEnabled])
+  @@index([priority])
   @@index([startsAt])
   @@index([endsAt])
 }
@@ -1373,6 +1474,21 @@ enum BannerPlacement {
   CATEGORY
   FOOD
   GLOBAL
+}
+
+enum MarketingCampaignStatus {
+  DRAFT
+  ACTIVE
+  SCHEDULED
+  ARCHIVED
+}
+
+enum MarketingPlacementSlot {
+  HOMEPAGE_FEATURED_STORES
+  HOMEPAGE_FEATURED_PRODUCTS
+  SEASONAL_CAMPAIGN_STRIP
+  STORE_SPOTLIGHT_ROW
+  RECOMMENDED_CAMPAIGN_SLOT
 }
 
 enum EmploymentType {

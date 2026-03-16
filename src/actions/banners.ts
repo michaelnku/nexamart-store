@@ -1,6 +1,6 @@
 "use server";
 
-import { Prisma } from "@/generated/prisma";
+import { Prisma, UserRole } from "@/generated/prisma";
 import { CurrentUser } from "@/lib/currentUser";
 import { createAuditLog } from "@/lib/audit/service";
 import { prisma } from "@/lib/prisma";
@@ -13,7 +13,7 @@ const utapi = new UTApi();
 
 export const createHeroBannerAction = async (values: HeroBannerInput) => {
   const user = await CurrentUser();
-  if (!user || user.role !== "ADMIN") {
+  if (!user || user.role !== UserRole.ADMIN) {
     return { error: "Unauthorized access" };
   }
 
@@ -68,7 +68,7 @@ export const createHeroBannerAction = async (values: HeroBannerInput) => {
 
 export const deleteHeroBannerImageAction = async (key: string) => {
   const user = await CurrentUser();
-  if (!user || user.role !== "ADMIN") {
+  if (!user || user.role !== UserRole.ADMIN) {
     return { error: "Unauthorized access" };
   }
 
@@ -82,7 +82,7 @@ export const updateHeroBannerAction = async (
   values: HeroBannerInput,
 ) => {
   const user = await CurrentUser();
-  if (!user || user.role !== "ADMIN") {
+  if (!user || user.role !== UserRole.ADMIN) {
     return { error: "Unauthorized access" };
   }
 
@@ -146,7 +146,7 @@ export const updateHeroBannerAction = async (
 
 export const deleteHeroBannerAction = async (id: string) => {
   const user = await CurrentUser();
-  if (!user || user.role !== "ADMIN") {
+  if (!user || user.role !== UserRole.ADMIN) {
     return { error: "Unauthorized access" };
   }
 
@@ -188,4 +188,134 @@ export const deleteHeroBannerAction = async (id: string) => {
   revalidatePath("/marketplace/dashboard/admin/marketing/banners");
 
   return { success: "Banner deleted successfully" };
+};
+
+export const toggleHeroBannerActiveAction = async (
+  id: string,
+  isActive: boolean,
+) => {
+  const user = await CurrentUser();
+  if (!user || user.role !== UserRole.ADMIN) {
+    return { error: "Unauthorized access" };
+  }
+
+  const banner = await prisma.heroBanner.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      title: true,
+      isDeleted: true,
+    },
+  });
+
+  if (!banner || banner.isDeleted) {
+    return { error: "Banner not found" };
+  }
+
+  await prisma.heroBanner.update({
+    where: { id },
+    data: { isActive },
+  });
+
+  await createAuditLog({
+    actorId: user.id,
+    actorRole: user.role,
+    actionType: "HERO_BANNER_STATUS_CHANGED",
+    targetEntityType: "HERO_BANNER",
+    targetEntityId: id,
+    summary: `${isActive ? "Activated" : "Disabled"} hero banner${banner.title ? `: ${banner.title}` : "."}`,
+    metadata: {
+      isActive,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/marketplace/dashboard/admin/marketing");
+  revalidatePath("/marketplace/dashboard/admin/marketing/banners");
+
+  return { success: true };
+};
+
+export const moveHeroBannerPositionAction = async (
+  id: string,
+  direction: "up" | "down",
+) => {
+  const user = await CurrentUser();
+  if (!user || user.role !== UserRole.ADMIN) {
+    return { error: "Unauthorized access" };
+  }
+
+  const currentBanner = await prisma.heroBanner.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      title: true,
+      position: true,
+      placement: true,
+      isDeleted: true,
+    },
+  });
+
+  if (!currentBanner || currentBanner.isDeleted) {
+    return { error: "Banner not found" };
+  }
+
+  const banners = await prisma.heroBanner.findMany({
+    where: {
+      isDeleted: false,
+      placement: currentBanner.placement,
+    },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    select: {
+      id: true,
+      title: true,
+      position: true,
+      placement: true,
+    },
+  });
+
+  const currentIndex = banners.findIndex((banner) => banner.id === id);
+  if (currentIndex === -1) {
+    return { error: "Banner not found" };
+  }
+
+  const swapIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+  if (swapIndex < 0 || swapIndex >= banners.length) {
+    return { success: true };
+  }
+
+  const swapBanner = banners[swapIndex];
+
+  await prisma.$transaction([
+    prisma.heroBanner.update({
+      where: { id: currentBanner.id },
+      data: { position: swapBanner.position },
+    }),
+    prisma.heroBanner.update({
+      where: { id: swapBanner.id },
+      data: { position: currentBanner.position },
+    }),
+  ]);
+
+  await createAuditLog({
+    actorId: user.id,
+    actorRole: user.role,
+    actionType: "HERO_BANNER_REORDERED",
+    targetEntityType: "HERO_BANNER",
+    targetEntityId: id,
+    summary: `Moved hero banner ${direction}${currentBanner.title ? `: ${currentBanner.title}` : "."}`,
+    metadata: {
+      direction,
+      placement: currentBanner.placement,
+      previousPosition: currentBanner.position,
+      newPosition: swapBanner.position,
+      swappedWithId: swapBanner.id,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/marketplace/dashboard/admin/marketing");
+  revalidatePath("/marketplace/dashboard/admin/marketing/banners");
+
+  return { success: true };
 };
