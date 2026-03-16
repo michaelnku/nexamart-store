@@ -8,21 +8,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FileChartColumn, LineChart } from "lucide-react";
 import SellerAnalyticsChart from "@/lib/services/seller/SellerAnalyticsChart";
 import { Separator } from "@/components/ui/separator";
-
-function createDefaultDateRange() {
-  const end = new Date();
-  const start = new Date(end);
-  start.setDate(start.getDate() - 30);
-
-  return {
-    startDate: start.toISOString(),
-    endDate: end.toISOString(),
-  };
-}
+import {
+  AnalyticsDatePreset,
+  applyAnalyticsPreset,
+  createAnalyticsDateRange,
+} from "@/lib/analytics/date-range";
+import { AnalyticsDateRangeFilter } from "@/components/analytics/AnalyticsDateRangeFilter";
 
 export default function SellerReportsPage() {
   const [tab, setTab] = useState<"sales" | "analytics">("sales");
-  const [dateRange] = useState(createDefaultDateRange);
+  const [dateRange, setDateRange] = useState(() => createAnalyticsDateRange());
 
   const { data, isLoading, isError, error, isFetching } = useSellerSalesReport(
     dateRange.startDate,
@@ -64,6 +59,25 @@ export default function SellerReportsPage() {
 
   return (
     <div className="space-y-8 py-2">
+      <AnalyticsDateRangeFilter
+        preset={dateRange.preset}
+        startDate={dateRange.startDate}
+        endDate={dateRange.endDate}
+        disabled={isLoading}
+        onPresetChange={(preset: AnalyticsDatePreset) =>
+          setDateRange((currentRange) =>
+            applyAnalyticsPreset(currentRange, preset),
+          )
+        }
+        onCustomRangeApply={({ startDate, endDate }) =>
+          setDateRange({
+            preset: "custom",
+            startDate,
+            endDate,
+          })
+        }
+      />
+
       <div className="flex items-center gap-12 border-b pb-2">
         <span>
           <button

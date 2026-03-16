@@ -1,14 +1,7 @@
 "use client";
 
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
+import { AnalyticsLineChart } from "@/components/analytics/AnalyticsLineChart";
 
 type Props = {
   data: {
@@ -19,35 +12,31 @@ type Props = {
 };
 
 export default function SellerAnalyticsChart({ data }: Props) {
+  const formatMoney = useFormatMoneyFromUSD();
   const formatted = data.map((d) => ({
     ...d,
     date: new Date(d.date).toLocaleDateString(),
   }));
 
   return (
-    <div className="w-full h-[320px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={formatted}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" />
-          <YAxis />
-          <Tooltip />
-
-          <Line
-            type="monotone"
-            dataKey="revenue"
-            stroke="#3c9ee0"
-            strokeWidth={2}
-          />
-
-          <Line
-            type="monotone"
-            dataKey="orders"
-            stroke="#000"
-            strokeWidth={2}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+    <AnalyticsLineChart
+      data={formatted}
+      xKey="date"
+      showLegend
+      series={[
+        {
+          key: "revenue",
+          label: "Revenue",
+          color: "#3c9ee0",
+          valueFormatter: formatMoney,
+        },
+        {
+          key: "orders",
+          label: "Orders",
+          color: "#0f172a",
+          valueFormatter: (value) => `${value}`,
+        },
+      ]}
+    />
   );
 }
