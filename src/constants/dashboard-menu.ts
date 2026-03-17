@@ -85,6 +85,21 @@ export const DashboardMenu = {
       ],
     },
     {
+      title: "COMMUNICATION",
+      links: [
+        {
+          href: "/messages",
+          icon: Mail,
+          name: "Messages",
+        },
+        {
+          href: "/support",
+          icon: HelpCircle,
+          name: "Help & Support",
+        },
+      ],
+    },
+    {
       title: "Account",
       links: [
         {
@@ -138,6 +153,21 @@ export const DashboardMenu = {
           name: "Schedule",
           href: "/marketplace/dashboard/rider/schedule",
           icon: Clock,
+        },
+      ],
+    },
+    {
+      title: "COMMUNICATION",
+      links: [
+        {
+          href: "/messages",
+          icon: Mail,
+          name: "Messages",
+        },
+        {
+          href: "/support",
+          icon: HelpCircle,
+          name: "Help & Support",
         },
       ],
     },
@@ -273,13 +303,23 @@ export const DashboardMenu = {
       ],
     },
     {
-      title: "Account",
+      title: "COMMUNICATION",
       links: [
+        {
+          href: "/messages",
+          icon: Mail,
+          name: "Messages",
+        },
         {
           name: "Support Tickets",
           href: "/marketplace/dashboard/admin/support",
           icon: HelpCircle,
         },
+      ],
+    },
+    {
+      title: "Account",
+      links: [
         {
           name: "Profile",
           href: "/profile",

@@ -24,6 +24,12 @@ type CountRow = {
   value: number;
 };
 
+type BreakdownRow = {
+  key: string;
+  label: string;
+  value: number;
+};
+
 type ValueBreakdown = {
   key: string;
   label: string;
@@ -100,8 +106,8 @@ export type RevenueReportsResponse = {
     netRetainedRevenue: TrendPoint[];
   };
   breakdowns: {
-    revenueByPaymentMethod: CountRow[];
-    revenueByDeliveryType: CountRow[];
+    revenueByPaymentMethod: BreakdownRow[];
+    revenueByDeliveryType: BreakdownRow[];
     topEarningSellers: ValueBreakdown[];
     topPlatformContributors: ValueBreakdown[];
     sellerPayoutExposure: ValueBreakdown[];
