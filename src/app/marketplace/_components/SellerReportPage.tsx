@@ -36,12 +36,8 @@ export default function SellerReportsPage() {
 
   const formatMoney = useFormatMoneyFromUSD();
   const stats = data?.stats;
-  const salesErrorMessage =
-    error instanceof Error ? error.message : "Failed to load sales reports.";
-  const analyticsErrorMessage =
-    analyticsError instanceof Error
-      ? analyticsError.message
-      : "Failed to load analytics.";
+  const salesErrorMessage = "Failed to load sales reports.";
+  const analyticsErrorMessage = "Failed to load analytics.";
 
   const growth =
     stats?.previousRevenue && stats.previousRevenue > 0

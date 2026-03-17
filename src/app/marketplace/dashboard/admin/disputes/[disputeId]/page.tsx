@@ -13,7 +13,7 @@ import { getAdminDisputeById } from "@/lib/services/admin/adminDisputesService";
 export default async function AdminDisputeDetailPage({
   params,
 }: {
-  params: { disputeId: string };
+  params: Promise<{ disputeId: string }>;
 }) {
   const user = await CurrentUser();
 
@@ -21,7 +21,7 @@ export default async function AdminDisputeDetailPage({
     return <p className="p-6">Unauthorized</p>;
   }
 
-  const { disputeId } = params;
+  const { disputeId } = await params;
   const dispute = await getAdminDisputeById(disputeId);
 
   if (!dispute) {

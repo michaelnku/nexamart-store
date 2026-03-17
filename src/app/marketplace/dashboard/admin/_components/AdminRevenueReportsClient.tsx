@@ -280,10 +280,7 @@ export default function AdminRevenueReportsClient({
   }
 
   if (query.isError || !query.data) {
-    const errorMessage =
-      query.error instanceof Error
-        ? query.error.message
-        : "Failed to load revenue reports.";
+    const errorMessage = "Failed to load revenue reports.";
 
     return (
       <div className="space-y-6">

@@ -1,8 +1,4 @@
-import {
-  BannerPlacement,
-  CouponType,
-  Prisma,
-} from "@/generated/prisma";
+import { BannerPlacement, CouponType, Prisma } from "@/generated/prisma";
 
 import {
   AnalyticsDateRange,
@@ -11,6 +7,19 @@ import {
 } from "@/lib/analytics/date-range";
 import { calculateChange } from "@/lib/analytics/format";
 import { prisma } from "@/lib/prisma";
+import {
+  AdminMarketingCampaign,
+  listAdminMarketingCampaigns,
+} from "@/lib/services/admin/adminMarketingCampaignService";
+import {
+  AdminFeaturedProductPlacement,
+  AdminFeaturedStorePlacement,
+  listFeaturedProductPlacementsForCampaigns,
+  listFeaturedStorePlacementsForCampaigns,
+  PRODUCT_PLACEMENT_SLOT_OPTIONS,
+  STORE_PLACEMENT_SLOT_OPTIONS,
+  type PlacementSlotOption,
+} from "@/lib/services/admin/adminMarketingPlacementService";
 
 type TrendPoint = {
   bucket: string;
@@ -67,6 +76,11 @@ type FeaturedProductCandidate = {
   label: string;
 };
 
+type HeroBannerOption = {
+  id: string;
+  label: string;
+};
+
 type CouponSummary = {
   campaignConversions: number;
   revenueFromCoupons: number;
@@ -114,7 +128,12 @@ export type AdminMarketingDashboardResponse = {
   featuredContent: {
     stores: FeaturedStoreCandidate[];
     products: FeaturedProductCandidate[];
-    seasonalCampaignTagsConfigured: boolean;
+    campaigns: AdminMarketingCampaign[];
+    heroBannerOptions: HeroBannerOption[];
+    storePlacementsByCampaign: Record<string, AdminFeaturedStorePlacement[]>;
+    productPlacementsByCampaign: Record<string, AdminFeaturedProductPlacement[]>;
+    storeSlotOptions: PlacementSlotOption[];
+    productSlotOptions: PlacementSlotOption[];
   };
 };
 
@@ -378,7 +397,6 @@ async function getCouponRows(range: AnalyticsDateRange) {
       code: true,
       type: true,
       value: true,
-      usedCount: true,
       usageLimit: true,
       minOrderAmount: true,
       isActive: true,
@@ -402,7 +420,12 @@ async function getCouponRows(range: AnalyticsDateRange) {
   }));
 }
 
-async function getFeaturedContentCandidates() {
+async function getFeaturedContentData(
+  campaigns: AdminMarketingCampaign[],
+  heroBannerOptions: HeroBannerOption[],
+  storePlacementsByCampaign: Record<string, AdminFeaturedStorePlacement[]>,
+  productPlacementsByCampaign: Record<string, AdminFeaturedProductPlacement[]>,
+) {
   const [stores, products] = await Promise.all([
     prisma.store.findMany({
       where: {
@@ -449,7 +472,12 @@ async function getFeaturedContentCandidates() {
       id: product.id,
       label: `${product.name} - ${product.store.name}`,
     })),
-    seasonalCampaignTagsConfigured: false,
+    campaigns,
+    heroBannerOptions,
+    storePlacementsByCampaign,
+    productPlacementsByCampaign,
+    storeSlotOptions: STORE_PLACEMENT_SLOT_OPTIONS,
+    productSlotOptions: PRODUCT_PLACEMENT_SLOT_OPTIONS,
   };
 }
 
@@ -473,7 +501,7 @@ export async function getAdminMarketingDashboard(
     topCoupons,
     banners,
     coupons,
-    featuredContent,
+    campaigns,
   ] = await Promise.all([
     getActiveBannersCount(endDate),
     getActiveBannersCount(previousEndDate),
@@ -486,8 +514,28 @@ export async function getAdminMarketingDashboard(
     getTopCoupons(range),
     getBannerRows(endDate),
     getCouponRows(range),
-    getFeaturedContentCandidates(),
+    listAdminMarketingCampaigns({ includeArchived: true }),
   ]);
+
+  const campaignIds = campaigns.map((campaign) => campaign.id);
+
+  const [resolvedStorePlacementsByCampaign, resolvedProductPlacementsByCampaign] =
+    campaignIds.length === 0
+      ? [{}, {}]
+      : await Promise.all([
+          listFeaturedStorePlacementsForCampaigns(campaignIds),
+          listFeaturedProductPlacementsForCampaigns(campaignIds),
+        ]);
+
+  const featuredContent = await getFeaturedContentData(
+    campaigns,
+    banners.map((banner) => ({
+      id: banner.id,
+      label: `${banner.title} - ${banner.placementLabel}`,
+    })),
+    resolvedStorePlacementsByCampaign,
+    resolvedProductPlacementsByCampaign,
+  );
 
   return {
     range,

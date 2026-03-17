@@ -198,7 +198,7 @@ export async function getActiveMarketingCampaigns(options?: {
   }));
 }
 
-export async function getActiveFeaturedStores(
+export async function getActiveFeaturedStorePlacements(
   slot: MarketingPlacementSlot,
   asOfDate = new Date(),
 ): Promise<ActiveFeaturedStore[]> {
@@ -253,7 +253,7 @@ export async function getActiveFeaturedStores(
   }));
 }
 
-export async function getActiveFeaturedProducts(
+export async function getActiveFeaturedProductPlacements(
   slot: MarketingPlacementSlot,
   asOfDate = new Date(),
 ): Promise<ActiveFeaturedProduct[]> {
@@ -329,8 +329,8 @@ export async function getActiveMarketingContentSnapshot(options?: {
 
   const [campaigns, featuredStores, featuredProducts] = await Promise.all([
     getActiveMarketingCampaigns({ asOfDate }),
-    getActiveFeaturedStores(storeSlot, asOfDate),
-    getActiveFeaturedProducts(productSlot, asOfDate),
+    getActiveFeaturedStorePlacements(storeSlot, asOfDate),
+    getActiveFeaturedProductPlacements(productSlot, asOfDate),
   ]);
 
   return {
@@ -340,3 +340,6 @@ export async function getActiveMarketingContentSnapshot(options?: {
     featuredProducts,
   };
 }
+
+export const getActiveFeaturedStores = getActiveFeaturedStorePlacements;
+export const getActiveFeaturedProducts = getActiveFeaturedProductPlacements;

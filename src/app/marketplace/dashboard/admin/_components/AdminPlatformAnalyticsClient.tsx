@@ -83,10 +83,7 @@ export default function AdminPlatformAnalyticsClient({
   }
 
   if (query.isError || !query.data) {
-    const errorMessage =
-      query.error instanceof Error
-        ? query.error.message
-        : "Failed to load platform analytics.";
+    const errorMessage = "Failed to load platform analytics.";
 
     return (
       <div className="space-y-6">

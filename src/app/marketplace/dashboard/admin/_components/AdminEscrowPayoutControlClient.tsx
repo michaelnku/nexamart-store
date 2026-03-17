@@ -161,10 +161,7 @@ export default function AdminEscrowPayoutControlClient({
   }
 
   if (query.isError || !query.data) {
-    const errorMessage =
-      query.error instanceof Error
-        ? query.error.message
-        : "Failed to load escrow and payout control data.";
+    const errorMessage = "Failed to load escrow and payout control data.";
 
     return (
       <div className="space-y-6">

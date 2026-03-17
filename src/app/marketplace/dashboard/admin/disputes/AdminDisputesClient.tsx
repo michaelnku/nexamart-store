@@ -194,10 +194,7 @@ export default function AdminDisputesClient({
   }
 
   if (dashboardQuery.isError || !dashboardQuery.data) {
-    const errorMessage =
-      dashboardQuery.error instanceof Error
-        ? dashboardQuery.error.message
-        : "Failed to load dispute management data.";
+    const errorMessage = "Failed to load dispute management data.";
 
     return (
       <div className="space-y-6">

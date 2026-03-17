@@ -1,8 +1,11 @@
 "use client";
 
 import {
+  Archive,
   ArrowDown,
   ArrowUp,
+  CalendarRange,
+  PencilLine,
   ExternalLink,
   LayoutTemplate,
   Megaphone,
@@ -15,9 +18,10 @@ import {
   ShoppingBag,
   Tag,
   TicketPercent,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   Bar,
   BarChart,
@@ -41,6 +45,23 @@ import {
   AnalyticsTrendPanel,
 } from "@/app/marketplace/dashboard/admin/_components/AdminAnalyticsPanels";
 import {
+  archiveMarketingCampaignAction,
+  createMarketingCampaignAction,
+  updateMarketingCampaignAction,
+} from "@/actions/admin/marketingCampaignActions";
+import {
+  createFeaturedProductPlacementAction,
+  createFeaturedStorePlacementAction,
+  deleteFeaturedProductPlacementAction,
+  deleteFeaturedStorePlacementAction,
+  moveFeaturedProductPlacementAction,
+  moveFeaturedStorePlacementAction,
+  toggleFeaturedProductPlacementAction,
+  toggleFeaturedStorePlacementAction,
+  updateFeaturedProductPlacementAction,
+  updateFeaturedStorePlacementAction,
+} from "@/actions/admin/marketingPlacementActions";
+import {
   moveHeroBannerPositionAction,
   toggleHeroBannerActiveAction,
 } from "@/actions/banners";
@@ -49,6 +70,10 @@ import {
   toggleCouponActiveAction,
 } from "@/actions/coupons/createCouponAction";
 import { AnalyticsDateRangeFilter } from "@/components/analytics/AnalyticsDateRangeFilter";
+import {
+  MarketingCampaignForm,
+  MarketingCampaignFormValues,
+} from "@/components/admin/marketing/MarketingCampaignForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,6 +107,8 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { useAdminMarketingDashboard } from "@/hooks/useAdminMarketingDashboard";
 import {
@@ -134,6 +161,14 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
+function toDateInputValue(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  return new Date(value).toISOString().slice(0, 10);
+}
+
 function formatCouponValue(type: string, value: number) {
   if (type === "PERCENTAGE") {
     return `${formatAnalyticsCount(value)}%`;
@@ -143,7 +178,7 @@ function formatCouponValue(type: string, value: number) {
     return "Free shipping";
   }
 
-  return `$${formatAnalyticsCount(value)}`;
+  return null;
 }
 
 function BannerStatusBadge({
@@ -167,6 +202,175 @@ function BannerStatusBadge({
   );
 }
 
+function CampaignStatusBadge({
+  status,
+}: {
+  status: {
+    label: string;
+    toneClassName: string;
+  };
+}) {
+  return (
+    <Badge variant="outline" className={status.toneClassName}>
+      {status.label}
+    </Badge>
+  );
+}
+
+function getCampaignDisplayStatus(campaign: {
+  status: "DRAFT" | "ACTIVE" | "SCHEDULED" | "ARCHIVED";
+  startsAt: string | null;
+  endsAt: string | null;
+}) {
+  if (campaign.status === "ARCHIVED") {
+    return {
+      label: "Archived",
+      toneClassName:
+        "border-slate-200 bg-slate-100 text-slate-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300",
+      isReadOnly: true,
+    };
+  }
+
+  if (campaign.status === "DRAFT") {
+    return {
+      label: "Draft",
+      toneClassName:
+        "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300",
+      isReadOnly: false,
+    };
+  }
+
+  const now = new Date();
+  const startsAt = campaign.startsAt ? new Date(campaign.startsAt) : null;
+  const endsAt = campaign.endsAt ? new Date(campaign.endsAt) : null;
+
+  if (startsAt && startsAt > now) {
+    return {
+      label: "Scheduled",
+      toneClassName:
+        "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-300",
+      isReadOnly: false,
+    };
+  }
+
+  if (endsAt && endsAt < now) {
+    return {
+      label: "Window ended",
+      toneClassName:
+        "border-slate-200 bg-slate-100 text-slate-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300",
+      isReadOnly: false,
+    };
+  }
+
+  if (campaign.status === "SCHEDULED") {
+    return {
+      label: "Scheduled",
+      toneClassName:
+        "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-300",
+      isReadOnly: false,
+    };
+  }
+
+  return {
+    label: "Active",
+    toneClassName:
+      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300",
+    isReadOnly: false,
+  };
+}
+
+function getEmptyCampaignValues(): MarketingCampaignFormValues {
+  return {
+    name: "",
+    slug: "",
+    description: "",
+    status: "DRAFT",
+    themeKey: "",
+    accentColor: "",
+    notes: "",
+    heroBannerId: "",
+    startsAt: "",
+    endsAt: "",
+  };
+}
+
+type PlacementFormState = {
+  slot: string;
+  tagLabel: string;
+  notes: string;
+  startsAt: string;
+  endsAt: string;
+  isEnabled: boolean;
+};
+
+function getEmptyPlacementFormState(defaultSlot = ""): PlacementFormState {
+  return {
+    slot: defaultSlot,
+    tagLabel: "",
+    notes: "",
+    startsAt: "",
+    endsAt: "",
+    isEnabled: true,
+  };
+}
+
+function toPlacementInput(
+  campaignId: string,
+  formState: PlacementFormState,
+  entity: { storeId?: string; productId?: string },
+) {
+  return {
+    campaignId,
+    ...entity,
+    slot: formState.slot,
+    tagLabel: formState.tagLabel,
+    notes: formState.notes,
+    startsAt: formState.startsAt,
+    endsAt: formState.endsAt,
+    isEnabled: formState.isEnabled,
+  };
+}
+
+function getPlacementDisplayStatus(placement: {
+  isEnabled: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+}) {
+  if (!placement.isEnabled) {
+    return {
+      label: "Disabled",
+      className:
+        "border-slate-200 bg-slate-100 text-slate-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300",
+    };
+  }
+
+  const now = new Date();
+  const startsAt = placement.startsAt ? new Date(placement.startsAt) : null;
+  const endsAt = placement.endsAt ? new Date(placement.endsAt) : null;
+
+  if (startsAt && startsAt > now) {
+    return {
+      label: "Scheduled",
+      className:
+        "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-300",
+    };
+  }
+
+  if (endsAt && endsAt < now) {
+    return {
+      label: "Expired",
+      className:
+        "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300",
+    };
+  }
+
+  return {
+    label: "Active",
+    className:
+      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300",
+  };
+}
+
 export default function AdminMarketingClient({
   initialRange,
 }: AdminMarketingClientProps) {
@@ -175,11 +379,135 @@ export default function AdminMarketingClient({
   const [productSearch, setProductSearch] = useState("");
   const [selectedStoreId, setSelectedStoreId] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
+  const [selectedCampaignId, setSelectedCampaignId] = useState("__new__");
+  const [editingStorePlacementId, setEditingStorePlacementId] = useState<
+    string | null
+  >(null);
+  const [editingProductPlacementId, setEditingProductPlacementId] = useState<
+    string | null
+  >(null);
   const [isPending, startTransition] = useTransition();
   const formatMoney = useFormatMoneyFromUSD();
   const queryClient = useQueryClient();
   const query = useAdminMarketingDashboard(range);
   const dashboard = query.data ?? null;
+  const [storePlacementForm, setStorePlacementForm] = useState<PlacementFormState>(
+    getEmptyPlacementFormState(),
+  );
+  const [productPlacementForm, setProductPlacementForm] = useState<PlacementFormState>(
+    getEmptyPlacementFormState(),
+  );
+
+  const selectableCampaigns = useMemo(() => {
+    if (!dashboard) {
+      return [];
+    }
+
+    return dashboard.featuredContent.campaigns.filter(
+      (campaign) => campaign.status !== "ARCHIVED",
+    );
+  }, [dashboard]);
+
+  const selectedCampaign = useMemo(() => {
+    if (!dashboard || selectedCampaignId === "__new__") {
+      return null;
+    }
+
+    return (
+      dashboard.featuredContent.campaigns.find(
+        (campaign) => campaign.id === selectedCampaignId,
+      ) ?? null
+    );
+  }, [dashboard, selectedCampaignId]);
+
+  const selectedCampaignDisplayStatus = useMemo(
+    () => (selectedCampaign ? getCampaignDisplayStatus(selectedCampaign) : null),
+    [selectedCampaign],
+  );
+  const selectedCampaignStorePlacements = useMemo(() => {
+    if (!dashboard || !selectedCampaign) {
+      return [];
+    }
+
+    return (
+      dashboard.featuredContent.storePlacementsByCampaign[selectedCampaign.id] ??
+      []
+    );
+  }, [dashboard, selectedCampaign]);
+  const selectedCampaignProductPlacements = useMemo(() => {
+    if (!dashboard || !selectedCampaign) {
+      return [];
+    }
+
+    return (
+      dashboard.featuredContent.productPlacementsByCampaign[selectedCampaign.id] ??
+      []
+    );
+  }, [dashboard, selectedCampaign]);
+
+  const campaignFormValues = useMemo<MarketingCampaignFormValues>(() => {
+    if (!selectedCampaign) {
+      return getEmptyCampaignValues();
+    }
+
+    return {
+      name: selectedCampaign.name,
+      slug: selectedCampaign.slug,
+      description: selectedCampaign.description ?? "",
+      status: selectedCampaign.status,
+      themeKey: selectedCampaign.themeKey ?? "",
+      accentColor: selectedCampaign.accentColor ?? "",
+      notes: selectedCampaign.notes ?? "",
+      heroBannerId: selectedCampaign.heroBannerId ?? "",
+      startsAt: toDateInputValue(selectedCampaign.startsAt),
+      endsAt: toDateInputValue(selectedCampaign.endsAt),
+    };
+  }, [selectedCampaign]);
+
+  useEffect(() => {
+    if (!dashboard) {
+      return;
+    }
+
+    if (selectedCampaignId === "__new__") {
+      return;
+    }
+
+    const campaignExists = dashboard.featuredContent.campaigns.some(
+      (campaign) => campaign.id === selectedCampaignId,
+    );
+
+    if (campaignExists) {
+      return;
+    }
+
+    const nextCampaign =
+      dashboard.featuredContent.campaigns.find(
+        (campaign) => campaign.status !== "ARCHIVED",
+      ) ??
+      dashboard.featuredContent.campaigns[0] ??
+      null;
+
+    setSelectedCampaignId(nextCampaign?.id ?? "__new__");
+  }, [dashboard, selectedCampaignId]);
+
+  useEffect(() => {
+    if (!dashboard) {
+      return;
+    }
+
+    const defaultStoreSlot =
+      dashboard.featuredContent.storeSlotOptions[0]?.value ?? "";
+    const defaultProductSlot =
+      dashboard.featuredContent.productSlotOptions[0]?.value ?? "";
+
+    setEditingStorePlacementId(null);
+    setEditingProductPlacementId(null);
+    setSelectedStoreId("");
+    setSelectedProductId("");
+    setStorePlacementForm(getEmptyPlacementFormState(defaultStoreSlot));
+    setProductPlacementForm(getEmptyPlacementFormState(defaultProductSlot));
+  }, [dashboard, selectedCampaignId]);
 
   const filteredStores = useMemo(() => {
     if (!dashboard) {
@@ -204,6 +532,259 @@ export default function AdminMarketingClient({
   const invalidateDashboard = async () => {
     await queryClient.invalidateQueries({
       queryKey: ["admin-marketing-dashboard"],
+    });
+  };
+
+  const resetStorePlacementEditor = () => {
+    setEditingStorePlacementId(null);
+    setSelectedStoreId("");
+    setStorePlacementForm(
+      getEmptyPlacementFormState(
+        dashboard?.featuredContent.storeSlotOptions[0]?.value ?? "",
+      ),
+    );
+  };
+
+  const resetProductPlacementEditor = () => {
+    setEditingProductPlacementId(null);
+    setSelectedProductId("");
+    setProductPlacementForm(
+      getEmptyPlacementFormState(
+        dashboard?.featuredContent.productSlotOptions[0]?.value ?? "",
+      ),
+    );
+  };
+
+  const handleCampaignSubmit = (values: MarketingCampaignFormValues) => {
+    startTransition(async () => {
+      if (selectedCampaign && selectedCampaignId !== "__new__") {
+        const result = await updateMarketingCampaignAction(
+          selectedCampaign.id,
+          values,
+        );
+
+        if ("error" in result && result.error) {
+          toast.error(result.error);
+          return;
+        }
+
+        toast.success("Campaign updated.");
+
+        if ("campaign" in result && result.campaign?.id) {
+          setSelectedCampaignId(result.campaign.id);
+        }
+
+        await invalidateDashboard();
+        return;
+      }
+
+      const result = await createMarketingCampaignAction(values);
+
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success("Campaign created.");
+
+      if ("campaign" in result && result.campaign?.id) {
+        setSelectedCampaignId(result.campaign.id);
+      }
+
+      await invalidateDashboard();
+    });
+  };
+
+  const handleCampaignArchive = () => {
+    if (!selectedCampaign) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await archiveMarketingCampaignAction(selectedCampaign.id);
+
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success("Campaign archived.");
+      setSelectedCampaignId("__new__");
+      await invalidateDashboard();
+    });
+  };
+
+  const handleStorePlacementSubmit = () => {
+    if (!selectedCampaign || !selectedStoreId) {
+      return;
+    }
+
+    startTransition(async () => {
+      const payload = toPlacementInput(selectedCampaign.id, storePlacementForm, {
+        storeId: selectedStoreId,
+      });
+
+      const result = editingStorePlacementId
+        ? await updateFeaturedStorePlacementAction(editingStorePlacementId, payload)
+        : await createFeaturedStorePlacementAction(payload);
+
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success(
+        editingStorePlacementId
+          ? "Featured store placement updated."
+          : "Featured store placement created.",
+      );
+      resetStorePlacementEditor();
+      await invalidateDashboard();
+    });
+  };
+
+  const handleProductPlacementSubmit = () => {
+    if (!selectedCampaign || !selectedProductId) {
+      return;
+    }
+
+    startTransition(async () => {
+      const payload = toPlacementInput(
+        selectedCampaign.id,
+        productPlacementForm,
+        {
+          productId: selectedProductId,
+        },
+      );
+
+      const result = editingProductPlacementId
+        ? await updateFeaturedProductPlacementAction(
+            editingProductPlacementId,
+            payload,
+          )
+        : await createFeaturedProductPlacementAction(payload);
+
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success(
+        editingProductPlacementId
+          ? "Featured product placement updated."
+          : "Featured product placement created.",
+      );
+      resetProductPlacementEditor();
+      await invalidateDashboard();
+    });
+  };
+
+  const handleEditStorePlacement = (placement: (typeof selectedCampaignStorePlacements)[number]) => {
+    setEditingStorePlacementId(placement.id);
+    setSelectedStoreId(placement.store.id);
+    setStorePlacementForm({
+      slot: placement.slot,
+      tagLabel: placement.tagLabel ?? "",
+      notes: placement.notes ?? "",
+      startsAt: toDateInputValue(placement.startsAt),
+      endsAt: toDateInputValue(placement.endsAt),
+      isEnabled: placement.isEnabled,
+    });
+  };
+
+  const handleEditProductPlacement = (
+    placement: (typeof selectedCampaignProductPlacements)[number],
+  ) => {
+    setEditingProductPlacementId(placement.id);
+    setSelectedProductId(placement.product.id);
+    setProductPlacementForm({
+      slot: placement.slot,
+      tagLabel: placement.tagLabel ?? "",
+      notes: placement.notes ?? "",
+      startsAt: toDateInputValue(placement.startsAt),
+      endsAt: toDateInputValue(placement.endsAt),
+      isEnabled: placement.isEnabled,
+    });
+  };
+
+  const handleToggleStorePlacement = (id: string, isEnabled: boolean) => {
+    startTransition(async () => {
+      const result = await toggleFeaturedStorePlacementAction(id, isEnabled);
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(isEnabled ? "Store placement enabled." : "Store placement disabled.");
+      await invalidateDashboard();
+    });
+  };
+
+  const handleToggleProductPlacement = (id: string, isEnabled: boolean) => {
+    startTransition(async () => {
+      const result = await toggleFeaturedProductPlacementAction(id, isEnabled);
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(
+        isEnabled ? "Product placement enabled." : "Product placement disabled.",
+      );
+      await invalidateDashboard();
+    });
+  };
+
+  const handleDeleteStorePlacement = (id: string) => {
+    startTransition(async () => {
+      const result = await deleteFeaturedStorePlacementAction(id);
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+      if (editingStorePlacementId === id) {
+        resetStorePlacementEditor();
+      }
+      toast.success("Store placement removed.");
+      await invalidateDashboard();
+    });
+  };
+
+  const handleDeleteProductPlacement = (id: string) => {
+    startTransition(async () => {
+      const result = await deleteFeaturedProductPlacementAction(id);
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+      if (editingProductPlacementId === id) {
+        resetProductPlacementEditor();
+      }
+      toast.success("Product placement removed.");
+      await invalidateDashboard();
+    });
+  };
+
+  const handleMoveStorePlacement = (id: string, direction: "up" | "down") => {
+    startTransition(async () => {
+      const result = await moveFeaturedStorePlacementAction(id, direction);
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+      await invalidateDashboard();
+    });
+  };
+
+  const handleMoveProductPlacement = (
+    id: string,
+    direction: "up" | "down",
+  ) => {
+    startTransition(async () => {
+      const result = await moveFeaturedProductPlacementAction(id, direction);
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+      await invalidateDashboard();
     });
   };
 
@@ -272,10 +853,7 @@ export default function AdminMarketingClient({
   }
 
   if (query.isError || !dashboard) {
-    const errorMessage =
-      query.error instanceof Error
-        ? query.error.message
-        : "Failed to load the marketing dashboard.";
+    const errorMessage = "Failed to load the marketing dashboard.";
 
     return (
       <div className="space-y-6">
@@ -395,10 +973,65 @@ export default function AdminMarketingClient({
   );
 
   const selectedStoreLabel =
-    filteredStores.find((store) => store.id === selectedStoreId)?.label ?? "";
-  const selectedProductLabel =
-    filteredProducts.find((product) => product.id === selectedProductId)
+    dashboard.featuredContent.stores.find((store) => store.id === selectedStoreId)
       ?.label ?? "";
+  const selectedProductLabel =
+    dashboard.featuredContent.products.find(
+      (product) => product.id === selectedProductId,
+    )?.label ?? "";
+  const groupedStorePlacements = selectedCampaignStorePlacements.reduce<
+    Array<{
+      slot: string;
+      label: string;
+      placements: typeof selectedCampaignStorePlacements;
+    }>
+  >((groups, placement) => {
+    const slotLabel =
+      dashboard.featuredContent.storeSlotOptions.find(
+        (option) => option.value === placement.slot,
+      )?.label ?? placement.slot;
+    const group = groups.find((item) => item.slot === placement.slot);
+
+    if (group) {
+      group.placements.push(placement);
+      return groups;
+    }
+
+    groups.push({
+      slot: placement.slot,
+      label: slotLabel,
+      placements: [placement],
+    });
+    return groups;
+  }, []);
+  const groupedProductPlacements = selectedCampaignProductPlacements.reduce<
+    Array<{
+      slot: string;
+      label: string;
+      placements: typeof selectedCampaignProductPlacements;
+    }>
+  >((groups, placement) => {
+    const slotLabel =
+      dashboard.featuredContent.productSlotOptions.find(
+        (option) => option.value === placement.slot,
+      )?.label ?? placement.slot;
+    const group = groups.find((item) => item.slot === placement.slot);
+
+    if (group) {
+      group.placements.push(placement);
+      return groups;
+    }
+
+    groups.push({
+      slot: placement.slot,
+      label: slotLabel,
+      placements: [placement],
+    });
+    return groups;
+  }, []);
+  const isArchivedCampaignSelected =
+    selectedCampaignDisplayStatus?.isReadOnly ?? false;
+  const placementEditingDisabled = !selectedCampaign || isArchivedCampaignSelected;
 
   return (
     <main className="mx-auto max-w-7xl space-y-8 px-4 py-6">
@@ -693,7 +1326,8 @@ export default function AdminMarketingClient({
                       {coupon.type.toLowerCase().replace("_", " ")}
                     </td>
                     <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-600 dark:border-zinc-900 dark:text-zinc-300">
-                      {formatCouponValue(coupon.type, coupon.value)}
+                      {formatCouponValue(coupon.type, coupon.value) ??
+                        formatMoney(coupon.value)}
                     </td>
                     <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-600 dark:border-zinc-900 dark:text-zinc-300">
                       {formatAnalyticsCount(coupon.usageCount)}
@@ -878,92 +1512,712 @@ export default function AdminMarketingClient({
 
       <PremiumPanel
         title="Featured Content"
-        description="Review candidate merchandising content while featured-content persistence remains unavailable."
+        description="Attach featured stores and products directly to the selected campaign with slot-aware ordering and optional campaign windows."
       >
         <div className="grid gap-6 xl:grid-cols-2">
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-900 dark:text-white">
-                Featured stores
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
-                <Input
-                  value={storeSearch}
-                  onChange={(event) => setStoreSearch(event.target.value)}
-                  placeholder="Search stores"
-                  className="pl-9"
-                />
+            <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Featured stores
+                  </h3>
+                  {selectedCampaign ? (
+                    <Badge
+                      variant="outline"
+                      className="border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300"
+                    >
+                      {selectedCampaign.name}
+                    </Badge>
+                  ) : null}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-zinc-400">
+                  Assign stores into campaign slots. Priority changes stay within
+                  the selected campaign and slot.
+                </p>
               </div>
-              <Select
-                value={selectedStoreId}
-                onValueChange={setSelectedStoreId}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a store candidate" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredStores.map((store) => (
-                    <SelectItem key={store.id} value={store.id}>
-                      {store.label}
-                    </SelectItem>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Search stores
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                    <Input
+                      value={storeSearch}
+                      onChange={(event) => setStoreSearch(event.target.value)}
+                      placeholder="Search stores"
+                      className="pl-9"
+                      disabled={placementEditingDisabled || isPending}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Store
+                  </label>
+                  <Select
+                    value={selectedStoreId}
+                    onValueChange={setSelectedStoreId}
+                    disabled={placementEditingDisabled || isPending}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a store candidate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredStores.map((store) => (
+                        <SelectItem key={store.id} value={store.id}>
+                          {store.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                    {selectedStoreLabel || "No store selected."}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Slot
+                  </label>
+                  <Select
+                    value={storePlacementForm.slot}
+                    onValueChange={(value) =>
+                      setStorePlacementForm((current) => ({
+                        ...current,
+                        slot: value,
+                      }))
+                    }
+                    disabled={placementEditingDisabled || isPending}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a placement slot" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dashboard.featuredContent.storeSlotOptions.map((slot) => (
+                        <SelectItem key={slot.value} value={slot.value}>
+                          {slot.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Tag label
+                  </label>
+                  <Input
+                    value={storePlacementForm.tagLabel}
+                    onChange={(event) =>
+                      setStorePlacementForm((current) => ({
+                        ...current,
+                        tagLabel: event.target.value,
+                      }))
+                    }
+                    placeholder="Optional merchandising tag"
+                    disabled={placementEditingDisabled || isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Starts
+                  </label>
+                  <Input
+                    type="date"
+                    value={storePlacementForm.startsAt}
+                    onChange={(event) =>
+                      setStorePlacementForm((current) => ({
+                        ...current,
+                        startsAt: event.target.value,
+                      }))
+                    }
+                    disabled={placementEditingDisabled || isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Ends
+                  </label>
+                  <Input
+                    type="date"
+                    value={storePlacementForm.endsAt}
+                    onChange={(event) =>
+                      setStorePlacementForm((current) => ({
+                        ...current,
+                        endsAt: event.target.value,
+                      }))
+                    }
+                    disabled={placementEditingDisabled || isPending}
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Notes
+                  </label>
+                  <Textarea
+                    value={storePlacementForm.notes}
+                    onChange={(event) =>
+                      setStorePlacementForm((current) => ({
+                        ...current,
+                        notes: event.target.value,
+                      }))
+                    }
+                    placeholder="Optional context for this featured store placement"
+                    disabled={placementEditingDisabled || isPending}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="md:col-span-2 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/60">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                      Placement enabled
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-zinc-400">
+                      Disabled placements stay attached to the campaign but do not
+                      appear in active merchandising reads.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={storePlacementForm.isEnabled}
+                    onCheckedChange={(checked) =>
+                      setStorePlacementForm((current) => ({
+                        ...current,
+                        isEnabled: checked,
+                      }))
+                    }
+                    disabled={placementEditingDisabled || isPending}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  onClick={handleStorePlacementSubmit}
+                  disabled={
+                    placementEditingDisabled ||
+                    isPending ||
+                    !selectedCampaign ||
+                    !selectedStoreId ||
+                    !storePlacementForm.slot
+                  }
+                >
+                  {editingStorePlacementId ? "Update store placement" : "Assign store"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={resetStorePlacementEditor}
+                  disabled={isPending}
+                >
+                  {editingStorePlacementId ? "Cancel edit" : "Reset"}
+                </Button>
+              </div>
+
+              {groupedStorePlacements.length === 0 ? (
+                <Empty className="border-slate-200/80 dark:border-zinc-800">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Tag />
+                    </EmptyMedia>
+                    <EmptyTitle>No featured stores assigned</EmptyTitle>
+                    <EmptyDescription>
+                      Select a campaign and assign stores to start building
+                      campaign-backed store merchandising.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                <div className="space-y-4">
+                  {groupedStorePlacements.map((group) => (
+                    <div key={group.slot} className="space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {group.label}
+                        </h4>
+                        <Badge
+                          variant="outline"
+                          className="border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300"
+                        >
+                          {formatAnalyticsCount(group.placements.length)} assigned
+                        </Badge>
+                      </div>
+                      <div className="space-y-3">
+                        {group.placements.map((placement, index) => {
+                          const status = getPlacementDisplayStatus(placement);
+
+                          return (
+                            <div
+                              key={placement.id}
+                              className="rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950/60"
+                            >
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      {placement.store.name}
+                                    </p>
+                                    <Badge
+                                      variant="outline"
+                                      className={status.className}
+                                    >
+                                      {status.label}
+                                    </Badge>
+                                    {placement.tagLabel ? (
+                                      <Badge
+                                        variant="outline"
+                                        className="border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-300"
+                                      >
+                                        {placement.tagLabel}
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+                                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                                    {placement.store.ownerLabel}
+                                  </p>
+                                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                                    Position {index + 1} of {group.placements.length} in{" "}
+                                    {group.label}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Switch
+                                    checked={placement.isEnabled}
+                                    onCheckedChange={(checked) =>
+                                      handleToggleStorePlacement(placement.id, checked)
+                                    }
+                                    disabled={placementEditingDisabled || isPending}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditStorePlacement(placement)}
+                                    disabled={placementEditingDisabled || isPending}
+                                  >
+                                    <PencilLine className="h-4 w-4" />
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleMoveStorePlacement(placement.id, "up")
+                                    }
+                                    disabled={
+                                      placementEditingDisabled ||
+                                      isPending ||
+                                      index === 0
+                                    }
+                                  >
+                                    <ArrowUp className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleMoveStorePlacement(placement.id, "down")
+                                    }
+                                    disabled={
+                                      placementEditingDisabled ||
+                                      isPending ||
+                                      index === group.placements.length - 1
+                                    }
+                                  >
+                                    <ArrowDown className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDeleteStorePlacement(placement.id)}
+                                    disabled={placementEditingDisabled || isPending}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    Remove
+                                  </Button>
+                                </div>
+                              </div>
+                              {placement.notes ? (
+                                <p className="mt-3 text-sm text-slate-600 dark:text-zinc-300">
+                                  {placement.notes}
+                                </p>
+                              ) : null}
+                              <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500 dark:text-zinc-400">
+                                <span>Starts {formatDate(placement.startsAt)}</span>
+                                <span>Ends {formatDate(placement.endsAt)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-slate-500 dark:text-zinc-400">
-                {selectedStoreLabel || "No store selected."}
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                disabled
-                className="w-full"
-              >
-                Featured store persistence not configured
-              </Button>
+                </div>
+              )}
             </div>
 
             <Separator />
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-900 dark:text-white">
-                Featured products
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
-                <Input
-                  value={productSearch}
-                  onChange={(event) => setProductSearch(event.target.value)}
-                  placeholder="Search product candidates"
-                  className="pl-9"
-                />
+            <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                  Featured products
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-zinc-400">
+                  Attach products to the selected campaign and manage slot-local
+                  ordering, notes, and merchandising windows.
+                </p>
               </div>
-              <Select
-                value={selectedProductId}
-                onValueChange={setSelectedProductId}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a product candidate" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredProducts.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.label}
-                    </SelectItem>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Search products
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                    <Input
+                      value={productSearch}
+                      onChange={(event) => setProductSearch(event.target.value)}
+                      placeholder="Search product candidates"
+                      className="pl-9"
+                      disabled={placementEditingDisabled || isPending}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Product
+                  </label>
+                  <Select
+                    value={selectedProductId}
+                    onValueChange={setSelectedProductId}
+                    disabled={placementEditingDisabled || isPending}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a product candidate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredProducts.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                    {selectedProductLabel || "No product selected."}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Slot
+                  </label>
+                  <Select
+                    value={productPlacementForm.slot}
+                    onValueChange={(value) =>
+                      setProductPlacementForm((current) => ({
+                        ...current,
+                        slot: value,
+                      }))
+                    }
+                    disabled={placementEditingDisabled || isPending}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a placement slot" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dashboard.featuredContent.productSlotOptions.map((slot) => (
+                        <SelectItem key={slot.value} value={slot.value}>
+                          {slot.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Tag label
+                  </label>
+                  <Input
+                    value={productPlacementForm.tagLabel}
+                    onChange={(event) =>
+                      setProductPlacementForm((current) => ({
+                        ...current,
+                        tagLabel: event.target.value,
+                      }))
+                    }
+                    placeholder="Optional merchandising tag"
+                    disabled={placementEditingDisabled || isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Starts
+                  </label>
+                  <Input
+                    type="date"
+                    value={productPlacementForm.startsAt}
+                    onChange={(event) =>
+                      setProductPlacementForm((current) => ({
+                        ...current,
+                        startsAt: event.target.value,
+                      }))
+                    }
+                    disabled={placementEditingDisabled || isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Ends
+                  </label>
+                  <Input
+                    type="date"
+                    value={productPlacementForm.endsAt}
+                    onChange={(event) =>
+                      setProductPlacementForm((current) => ({
+                        ...current,
+                        endsAt: event.target.value,
+                      }))
+                    }
+                    disabled={placementEditingDisabled || isPending}
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    Notes
+                  </label>
+                  <Textarea
+                    value={productPlacementForm.notes}
+                    onChange={(event) =>
+                      setProductPlacementForm((current) => ({
+                        ...current,
+                        notes: event.target.value,
+                      }))
+                    }
+                    placeholder="Optional context for this featured product placement"
+                    disabled={placementEditingDisabled || isPending}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="md:col-span-2 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/60">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                      Placement enabled
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-zinc-400">
+                      Enabled product placements are eligible for future storefront
+                      reads once campaign merchandising consumes this slot.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={productPlacementForm.isEnabled}
+                    onCheckedChange={(checked) =>
+                      setProductPlacementForm((current) => ({
+                        ...current,
+                        isEnabled: checked,
+                      }))
+                    }
+                    disabled={placementEditingDisabled || isPending}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  onClick={handleProductPlacementSubmit}
+                  disabled={
+                    placementEditingDisabled ||
+                    isPending ||
+                    !selectedCampaign ||
+                    !selectedProductId ||
+                    !productPlacementForm.slot
+                  }
+                >
+                  {editingProductPlacementId
+                    ? "Update product placement"
+                    : "Assign product"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={resetProductPlacementEditor}
+                  disabled={isPending}
+                >
+                  {editingProductPlacementId ? "Cancel edit" : "Reset"}
+                </Button>
+              </div>
+
+              {groupedProductPlacements.length === 0 ? (
+                <Empty className="border-slate-200/80 dark:border-zinc-800">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <ShoppingBag />
+                    </EmptyMedia>
+                    <EmptyTitle>No featured products assigned</EmptyTitle>
+                    <EmptyDescription>
+                      Select a campaign and attach products to start building
+                      campaign-backed product merchandising.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                <div className="space-y-4">
+                  {groupedProductPlacements.map((group) => (
+                    <div key={group.slot} className="space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {group.label}
+                        </h4>
+                        <Badge
+                          variant="outline"
+                          className="border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300"
+                        >
+                          {formatAnalyticsCount(group.placements.length)} assigned
+                        </Badge>
+                      </div>
+                      <div className="space-y-3">
+                        {group.placements.map((placement, index) => {
+                          const status = getPlacementDisplayStatus(placement);
+
+                          return (
+                            <div
+                              key={placement.id}
+                              className="rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950/60"
+                            >
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      {placement.product.name}
+                                    </p>
+                                    <Badge
+                                      variant="outline"
+                                      className={status.className}
+                                    >
+                                      {status.label}
+                                    </Badge>
+                                    {placement.tagLabel ? (
+                                      <Badge
+                                        variant="outline"
+                                        className="border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-300"
+                                      >
+                                        {placement.tagLabel}
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+                                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                                    {placement.store.name}
+                                  </p>
+                                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                                    Position {index + 1} of {group.placements.length} in{" "}
+                                    {group.label}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Switch
+                                    checked={placement.isEnabled}
+                                    onCheckedChange={(checked) =>
+                                      handleToggleProductPlacement(
+                                        placement.id,
+                                        checked,
+                                      )
+                                    }
+                                    disabled={placementEditingDisabled || isPending}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditProductPlacement(placement)}
+                                    disabled={placementEditingDisabled || isPending}
+                                  >
+                                    <PencilLine className="h-4 w-4" />
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleMoveProductPlacement(placement.id, "up")
+                                    }
+                                    disabled={
+                                      placementEditingDisabled ||
+                                      isPending ||
+                                      index === 0
+                                    }
+                                  >
+                                    <ArrowUp className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleMoveProductPlacement(
+                                        placement.id,
+                                        "down",
+                                      )
+                                    }
+                                    disabled={
+                                      placementEditingDisabled ||
+                                      isPending ||
+                                      index === group.placements.length - 1
+                                    }
+                                  >
+                                    <ArrowDown className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleDeleteProductPlacement(placement.id)
+                                    }
+                                    disabled={placementEditingDisabled || isPending}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    Remove
+                                  </Button>
+                                </div>
+                              </div>
+                              {placement.notes ? (
+                                <p className="mt-3 text-sm text-slate-600 dark:text-zinc-300">
+                                  {placement.notes}
+                                </p>
+                              ) : null}
+                              <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500 dark:text-zinc-400">
+                                <span>Starts {formatDate(placement.startsAt)}</span>
+                                <span>Ends {formatDate(placement.endsAt)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-slate-500 dark:text-zinc-400">
-                {selectedProductLabel || "No product selected."}
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                disabled
-                className="w-full"
-              >
-                Featured product persistence not configured
-              </Button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -974,30 +2228,209 @@ export default function AdminMarketingClient({
                 Seasonal Campaign Tags
               </CardTitle>
               <CardDescription>
-                Select seasonal campaign tags to be applied to the homepage.
+                Create, select, and manage campaign tags from real marketing
+                campaign records.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-slate-600 dark:text-zinc-300">
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-900 dark:text-white">
+                  Active campaign selection
+                </label>
+                <Select
+                  value={selectedCampaignId}
+                  onValueChange={setSelectedCampaignId}
+                  disabled={isPending}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a campaign" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__new__">Create new campaign</SelectItem>
+                    {selectableCampaigns.map((campaign) => (
+                      <SelectItem key={campaign.id} value={campaign.id}>
+                        {campaign.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500 dark:text-zinc-400">
+                  Archived campaigns stay out of the primary selector but remain
+                  visible below for review.
+                </p>
+              </div>
+
               <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
-                Use existing coupon and banner controls for campaign execution
-                today. A dedicated featured-content configuration model is still
-                required before this section can persist changes safely.
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {["Black Friday", "Holiday", "Back To School"].map((label) => (
-                  <Badge
-                    key={label}
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {selectedCampaign
+                        ? isArchivedCampaignSelected
+                          ? "Archived campaign"
+                          : "Edit campaign"
+                        : "Create campaign"}
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+                      Campaign tags now persist through{" "}
+                      <span className="font-medium text-slate-700 dark:text-zinc-200">
+                        MarketingCampaign
+                      </span>
+                      . Featured store and product assignments now inherit this
+                      campaign as their merchandising context.
+                    </p>
+                    {selectedCampaignDisplayStatus ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <CampaignStatusBadge
+                          status={selectedCampaignDisplayStatus}
+                        />
+                        {isArchivedCampaignSelected ? (
+                          <span className="text-xs text-slate-500 dark:text-zinc-400">
+                            Archived campaigns remain visible for review and are
+                            read-only in this workspace.
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                  <Button
+                    type="button"
                     variant="outline"
-                    className="border-slate-200 bg-slate-50 text-slate-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                    size="sm"
+                    onClick={() => setSelectedCampaignId("__new__")}
+                    disabled={isPending && selectedCampaignId === "__new__"}
                   >
-                    {label}
-                  </Badge>
-                ))}
+                    <Plus className="h-4 w-4" />
+                    New campaign
+                  </Button>
+                </div>
+
+                <MarketingCampaignForm
+                  mode={selectedCampaign ? "edit" : "create"}
+                  initialValues={campaignFormValues}
+                  heroBannerOptions={dashboard.featuredContent.heroBannerOptions}
+                  disabled={isPending || isArchivedCampaignSelected}
+                  onSubmit={handleCampaignSubmit}
+                  onArchive={
+                    selectedCampaign && !isArchivedCampaignSelected
+                      ? handleCampaignArchive
+                      : undefined
+                  }
+                  onReset={() =>
+                    setSelectedCampaignId(selectedCampaign?.id ?? "__new__")
+                  }
+                />
               </div>
+
+              {dashboard.featuredContent.campaigns.length === 0 ? (
+                <Empty className="border-slate-200/80 dark:border-zinc-800">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Tag />
+                    </EmptyMedia>
+                    <EmptyTitle>No seasonal campaigns yet</EmptyTitle>
+                    <EmptyDescription>
+                      Create a campaign tag to start structuring homepage
+                      merchandising and seasonal programming.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                <div className="grid gap-3">
+                  {dashboard.featuredContent.campaigns.map((campaign) => {
+                    const displayStatus = getCampaignDisplayStatus(campaign);
+
+                    return (
+                      <button
+                        key={campaign.id}
+                        type="button"
+                        onClick={() => setSelectedCampaignId(campaign.id)}
+                        className={cn(
+                          "rounded-2xl border px-4 py-4 text-left transition-colors",
+                          selectedCampaignId === campaign.id
+                            ? "border-slate-900 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950"
+                            : "border-slate-200/80 bg-white hover:border-slate-300 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700",
+                        )}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-semibold">
+                                {campaign.name}
+                              </span>
+                              <CampaignStatusBadge status={displayStatus} />
+                              {campaign.heroBanner ? (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    selectedCampaignId === campaign.id
+                                      ? "border-white/30 bg-white/10 text-white dark:border-slate-300 dark:bg-slate-100 dark:text-slate-950"
+                                      : "border-slate-200 bg-slate-50 text-slate-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300",
+                                  )}
+                                >
+                                  Banner attached
+                                </Badge>
+                              ) : null}
+                            </div>
+                            <p
+                              className={cn(
+                                "text-xs",
+                                selectedCampaignId === campaign.id
+                                  ? "text-slate-200 dark:text-slate-700"
+                                  : "text-slate-500 dark:text-zinc-400",
+                              )}
+                            >
+                              {campaign.description || "No description provided."}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {campaign.accentColor ? (
+                              <span
+                                className="h-4 w-4 rounded-full border border-black/10 dark:border-white/10"
+                                style={{ backgroundColor: campaign.accentColor }}
+                                aria-hidden="true"
+                              />
+                            ) : null}
+                            {displayStatus.label === "Archived" ? (
+                              <Archive className="h-4 w-4 opacity-70" />
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div
+                          className={cn(
+                            "mt-4 grid gap-2 text-xs sm:grid-cols-2",
+                            selectedCampaignId === campaign.id
+                              ? "text-slate-200 dark:text-slate-700"
+                              : "text-slate-500 dark:text-zinc-400",
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <CalendarRange className="h-3.5 w-3.5" />
+                            <span>
+                              {formatDate(campaign.startsAt)} -{" "}
+                              {formatDate(campaign.endsAt)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <LayoutTemplate className="h-3.5 w-3.5" />
+                            <span>
+                              {campaign.heroBanner
+                                ? `${campaign.heroBanner.title} (${campaign.heroBanner.placementLabel})`
+                                : "No hero banner attached"}
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
             <CardFooter className="justify-between border-t border-slate-200/80 dark:border-zinc-800">
               <span className="text-xs text-slate-500 dark:text-zinc-400">
-                Seasonal tag controls intentionally remain read-only.
+                Campaign tags, featured store placements, and featured product
+                placements now share the same campaign-backed workflow.
               </span>
               <Button asChild variant="ghost" size="sm">
                 <Link href="/marketplace/dashboard/admin/marketing/banners">

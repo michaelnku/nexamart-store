@@ -93,10 +93,7 @@ export default function AdminOperationsAnalyticsClient({
   }
 
   if (query.isError || !query.data) {
-    const errorMessage =
-      query.error instanceof Error
-        ? query.error.message
-        : "Failed to load operations analytics.";
+    const errorMessage = "Failed to load operations analytics.";
 
     return (
       <div className="space-y-6">
