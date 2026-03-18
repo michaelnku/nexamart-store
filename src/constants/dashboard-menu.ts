@@ -31,6 +31,7 @@ import {
   ShoppingCartIcon,
   StoreIcon,
   Award,
+  ShieldAlert,
 } from "lucide-react";
 
 export const DashboardMenu = {
@@ -347,40 +348,50 @@ export const DashboardMenu = {
           icon: LayoutDashboard,
         },
         {
+          name: "Incidents",
+          href: "/marketplace/dashboard/moderator/incidents",
+          icon: ShieldAlert,
+        },
+        {
           name: "User Reports",
           href: "/marketplace/dashboard/moderator/reports",
           icon: AlertTriangle,
         },
         {
-          name: "Moderate Users",
+          name: "User Moderation",
           href: "/marketplace/dashboard/moderator/users",
           icon: Users,
         },
         {
-          name: "Products Review",
+          name: "Product Moderation",
           href: "/marketplace/dashboard/moderator/products",
           icon: Package,
         },
         {
-          name: "AI Moderation Center",
+          name: "AI Review Queue",
           href: "/marketplace/dashboard/moderator/ai",
           icon: ShieldCheck,
         },
       ],
     },
     {
-      title: "Account",
+      title: "Communication",
       links: [
+        {
+          name: "Moderator Messages",
+          href: "/messages",
+          icon: MessageSquare,
+        },
         {
           name: "Support Tickets",
           href: "/support",
           icon: HelpCircle,
         },
-        {
-          name: "Messages",
-          href: "/messages",
-          icon: MessageSquare,
-        },
+      ],
+    },
+    {
+      title: "Account",
+      links: [
         {
           name: "Profile",
           href: "/profile",
