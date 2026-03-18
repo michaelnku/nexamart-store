@@ -43,6 +43,12 @@ model User {
 
   isDeleted Boolean @default(false)
 
+  moderationStrikeCount    Int       @default(0)
+  moderationRiskScore      Int       @default(0)
+  moderationState          String    @default("CLEAR")
+  moderationLastIncidentAt DateTime?
+  softBlockedUntil         DateTime?
+
   disputesOpened   Dispute[] @relation("DisputeOpenedBy")
   disputesResolved Dispute[] @relation("DisputeResolvedBy")
 
