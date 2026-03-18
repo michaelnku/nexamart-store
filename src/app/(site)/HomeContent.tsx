@@ -9,6 +9,7 @@ import RecentlyViewedRow from "@/components/home/RecentlyViewedRow";
 import RecommendedPreviewRow from "@/components/home/RecommendedPreviewRow";
 import TopRatedProductRow from "@/components/home/TopRatedProductRow";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { HowNexaMartWorksSection } from "@/components/home/HowNexaMartWorksSection";
 
 export default async function HomeContent() {
   const user = await CurrentUser();
@@ -28,6 +29,10 @@ export default async function HomeContent() {
           </Suspense>
         </section>
       </ScrollReveal>
+
+      <div className="h-px bg-border my-6" />
+
+      <HowNexaMartWorksSection />
 
       <div className="h-px bg-border my-6" />
 
