@@ -81,6 +81,10 @@ model User {
   disputeEvidences        DisputeEvidence[]
   disputeMessages         DisputeMessage[]
   auditLogsAsActor        AuditLog[]             @relation("AuditLogActor")
+
+  moderatorIdentity   ModeratorIdentity?
+  moderationIncidents ModerationIncident[] @relation("ModerationSubjectUser")
+  strikeSnapshots     UserStrikeSnapshot[]
 }
 
 model AuditLog {
@@ -508,7 +512,7 @@ model CheckoutGroup {
 
 /// *
 /// * ===========================
-/// * PAYMENTS & FINANCE
+/// * JOBS & CRON
 /// * ===========================
 model Job {
   id         String   @id @default(cuid())
@@ -532,6 +536,10 @@ model CronLock {
   lockedAt DateTime
 }
 
+/// *
+/// * ===========================
+/// * PAYMENTS & FINANCE
+/// * ===========================
 model Wallet {
   id            String        @id @default(cuid())
   userId        String        @unique
@@ -701,7 +709,7 @@ model Delivery {
 
 /// *
 /// * ===========================
-/// * DISPUTES
+/// * DISPUTES & REFUNDS
 /// * ===========================
 model Dispute {
   id String @id @default(cuid())
@@ -903,7 +911,7 @@ model StoreAnalytics {
 
 /// *
 /// * ===========================
-/// * MESSAGE SYSTEM
+/// * MESSAGE SYSTEM & CHAT
 /// * ===========================
 model Conversation {
   id            String               @id @default(cuid())
@@ -1068,7 +1076,7 @@ model ReferralReward {
 
 /// *
 /// * ===========================
-/// * STAFF
+/// * STAFF PROFILES & VERIFICATION
 /// * ===========================
 model StaffProfile {
   id     String @id @default(cuid())
@@ -1384,8 +1392,135 @@ model SellerDailyStats {
 
 /// *
 /// * ===========================
-/// * ENUMS
+/// * MODERATION & AI
 /// * ===========================
+model ModeratorIdentity {
+  id          String                @id @default(cuid())
+  type        ModeratorIdentityType
+  userId      String?               @unique
+  displayName String
+  isActive    Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  user              User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  incidentsCreated  ModerationIncident[] @relation("IncidentActor")
+  incidentsReviewed ModerationIncident[] @relation("IncidentReviewer")
+
+  @@index([type])
+}
+
+model ModerationIncident {
+  id String @id @default(cuid())
+
+  targetType ModerationTargetType
+  targetId   String
+
+  subjectUserId       String?
+  actorModeratorId    String?
+  reviewerModeratorId String?
+
+  decision   ModerationDecision
+  severity   ModerationSeverity
+  confidence Float?
+
+  policyCode String?
+  reason     String
+
+  evidence Json?
+  metadata Json?
+
+  strikeWeight Int @default(0)
+
+  reviewStatus ReviewStatus     @default(NOT_REQUIRED)
+  status       ModerationStatus @default(OPEN)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  resolvedAt DateTime?
+
+  subjectUser       User?              @relation("ModerationSubjectUser", fields: [subjectUserId], references: [id], onDelete: SetNull)
+  actorModerator    ModeratorIdentity? @relation("IncidentActor", fields: [actorModeratorId], references: [id], onDelete: SetNull)
+  reviewerModerator ModeratorIdentity? @relation("IncidentReviewer", fields: [reviewerModeratorId], references: [id], onDelete: SetNull)
+
+  @@index([targetType, targetId])
+  @@index([subjectUserId])
+  @@index([actorModeratorId])
+  @@index([reviewerModeratorId])
+  @@index([status])
+  @@index([reviewStatus])
+  @@index([createdAt])
+}
+
+model UserStrikeSnapshot {
+  id String @id @default(cuid())
+
+  userId String
+
+  totalStrikes Int
+  riskScore    Int
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+/// *
+/// * ===========================
+/// * ENUMS AND CONSTANTS
+/// * ===========================
+enum ModeratorIdentityType {
+  HUMAN
+  AI
+}
+
+enum ModerationTargetType {
+  PRODUCT
+  PRODUCT_IMAGE
+  MESSAGE
+  CONVERSATION
+  REVIEW
+  STORE
+  USER
+  DISPUTE
+  VERIFICATION
+  ORDER
+}
+
+enum ModerationDecision {
+  ALLOW
+  WARN
+  FLAG
+  HIDE
+  SOFT_BLOCK
+  ESCALATE
+  NO_ACTION
+}
+
+enum ModerationSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ModerationStatus {
+  OPEN
+  RESOLVED
+  OVERTURNED
+  IGNORED
+}
+
+enum ReviewStatus {
+  NOT_REQUIRED
+  PENDING_HUMAN_REVIEW
+  HUMAN_CONFIRMED
+  HUMAN_OVERTURNED
+}
+
 enum DisputeStatus {
   OPEN
   UNDER_REVIEW
