@@ -1047,7 +1047,7 @@ model Referral {
   referredId      String           @unique
   referralCodeId  String
   orderId         String?
-  status          ReferralStatus   @default(PENDING)
+  status          ReferralStatus   @default(PENDING_QUALIFICATION)
   qualifiedAt     DateTime?
   rewardedAt      DateTime?
   createdAt       DateTime         @default(now())
@@ -1852,9 +1852,13 @@ enum CouponScope {
 }
 
 enum ReferralStatus {
-  PENDING
-  QUALIFIED
+  PENDING_QUALIFICATION
+  AWAITING_REWARD
+  PENDING_REWARD
   REWARDED
+  EXPIRED
+  REJECTED
+  VOID
 }
 
 enum ReferralRewardRole {
@@ -1866,4 +1870,5 @@ enum ReferralRewardStatus {
   PENDING
   PAID
   FAILED
+  VOID
 }

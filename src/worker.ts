@@ -7,13 +7,20 @@ import {
   FINALIZE_ORDER_JOB_TYPE,
   LEGACY_MARK_SELLER_GROUP_READY_JOB_TYPE,
   MARK_READY_JOB_TYPE,
+  PROCESS_REFERRAL_REWARD_JOB_TYPE,
   RELEASE_ORDER_PAYOUT_JOB_TYPE,
+  REFERRAL_EXPIRY_JOB_TYPE,
   SELLER_DAILY_STATS_JOB_TYPE,
 } from "@/lib/jobs/jobTypes";
 import {
   isOrderPayoutReleasePayload,
   processOrderPayoutReleaseJob,
 } from "@/lib/payout/orderPayoutRelease";
+import {
+  expireReferralLifecycle,
+  isReferralJobPayload,
+  processReferralRewardJob,
+} from "@/lib/referrals/referralLifecycle";
 
 const DEFAULT_JOB_BATCH_LIMIT = 20;
 const DEFAULT_MAX_RETRIES = 5;
@@ -57,6 +64,8 @@ export async function processPendingJobs(
           LEGACY_MARK_SELLER_GROUP_READY_JOB_TYPE,
           SELLER_DAILY_STATS_JOB_TYPE,
           RELEASE_ORDER_PAYOUT_JOB_TYPE,
+          REFERRAL_EXPIRY_JOB_TYPE,
+          PROCESS_REFERRAL_REWARD_JOB_TYPE,
         ],
       },
       runAt: { lte: now },
@@ -100,6 +109,20 @@ export async function processPendingJobs(
         isOrderPayoutReleasePayload(job.payload)
       ) {
         const outcome = await processOrderPayoutReleaseJob(job.id, job.payload);
+
+        if (outcome.status === "DEFERRED") {
+          continue;
+        }
+      } else if (
+        job.type === REFERRAL_EXPIRY_JOB_TYPE &&
+        isReferralJobPayload(job.payload)
+      ) {
+        await expireReferralLifecycle(job.payload.referralId);
+      } else if (
+        job.type === PROCESS_REFERRAL_REWARD_JOB_TYPE &&
+        isReferralJobPayload(job.payload)
+      ) {
+        const outcome = await processReferralRewardJob(job.id, job.payload);
 
         if (outcome.status === "DEFERRED") {
           continue;
