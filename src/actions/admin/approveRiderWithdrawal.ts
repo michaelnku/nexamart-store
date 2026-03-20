@@ -173,7 +173,6 @@ export async function approveRiderWithdrawalCore(
             select: {
               id: true,
               userId: true,
-              balance: true,
             },
           },
         },

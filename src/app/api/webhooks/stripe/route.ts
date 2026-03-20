@@ -48,9 +48,6 @@ export async function POST(req: NextRequest) {
   /* ===============================
    VERIFICATION EVENTS
 ================================ */
-
-  console.log("Stripe webhook received:", event.type);
-
   if (event.type === "identity.verification_session.processing") {
     const session = event.data.object as Stripe.Identity.VerificationSession;
     await handleVerificationProcessing(session);

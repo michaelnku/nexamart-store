@@ -180,7 +180,7 @@ export async function approveSellerWithdrawalCore(
         where: { id: withdrawalId },
         include: {
           wallet: {
-            select: { id: true, userId: true, balance: true },
+            select: { id: true, userId: true },
           },
         },
       });

@@ -3,6 +3,7 @@
 import { createAuditLog } from "@/lib/audit/service";
 import { CurrentUser, CurrentRole } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
+import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { createServiceContext } from "@/lib/system/serviceContext";
@@ -74,10 +75,14 @@ export async function requestPlatformWithdrawalAction(
     const systemAccount = await getOrCreateSystemEscrowAccount(tx);
     const wallet = await tx.wallet.findUnique({
       where: { id: systemAccount.walletId },
-      select: { id: true, balance: true },
+      select: { id: true },
     });
     if (!wallet) throw new Error("System wallet missing.");
-    if (amount > wallet.balance) throw new Error("Insufficient platform wallet balance.");
+
+    const availableBalance = await calculateWalletBalance(wallet.id, tx);
+    if (amount > availableBalance) {
+      throw new Error("Insufficient platform wallet balance.");
+    }
 
     const created = await tx.withdrawal.create({
       data: {

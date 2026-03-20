@@ -4,6 +4,7 @@ import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { approveRiderWithdrawalCore } from "@/actions/admin/approveRiderWithdrawal";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
 
 const MIN_RIDER_WITHDRAWAL_USD = 5;
 
@@ -56,7 +57,6 @@ export async function requestRiderWithdrawalAction(
     where: { userId },
     select: {
       id: true,
-      balance: true,
       user: {
         select: {
           riderProfile: {
@@ -85,7 +85,9 @@ export async function requestRiderWithdrawalAction(
     };
   }
 
-  if (amount > wallet.balance) {
+  const availableBalance = await calculateWalletBalance(wallet.id);
+
+  if (amount > availableBalance) {
     return {
       success: false,
       code: "INSUFFICIENT_BALANCE",

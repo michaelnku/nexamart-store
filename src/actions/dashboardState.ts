@@ -263,7 +263,7 @@ export async function getRiderStats() {
   const [
     activeDeliveries,
     completedToday,
-    wallet,
+    releasedRiderPayouts,
     riderProfile,
     assignedPendingAcceptCount,
     pendingPayouts,
@@ -287,12 +287,14 @@ export async function getRiderStats() {
         },
       },
     }),
-    prisma.wallet.findUnique({
+    prisma.ledgerEntry.aggregate({
+      _sum: {
+        amount: true,
+      },
       where: {
         userId: user.id,
-      },
-      select: {
-        totalEarnings: true,
+        entryType: "RIDER_PAYOUT",
+        direction: "CREDIT",
       },
     }),
     prisma.riderProfile.findUnique({
@@ -404,7 +406,7 @@ export async function getRiderStats() {
   return {
     activeDeliveries,
     completedToday,
-    totalEarnings: wallet?.totalEarnings ?? 0,
+    totalEarnings: releasedRiderPayouts._sum.amount ?? 0,
     isRiderVerified: riderProfile?.isVerified ?? false,
     isRiderAvailable: riderProfile?.isAvailable ?? false,
     assignedPendingAcceptCount,

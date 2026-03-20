@@ -136,8 +136,8 @@ export async function createDoubleEntryLedger(
     }
   }
 
-  // wallet.balance is a cached projection of LedgerEntry.
-  // We only mutate cached balance when an entry is newly created in this tx.
+  // Wallet cache fields are display/reconciliation projections of the ledger.
+  // Keep cache writes here limited to sync after authoritative ledger entries land.
   if (inserted.count === 2) {
     await Promise.all([
       fromWalletId

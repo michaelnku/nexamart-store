@@ -1,15 +1,22 @@
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+import { LedgerEntryTypeValue } from "@/lib/ledger/types";
 
-const CREDIT_ENTRY_TYPES = [
+// Ledger entries are the source of truth for wallet balances.
+// Wallet.balance, Wallet.pending, and Wallet.totalEarnings are cached/display fields only.
+// Critical financial decisions must use ledger-derived calculations from this module.
+const CREDIT_ENTRY_TYPES: LedgerEntryTypeValue[] = [
   "WALLET_TOPUP",
   "REFUND",
   "BUYER_CREDIT",
   "REFERRAL_BONUS",
   "ESCROW_RELEASE",
-] as const;
+];
 
-const DEBIT_ENTRY_TYPES = ["ESCROW_DEPOSIT", "WALLET_WITHDRAWAL"] as const;
+const DEBIT_ENTRY_TYPES: LedgerEntryTypeValue[] = [
+  "ESCROW_DEPOSIT",
+  "WALLET_WITHDRAWAL",
+];
 
 export async function calculateWalletBalance(
   walletId: string,
@@ -40,8 +47,8 @@ export async function calculateWalletBalance(
     }),
   ]);
 
-  const totalCredits = creditsAgg._sum.amount ?? 0;
-  const totalDebits = debitsAgg._sum.amount ?? 0;
+  const totalCredits = creditsAgg._sum?.amount ?? 0;
+  const totalDebits = debitsAgg._sum?.amount ?? 0;
 
   return totalCredits - totalDebits;
 }

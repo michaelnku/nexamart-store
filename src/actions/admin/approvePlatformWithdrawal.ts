@@ -108,7 +108,6 @@ export async function approvePlatformWithdrawalAction(
         select: {
           id: true,
           userId: true,
-          balance: true,
         },
       },
     },
@@ -196,7 +195,6 @@ export async function approvePlatformWithdrawalAction(
             select: {
               id: true,
               userId: true,
-              balance: true,
             },
           },
         },
