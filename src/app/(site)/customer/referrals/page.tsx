@@ -2,7 +2,7 @@ import ReferralStatusBadge from "@/components/referrals/ReferralStatusBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { isReferralAwaitingRewardStatus } from "@/lib/referrals/ui";
+import { isReferralAwaitingRewardStatus } from "@/lib/referrals/status";
 import ReferralCodeCard from "../../_components/ReferralCodeCard";
 import ReferralEarningsCard from "../../_components/ReferralEarningsCard";
 

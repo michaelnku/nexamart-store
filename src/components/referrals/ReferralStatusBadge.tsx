@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   getReferralStatusClassName,
   getReferralStatusLabel,
-} from "@/lib/referrals/ui";
+} from "@/lib/referrals/status";
 
 type Props = {
   status: ReferralStatus;

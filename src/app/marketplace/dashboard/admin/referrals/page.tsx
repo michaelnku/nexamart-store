@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserRole } from "@/generated/prisma";
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { isReferralAwaitingRewardStatus } from "@/lib/referrals/ui";
+import { isReferralAwaitingRewardStatus } from "@/lib/referrals/status";
 import { redirect } from "next/navigation";
 
 export default async function AdminReferralsPage() {

@@ -10,7 +10,7 @@ import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { prisma } from "@/lib/prisma";
-import { isReferralAwaitingRewardStatus } from "@/lib/referrals/ui";
+import { isReferralAwaitingRewardStatus } from "@/lib/referrals/status";
 
 type Tx = Prisma.TransactionClient;
 
@@ -43,6 +43,29 @@ type ReferralSnapshot = Prisma.ReferralGetPayload<{
     referralRewards: true;
   };
 }>;
+
+type ReferralRewardRow = ReferralSnapshot["referralRewards"][number];
+type RewardSideRole = "REFERRER" | "REFERRED";
+type RewardSideUser = ReferralSnapshot["referrer"] | ReferralSnapshot["referred"];
+
+type RewardSideDefinition = {
+  role: RewardSideRole;
+  beneficiaryId: string;
+  beneficiary: RewardSideUser;
+  amount: number;
+  description: string;
+  reference: string;
+  transactionReference: string;
+};
+
+type RewardSideSettlementOutcome =
+  | { status: "PAID"; rewardStatus: "PAID" }
+  | { status: "VOID"; rewardStatus: "VOID" }
+  | {
+      status: "PENDING";
+      rewardStatus: "PENDING" | "FAILED";
+      reason: "WALLET_INACTIVE" | "TREASURY_INSUFFICIENT";
+    };
 
 export type ReferralJobPayload = {
   referralId: string;
@@ -169,6 +192,15 @@ async function ensureReferralRewardRows(tx: Tx, referral: ReferralSnapshot) {
   });
 }
 
+async function getReferralRewardRows(
+  tx: Tx,
+  referralId: string,
+): Promise<ReferralRewardRow[]> {
+  return tx.referralReward.findMany({
+    where: { referralId },
+  });
+}
+
 async function voidPendingReferralRewards(tx: Tx, referralId: string) {
   await tx.referralReward.updateMany({
     where: {
@@ -241,166 +273,221 @@ async function getActiveWalletByUserId(
   return wallet;
 }
 
+function getRewardSideDefinitions(
+  referral: ReferralSnapshot,
+): RewardSideDefinition[] {
+  return [
+    {
+      role: "REFERRER",
+      beneficiaryId: referral.referrerId,
+      beneficiary: referral.referrer,
+      amount: REFERRER_BONUS,
+      description: "Referral bonus",
+      reference: `referral-referrer-${referral.id}`,
+      transactionReference: `referral-reward-referrer-${referral.id}`,
+    },
+    {
+      role: "REFERRED",
+      beneficiaryId: referral.referredId,
+      beneficiary: referral.referred,
+      amount: REFERRED_BONUS,
+      description: "Referral signup bonus",
+      reference: `referral-referred-${referral.id}`,
+      transactionReference: `referral-reward-referred-${referral.id}`,
+    },
+  ];
+}
+
+function shouldVoidRewardSide(
+  beneficiary: RewardSideUser,
+  now: Date,
+): boolean {
+  return Boolean(
+    beneficiary.isDeleted ||
+      beneficiary.deletedAt ||
+      beneficiary.isBanned ||
+      (beneficiary.softBlockedUntil &&
+        beneficiary.softBlockedUntil.getTime() > now.getTime()),
+  );
+}
+
+async function hasLedgerPairForReference(tx: Tx, reference: string) {
+  const refs = [`${reference}-debit`, `${reference}-credit`];
+  const count = await tx.ledgerEntry.count({
+    where: {
+      reference: { in: refs },
+    },
+  });
+
+  return count === 2;
+}
+
+async function settleReferralRewardSideInTx(
+  tx: Tx,
+  referral: ReferralSnapshot,
+  reward: ReferralRewardRow,
+  side: RewardSideDefinition,
+  treasuryAccount: { userId: string; walletId: string },
+  treasuryState: { availableBalance: number },
+  now: Date,
+): Promise<RewardSideSettlementOutcome> {
+  if (reward.status === ReferralRewardStatus.PAID) {
+    return { status: "PAID", rewardStatus: reward.status };
+  }
+
+  if (reward.status === ReferralRewardStatus.VOID) {
+    return { status: "VOID", rewardStatus: reward.status };
+  }
+
+  if (shouldVoidRewardSide(side.beneficiary, now)) {
+    await tx.referralReward.update({
+      where: { id: reward.id },
+      data: {
+        status: ReferralRewardStatus.VOID,
+        transactionId: null,
+        issuedAt: null,
+      },
+    });
+
+    return { status: "VOID", rewardStatus: ReferralRewardStatus.VOID };
+  }
+
+  const beneficiaryWallet = await getActiveWalletByUserId(tx, side.beneficiaryId);
+  if (!beneficiaryWallet) {
+    return {
+      status: "PENDING",
+      rewardStatus: reward.status,
+      reason: "WALLET_INACTIVE",
+    };
+  }
+
+  const hasExistingLedgerPair = await hasLedgerPairForReference(tx, side.reference);
+  if (!hasExistingLedgerPair && treasuryState.availableBalance < side.amount) {
+    return {
+      status: "PENDING",
+      rewardStatus: reward.status,
+      reason: "TREASURY_INSUFFICIENT",
+    };
+  }
+
+  await createDoubleEntryLedger(tx, {
+    orderId: referral.orderId ?? undefined,
+    fromUserId: treasuryAccount.userId,
+    fromWalletId: treasuryAccount.walletId,
+    toUserId: side.beneficiaryId,
+    toWalletId: beneficiaryWallet.id,
+    entryType: "REFERRAL_BONUS",
+    amount: side.amount,
+    reference: side.reference,
+    resolveFromWallet: false,
+    resolveToWallet: false,
+  });
+
+  if (!hasExistingLedgerPair) {
+    treasuryState.availableBalance -= side.amount;
+  }
+
+  const payoutTransaction = await tx.transaction.upsert({
+    where: { reference: side.transactionReference },
+    update: {
+      walletId: beneficiaryWallet.id,
+      userId: side.beneficiaryId,
+      amount: side.amount,
+      type: "EARNING",
+      status: "SUCCESS",
+      description: side.description,
+    },
+    create: {
+      walletId: beneficiaryWallet.id,
+      userId: side.beneficiaryId,
+      amount: side.amount,
+      type: "EARNING",
+      status: "SUCCESS",
+      reference: side.transactionReference,
+      description: side.description,
+    },
+    select: { id: true },
+  });
+
+  await tx.referralReward.update({
+    where: { id: reward.id },
+    data: {
+      status: ReferralRewardStatus.PAID,
+      issuedAt: now,
+      transactionId: payoutTransaction.id,
+    },
+  });
+
+  return { status: "PAID", rewardStatus: ReferralRewardStatus.PAID };
+}
+
 async function settleQualifiedReferralInTx(
   tx: Tx,
   referral: ReferralSnapshot,
   now: Date,
 ): Promise<ReferralJobOutcome> {
-  const invalidStatus = getInvalidReferralStatus(referral, now);
-  if (invalidStatus) {
-    await invalidateReferralInTx(tx, referral, invalidStatus);
-    return { status: "COMPLETED", reason: `REFERRAL_${invalidStatus}` };
-  }
-
   await ensureReferralRewardRows(tx, referral);
-
-  const [referrerWallet, referredWallet] = await Promise.all([
-    getActiveWalletByUserId(tx, referral.referrerId),
-    getActiveWalletByUserId(tx, referral.referredId),
-  ]);
-
-  await setReferralStatus(tx, referral.id, ReferralStatus.AWAITING_REWARD);
-
-  if (!referrerWallet || !referredWallet) {
-    return {
-      status: "DEFERRED",
-      reason: "WALLET_INACTIVE",
-      runAt: nextReferralRewardRecheckAt(now),
-    };
-  }
-
   const treasuryAccount = await getOrCreateSystemEscrowAccount(tx);
-  const treasuryBalance = await calculateWalletBalance(treasuryAccount.walletId, tx);
-  const totalRewardAmount = REFERRER_BONUS + REFERRED_BONUS;
+  const rewardRows = await getReferralRewardRows(tx, referral.id);
+  const rewardByRole = new Map(
+    rewardRows.map((reward) => [reward.role, reward] as const),
+  );
+  const sides = getRewardSideDefinitions(referral);
+  const treasuryState = {
+    availableBalance: await calculateWalletBalance(treasuryAccount.walletId, tx),
+  };
 
-  if (treasuryBalance < totalRewardAmount) {
-    return {
-      status: "DEFERRED",
-      reason: "TREASURY_INSUFFICIENT",
-      runAt: nextReferralRewardRecheckAt(now),
-    };
+  let hasPendingSide = false;
+
+  for (const side of sides) {
+    const reward = rewardByRole.get(side.role);
+    if (!reward) {
+      hasPendingSide = true;
+      continue;
+    }
+
+    const result = await settleReferralRewardSideInTx(
+      tx,
+      referral,
+      reward,
+      side,
+      treasuryAccount,
+      treasuryState,
+      now,
+    );
+
+    if (result.status === "PENDING") {
+      hasPendingSide = true;
+    }
   }
 
-  const referrerReward = referral.referralRewards.find(
-    (reward) => reward.role === "REFERRER",
-  );
-  const referredReward = referral.referralRewards.find(
-    (reward) => reward.role === "REFERRED",
+  const finalRewards = await getReferralRewardRows(tx, referral.id);
+  const allTerminal = finalRewards.every(
+    (reward) =>
+      reward.status === ReferralRewardStatus.PAID ||
+      reward.status === ReferralRewardStatus.VOID,
   );
 
-  if (
-    referrerReward?.status === ReferralRewardStatus.PAID &&
-    referredReward?.status === ReferralRewardStatus.PAID
-  ) {
+  if (allTerminal) {
     await setReferralStatus(tx, referral.id, ReferralStatus.REWARDED, {
       rewardedAt: referral.rewardedAt ?? now,
     });
-    return { status: "COMPLETED", reason: "REWARD_ALREADY_ISSUED" };
+    return { status: "COMPLETED", reason: "REWARD_LIFECYCLE_COMPLETE" };
   }
 
-  await createDoubleEntryLedger(tx, {
-    orderId: referral.orderId ?? undefined,
-    fromUserId: treasuryAccount.userId,
-    fromWalletId: treasuryAccount.walletId,
-    toUserId: referral.referrerId,
-    toWalletId: referrerWallet.id,
-    entryType: "REFERRAL_BONUS",
-    amount: REFERRER_BONUS,
-    reference: `referral-referrer-${referral.id}`,
-    resolveFromWallet: false,
-    resolveToWallet: false,
-  });
+  await setReferralStatus(tx, referral.id, ReferralStatus.AWAITING_REWARD);
 
-  await createDoubleEntryLedger(tx, {
-    orderId: referral.orderId ?? undefined,
-    fromUserId: treasuryAccount.userId,
-    fromWalletId: treasuryAccount.walletId,
-    toUserId: referral.referredId,
-    toWalletId: referredWallet.id,
-    entryType: "REFERRAL_BONUS",
-    amount: REFERRED_BONUS,
-    reference: `referral-referred-${referral.id}`,
-    resolveFromWallet: false,
-    resolveToWallet: false,
-  });
-
-  const [referrerTx, referredTx] = await Promise.all([
-    tx.transaction.upsert({
-      where: { reference: `referral-reward-referrer-${referral.id}` },
-      update: {
-        walletId: referrerWallet.id,
-        userId: referral.referrerId,
-        amount: REFERRER_BONUS,
-        type: "EARNING",
-        status: "SUCCESS",
-        description: "Referral bonus",
-      },
-      create: {
-        walletId: referrerWallet.id,
-        userId: referral.referrerId,
-        amount: REFERRER_BONUS,
-        type: "EARNING",
-        status: "SUCCESS",
-        reference: `referral-reward-referrer-${referral.id}`,
-        description: "Referral bonus",
-      },
-      select: { id: true },
-    }),
-    tx.transaction.upsert({
-      where: { reference: `referral-reward-referred-${referral.id}` },
-      update: {
-        walletId: referredWallet.id,
-        userId: referral.referredId,
-        amount: REFERRED_BONUS,
-        type: "EARNING",
-        status: "SUCCESS",
-        description: "Referral signup bonus",
-      },
-      create: {
-        walletId: referredWallet.id,
-        userId: referral.referredId,
-        amount: REFERRED_BONUS,
-        type: "EARNING",
-        status: "SUCCESS",
-        reference: `referral-reward-referred-${referral.id}`,
-        description: "Referral signup bonus",
-      },
-      select: { id: true },
-    }),
-  ]);
-
-  await Promise.all([
-    tx.referralReward.updateMany({
-      where: {
-        referralId: referral.id,
-        role: "REFERRER",
-        status: { not: ReferralRewardStatus.VOID },
-      },
-      data: {
-        status: ReferralRewardStatus.PAID,
-        issuedAt: now,
-        transactionId: referrerTx.id,
-      },
-    }),
-    tx.referralReward.updateMany({
-      where: {
-        referralId: referral.id,
-        role: "REFERRED",
-        status: { not: ReferralRewardStatus.VOID },
-      },
-      data: {
-        status: ReferralRewardStatus.PAID,
-        issuedAt: now,
-        transactionId: referredTx.id,
-      },
-    }),
-  ]);
-
-  await setReferralStatus(tx, referral.id, ReferralStatus.REWARDED, {
-    rewardedAt: now,
-  });
-
-  return { status: "COMPLETED", reason: "REWARDED" };
+  return hasPendingSide
+    ? {
+        status: "DEFERRED",
+        reason: "REWARD_SIDES_PENDING",
+        runAt: nextReferralRewardRecheckAt(now),
+      }
+    : {
+        status: "DEFERRED",
+        reason: "REWARD_RECHECK_REQUIRED",
+        runAt: nextReferralRewardRecheckAt(now),
+      };
 }
 
 async function ensureProcessReferralRewardJobInTx(
