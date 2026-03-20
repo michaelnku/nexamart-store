@@ -6,6 +6,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  ArrowDownCircle,
+  ArrowUpCircle,
   ArrowUpRight,
   CheckCircle2,
   Clock,
@@ -546,8 +548,14 @@ export default function WalletDashboard({ role }: WalletDashboardProps) {
             Use your wallet for faster refunds and seamless checkout.
           </p>
           <div className="flex flex-wrap gap-3 pt-3 text-sm text-gray-600 sm:gap-6">
-            <span>{creditCount} credits</span>
-            <span>{debitCount} debits</span>
+            <span className="inline-flex items-center gap-2">
+              <ArrowDownCircle className="h-4 w-4 text-emerald-500" />
+              {creditCount} credits
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <ArrowUpCircle className="h-4 w-4 text-red-500" />
+              {debitCount} debits
+            </span>
           </div>
         </section>
       ) : (
