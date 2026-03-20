@@ -7,7 +7,7 @@ export type WalletRoleConfig = {
   visibleTypes: WalletTransactionType[];
   canFund: boolean;
   withdrawRoute?: string;
-  withdrawLabel: string;
+  withdrawLabel?: string;
 };
 
 export const WALLET_ROLE_CONFIG: Record<WalletRole, WalletRoleConfig> = {
@@ -22,7 +22,6 @@ export const WALLET_ROLE_CONFIG: Record<WalletRole, WalletRoleConfig> = {
       "WITHDRAWAL",
     ],
     canFund: true,
-    withdrawLabel: "Withdraw",
   },
   seller: {
     credits: ["SELLER_PAYOUT"],
