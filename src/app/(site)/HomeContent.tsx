@@ -32,10 +32,6 @@ export default async function HomeContent() {
 
       <div className="h-px bg-border my-6" />
 
-      <HowNexaMartWorksSection />
-
-      <div className="h-px bg-border my-6" />
-
       <ScrollReveal delay={0.05}>
         <section id="deals-and-discounts" className="scroll-mt-24">
           <Suspense fallback={<ProductRowSkeleton title="Deals & Discounts" />}>
@@ -106,6 +102,10 @@ export default async function HomeContent() {
           </Suspense>
         </section>
       </ScrollReveal>
+
+      <section className="scroll-mt-24">
+        <HowNexaMartWorksSection />
+      </section>
     </>
   );
 }

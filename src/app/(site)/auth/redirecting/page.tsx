@@ -50,7 +50,7 @@ export default function RedirectingPage() {
         height={75}
         className="rounded-full shadow-lg animate-pulse ring-2 ring-brand ring-offset-2"
       />
-      <p className="text-sm text-gray-600 dark:text-zinc-400">Preparing your experience...</p>
+      <p className="text-sm text-gray-600 dark:text-zinc-400">Please wait...</p>
     </div>
   );
 }
