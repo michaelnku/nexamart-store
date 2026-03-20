@@ -2,10 +2,7 @@ import type Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { stripe } from "@/lib/stripe";
-import {
-  handleLegacyOrderCheckout,
-  handleOrderCheckout,
-} from "./checkout";
+import { handleLegacyOrderCheckout, handleOrderCheckout } from "./checkout";
 import {
   handleVerificationCancelled,
   handleVerificationEvent,

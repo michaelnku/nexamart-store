@@ -550,9 +550,6 @@ export async function placeOrderAction({
 
   const validatedCouponResult = couponResult;
 
-  const systemEscrowWalletId =
-    paymentMethod === "WALLET" ? await getOrCreateSystemEscrowWallet() : null;
-
   let createdOrders: Array<{
     id: string;
     status: string;
@@ -736,10 +733,6 @@ export async function placeOrderAction({
   }
 
   if (paymentMethod === "WALLET") {
-    if (!systemEscrowWalletId) {
-      return { error: "Wallet payment setup failed." };
-    }
-
     const parentReference = `wallet-checkout-${checkoutGroupId ?? createdOrders[0]?.id}`;
     const createdOrderIds = createdOrders.map((order) => order.id);
     type WalletSettlementOrderPayload = NonNullable<
@@ -788,6 +781,12 @@ export async function placeOrderAction({
           );
         }
 
+        const availableWalletBalance = await calculateWalletBalance(
+          walletForPayment.id,
+          tx,
+        );
+        const systemEscrowWalletId = await getOrCreateSystemEscrowWallet(tx);
+
         const existingParentTransaction = await tx.transaction.findUnique({
           where: { reference: parentReference },
           select: { id: true },
@@ -829,7 +828,7 @@ export async function placeOrderAction({
         }
 
         if (!existingParentTransaction) {
-          if (walletForPayment.balance < checkoutTotalAmount) {
+          if (availableWalletBalance < checkoutTotalAmount) {
             throw new PlaceOrderError(
               "Insufficient wallet balance. Please choose another payment method.",
             );
@@ -863,7 +862,11 @@ export async function placeOrderAction({
         return {
           alreadyPaidOrderIds,
           ordersToFinalize,
-          walletForPayment: walletForPayment as WalletSettlementWalletPayload,
+          systemEscrowWalletId,
+          walletForPayment: {
+            ...walletForPayment,
+            balance: availableWalletBalance,
+          } as WalletSettlementWalletPayload,
         };
       });
 
@@ -892,7 +895,7 @@ export async function placeOrderAction({
             checkoutGroupId,
             paymentReference: orderToFinalize.paymentReference,
             method: "WALLET",
-            systemEscrowWalletId,
+            systemEscrowWalletId: settlementPlan.systemEscrowWalletId,
             preloadedOrder: orderToFinalize.preloadedOrder,
             preloadedWallet: settlementPlan.walletForPayment,
             skipWalletBalanceCheck: true,

@@ -1,5 +1,6 @@
 import { PaymentMethod, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
 import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
 import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
@@ -244,15 +245,7 @@ export async function completeOrderPaymentCore({
     }
 
     if (!skipWalletBalanceCheck) {
-      const availableBalance =
-        preloadedWallet && preloadedWallet.id === buyerWallet.id
-          ? preloadedWallet.balance
-          : ((
-              await tx.wallet.findUnique({
-                where: { id: buyerWallet.id },
-                select: { balance: true },
-              })
-            )?.balance ?? 0);
+      const availableBalance = await calculateWalletBalance(buyerWallet.id, tx);
       if (availableBalance < order.totalAmount) {
         throw new Error("Insufficient wallet balance");
       }
@@ -363,18 +356,18 @@ export async function completeOrderPayment({
     throw new Error("orderId and paymentReference are required");
   }
 
-  const systemEscrowWalletId = await getOrCreateSystemEscrowWallet();
+  const result = await prisma.$transaction(async (tx) => {
+    const systemEscrowWalletId = await getOrCreateSystemEscrowWallet(tx);
 
-  const result = await prisma.$transaction(async (tx) =>
-    completeOrderPaymentCore({
+    return completeOrderPaymentCore({
       tx,
       orderId,
       paymentReference,
       method,
       context,
       systemEscrowWalletId,
-    }),
-  );
+    });
+  });
 
   if (result.justPaid) {
     await completeOrderPaymentSideEffects(result.order.id, context);

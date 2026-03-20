@@ -2,86 +2,80 @@ import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 
 type DbClient = Prisma.TransactionClient | typeof prisma;
+type TreasurySystemUser = {
+  id: string;
+  email: string;
+  isSystemUser: boolean;
+};
 
 export type PlatformTreasuryAccount = {
   userId: string;
   walletId: string;
 };
 
-type TreasuryResolutionOptions = {
-  requireConfigured?: boolean;
-};
+const PLATFORM_ESCROW_USER_EMAIL_ENV = "PLATFORM_ESCROW_USER_EMAIL";
 
-async function resolvePlatformTreasuryUserId(
-  db: DbClient = prisma,
-  options: TreasuryResolutionOptions = {},
-): Promise<string> {
-  const requireConfigured =
-    options.requireConfigured ?? process.env.NODE_ENV === "production";
-  const explicitPlatformUserId = process.env.PLATFORM_ESCROW_USER_ID?.trim();
+function getConfiguredPlatformEscrowUserEmail(): string {
+  const configuredEmail =
+    process.env[PLATFORM_ESCROW_USER_EMAIL_ENV]?.trim();
 
-  if (explicitPlatformUserId) {
-    const user = await db.user.findUnique({
-      where: { id: explicitPlatformUserId },
-      select: { id: true, role: true },
-    });
-
-    if (!user || user.role !== "SYSTEM") {
-      throw new Error(
-        "PLATFORM_ESCROW_USER_ID must reference the dedicated SYSTEM treasury user.",
-      );
-    }
-
-    return user.id;
-  }
-
-  if (requireConfigured) {
+  if (!configuredEmail) {
     throw new Error(
-      "PLATFORM_ESCROW_USER_ID must be configured for treasury-backed escrow flows.",
+      `Missing ${PLATFORM_ESCROW_USER_EMAIL_ENV} for treasury-backed wallet flows.`,
     );
   }
 
-  // Development fallback only. Production flows must pin the dedicated SYSTEM
-  // treasury identity so escrow funding and payout release always use one wallet.
-  const admin = await db.user.findFirst({
-    where: { role: "ADMIN" },
-    orderBy: { createdAt: "asc" },
-    select: { id: true },
-  });
-
-  if (!admin) {
-    throw new Error(
-      "Platform escrow account requires at least one ADMIN user in the database.",
-    );
-  }
-
-  return admin.id;
+  return configuredEmail;
 }
 
-export async function getOrCreateSystemEscrowWallet(
+export async function resolvePlatformEscrowSystemUser(
   db: DbClient = prisma,
-  options: TreasuryResolutionOptions = {},
-) {
-  const account = await getOrCreateSystemEscrowAccount(db, options);
+): Promise<TreasurySystemUser> {
+  const email = getConfiguredPlatformEscrowUserEmail();
+  const user = await db.user.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      email: true,
+      isSystemUser: true,
+    },
+  });
+
+  if (!user) {
+    throw new Error(
+      `Platform treasury user was not found for ${PLATFORM_ESCROW_USER_EMAIL_ENV}. Seed the treasury system user before running wallet or escrow flows.`,
+    );
+  }
+
+  if (!user.isSystemUser) {
+    throw new Error(
+      `Platform treasury user for ${PLATFORM_ESCROW_USER_EMAIL_ENV} must have isSystemUser=true.`,
+    );
+  }
+
+  return user;
+}
+
+export async function getOrCreateSystemEscrowWallet(db: DbClient = prisma) {
+  const account = await getOrCreateSystemEscrowAccount(db);
   return account.walletId;
 }
 
 export async function getOrCreateSystemEscrowAccount(
   db: DbClient = prisma,
-  options: TreasuryResolutionOptions = {},
 ): Promise<PlatformTreasuryAccount> {
-  const userId = await resolvePlatformTreasuryUserId(db, options);
+  const systemUser = await resolvePlatformEscrowSystemUser(db);
 
   // The platform treasury wallet holds customer-funded escrow until seller and
   // rider payouts are released. All treasury-backed release paths must use it.
   const wallet = await db.wallet.upsert({
-    where: { userId },
+    where: { userId: systemUser.id },
     update: {
       status: "ACTIVE",
       currency: "USD",
     },
     create: {
-      userId,
+      userId: systemUser.id,
       currency: "USD",
       status: "ACTIVE",
     },
@@ -89,7 +83,7 @@ export async function getOrCreateSystemEscrowAccount(
   });
 
   return {
-    userId,
+    userId: systemUser.id,
     walletId: wallet.id,
   };
 }

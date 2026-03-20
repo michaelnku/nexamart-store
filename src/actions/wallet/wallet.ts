@@ -218,20 +218,34 @@ export async function creditBuyerWalletAction(
 ) {
   if (amount <= 0) throw new Error("Amount must be greater than zero");
 
-  const wallet = await prisma.wallet.upsert({
-    where: { userId },
-    update: {},
-    create: { userId },
-  });
+  let wallet:
+    | {
+        id: string;
+        userId: string;
+        balance: number;
+        totalEarnings: number;
+        pending: number;
+        currency: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: WalletStatus;
+      }
+    | undefined;
 
   await prisma.$transaction(async (tx) => {
-    const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
+    wallet = await tx.wallet.upsert({
+      where: { userId },
+      update: {},
+      create: { userId },
+    });
+
+    const systemEscrowAccount = await getOrCreateSystemEscrowAccount(tx);
 
     await createDoubleEntryLedger(tx, {
       fromWalletId: systemEscrowAccount.walletId,
       toUserId: userId,
       toWalletId: wallet.id,
-      entryType: "REFUND",
+      entryType: "BUYER_CREDIT",
       amount,
       reference: reference ?? `buyer-credit-${userId}-${Date.now()}`,
     });
@@ -249,6 +263,10 @@ export async function creditBuyerWalletAction(
     });
   });
 
+  if (!wallet) {
+    throw new Error("Failed to persist buyer wallet credit");
+  }
+
   return wallet;
 }
 
@@ -260,19 +278,45 @@ export async function debitBuyerWalletAction(
 ) {
   if (amount <= 0) throw new Error("Amount must be greater than zero");
 
-  const wallet = await prisma.wallet.upsert({
+  const existingWallet = await prisma.wallet.findUnique({
     where: { userId },
-    update: {},
-    create: { userId },
+    select: { id: true },
   });
 
-  const availableBalance = await calculateWalletBalance(wallet.id);
-  if (availableBalance < amount) {
-    throw new Error("Insufficient wallet balance");
+  if (existingWallet) {
+    const availableBalance = await calculateWalletBalance(existingWallet.id);
+    if (availableBalance < amount) {
+      throw new Error("Insufficient wallet balance");
+    }
   }
 
+  let wallet:
+    | {
+        id: string;
+        userId: string;
+        balance: number;
+        totalEarnings: number;
+        pending: number;
+        currency: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: WalletStatus;
+      }
+    | undefined;
+
   await prisma.$transaction(async (tx) => {
-    const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
+    wallet = await tx.wallet.upsert({
+      where: { userId },
+      update: {},
+      create: { userId },
+    });
+
+    const availableBalance = await calculateWalletBalance(wallet.id, tx);
+    if (availableBalance < amount) {
+      throw new Error("Insufficient wallet balance");
+    }
+
+    const systemEscrowAccount = await getOrCreateSystemEscrowAccount(tx);
 
     await createDoubleEntryLedger(tx, {
       fromUserId: userId,
@@ -295,6 +339,10 @@ export async function debitBuyerWalletAction(
       },
     });
   });
+
+  if (!wallet) {
+    throw new Error("Failed to persist buyer wallet debit");
+  }
 
   return wallet;
 }

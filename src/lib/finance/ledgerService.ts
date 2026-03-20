@@ -1,4 +1,5 @@
 import { Prisma } from "@/generated/prisma";
+import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
 import { ServiceContext } from "@/lib/system/serviceContext";
 import { LedgerEntryTypeValue } from "@/lib/ledger/types";
 
@@ -124,12 +125,13 @@ export async function createDoubleEntryLedger(
   if (inserted.count === 2 && fromWalletId && !input.allowNegativeFromWallet) {
     const sourceWallet = await tx.wallet.findUnique({
       where: { id: fromWalletId },
-      select: { id: true, balance: true },
+      select: { id: true },
     });
     if (!sourceWallet) {
       throw new Error("Source wallet not found");
     }
-    if (sourceWallet.balance < amount) {
+    const availableBalance = await calculateWalletBalance(fromWalletId, tx);
+    if (availableBalance < amount) {
       throw new Error("Insufficient wallet balance for debit ledger entry");
     }
   }

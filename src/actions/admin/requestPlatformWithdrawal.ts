@@ -60,10 +60,7 @@ export async function requestPlatformWithdrawalAction(
     };
   }
 
-  const [availableCommission, systemAccount] = await Promise.all([
-    getAvailableReleasedCommission(),
-    getOrCreateSystemEscrowAccount(),
-  ]);
+  const availableCommission = await getAvailableReleasedCommission();
 
   if (amount > availableCommission) {
     return {
@@ -74,6 +71,7 @@ export async function requestPlatformWithdrawalAction(
   }
 
   const withdrawal = await prisma.$transaction(async (tx) => {
+    const systemAccount = await getOrCreateSystemEscrowAccount(tx);
     const wallet = await tx.wallet.findUnique({
       where: { id: systemAccount.walletId },
       select: { id: true, balance: true },

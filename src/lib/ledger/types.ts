@@ -6,6 +6,8 @@ export type LedgerEntryTypeValue =
   | "SELLER_PAYOUT"
   | "RIDER_PAYOUT"
   | "REFUND"
+  | "BUYER_CREDIT"
+  | "REFERRAL_BONUS"
   | "PLATFORM_FEE"
   | "WALLET_TOPUP"
   | "WALLET_WITHDRAWAL";

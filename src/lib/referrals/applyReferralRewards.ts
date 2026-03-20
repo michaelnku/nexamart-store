@@ -29,9 +29,8 @@ export const applyReferralRewardsForPaidOrder = async (orderId: string) => {
 
   if (!referral || referral.status !== "PENDING") return;
 
-  const systemEscrowAccount = await getOrCreateSystemEscrowAccount();
-
   await prisma.$transaction(async (tx) => {
+    const systemEscrowAccount = await getOrCreateSystemEscrowAccount(tx);
     const now = new Date();
 
     await tx.referral.update({
@@ -66,7 +65,7 @@ export const applyReferralRewardsForPaidOrder = async (orderId: string) => {
       fromWalletId: systemEscrowAccount.walletId,
       toUserId: referral.referrerId,
       toWalletId: referrerWallet.id,
-      entryType: "REFUND",
+      entryType: "REFERRAL_BONUS",
       amount: REFERRER_BONUS,
       reference: `referral-referrer-${referral.id}`,
     });
@@ -76,7 +75,7 @@ export const applyReferralRewardsForPaidOrder = async (orderId: string) => {
       fromWalletId: systemEscrowAccount.walletId,
       toUserId: referral.referredId,
       toWalletId: referredWallet.id,
-      entryType: "REFUND",
+      entryType: "REFERRAL_BONUS",
       amount: REFERRED_BONUS,
       reference: `referral-referred-${referral.id}`,
     });

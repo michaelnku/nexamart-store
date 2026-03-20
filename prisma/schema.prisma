@@ -31,6 +31,8 @@ model User {
 
   role UserRole @default(USER)
 
+  isSystemUser Boolean @default(false)
+
   isBanned            Boolean   @default(false)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
@@ -1788,6 +1790,8 @@ enum LedgerEntryType {
   SELLER_PAYOUT
   RIDER_PAYOUT
   REFUND
+  BUYER_CREDIT
+  REFERRAL_BONUS
   PLATFORM_FEE
   WALLET_TOPUP
   WALLET_WITHDRAWAL

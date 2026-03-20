@@ -1,6 +1,16 @@
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 
+const CREDIT_ENTRY_TYPES = [
+  "WALLET_TOPUP",
+  "REFUND",
+  "BUYER_CREDIT",
+  "REFERRAL_BONUS",
+  "ESCROW_RELEASE",
+] as const;
+
+const DEBIT_ENTRY_TYPES = ["ESCROW_DEPOSIT", "WALLET_WITHDRAWAL"] as const;
+
 export async function calculateWalletBalance(
   walletId: string,
   tx?: Prisma.TransactionClient,
@@ -14,7 +24,7 @@ export async function calculateWalletBalance(
         walletId,
         direction: "CREDIT",
         entryType: {
-          in: ["WALLET_TOPUP", "REFUND", "ESCROW_RELEASE"],
+          in: CREDIT_ENTRY_TYPES,
         },
       },
     }),
@@ -24,7 +34,7 @@ export async function calculateWalletBalance(
         walletId,
         direction: "DEBIT",
         entryType: {
-          in: ["ESCROW_DEPOSIT", "WALLET_WITHDRAWAL"],
+          in: DEBIT_ENTRY_TYPES,
         },
       },
     }),
