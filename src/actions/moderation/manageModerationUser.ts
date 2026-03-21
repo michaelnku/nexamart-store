@@ -67,7 +67,7 @@ export async function manageModerationUserAction(
           summary: `Moderator applied a soft block to user ${user.id}.`,
           metadata: {
             previousState: user.moderationState,
-            softBlockedUntil,
+            softBlockedUntil: softBlockedUntil.toISOString(),
           },
         },
         tx,
