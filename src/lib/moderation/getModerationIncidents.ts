@@ -1,10 +1,11 @@
-import { prisma } from "@/lib/prisma";
 import {
   ModerationSeverity,
   ModerationStatus,
   ModerationTargetType,
   ReviewStatus,
 } from "@/generated/prisma";
+import { Prisma } from "@/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
 
 export type IncidentListFilters = {
   q?: string;
@@ -15,50 +16,56 @@ export type IncidentListFilters = {
   source?: "ALL" | "AI" | "HUMAN";
 };
 
-export async function getModerationIncidents(filters: IncidentListFilters) {
+function buildModerationIncidentWhere(
+  filters: IncidentListFilters,
+): Prisma.ModerationIncidentWhereInput {
   const q = filters.q?.trim();
 
-  const incidents = await prisma.moderationIncident.findMany({
-    where: {
-      ...(filters.status && filters.status !== "ALL"
-        ? { status: filters.status }
+  return {
+    ...(filters.status && filters.status !== "ALL"
+      ? { status: filters.status }
+      : {}),
+    ...(filters.reviewStatus && filters.reviewStatus !== "ALL"
+      ? { reviewStatus: filters.reviewStatus }
+      : {}),
+    ...(filters.severity && filters.severity !== "ALL"
+      ? { severity: filters.severity }
+      : {}),
+    ...(filters.targetType && filters.targetType !== "ALL"
+      ? { targetType: filters.targetType }
+      : {}),
+    ...(filters.source === "AI"
+      ? { actorModerator: { type: "AI" } }
+      : filters.source === "HUMAN"
+        ? { actorModerator: { type: "HUMAN" } }
         : {}),
-      ...(filters.reviewStatus && filters.reviewStatus !== "ALL"
-        ? { reviewStatus: filters.reviewStatus }
-        : {}),
-      ...(filters.severity && filters.severity !== "ALL"
-        ? { severity: filters.severity }
-        : {}),
-      ...(filters.targetType && filters.targetType !== "ALL"
-        ? { targetType: filters.targetType }
-        : {}),
-      ...(filters.source === "AI"
-        ? { actorModerator: { type: "AI" } }
-        : filters.source === "HUMAN"
-          ? { actorModerator: { type: "HUMAN" } }
-          : {}),
-      ...(q
-        ? {
-            OR: [
-              { id: { contains: q, mode: "insensitive" } },
-              { reason: { contains: q, mode: "insensitive" } },
-              { policyCode: { contains: q, mode: "insensitive" } },
-              { targetId: { contains: q, mode: "insensitive" } },
-              {
-                subjectUser: {
-                  is: {
-                    OR: [
-                      { name: { contains: q, mode: "insensitive" } },
-                      { email: { contains: q, mode: "insensitive" } },
-                      { username: { contains: q, mode: "insensitive" } },
-                    ],
-                  },
+    ...(q
+      ? {
+          OR: [
+            { id: { contains: q, mode: "insensitive" } },
+            { reason: { contains: q, mode: "insensitive" } },
+            { policyCode: { contains: q, mode: "insensitive" } },
+            { targetId: { contains: q, mode: "insensitive" } },
+            {
+              subjectUser: {
+                is: {
+                  OR: [
+                    { name: { contains: q, mode: "insensitive" } },
+                    { email: { contains: q, mode: "insensitive" } },
+                    { username: { contains: q, mode: "insensitive" } },
+                  ],
                 },
               },
-            ],
-          }
-        : {}),
-    },
+            },
+          ],
+        }
+      : {}),
+  };
+}
+
+export async function getModerationIncidents(filters: IncidentListFilters) {
+  const incidents = await prisma.moderationIncident.findMany({
+    where: buildModerationIncidentWhere(filters),
     include: {
       subjectUser: {
         select: {
@@ -96,6 +103,33 @@ export async function getModerationIncidents(filters: IncidentListFilters) {
   });
 
   return incidents;
+}
+
+export async function getModerationIncidentOverview(
+  filters: IncidentListFilters,
+) {
+  const baseWhere = buildModerationIncidentWhere(filters);
+
+  const [openCount, pendingReviewCount, criticalCount] =
+    await prisma.$transaction([
+      prisma.moderationIncident.count({
+        where: { AND: [baseWhere, { status: "OPEN" }] },
+      }),
+      prisma.moderationIncident.count({
+        where: {
+          AND: [baseWhere, { reviewStatus: "PENDING_HUMAN_REVIEW" }],
+        },
+      }),
+      prisma.moderationIncident.count({
+        where: { AND: [baseWhere, { severity: "CRITICAL" }] },
+      }),
+    ]);
+
+  return {
+    openCount,
+    pendingReviewCount,
+    criticalCount,
+  };
 }
 
 export async function getModerationIncidentById(incidentId: string) {
