@@ -32,7 +32,7 @@ import {
   updateHeroBannerAction,
   deleteHeroBannerImageAction,
   deleteHeroBannerAction,
-} from "@/actions/banners";
+} from "@/actions/banner/banners";
 
 import { UploadButton } from "@/utils/uploadthing";
 import { toast } from "sonner";

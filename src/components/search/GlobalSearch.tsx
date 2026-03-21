@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { globalSearchAction, recordSearchAction } from "@/actions/search";
+import {
+  globalSearchAction,
+  recordSearchAction,
+} from "@/actions/search/search";
 import { GlobalSearchResult } from "@/lib/types";
 import SearchSkeleton from "../skeletons/SearchSkeleton";
 import { useRouter } from "next/navigation";

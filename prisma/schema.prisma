@@ -93,6 +93,10 @@ model User {
   moderatorIdentity   ModeratorIdentity?
   moderationIncidents ModerationIncident[] @relation("ModerationSubjectUser")
   strikeSnapshots     UserStrikeSnapshot[]
+
+  reportsSubmitted UserReport[] @relation("UserReportsSubmitted")
+  reportsAgainst   UserReport[] @relation("UserReportsAgainst")
+  reportsReviewed  UserReport[] @relation("UserReportsReviewedBy")
 }
 
 model AuditLog {
@@ -1451,6 +1455,8 @@ model ModerationIncident {
   actorModerator    ModeratorIdentity? @relation("IncidentActor", fields: [actorModeratorId], references: [id], onDelete: SetNull)
   reviewerModerator ModeratorIdentity? @relation("IncidentReviewer", fields: [reviewerModeratorId], references: [id], onDelete: SetNull)
 
+  linkedReports UserReport[]
+
   @@index([targetType, targetId])
   @@index([subjectUserId])
   @@index([actorModeratorId])
@@ -1476,10 +1482,74 @@ model UserStrikeSnapshot {
   @@index([createdAt])
 }
 
+model UserReport {
+  id String @id @default(cuid())
+
+  reporterId String
+  reporter   User   @relation("UserReportsSubmitted", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  targetType UserReportTargetType
+  targetId   String
+
+  reportedUserId String?
+  reportedUser   User?   @relation("UserReportsAgainst", fields: [reportedUserId], references: [id], onDelete: SetNull)
+
+  reason      UserReportReason
+  description String?
+
+  status UserReportStatus @default(OPEN)
+
+  moderationIncidentId String?
+  moderationIncident   ModerationIncident? @relation(fields: [moderationIncidentId], references: [id], onDelete: SetNull)
+
+  reviewedById String?
+  reviewedBy   User?   @relation("UserReportsReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  reviewedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([reporterId])
+  @@index([reportedUserId])
+  @@index([targetType, targetId])
+  @@index([status])
+  @@index([createdAt])
+}
+
 /// *
 /// * ===========================
 /// * ENUMS AND CONSTANTS
 /// * ===========================
+enum UserReportTargetType {
+  USER
+  PRODUCT
+  REVIEW
+  MESSAGE
+  STORE
+  ORDER
+}
+
+enum UserReportReason {
+  SPAM
+  SCAM
+  ABUSIVE_BEHAVIOR
+  HARASSMENT
+  FAKE_PRODUCT
+  PROHIBITED_ITEM
+  MISLEADING_INFORMATION
+  OFF_PLATFORM_PAYMENT
+  INAPPROPRIATE_CONTENT
+  FRAUD
+  OTHER
+}
+
+enum UserReportStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
 enum ModeratorIdentityType {
   HUMAN
   AI

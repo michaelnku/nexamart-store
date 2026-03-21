@@ -1,4 +1,7 @@
-import { getUserRecentSearches, getTrendingSearches } from "@/actions/search";
+import {
+  getUserRecentSearches,
+  getTrendingSearches,
+} from "@/actions/search/search";
 import Link from "next/link";
 
 export default async function SearchHistoryPage() {
@@ -18,7 +21,9 @@ export default async function SearchHistoryPage() {
         </h2>
 
         {recent.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-zinc-400">No recent searches</p>
+          <p className="text-sm text-gray-500 dark:text-zinc-400">
+            No recent searches
+          </p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {recent.map((item) => (

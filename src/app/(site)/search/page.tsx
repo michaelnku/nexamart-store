@@ -2,7 +2,7 @@
   getTrendingSearches,
   getUserRecentSearches,
   globalSearchAction,
-} from "@/actions/search";
+} from "@/actions/search/search";
 import CategoryResultCard from "@/components/search/CategoryResultCard";
 import { SearchChip } from "@/components/search/SearchChip";
 import SearchEmptyState from "@/components/search/SearchEmptyState";
@@ -74,7 +74,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       <div>
         <h1 className="text-xl font-semibold">
           Search results for{" "}
-          <span className="text-[var(--brand-blue)]">&ldquo;{query}&rdquo;</span>
+          <span className="text-[var(--brand-blue)]">
+            &ldquo;{query}&rdquo;
+          </span>
         </h1>
 
         <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">
@@ -115,4 +117,3 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     </main>
   );
 }
-

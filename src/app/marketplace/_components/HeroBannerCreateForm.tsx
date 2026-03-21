@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import {
   createHeroBannerAction,
   deleteHeroBannerImageAction,
-} from "@/actions/banners";
+} from "@/actions/banner/banners";
 import { UploadButton } from "@/utils/uploadthing";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";

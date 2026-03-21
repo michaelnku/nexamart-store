@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState, useTransition } from "react";
-import { forgotPassword } from "@/actions/password";
+import { forgotPassword } from "@/actions/password/password";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 

@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { globalSearchAction, recordSearchAction } from "@/actions/search";
+import {
+  globalSearchAction,
+  recordSearchAction,
+} from "@/actions/search/search";
 import { GlobalSearchResult } from "@/lib/types";
 import { saveLocalSearch } from "@/lib/search/searchHistory";
 

@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { resetPassword } from "@/actions/password";
+import { resetPassword } from "@/actions/password/password";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
@@ -74,9 +74,10 @@ export default function ResetPasswordPage() {
           </Button>
         </form>
 
-        {error && <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {error && (
+          <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>
+        )}
       </div>
     </main>
   );
 }
-

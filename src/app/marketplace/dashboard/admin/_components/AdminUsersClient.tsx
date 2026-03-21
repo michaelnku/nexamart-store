@@ -8,7 +8,6 @@ import {
   Bike,
   Building2,
   CheckCircle2,
-  ChevronRight,
   Mail,
   MoreHorizontal,
   Search,
@@ -22,6 +21,13 @@ import { updateAdminManagedUserRole } from "@/actions/admin/updateUserRole";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -596,31 +602,56 @@ export default function AdminUsersClient({
 
           <div className="grid gap-4 lg:hidden">
             {data.items.map((user) => (
-              <article
+              <Card
                 key={user.id}
-                className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] dark:border-zinc-800 dark:bg-zinc-950"
+                className="gap-0 overflow-hidden rounded-[24px] border-slate-200/80 py-0 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] dark:border-zinc-800 dark:bg-zinc-950"
               >
-                <div className="flex items-start justify-between gap-3">
+                <CardHeader className="grid gap-4 p-5 sm:p-6 @[28rem]/card-header:grid-cols-[minmax(0,1fr)_auto] @[28rem]/card-header:items-start">
                   <UserIdentity user={user} />
-                  <UserRoleMenu currentAdminId={currentAdminId} user={user} />
-                </div>
+                  <CardAction className="col-auto row-auto justify-self-start self-auto @[28rem]/card-header:justify-self-end">
+                    <UserRoleMenu currentAdminId={currentAdminId} user={user} />
+                  </CardAction>
+                </CardHeader>
 
-                <div className="mt-4">
+                <CardContent className="space-y-4 px-5 pb-5 sm:px-6 sm:pb-6">
                   <UserIndicators user={user} />
-                </div>
 
-                <div className="mt-5 rounded-[20px] border border-slate-200/70 bg-slate-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
-                  <UserSignals user={user} />
-                </div>
+                  <div className="rounded-[20px] border border-slate-200/70 bg-slate-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+                    <UserSignals user={user} />
+                  </div>
 
-                <div className="mt-4 flex items-center justify-between text-sm text-slate-500 dark:text-zinc-400">
-                  <span>Joined {formatDate(user.createdAt)}</span>
-                  <span className="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-zinc-300">
-                    Manage
-                    <ChevronRight className="h-4 w-4" />
-                  </span>
-                </div>
-              </article>
+                  <div className="grid gap-3 rounded-[20px] border border-slate-200/70 bg-white/80 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950/60 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                        Status
+                      </p>
+                      <div className="text-sm text-slate-700 dark:text-zinc-300">
+                        <p className="font-medium">
+                          {user.isBanned ? "Restricted account" : "Active access"}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-zinc-400">
+                          {user.isRoleProtected
+                            ? "Admin-protected"
+                            : USER_ROLE_LABELS[user.role]}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                        Joined
+                      </p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-zinc-300">
+                        {formatDate(user.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+
+                <CardFooter className="border-t border-slate-200/70 px-5 py-4 text-sm text-slate-500 dark:border-zinc-800 dark:text-zinc-400 sm:px-6">
+                  Review and update access
+                </CardFooter>
+              </Card>
             ))}
           </div>
         </>

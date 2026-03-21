@@ -4,6 +4,7 @@ import {
   getModerationIncidentOverview,
   getModerationIncidents,
 } from "@/lib/moderation/getModerationIncidents";
+import { parseModerationIncidentSearchParams } from "@/lib/moderation/query";
 import { IncidentFilters } from "./_components/IncidentFilters";
 import { IncidentsTable } from "./_components/IncidentsTable";
 
@@ -14,14 +15,7 @@ const styles = {
     "inline-flex w-fit items-center rounded-full border border-[#3c9ee0]/15 bg-[#3c9ee0]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#2c7fb8] dark:border-[#3c9ee0]/25 dark:bg-[#3c9ee0]/12 dark:text-[#7fc6f5]",
 };
 
-type SearchParams = Promise<{
-  q?: string;
-  status?: string;
-  reviewStatus?: string;
-  severity?: string;
-  targetType?: string;
-  source?: "ALL" | "AI" | "HUMAN";
-}>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 function MetricCard({
   label,
@@ -59,16 +53,9 @@ export default async function ModeratorIncidentsPage(props: {
   searchParams: SearchParams;
 }) {
   await requireModerator();
-  const searchParams = await props.searchParams;
-
-  const filters = {
-    q: searchParams.q,
-    status: (searchParams.status as never) ?? "ALL",
-    reviewStatus: (searchParams.reviewStatus as never) ?? "ALL",
-    severity: (searchParams.severity as never) ?? "ALL",
-    targetType: (searchParams.targetType as never) ?? "ALL",
-    source: searchParams.source ?? "ALL",
-  };
+  const filters = parseModerationIncidentSearchParams(
+    await props.searchParams,
+  );
 
   const [incidents, overview] = await Promise.all([
     getModerationIncidents(filters),

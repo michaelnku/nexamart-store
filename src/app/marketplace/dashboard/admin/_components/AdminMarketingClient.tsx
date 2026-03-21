@@ -26,26 +26,16 @@ import {
 import {
   moveHeroBannerPositionAction,
   toggleHeroBannerActiveAction,
-} from "@/actions/banners";
+} from "@/actions/banner/banners";
 import {
   softDeleteCouponAction,
   toggleCouponActiveAction,
 } from "@/actions/coupons/createCouponAction";
-import {
-  MarketingAnalyticsSection,
-} from "@/app/marketplace/dashboard/admin/_components/marketing/MarketingAnalyticsSection";
-import {
-  MarketingBannerSection,
-} from "@/app/marketplace/dashboard/admin/_components/marketing/MarketingBannerSection";
-import {
-  MarketingCouponsPanel,
-} from "@/app/marketplace/dashboard/admin/_components/marketing/MarketingCouponsPanel";
-import {
-  MarketingFeaturedContentPanel,
-} from "@/app/marketplace/dashboard/admin/_components/marketing/MarketingFeaturedContentPanel";
-import {
-  MarketingOverviewSection,
-} from "@/app/marketplace/dashboard/admin/_components/marketing/MarketingOverviewSection";
+import { MarketingAnalyticsSection } from "@/app/marketplace/dashboard/admin/_components/marketing/MarketingAnalyticsSection";
+import { MarketingBannerSection } from "@/app/marketplace/dashboard/admin/_components/marketing/MarketingBannerSection";
+import { MarketingCouponsPanel } from "@/app/marketplace/dashboard/admin/_components/marketing/MarketingCouponsPanel";
+import { MarketingFeaturedContentPanel } from "@/app/marketplace/dashboard/admin/_components/marketing/MarketingFeaturedContentPanel";
+import { MarketingOverviewSection } from "@/app/marketplace/dashboard/admin/_components/marketing/MarketingOverviewSection";
 import { AnalyticsDateRangeFilter } from "@/components/analytics/AnalyticsDateRangeFilter";
 import type { MarketingCampaignFormValues } from "@/components/admin/marketing/MarketingCampaignForm";
 import { Button } from "@/components/ui/button";
@@ -83,14 +73,16 @@ export default function AdminMarketingClient({
   const [selectedStoreId, setSelectedStoreId] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
   const [selectedCampaignId, setSelectedCampaignId] = useState("__new__");
-  const [editingStorePlacementId, setEditingStorePlacementId] = useState<string | null>(null);
-  const [editingProductPlacementId, setEditingProductPlacementId] = useState<string | null>(null);
-  const [storePlacementForm, setStorePlacementForm] = useState<PlacementFormState>(
-    getEmptyPlacementFormState(),
-  );
-  const [productPlacementForm, setProductPlacementForm] = useState<PlacementFormState>(
-    getEmptyPlacementFormState(),
-  );
+  const [editingStorePlacementId, setEditingStorePlacementId] = useState<
+    string | null
+  >(null);
+  const [editingProductPlacementId, setEditingProductPlacementId] = useState<
+    string | null
+  >(null);
+  const [storePlacementForm, setStorePlacementForm] =
+    useState<PlacementFormState>(getEmptyPlacementFormState());
+  const [productPlacementForm, setProductPlacementForm] =
+    useState<PlacementFormState>(getEmptyPlacementFormState());
   const [isPending, startTransition] = useTransition();
   const formatMoney = useFormatMoneyFromUSD();
   const queryClient = useQueryClient();
@@ -126,7 +118,8 @@ export default function AdminMarketingClient({
   }, [dashboard, selectedCampaignId]);
 
   const selectedCampaignDisplayStatus = useMemo<CampaignDisplayStatus | null>(
-    () => (selectedCampaign ? getCampaignDisplayStatus(selectedCampaign) : null),
+    () =>
+      selectedCampaign ? getCampaignDisplayStatus(selectedCampaign) : null,
     [selectedCampaign],
   );
 
@@ -136,7 +129,9 @@ export default function AdminMarketingClient({
     }
 
     return (
-      dashboard.featuredContent.storePlacementsByCampaign[selectedCampaign.id] ?? []
+      dashboard.featuredContent.storePlacementsByCampaign[
+        selectedCampaign.id
+      ] ?? []
     );
   }, [dashboard, selectedCampaign]);
 
@@ -146,7 +141,9 @@ export default function AdminMarketingClient({
     }
 
     return (
-      dashboard.featuredContent.productPlacementsByCampaign[selectedCampaign.id] ?? []
+      dashboard.featuredContent.productPlacementsByCampaign[
+        selectedCampaign.id
+      ] ?? []
     );
   }, [dashboard, selectedCampaign]);
 
@@ -253,7 +250,10 @@ export default function AdminMarketingClient({
   const handleCampaignSubmit = (values: MarketingCampaignFormValues) => {
     startTransition(async () => {
       if (selectedCampaign && selectedCampaignId !== "__new__") {
-        const result = await updateMarketingCampaignAction(selectedCampaign.id, values);
+        const result = await updateMarketingCampaignAction(
+          selectedCampaign.id,
+          values,
+        );
 
         if ("error" in result && result.error) {
           toast.error(result.error);
@@ -312,12 +312,19 @@ export default function AdminMarketingClient({
     }
 
     startTransition(async () => {
-      const payload = toPlacementInput(selectedCampaign.id, storePlacementForm, {
-        storeId: selectedStoreId,
-      });
+      const payload = toPlacementInput(
+        selectedCampaign.id,
+        storePlacementForm,
+        {
+          storeId: selectedStoreId,
+        },
+      );
 
       const result = editingStorePlacementId
-        ? await updateFeaturedStorePlacementAction(editingStorePlacementId, payload)
+        ? await updateFeaturedStorePlacementAction(
+            editingStorePlacementId,
+            payload,
+          )
         : await createFeaturedStorePlacementAction(payload);
 
       if ("error" in result && result.error) {
@@ -341,12 +348,19 @@ export default function AdminMarketingClient({
     }
 
     startTransition(async () => {
-      const payload = toPlacementInput(selectedCampaign.id, productPlacementForm, {
-        productId: selectedProductId,
-      });
+      const payload = toPlacementInput(
+        selectedCampaign.id,
+        productPlacementForm,
+        {
+          productId: selectedProductId,
+        },
+      );
 
       const result = editingProductPlacementId
-        ? await updateFeaturedProductPlacementAction(editingProductPlacementId, payload)
+        ? await updateFeaturedProductPlacementAction(
+            editingProductPlacementId,
+            payload,
+          )
         : await createFeaturedProductPlacementAction(payload);
 
       if ("error" in result && result.error) {
@@ -401,7 +415,9 @@ export default function AdminMarketingClient({
         toast.error(result.error);
         return;
       }
-      toast.success(isEnabled ? "Store placement enabled." : "Store placement disabled.");
+      toast.success(
+        isEnabled ? "Store placement enabled." : "Store placement disabled.",
+      );
       await invalidateDashboard();
     });
   };
@@ -414,7 +430,9 @@ export default function AdminMarketingClient({
         return;
       }
       toast.success(
-        isEnabled ? "Product placement enabled." : "Product placement disabled.",
+        isEnabled
+          ? "Product placement enabled."
+          : "Product placement disabled.",
       );
       await invalidateDashboard();
     });
@@ -553,8 +571,9 @@ export default function AdminMarketingClient({
   }
 
   const selectedStoreLabel =
-    dashboard.featuredContent.stores.find((store) => store.id === selectedStoreId)
-      ?.label ?? "";
+    dashboard.featuredContent.stores.find(
+      (store) => store.id === selectedStoreId,
+    )?.label ?? "";
   const selectedProductLabel =
     dashboard.featuredContent.products.find(
       (product) => product.id === selectedProductId,
@@ -643,7 +662,10 @@ export default function AdminMarketingClient({
         }
       />
 
-      <MarketingOverviewSection dashboard={dashboard} formatMoney={formatMoney} />
+      <MarketingOverviewSection
+        dashboard={dashboard}
+        formatMoney={formatMoney}
+      />
 
       <MarketingBannerSection
         banners={dashboard.banners}
