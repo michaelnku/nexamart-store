@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function IncidentFilters() {
+export function ModeratorProductsFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -27,8 +27,8 @@ export function IncidentFilters() {
     const next = nextParams.toString();
     router.push(
       next
-        ? `/marketplace/dashboard/moderator/incidents?${next}`
-        : "/marketplace/dashboard/moderator/incidents",
+        ? `/marketplace/dashboard/moderator/products?${next}`
+        : "/marketplace/dashboard/moderator/products",
     );
   };
 
@@ -66,17 +66,15 @@ export function IncidentFilters() {
   const clearFilters = () => {
     startTransition(() => {
       setQuery("");
-      router.push("/marketplace/dashboard/moderator/incidents");
+      router.push("/marketplace/dashboard/moderator/products");
     });
   };
 
   const hasActiveFilters =
     query.trim().length > 0 ||
-    searchParams.get("status") !== null ||
-    searchParams.get("reviewStatus") !== null ||
-    searchParams.get("severity") !== null ||
-    searchParams.get("targetType") !== null ||
-    searchParams.get("source") !== null;
+    searchParams.get("published") !== null ||
+    searchParams.get("foodType") !== null ||
+    searchParams.get("flagged") !== null;
 
   return (
     <div className="rounded-2xl border bg-background p-4">
@@ -87,7 +85,7 @@ export function IncidentFilters() {
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 className="pl-9"
-                placeholder="Search incident, reason, user, policy..."
+                placeholder="Search product, brand, store..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -101,7 +99,6 @@ export function IncidentFilters() {
 
             <Button
               type="button"
-              variant="default"
               onClick={applySearch}
               disabled={isPending}
               className="shrink-0"
@@ -111,78 +108,53 @@ export function IncidentFilters() {
           </div>
         </div>
 
-        <div className="xl:col-span-2">
+        <div className="xl:col-span-3">
           <Select
-            value={searchParams.get("status") ?? "ALL"}
-            onValueChange={(value) => setParam("status", value)}
+            value={searchParams.get("published") ?? "ALL"}
+            onValueChange={(value) => setParam("published", value)}
             disabled={isPending}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder="Publish Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All Statuses</SelectItem>
-              <SelectItem value="OPEN">Open</SelectItem>
-              <SelectItem value="RESOLVED">Resolved</SelectItem>
-              <SelectItem value="OVERTURNED">Overturned</SelectItem>
-              <SelectItem value="IGNORED">Ignored</SelectItem>
+              <SelectItem value="ALL">All Products</SelectItem>
+              <SelectItem value="YES">Published</SelectItem>
+              <SelectItem value="NO">Unpublished</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="xl:col-span-3">
+          <Select
+            value={searchParams.get("foodType") ?? "ALL"}
+            onValueChange={(value) => setParam("foodType", value)}
+            disabled={isPending}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Product Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Types</SelectItem>
+              <SelectItem value="FOOD">Food</SelectItem>
+              <SelectItem value="GENERAL">General</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="xl:col-span-2">
           <Select
-            value={searchParams.get("reviewStatus") ?? "ALL"}
-            onValueChange={(value) => setParam("reviewStatus", value)}
+            value={searchParams.get("flagged") ?? "ALL"}
+            onValueChange={(value) => setParam("flagged", value)}
             disabled={isPending}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Review Status" />
+              <SelectValue placeholder="Moderation Flags" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All Reviews</SelectItem>
-              <SelectItem value="NOT_REQUIRED">Not Required</SelectItem>
-              <SelectItem value="PENDING_HUMAN_REVIEW">
-                Pending Human Review
-              </SelectItem>
-              <SelectItem value="HUMAN_CONFIRMED">Human Confirmed</SelectItem>
-              <SelectItem value="HUMAN_OVERTURNED">Human Overturned</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="xl:col-span-2">
-          <Select
-            value={searchParams.get("severity") ?? "ALL"}
-            onValueChange={(value) => setParam("severity", value)}
-            disabled={isPending}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Severity" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Severities</SelectItem>
-              <SelectItem value="LOW">Low</SelectItem>
-              <SelectItem value="MEDIUM">Medium</SelectItem>
-              <SelectItem value="HIGH">High</SelectItem>
-              <SelectItem value="CRITICAL">Critical</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="xl:col-span-2">
-          <Select
-            value={searchParams.get("source") ?? "ALL"}
-            onValueChange={(value) => setParam("source", value)}
-            disabled={isPending}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Sources</SelectItem>
-              <SelectItem value="AI">AI</SelectItem>
-              <SelectItem value="HUMAN">Human</SelectItem>
+              <SelectItem value="ALL">All Flag States</SelectItem>
+              <SelectItem value="YES">Flagged</SelectItem>
+              <SelectItem value="NO">No Flags</SelectItem>
             </SelectContent>
           </Select>
         </div>

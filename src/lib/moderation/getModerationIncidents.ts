@@ -8,6 +8,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type IncidentListFilters = {
+  page?: number;
   q?: string;
   status?: ModerationStatus | "ALL";
   reviewStatus?: ReviewStatus | "ALL";
@@ -15,6 +16,8 @@ export type IncidentListFilters = {
   targetType?: ModerationTargetType | "ALL";
   source?: "ALL" | "AI" | "HUMAN";
 };
+
+export const MODERATION_INCIDENTS_PAGE_SIZE = 24;
 
 function buildModerationIncidentWhere(
   filters: IncidentListFilters,
@@ -64,8 +67,17 @@ function buildModerationIncidentWhere(
 }
 
 export async function getModerationIncidents(filters: IncidentListFilters) {
-  const incidents = await prisma.moderationIncident.findMany({
-    where: buildModerationIncidentWhere(filters),
+  const page = Math.max(1, filters.page ?? 1);
+  const where = buildModerationIncidentWhere(filters);
+  const totalItems = await prisma.moderationIncident.count({ where });
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalItems / MODERATION_INCIDENTS_PAGE_SIZE),
+  );
+  const effectivePage = Math.min(page, totalPages);
+
+  const items = await prisma.moderationIncident.findMany({
+    where,
     include: {
       subjectUser: {
         select: {
@@ -99,10 +111,21 @@ export async function getModerationIncidents(filters: IncidentListFilters) {
       { reviewStatus: "desc" },
       { createdAt: "desc" },
     ],
-    take: 100,
+    skip: (effectivePage - 1) * MODERATION_INCIDENTS_PAGE_SIZE,
+    take: MODERATION_INCIDENTS_PAGE_SIZE,
   });
 
-  return incidents;
+  return {
+    items,
+    pagination: {
+      page: effectivePage,
+      pageSize: MODERATION_INCIDENTS_PAGE_SIZE,
+      totalItems,
+      totalPages,
+      hasNextPage: effectivePage < totalPages,
+      hasPreviousPage: effectivePage > 1,
+    },
+  };
 }
 
 export async function getModerationIncidentOverview(

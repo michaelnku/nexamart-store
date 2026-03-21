@@ -21,7 +21,7 @@ type IncidentItem = Awaited<
   ReturnType<
     typeof import("@/lib/moderation/getModerationIncidents").getModerationIncidents
   >
->[number];
+>["items"][number];
 
 const styles = {
   premiumSurface:

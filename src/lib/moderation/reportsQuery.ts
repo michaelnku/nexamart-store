@@ -35,6 +35,7 @@ const userReportTargetTypeFilterSchema = z.enum([
 ]);
 
 const moderationReportSearchParamsSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
   q: z.string().trim().max(100).default(""),
   status: userReportStatusFilterSchema.default("ALL"),
   reason: userReportReasonFilterSchema.default("ALL"),
@@ -53,6 +54,7 @@ export function parseModerationReportSearchParams(
   searchParams: Record<string, string | string[] | undefined> | undefined,
 ): UserReportListFilters {
   const parsed = moderationReportSearchParamsSchema.safeParse({
+    page: firstValue(searchParams?.page),
     q: firstValue(searchParams?.q),
     status: firstValue(searchParams?.status),
     reason: firstValue(searchParams?.reason),
@@ -61,6 +63,7 @@ export function parseModerationReportSearchParams(
 
   if (!parsed.success) {
     return {
+      page: 1,
       q: "",
       status: "ALL",
       reason: "ALL",

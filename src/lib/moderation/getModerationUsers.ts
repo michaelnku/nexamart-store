@@ -3,11 +3,14 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type ModerationUsersFilters = {
+  page?: number;
   q?: string;
   role?: UserRole | "ALL";
   state?: "ALL" | "CLEAR" | "WARNED" | "RESTRICTED" | "SOFT_BLOCKED";
   blocked?: "ALL" | "YES" | "NO";
 };
+
+export const MODERATION_USERS_PAGE_SIZE = 24;
 
 function buildModerationUsersWhere(
   filters: ModerationUsersFilters,
@@ -44,8 +47,14 @@ function buildModerationUsersWhere(
 }
 
 export async function getModerationUsers(filters: ModerationUsersFilters) {
-  return prisma.user.findMany({
-    where: buildModerationUsersWhere(filters),
+  const page = Math.max(1, filters.page ?? 1);
+  const where = buildModerationUsersWhere(filters);
+  const totalItems = await prisma.user.count({ where });
+  const totalPages = Math.max(1, Math.ceil(totalItems / MODERATION_USERS_PAGE_SIZE));
+  const effectivePage = Math.min(page, totalPages);
+
+  const items = await prisma.user.findMany({
+    where,
     select: {
       id: true,
       name: true,
@@ -73,8 +82,21 @@ export async function getModerationUsers(filters: ModerationUsersFilters) {
       { moderationStrikeCount: "desc" },
       { createdAt: "desc" },
     ],
-    take: 100,
+    skip: (effectivePage - 1) * MODERATION_USERS_PAGE_SIZE,
+    take: MODERATION_USERS_PAGE_SIZE,
   });
+
+  return {
+    items,
+    pagination: {
+      page: effectivePage,
+      pageSize: MODERATION_USERS_PAGE_SIZE,
+      totalItems,
+      totalPages,
+      hasNextPage: effectivePage < totalPages,
+      hasPreviousPage: effectivePage > 1,
+    },
+  };
 }
 
 export async function getModerationUsersOverview(

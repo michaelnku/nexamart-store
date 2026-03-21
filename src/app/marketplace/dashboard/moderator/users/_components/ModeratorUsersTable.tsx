@@ -16,7 +16,7 @@ type ModerationUserItem = Awaited<
   ReturnType<
     typeof import("@/lib/moderation/getModerationUsers").getModerationUsers
   >
->[number];
+>["items"][number];
 
 const styles = {
   premiumSurface:

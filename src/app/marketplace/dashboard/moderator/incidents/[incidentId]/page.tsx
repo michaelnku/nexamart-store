@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireModerator } from "@/lib/moderation/guardModerator";
 import {
   getModerationIncidentById,
@@ -15,6 +14,37 @@ import {
   StatusBadge,
 } from "../_components/IncidentBadges";
 import { IncidentActionButtons } from "./_components/IncidentActionButtons";
+
+const styles = {
+  premiumSurface:
+    "overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_22px_60px_-40px_rgba(15,23,42,0.35)] dark:border-zinc-800 dark:bg-zinc-950",
+  sectionHeader:
+    "border-b border-slate-200/80 bg-[linear-gradient(180deg,rgba(60,158,224,0.08),rgba(255,255,255,0.96))] px-6 py-4 dark:border-zinc-800 dark:bg-[linear-gradient(180deg,rgba(60,158,224,0.12),rgba(24,24,27,0.96))]",
+  title: "text-base font-semibold text-slate-950 dark:text-zinc-100",
+  description: "text-sm text-slate-500 dark:text-zinc-400",
+};
+
+function PremiumSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={styles.premiumSurface}>
+      <div className={styles.sectionHeader}>
+        <div>
+          <h2 className={styles.title}>{title}</h2>
+          {description ? <p className={styles.description}>{description}</p> : null}
+        </div>
+      </div>
+      <div className="p-6">{children}</div>
+    </section>
+  );
+}
 
 export default async function IncidentDetailsPage(props: {
   params: Promise<{ incidentId: string }>;
@@ -35,13 +65,13 @@ export default async function IncidentDetailsPage(props: {
   const source = incident.actorModerator?.type ?? "UNKNOWN";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-slate-950 dark:text-zinc-100">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
             Incident Details
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-slate-500 dark:text-zinc-400">
             Review incident evidence, user context, and moderator actions.
           </p>
         </div>
@@ -55,11 +85,11 @@ export default async function IncidentDetailsPage(props: {
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
-          <Card className="rounded-2xl">
-            <CardHeader>
-              <CardTitle>Incident Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
+          <PremiumSection
+            title="Incident Summary"
+            description="Core incident metadata, policy linkage, and review state."
+          >
+            <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <div className="text-sm text-muted-foreground">Incident ID</div>
                 <div className="font-medium">{incident.id}</div>
@@ -135,14 +165,14 @@ export default async function IncidentDetailsPage(props: {
                     : "N/A"}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </PremiumSection>
 
-          <Card className="rounded-2xl">
-            <CardHeader>
-              <CardTitle>Reasoning</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <PremiumSection
+            title="Reasoning"
+            description="Human-readable reason plus structured evidence and metadata."
+          >
+            <div className="space-y-4">
               <div>
                 <div className="mb-1 text-sm text-muted-foreground">Reason</div>
                 <div className="rounded-xl border p-4 text-sm">
@@ -167,29 +197,27 @@ export default async function IncidentDetailsPage(props: {
                   {JSON.stringify(incident.metadata ?? {}, null, 2)}
                 </pre>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </PremiumSection>
 
-          <Card className="rounded-2xl">
-            <CardHeader>
-              <CardTitle>Moderator Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <IncidentActionButtons
-                incidentId={incident.id}
-                status={incident.status}
-                reviewStatus={incident.reviewStatus}
-              />
-            </CardContent>
-          </Card>
+          <PremiumSection
+            title="Moderator Actions"
+            description="Review and resolve the incident from the moderator queue."
+          >
+            <IncidentActionButtons
+              incidentId={incident.id}
+              status={incident.status}
+              reviewStatus={incident.reviewStatus}
+            />
+          </PremiumSection>
         </div>
 
         <div className="space-y-6">
-          <Card className="rounded-2xl">
-            <CardHeader>
-              <CardTitle>Subject User</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <PremiumSection
+            title="Subject User"
+            description="Current moderation profile for the affected user."
+          >
+            <div className="space-y-3">
               {incident.subjectUser ? (
                 <>
                   <div>
@@ -281,14 +309,14 @@ export default async function IncidentDetailsPage(props: {
                   No subject user attached to this incident.
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </PremiumSection>
 
-          <Card className="rounded-2xl">
-            <CardHeader>
-              <CardTitle>Recent Incidents</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <PremiumSection
+            title="Recent Incidents"
+            description="Recent moderation history connected to the same user."
+          >
+            <div className="space-y-3">
               {recentIncidents.length === 0 ? (
                 <div className="text-sm text-muted-foreground">
                   No recent incidents for this user.
@@ -308,14 +336,14 @@ export default async function IncidentDetailsPage(props: {
                   </div>
                 ))
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </PremiumSection>
 
-          <Card className="rounded-2xl">
-            <CardHeader>
-              <CardTitle>Review Metadata</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
+          <PremiumSection
+            title="Review Metadata"
+            description="Actor and reviewer attribution for this incident."
+          >
+            <div className="space-y-3 text-sm">
               <div>
                 <div className="text-muted-foreground">Actor Moderator</div>
                 <div className="font-medium">
@@ -329,8 +357,8 @@ export default async function IncidentDetailsPage(props: {
                   {incident.reviewerModerator?.displayName ?? "N/A"}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </PremiumSection>
         </div>
       </div>
     </div>

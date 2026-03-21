@@ -35,6 +35,7 @@ export function ModeratorUsersFilters() {
   const setParam = (key: string, value: string) => {
     startTransition(() => {
       const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.delete("page");
 
       if (!value || value === "ALL") {
         nextParams.delete(key);
@@ -50,6 +51,7 @@ export function ModeratorUsersFilters() {
     startTransition(() => {
       const nextParams = new URLSearchParams(searchParams.toString());
       const next = query.trim();
+      nextParams.delete("page");
 
       if (!next) {
         nextParams.delete("q");

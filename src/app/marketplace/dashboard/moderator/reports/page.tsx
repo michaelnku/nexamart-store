@@ -1,6 +1,16 @@
 import { AlertCircle, FileWarning, Link2 } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { requireModerator } from "@/lib/moderation/guardModerator";
 import {
+  MODERATION_REPORTS_PAGE_SIZE,
   getUserReportOverview,
   getUserReports,
 } from "@/lib/moderation/getUserReports";
@@ -16,6 +26,54 @@ const styles = {
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+function buildReportsPageHref(
+  filters: ReturnType<typeof parseModerationReportSearchParams>,
+  page: number,
+) {
+  const params = new URLSearchParams();
+
+  if (page > 1) {
+    params.set("page", String(page));
+  }
+
+  if (filters.q) {
+    params.set("q", filters.q);
+  }
+
+  if (filters.status && filters.status !== "ALL") {
+    params.set("status", filters.status);
+  }
+
+  if (filters.reason && filters.reason !== "ALL") {
+    params.set("reason", filters.reason);
+  }
+
+  if (filters.targetType && filters.targetType !== "ALL") {
+    params.set("targetType", filters.targetType);
+  }
+
+  const query = params.toString();
+  return query
+    ? `/marketplace/dashboard/moderator/reports?${query}`
+    : "/marketplace/dashboard/moderator/reports";
+}
+
+function getVisiblePages(page: number, totalPages: number) {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  if (page <= 3) {
+    return [1, 2, 3, 4];
+  }
+
+  if (page >= totalPages - 2) {
+    return [totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  }
+
+  return [page - 1, page, page + 1];
+}
 
 function MetricCard({
   label,
@@ -55,10 +113,25 @@ export default async function ModeratorReportsPage(props: {
   await requireModerator();
   const filters = parseModerationReportSearchParams(await props.searchParams);
 
-  const [reports, overview] = await Promise.all([
+  const [reportsResult, overview] = await Promise.all([
     getUserReports(filters),
     getUserReportOverview(filters),
   ]);
+  const visiblePages = getVisiblePages(
+    reportsResult.pagination.page,
+    reportsResult.pagination.totalPages,
+  );
+  const pageStart =
+    reportsResult.pagination.totalItems === 0
+      ? 0
+      : (reportsResult.pagination.page - 1) * MODERATION_REPORTS_PAGE_SIZE + 1;
+  const pageEnd =
+    reportsResult.pagination.totalItems === 0
+      ? 0
+      : Math.min(
+          reportsResult.pagination.page * MODERATION_REPORTS_PAGE_SIZE,
+          reportsResult.pagination.totalItems,
+        );
 
   return (
     <div className="space-y-6 text-slate-950 dark:text-zinc-100">
@@ -95,7 +168,94 @@ export default async function ModeratorReportsPage(props: {
       </div>
 
       <ReportFilters />
-      <ReportsTable reports={reports} />
+      <ReportsTable reports={reportsResult.items} />
+
+      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_22px_60px_-40px_rgba(15,23,42,0.2)] dark:border-zinc-800 dark:bg-zinc-950 md:flex-row md:items-center md:justify-between">
+        <div className="text-sm text-slate-500 dark:text-zinc-400">
+          Showing {pageStart.toLocaleString()}-{pageEnd.toLocaleString()} of{" "}
+          {reportsResult.pagination.totalItems.toLocaleString()} matching reports
+        </div>
+
+        <Pagination className="justify-start md:justify-end">
+          <PaginationContent>
+            <PaginationItem>
+              {reportsResult.pagination.hasPreviousPage ? (
+                <PaginationPrevious
+                  href={buildReportsPageHref(
+                    filters,
+                    reportsResult.pagination.page - 1,
+                  )}
+                />
+              ) : (
+                <span className="inline-flex h-9 items-center rounded-md px-3 text-sm text-slate-300 dark:text-zinc-700">
+                  Previous
+                </span>
+              )}
+            </PaginationItem>
+
+            {visiblePages[0] !== 1 ? (
+              <PaginationItem>
+                <PaginationLink href={buildReportsPageHref(filters, 1)}>
+                  1
+                </PaginationLink>
+              </PaginationItem>
+            ) : null}
+
+            {visiblePages[0] > 2 ? (
+              <PaginationItem>
+                <PaginationEllipsis />
+              </PaginationItem>
+            ) : null}
+
+            {visiblePages.map((page) => (
+              <PaginationItem key={page}>
+                <PaginationLink
+                  href={buildReportsPageHref(filters, page)}
+                  isActive={page === reportsResult.pagination.page}
+                >
+                  {page}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+
+            {visiblePages[visiblePages.length - 1] <
+            reportsResult.pagination.totalPages - 1 ? (
+              <PaginationItem>
+                <PaginationEllipsis />
+              </PaginationItem>
+            ) : null}
+
+            {visiblePages[visiblePages.length - 1] !==
+            reportsResult.pagination.totalPages ? (
+              <PaginationItem>
+                <PaginationLink
+                  href={buildReportsPageHref(
+                    filters,
+                    reportsResult.pagination.totalPages,
+                  )}
+                >
+                  {reportsResult.pagination.totalPages}
+                </PaginationLink>
+              </PaginationItem>
+            ) : null}
+
+            <PaginationItem>
+              {reportsResult.pagination.hasNextPage ? (
+                <PaginationNext
+                  href={buildReportsPageHref(
+                    filters,
+                    reportsResult.pagination.page + 1,
+                  )}
+                />
+              ) : (
+                <span className="inline-flex h-9 items-center rounded-md px-3 text-sm text-slate-300 dark:text-zinc-700">
+                  Next
+                </span>
+              )}
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
     </div>
   );
 }

@@ -22,6 +22,7 @@ const moderationUserStateFilterSchema = z.enum([
 const moderationUserBlockedFilterSchema = z.enum(["ALL", "YES", "NO"]);
 
 const moderationUsersSearchParamsSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
   q: z.string().trim().max(100).default(""),
   role: moderationUserRoleFilterSchema.default("ALL"),
   state: moderationUserStateFilterSchema.default("ALL"),
@@ -40,6 +41,7 @@ export function parseModerationUsersSearchParams(
   searchParams: Record<string, string | string[] | undefined> | undefined,
 ): ModerationUsersFilters {
   const parsed = moderationUsersSearchParamsSchema.safeParse({
+    page: firstValue(searchParams?.page),
     q: firstValue(searchParams?.q),
     role: firstValue(searchParams?.role),
     state: firstValue(searchParams?.state),
@@ -48,6 +50,7 @@ export function parseModerationUsersSearchParams(
 
   if (!parsed.success) {
     return {
+      page: 1,
       q: "",
       role: "ALL",
       state: "ALL",

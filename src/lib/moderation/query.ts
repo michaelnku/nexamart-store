@@ -42,6 +42,7 @@ const moderationTargetTypeFilterSchema = z.enum([
 const moderationSourceFilterSchema = z.enum(["ALL", "AI", "HUMAN"]);
 
 const moderationIncidentSearchParamsSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
   q: z.string().trim().max(100).default(""),
   status: moderationStatusFilterSchema.default("ALL"),
   reviewStatus: reviewStatusFilterSchema.default("ALL"),
@@ -62,6 +63,7 @@ export function parseModerationIncidentSearchParams(
   searchParams: Record<string, string | string[] | undefined> | undefined,
 ): IncidentListFilters {
   const parsed = moderationIncidentSearchParamsSchema.safeParse({
+    page: firstValue(searchParams?.page),
     q: firstValue(searchParams?.q),
     status: firstValue(searchParams?.status),
     reviewStatus: firstValue(searchParams?.reviewStatus),
@@ -72,6 +74,7 @@ export function parseModerationIncidentSearchParams(
 
   if (!parsed.success) {
     return {
+      page: 1,
       q: "",
       status: "ALL",
       reviewStatus: "ALL",

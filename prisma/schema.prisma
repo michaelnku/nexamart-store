@@ -94,6 +94,8 @@ model User {
   moderationIncidents ModerationIncident[] @relation("ModerationSubjectUser")
   strikeSnapshots     UserStrikeSnapshot[]
 
+  moderatedProducts Product[] @relation("ProductModeratedBy")
+
   reportsSubmitted UserReport[] @relation("UserReportsSubmitted")
   reportsAgainst   UserReport[] @relation("UserReportsAgainst")
   reportsReviewed  UserReport[] @relation("UserReportsReviewedBy")
@@ -178,13 +180,20 @@ model PasswordResetAttempt {
 /// * PRODUCTS & CATEGORIES
 /// * ===========================
 model Product {
-  id                     String                     @id @default(cuid())
-  name                   String                     @db.VarChar(120)
-  description            String
-  brand                  String?
-  storeId                String
-  categoryId             String
-  isPublished            Boolean                    @default(true)
+  id          String  @id @default(cuid())
+  name        String  @db.VarChar(120)
+  description String
+  brand       String?
+  storeId     String
+  categoryId  String
+  isPublished Boolean @default(true)
+
+  moderationStatus ProductModerationStatus?
+  moderationReason String?
+  moderatedAt      DateTime?
+  moderatedById    String?
+  moderatedBy      User?                    @relation("ProductModeratedBy", fields: [moderatedById], references: [id], onDelete: SetNull)
+
   createdAt              DateTime                   @default(now())
   updatedAt              DateTime                   @updatedAt
   brandId                String?
@@ -1520,6 +1529,14 @@ model UserReport {
 /// * ===========================
 /// * ENUMS AND CONSTANTS
 /// * ===========================
+enum ProductModerationStatus {
+  PENDING_REVIEW
+  APPROVED
+  FLAGGED
+  REJECTED
+  HIDDEN
+}
+
 enum UserReportTargetType {
   USER
   PRODUCT

@@ -14,7 +14,7 @@ import { ReportStatusBadge } from "./ReportBadges";
 
 type ReportItem = Awaited<
   ReturnType<typeof import("@/lib/moderation/getUserReports").getUserReports>
->[number];
+>["items"][number];
 
 const styles = {
   premiumSurface:

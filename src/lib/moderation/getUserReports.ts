@@ -7,11 +7,14 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type UserReportListFilters = {
+  page?: number;
   q?: string;
   status?: UserReportStatus | "ALL";
   reason?: UserReportReason | "ALL";
   targetType?: UserReportTargetType | "ALL";
 };
+
+export const MODERATION_REPORTS_PAGE_SIZE = 24;
 
 function buildUserReportWhere(
   filters: UserReportListFilters,
@@ -61,8 +64,17 @@ function buildUserReportWhere(
 }
 
 export async function getUserReports(filters: UserReportListFilters) {
-  return prisma.userReport.findMany({
-    where: buildUserReportWhere(filters),
+  const page = Math.max(1, filters.page ?? 1);
+  const where = buildUserReportWhere(filters);
+  const totalItems = await prisma.userReport.count({ where });
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalItems / MODERATION_REPORTS_PAGE_SIZE),
+  );
+  const effectivePage = Math.min(page, totalPages);
+
+  const items = await prisma.userReport.findMany({
+    where,
     include: {
       reporter: {
         select: {
@@ -100,8 +112,21 @@ export async function getUserReports(filters: UserReportListFilters) {
       },
     },
     orderBy: [{ createdAt: "desc" }],
-    take: 100,
+    skip: (effectivePage - 1) * MODERATION_REPORTS_PAGE_SIZE,
+    take: MODERATION_REPORTS_PAGE_SIZE,
   });
+
+  return {
+    items,
+    pagination: {
+      page: effectivePage,
+      pageSize: MODERATION_REPORTS_PAGE_SIZE,
+      totalItems,
+      totalPages,
+      hasNextPage: effectivePage < totalPages,
+      hasPreviousPage: effectivePage > 1,
+    },
+  };
 }
 
 export async function getUserReportOverview(filters: UserReportListFilters) {
