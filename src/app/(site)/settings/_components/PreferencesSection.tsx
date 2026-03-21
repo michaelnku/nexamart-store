@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import { Globe, Mail, Moon, Sun, Laptop } from "lucide-react";
 import { toast } from "sonner";
 
-import { updatePreferencesAction } from "@/actions/preferenceActions";
+import { updatePreferencesAction } from "@/actions/user/preferenceActions";
 import SettingsCard from "@/components/settings/SettingsCard";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -212,7 +212,9 @@ function PreferenceRow({
     <div className="flex items-center justify-between rounded-lg border p-3 dark:border-zinc-800">
       <div>
         <p className="font-medium text-sm">{label}</p>
-        <p className="text-xs text-gray-500 dark:text-zinc-400">{description}</p>
+        <p className="text-xs text-gray-500 dark:text-zinc-400">
+          {description}
+        </p>
       </div>
       <Switch checked={checked} onCheckedChange={onChange} />
     </div>
