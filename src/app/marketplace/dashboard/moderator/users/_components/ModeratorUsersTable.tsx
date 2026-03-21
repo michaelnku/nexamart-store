@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatModerationDateTime } from "@/lib/moderation/formatters";
 import { BlockStatusBadge, ModerationStateBadge } from "./ModeratorUserBadges";
 
 type ModerationUserItem = Awaited<
@@ -36,7 +37,7 @@ function EmptyState() {
     <div
       className={`${styles.premiumSurface} py-10 text-center text-muted-foreground`}
     >
-      No moderation users found.
+      No moderation users matched your filters.
     </div>
   );
 }
@@ -102,7 +103,7 @@ function UserCard({ user }: { user: ModerationUserItem }) {
       <div className="mt-4 flex items-center justify-between gap-3">
         <div className="text-xs text-slate-500 dark:text-zinc-400">
           {user.moderationLastIncidentAt
-            ? `Last incident: ${new Date(user.moderationLastIncidentAt).toLocaleString()}`
+            ? `Last incident: ${formatModerationDateTime(user.moderationLastIncidentAt)}`
             : "No recorded incident"}
         </div>
 
@@ -164,7 +165,7 @@ function ModeratorUsersDesktopTable({
               <TableCell>{user._count.reportsAgainst}</TableCell>
               <TableCell>
                 {user.moderationLastIncidentAt
-                  ? new Date(user.moderationLastIncidentAt).toLocaleString()
+                  ? formatModerationDateTime(user.moderationLastIncidentAt)
                   : "N/A"}
               </TableCell>
 

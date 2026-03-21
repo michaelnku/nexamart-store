@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 
@@ -133,6 +134,7 @@ function highestIncidentSeverity<
 }
 
 export async function getModeratorProducts(filters: ModeratorProductsFilters) {
+  noStore();
   const page = Math.max(1, filters.page ?? 1);
   const whereSql = buildModeratorProductsWhereSql(filters);
 
@@ -259,6 +261,7 @@ export async function getModeratorProducts(filters: ModeratorProductsFilters) {
 export async function getModeratorProductsOverview(
   filters: ModeratorProductsFilters,
 ) {
+  noStore();
   const whereSql = buildModeratorProductsWhereSql(filters);
   const [overview] = await prisma.$queryRaw<
     Array<{

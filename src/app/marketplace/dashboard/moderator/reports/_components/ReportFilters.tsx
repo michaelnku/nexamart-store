@@ -1,8 +1,8 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,68 +13,90 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function ReportFilters() {
-  const router = useRouter();
+type ReportFilterState = {
+  query: string;
+  status: string;
+  targetType: string;
+  reason: string;
+};
+
+function readFilterState(
+  searchParams: ReturnType<typeof useSearchParams>,
+): ReportFilterState {
+  return {
+    query: searchParams.get("q") ?? "",
+    status: searchParams.get("status") ?? "ALL",
+    targetType: searchParams.get("targetType") ?? "ALL",
+    reason: searchParams.get("reason") ?? "ALL",
+  };
+}
+
+export function ReportFilters(props: {
+  isPending: boolean;
+  onNavigate: (href: string) => void;
+}) {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
-  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [filters, setFilters] = useState<ReportFilterState>(() =>
+    readFilterState(searchParams),
+  );
 
   useEffect(() => {
-    setQuery(searchParams.get("q") ?? "");
+    setFilters(readFilterState(searchParams));
   }, [searchParams]);
 
-  const pushQuery = (nextParams: URLSearchParams) => {
+  const navigate = (nextState: ReportFilterState) => {
+    const nextParams = new URLSearchParams();
+
+    if (nextState.query.trim()) {
+      nextParams.set("q", nextState.query.trim());
+    }
+
+    if (nextState.status !== "ALL") {
+      nextParams.set("status", nextState.status);
+    }
+
+    if (nextState.targetType !== "ALL") {
+      nextParams.set("targetType", nextState.targetType);
+    }
+
+    if (nextState.reason !== "ALL") {
+      nextParams.set("reason", nextState.reason);
+    }
+
     const next = nextParams.toString();
-    router.push(
-      next
-        ? `/marketplace/dashboard/moderator/reports?${next}`
-        : "/marketplace/dashboard/moderator/reports",
-    );
+    props.onNavigate(next ? `${pathname}?${next}` : pathname);
   };
 
-  const setParam = (key: string, value: string) => {
-    startTransition(() => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.delete("page");
-
-      if (!value || value === "ALL") {
-        nextParams.delete(key);
-      } else {
-        nextParams.set(key, value);
-      }
-
-      pushQuery(nextParams);
-    });
+  const updateFilter = <K extends keyof ReportFilterState>(
+    key: K,
+    value: ReportFilterState[K],
+  ) => {
+    const nextState = { ...filters, [key]: value };
+    setFilters(nextState);
+    navigate(nextState);
   };
 
   const applySearch = () => {
-    startTransition(() => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      const next = query.trim();
-      nextParams.delete("page");
-
-      if (!next) {
-        nextParams.delete("q");
-      } else {
-        nextParams.set("q", next);
-      }
-
-      pushQuery(nextParams);
-    });
+    navigate(filters);
   };
 
   const clearFilters = () => {
-    startTransition(() => {
-      setQuery("");
-      router.push("/marketplace/dashboard/moderator/reports");
-    });
+    const nextState: ReportFilterState = {
+      query: "",
+      status: "ALL",
+      targetType: "ALL",
+      reason: "ALL",
+    };
+    setFilters(nextState);
+    props.onNavigate(pathname);
   };
 
   const hasActiveFilters =
-    query.trim().length > 0 ||
-    searchParams.get("status") !== null ||
-    searchParams.get("reason") !== null ||
-    searchParams.get("targetType") !== null;
+    filters.query.trim().length > 0 ||
+    filters.status !== "ALL" ||
+    filters.targetType !== "ALL" ||
+    filters.reason !== "ALL";
 
   return (
     <div className="rounded-2xl border bg-background p-4">
@@ -86,21 +108,26 @@ export function ReportFilters() {
               <Input
                 className="pl-9"
                 placeholder="Search report, user, target..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                value={filters.query}
+                onChange={(event) =>
+                  setFilters((current) => ({
+                    ...current,
+                    query: event.target.value,
+                  }))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
                     applySearch();
                   }
                 }}
-                disabled={isPending}
+                disabled={props.isPending}
               />
             </div>
 
             <Button
               type="button"
               onClick={applySearch}
-              disabled={isPending}
+              disabled={props.isPending}
               className="shrink-0"
             >
               Search
@@ -110,9 +137,9 @@ export function ReportFilters() {
 
         <div className="xl:col-span-2">
           <Select
-            value={searchParams.get("status") ?? "ALL"}
-            onValueChange={(value) => setParam("status", value)}
-            disabled={isPending}
+            value={filters.status}
+            onValueChange={(value) => updateFilter("status", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Status" />
@@ -129,9 +156,9 @@ export function ReportFilters() {
 
         <div className="xl:col-span-3">
           <Select
-            value={searchParams.get("targetType") ?? "ALL"}
-            onValueChange={(value) => setParam("targetType", value)}
-            disabled={isPending}
+            value={filters.targetType}
+            onValueChange={(value) => updateFilter("targetType", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Target Type" />
@@ -150,9 +177,9 @@ export function ReportFilters() {
 
         <div className="xl:col-span-3">
           <Select
-            value={searchParams.get("reason") ?? "ALL"}
-            onValueChange={(value) => setParam("reason", value)}
-            disabled={isPending}
+            value={filters.reason}
+            onValueChange={(value) => updateFilter("reason", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Reason" />
@@ -192,7 +219,7 @@ export function ReportFilters() {
           variant="ghost"
           size="sm"
           onClick={clearFilters}
-          disabled={isPending || !hasActiveFilters}
+          disabled={props.isPending || !hasActiveFilters}
           className="shrink-0"
         >
           <X className="mr-2 h-4 w-4" />

@@ -11,6 +11,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  formatModerationDate,
+  formatModerationDateTime,
+} from "@/lib/moderation/formatters";
+import {
   ReviewStatusBadge,
   SeverityBadge,
   StatusBadge,
@@ -43,7 +47,7 @@ function EmptyState() {
     <div
       className={`${styles.premiumSurface} py-10 text-center text-muted-foreground`}
     >
-      No AI moderation items found.
+      No AI review items matched your filters.
     </div>
   );
 }
@@ -51,14 +55,14 @@ function EmptyState() {
 function AiIncidentCard({ incident }: { incident: AiQueueItem }) {
   return (
     <article className={`${styles.tintedSurface} p-4`}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <p className={styles.token}>Incident</p>
-          <p className="font-semibold text-slate-950 dark:text-zinc-100">
+          <p className="break-all font-semibold text-slate-950 dark:text-zinc-100">
             {incident.id.slice(0, 10)}
           </p>
           <p className="text-xs text-slate-500 dark:text-zinc-400">
-            {new Date(incident.createdAt).toDateString()}
+            {formatModerationDate(incident.createdAt)}
           </p>
         </div>
         <SeverityBadge severity={incident.severity} />
@@ -71,13 +75,13 @@ function AiIncidentCard({ incident }: { incident: AiQueueItem }) {
         </p>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <p className={styles.token}>Target</p>
           <p className="mt-1 font-medium text-slate-950 dark:text-zinc-100">
             {incident.targetType}
           </p>
-          <p className="text-sm text-slate-500 line-clamp-1 dark:text-zinc-400">
+          <p className="break-all text-sm text-slate-500 dark:text-zinc-400">
             {incident.targetId}
           </p>
         </div>
@@ -114,8 +118,8 @@ function AiIncidentCard({ incident }: { incident: AiQueueItem }) {
         <StatusBadge status={incident.status} />
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <Button asChild variant="outline" size="sm">
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
           <Link href={`/marketplace/dashboard/moderator/incidents/${incident.id}`}>
             <Eye className="mr-2 h-4 w-4" />
             Review
@@ -192,7 +196,7 @@ function AiIncidentsDesktopTable({ incidents }: { incidents: AiQueueItem[] }) {
               <TableCell>{incident.actorModerator?.displayName ?? "AI"}</TableCell>
 
               <TableCell>
-                {new Date(incident.createdAt).toLocaleString()}
+                {formatModerationDateTime(incident.createdAt)}
               </TableCell>
 
               <TableCell className="text-right">

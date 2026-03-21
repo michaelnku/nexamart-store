@@ -16,6 +16,7 @@ import {
   ProductPublishBadge,
   ProductSeverityBadge,
 } from "./ModeratorProductBadges";
+import { formatModerationDateTime } from "@/lib/moderation/formatters";
 
 type ModeratorProductItem = Awaited<
   ReturnType<
@@ -49,7 +50,7 @@ export function ModeratorProductsTable({
       <div
         className={`${styles.premiumSurface} py-10 text-center text-muted-foreground`}
       >
-        No products found.
+        No products found for the current filters.
       </div>
     );
   }
@@ -59,7 +60,7 @@ export function ModeratorProductsTable({
       <div className="grid gap-4 lg:hidden">
         {products.map((product) => (
           <article key={product.id} className={`${styles.tintedSurface} p-4`}>
-            <div className="flex items-start gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
               <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-muted">
                 {product.images[0]?.imageUrl ? (
                   <Image
@@ -73,18 +74,20 @@ export function ModeratorProductsTable({
 
               <div className="min-w-0 flex-1 space-y-1">
                 <p className={styles.token}>Product</p>
-                <p className="truncate font-semibold text-slate-950 dark:text-zinc-100">
+                <p className="break-words font-semibold text-slate-950 dark:text-zinc-100">
                   {product.name}
                 </p>
-                <p className="truncate text-xs text-slate-500 dark:text-zinc-400">
+                <p className="break-words text-xs text-slate-500 dark:text-zinc-400">
                   {product.store.name} / {product.store.slug}
                 </p>
               </div>
 
-              <ProductPublishBadge published={product.isPublished} />
+              <div className="sm:ml-auto">
+                <ProductPublishBadge published={product.isPublished} />
+              </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <p className={styles.token}>Type</p>
                 <p className="mt-1 font-medium text-slate-700 dark:text-zinc-200">
@@ -126,17 +129,17 @@ export function ModeratorProductsTable({
               <div>
                 <p className={styles.token}>Updated</p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
-                  {new Date(product.updatedAt).toLocaleString()}
+                  {formatModerationDateTime(product.updatedAt)}
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <p className="truncate text-xs text-slate-500 dark:text-zinc-400">
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="break-all text-xs text-slate-500 dark:text-zinc-400">
                 {product.id}
               </p>
 
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
                 <Link href={`/marketplace/dashboard/moderator/products/${product.id}`}>
                   <Eye className="mr-2 h-4 w-4" />
                   Open
@@ -214,7 +217,7 @@ export function ModeratorProductsTable({
                 </TableCell>
                 <TableCell>{product._count.reviews}</TableCell>
                 <TableCell>
-                  {new Date(product.updatedAt).toLocaleString()}
+                  {formatModerationDateTime(product.updatedAt)}
                 </TableCell>
                 <TableCell className="text-right">
                   <Button asChild variant="outline" size="sm">

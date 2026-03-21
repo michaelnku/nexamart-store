@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import {
   ModerationSeverity,
@@ -105,6 +106,7 @@ function buildAiModerationQueueWhere(
 }
 
 export async function getAiModerationQueue(filters: AiModerationQueueFilters) {
+  noStore();
   const page = Math.max(1, filters.page ?? 1);
   const where = buildAiModerationQueueWhere(filters);
   const totalItems = await prisma.moderationIncident.count({ where });
@@ -135,6 +137,7 @@ export async function getAiModerationQueue(filters: AiModerationQueueFilters) {
 export async function getAiModerationQueueOverview(
   filters: AiModerationQueueFilters,
 ) {
+  noStore();
   const baseWhere = buildAiModerationQueueWhere(filters);
 
   const [pendingCount, openCount, highPriorityCount] = await prisma.$transaction([

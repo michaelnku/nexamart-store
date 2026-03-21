@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import {
   ModerationSeverity,
   ModerationStatus,
@@ -67,6 +68,7 @@ function buildModerationIncidentWhere(
 }
 
 export async function getModerationIncidents(filters: IncidentListFilters) {
+  noStore();
   const page = Math.max(1, filters.page ?? 1);
   const where = buildModerationIncidentWhere(filters);
   const totalItems = await prisma.moderationIncident.count({ where });
@@ -131,6 +133,7 @@ export async function getModerationIncidents(filters: IncidentListFilters) {
 export async function getModerationIncidentOverview(
   filters: IncidentListFilters,
 ) {
+  noStore();
   const baseWhere = buildModerationIncidentWhere(filters);
 
   const [openCount, pendingReviewCount, criticalCount] =

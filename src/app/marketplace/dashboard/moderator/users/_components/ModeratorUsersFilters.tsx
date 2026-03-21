@@ -1,8 +1,8 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,68 +13,90 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function ModeratorUsersFilters() {
-  const router = useRouter();
+type UserFilterState = {
+  query: string;
+  role: string;
+  state: string;
+  blocked: string;
+};
+
+function readFilterState(
+  searchParams: ReturnType<typeof useSearchParams>,
+): UserFilterState {
+  return {
+    query: searchParams.get("q") ?? "",
+    role: searchParams.get("role") ?? "ALL",
+    state: searchParams.get("state") ?? "ALL",
+    blocked: searchParams.get("blocked") ?? "ALL",
+  };
+}
+
+export function ModeratorUsersFilters(props: {
+  isPending: boolean;
+  onNavigate: (href: string) => void;
+}) {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
-  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [filters, setFilters] = useState<UserFilterState>(() =>
+    readFilterState(searchParams),
+  );
 
   useEffect(() => {
-    setQuery(searchParams.get("q") ?? "");
+    setFilters(readFilterState(searchParams));
   }, [searchParams]);
 
-  const pushQuery = (nextParams: URLSearchParams) => {
+  const navigate = (nextState: UserFilterState) => {
+    const nextParams = new URLSearchParams();
+
+    if (nextState.query.trim()) {
+      nextParams.set("q", nextState.query.trim());
+    }
+
+    if (nextState.role !== "ALL") {
+      nextParams.set("role", nextState.role);
+    }
+
+    if (nextState.state !== "ALL") {
+      nextParams.set("state", nextState.state);
+    }
+
+    if (nextState.blocked !== "ALL") {
+      nextParams.set("blocked", nextState.blocked);
+    }
+
     const next = nextParams.toString();
-    router.push(
-      next
-        ? `/marketplace/dashboard/moderator/users?${next}`
-        : "/marketplace/dashboard/moderator/users",
-    );
+    props.onNavigate(next ? `${pathname}?${next}` : pathname);
   };
 
-  const setParam = (key: string, value: string) => {
-    startTransition(() => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.delete("page");
-
-      if (!value || value === "ALL") {
-        nextParams.delete(key);
-      } else {
-        nextParams.set(key, value);
-      }
-
-      pushQuery(nextParams);
-    });
+  const updateFilter = <K extends keyof UserFilterState>(
+    key: K,
+    value: UserFilterState[K],
+  ) => {
+    const nextState = { ...filters, [key]: value };
+    setFilters(nextState);
+    navigate(nextState);
   };
 
   const applySearch = () => {
-    startTransition(() => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      const next = query.trim();
-      nextParams.delete("page");
-
-      if (!next) {
-        nextParams.delete("q");
-      } else {
-        nextParams.set("q", next);
-      }
-
-      pushQuery(nextParams);
-    });
+    navigate(filters);
   };
 
   const clearFilters = () => {
-    startTransition(() => {
-      setQuery("");
-      router.push("/marketplace/dashboard/moderator/users");
-    });
+    const nextState: UserFilterState = {
+      query: "",
+      role: "ALL",
+      state: "ALL",
+      blocked: "ALL",
+    };
+    setFilters(nextState);
+    props.onNavigate(pathname);
   };
 
   const hasActiveFilters =
-    query.trim().length > 0 ||
-    searchParams.get("role") !== null ||
-    searchParams.get("state") !== null ||
-    searchParams.get("blocked") !== null;
+    filters.query.trim().length > 0 ||
+    filters.role !== "ALL" ||
+    filters.state !== "ALL" ||
+    filters.blocked !== "ALL";
 
   return (
     <div className="rounded-2xl border bg-background p-4">
@@ -86,21 +108,26 @@ export function ModeratorUsersFilters() {
               <Input
                 className="pl-9"
                 placeholder="Search user, email, username..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                value={filters.query}
+                onChange={(event) =>
+                  setFilters((current) => ({
+                    ...current,
+                    query: event.target.value,
+                  }))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
                     applySearch();
                   }
                 }}
-                disabled={isPending}
+                disabled={props.isPending}
               />
             </div>
 
             <Button
               type="button"
               onClick={applySearch}
-              disabled={isPending}
+              disabled={props.isPending}
               className="shrink-0"
             >
               Search
@@ -110,9 +137,9 @@ export function ModeratorUsersFilters() {
 
         <div className="xl:col-span-3">
           <Select
-            value={searchParams.get("role") ?? "ALL"}
-            onValueChange={(value) => setParam("role", value)}
-            disabled={isPending}
+            value={filters.role}
+            onValueChange={(value) => updateFilter("role", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Role" />
@@ -131,9 +158,9 @@ export function ModeratorUsersFilters() {
 
         <div className="xl:col-span-3">
           <Select
-            value={searchParams.get("state") ?? "ALL"}
-            onValueChange={(value) => setParam("state", value)}
-            disabled={isPending}
+            value={filters.state}
+            onValueChange={(value) => updateFilter("state", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Moderation State" />
@@ -150,9 +177,9 @@ export function ModeratorUsersFilters() {
 
         <div className="xl:col-span-2">
           <Select
-            value={searchParams.get("blocked") ?? "ALL"}
-            onValueChange={(value) => setParam("blocked", value)}
-            disabled={isPending}
+            value={filters.blocked}
+            onValueChange={(value) => updateFilter("blocked", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Block Status" />
@@ -177,7 +204,7 @@ export function ModeratorUsersFilters() {
           variant="ghost"
           size="sm"
           onClick={clearFilters}
-          disabled={isPending || !hasActiveFilters}
+          disabled={props.isPending || !hasActiveFilters}
           className="shrink-0"
         >
           <X className="mr-2 h-4 w-4" />

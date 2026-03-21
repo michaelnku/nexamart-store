@@ -1,8 +1,8 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,69 +13,98 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function AiReviewQueueFilters() {
-  const router = useRouter();
+type AiFilterState = {
+  query: string;
+  reviewStatus: string;
+  status: string;
+  severity: string;
+  targetType: string;
+};
+
+function readFilterState(
+  searchParams: ReturnType<typeof useSearchParams>,
+): AiFilterState {
+  return {
+    query: searchParams.get("q") ?? "",
+    reviewStatus: searchParams.get("reviewStatus") ?? "PENDING_HUMAN_REVIEW",
+    status: searchParams.get("status") ?? "ALL",
+    severity: searchParams.get("severity") ?? "ALL",
+    targetType: searchParams.get("targetType") ?? "ALL",
+  };
+}
+
+export function AiReviewQueueFilters(props: {
+  isPending: boolean;
+  onNavigate: (href: string) => void;
+}) {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
-  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [filters, setFilters] = useState<AiFilterState>(() =>
+    readFilterState(searchParams),
+  );
 
   useEffect(() => {
-    setQuery(searchParams.get("q") ?? "");
+    setFilters(readFilterState(searchParams));
   }, [searchParams]);
 
-  const pushQuery = (nextParams: URLSearchParams) => {
+  const navigate = (nextState: AiFilterState) => {
+    const nextParams = new URLSearchParams();
+
+    if (nextState.query.trim()) {
+      nextParams.set("q", nextState.query.trim());
+    }
+
+    if (nextState.reviewStatus !== "PENDING_HUMAN_REVIEW") {
+      nextParams.set("reviewStatus", nextState.reviewStatus);
+    }
+
+    if (nextState.status !== "ALL") {
+      nextParams.set("status", nextState.status);
+    }
+
+    if (nextState.severity !== "ALL") {
+      nextParams.set("severity", nextState.severity);
+    }
+
+    if (nextState.targetType !== "ALL") {
+      nextParams.set("targetType", nextState.targetType);
+    }
+
     const next = nextParams.toString();
-    router.push(
-      next
-        ? `/marketplace/dashboard/moderator/ai?${next}`
-        : "/marketplace/dashboard/moderator/ai",
-    );
+    props.onNavigate(next ? `${pathname}?${next}` : pathname);
   };
 
-  const setParam = (key: string, value: string) => {
-    startTransition(() => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.delete("page");
-
-      if (!value || value === "ALL") {
-        nextParams.delete(key);
-      } else {
-        nextParams.set(key, value);
-      }
-
-      pushQuery(nextParams);
-    });
+  const updateFilter = <K extends keyof AiFilterState>(
+    key: K,
+    value: AiFilterState[K],
+  ) => {
+    const nextState = { ...filters, [key]: value };
+    setFilters(nextState);
+    navigate(nextState);
   };
 
   const applySearch = () => {
-    startTransition(() => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      const next = query.trim();
-      nextParams.delete("page");
-
-      if (!next) {
-        nextParams.delete("q");
-      } else {
-        nextParams.set("q", next);
-      }
-
-      pushQuery(nextParams);
-    });
+    navigate(filters);
   };
 
   const clearFilters = () => {
-    startTransition(() => {
-      setQuery("");
-      router.push("/marketplace/dashboard/moderator/ai");
-    });
+    const nextState: AiFilterState = {
+      query: "",
+      reviewStatus: "PENDING_HUMAN_REVIEW",
+      status: "ALL",
+      severity: "ALL",
+      targetType: "ALL",
+    };
+    setFilters(nextState);
+    props.onNavigate(pathname);
   };
 
   const hasActiveFilters =
-    query.trim().length > 0 ||
-    searchParams.get("status") !== null ||
-    searchParams.get("reviewStatus") !== null ||
-    searchParams.get("severity") !== null ||
-    searchParams.get("targetType") !== null;
+    filters.query.trim().length > 0 ||
+    filters.reviewStatus !== "PENDING_HUMAN_REVIEW" ||
+    filters.status !== "ALL" ||
+    filters.severity !== "ALL" ||
+    filters.targetType !== "ALL";
 
   return (
     <div className="rounded-2xl border bg-background p-4">
@@ -87,21 +116,26 @@ export function AiReviewQueueFilters() {
               <Input
                 className="pl-9"
                 placeholder="Search incident, user, policy..."
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                value={filters.query}
+                onChange={(event) =>
+                  setFilters((current) => ({
+                    ...current,
+                    query: event.target.value,
+                  }))
+                }
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     applySearch();
                   }
                 }}
-                disabled={isPending}
+                disabled={props.isPending}
               />
             </div>
 
             <Button
               type="button"
               onClick={applySearch}
-              disabled={isPending}
+              disabled={props.isPending}
               className="shrink-0"
             >
               Search
@@ -111,9 +145,9 @@ export function AiReviewQueueFilters() {
 
         <div className="xl:col-span-2">
           <Select
-            value={searchParams.get("reviewStatus") ?? "PENDING_HUMAN_REVIEW"}
-            onValueChange={(value) => setParam("reviewStatus", value)}
-            disabled={isPending}
+            value={filters.reviewStatus}
+            onValueChange={(value) => updateFilter("reviewStatus", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Review Status" />
@@ -132,9 +166,9 @@ export function AiReviewQueueFilters() {
 
         <div className="xl:col-span-2">
           <Select
-            value={searchParams.get("status") ?? "ALL"}
-            onValueChange={(value) => setParam("status", value)}
-            disabled={isPending}
+            value={filters.status}
+            onValueChange={(value) => updateFilter("status", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Status" />
@@ -151,9 +185,9 @@ export function AiReviewQueueFilters() {
 
         <div className="xl:col-span-2">
           <Select
-            value={searchParams.get("severity") ?? "ALL"}
-            onValueChange={(value) => setParam("severity", value)}
-            disabled={isPending}
+            value={filters.severity}
+            onValueChange={(value) => updateFilter("severity", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Severity" />
@@ -170,9 +204,9 @@ export function AiReviewQueueFilters() {
 
         <div className="xl:col-span-2">
           <Select
-            value={searchParams.get("targetType") ?? "ALL"}
-            onValueChange={(value) => setParam("targetType", value)}
-            disabled={isPending}
+            value={filters.targetType}
+            onValueChange={(value) => updateFilter("targetType", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Target Type" />
@@ -205,7 +239,7 @@ export function AiReviewQueueFilters() {
           variant="ghost"
           size="sm"
           onClick={clearFilters}
-          disabled={isPending || !hasActiveFilters}
+          disabled={props.isPending || !hasActiveFilters}
           className="shrink-0"
         >
           <X className="mr-2 h-4 w-4" />

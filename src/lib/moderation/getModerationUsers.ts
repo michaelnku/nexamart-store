@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { UserRole } from "@/generated/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -47,6 +48,7 @@ function buildModerationUsersWhere(
 }
 
 export async function getModerationUsers(filters: ModerationUsersFilters) {
+  noStore();
   const page = Math.max(1, filters.page ?? 1);
   const where = buildModerationUsersWhere(filters);
   const totalItems = await prisma.user.count({ where });
@@ -102,6 +104,7 @@ export async function getModerationUsers(filters: ModerationUsersFilters) {
 export async function getModerationUsersOverview(
   filters: ModerationUsersFilters,
 ) {
+  noStore();
   const baseWhere = buildModerationUsersWhere(filters);
   const now = new Date();
 

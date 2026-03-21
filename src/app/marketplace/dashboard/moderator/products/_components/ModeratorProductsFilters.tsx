@@ -1,8 +1,8 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,68 +13,90 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function ModeratorProductsFilters() {
-  const router = useRouter();
+type ProductFilterState = {
+  query: string;
+  published: string;
+  foodType: string;
+  flagged: string;
+};
+
+function readFilterState(
+  searchParams: ReturnType<typeof useSearchParams>,
+): ProductFilterState {
+  return {
+    query: searchParams.get("q") ?? "",
+    published: searchParams.get("published") ?? "ALL",
+    foodType: searchParams.get("foodType") ?? "ALL",
+    flagged: searchParams.get("flagged") ?? "ALL",
+  };
+}
+
+export function ModeratorProductsFilters(props: {
+  isPending: boolean;
+  onNavigate: (href: string) => void;
+}) {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
-  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [filters, setFilters] = useState<ProductFilterState>(() =>
+    readFilterState(searchParams),
+  );
 
   useEffect(() => {
-    setQuery(searchParams.get("q") ?? "");
+    setFilters(readFilterState(searchParams));
   }, [searchParams]);
 
-  const pushQuery = (nextParams: URLSearchParams) => {
+  const navigate = (nextState: ProductFilterState) => {
+    const nextParams = new URLSearchParams();
+
+    if (nextState.query.trim()) {
+      nextParams.set("q", nextState.query.trim());
+    }
+
+    if (nextState.published !== "ALL") {
+      nextParams.set("published", nextState.published);
+    }
+
+    if (nextState.foodType !== "ALL") {
+      nextParams.set("foodType", nextState.foodType);
+    }
+
+    if (nextState.flagged !== "ALL") {
+      nextParams.set("flagged", nextState.flagged);
+    }
+
     const next = nextParams.toString();
-    router.push(
-      next
-        ? `/marketplace/dashboard/moderator/products?${next}`
-        : "/marketplace/dashboard/moderator/products",
-    );
+    props.onNavigate(next ? `${pathname}?${next}` : pathname);
   };
 
-  const setParam = (key: string, value: string) => {
-    startTransition(() => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.delete("page");
-
-      if (!value || value === "ALL") {
-        nextParams.delete(key);
-      } else {
-        nextParams.set(key, value);
-      }
-
-      pushQuery(nextParams);
-    });
+  const updateFilter = <K extends keyof ProductFilterState>(
+    key: K,
+    value: ProductFilterState[K],
+  ) => {
+    const nextState = { ...filters, [key]: value };
+    setFilters(nextState);
+    navigate(nextState);
   };
 
   const applySearch = () => {
-    startTransition(() => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      const next = query.trim();
-      nextParams.delete("page");
-
-      if (!next) {
-        nextParams.delete("q");
-      } else {
-        nextParams.set("q", next);
-      }
-
-      pushQuery(nextParams);
-    });
+    navigate(filters);
   };
 
   const clearFilters = () => {
-    startTransition(() => {
-      setQuery("");
-      router.push("/marketplace/dashboard/moderator/products");
-    });
+    const nextState: ProductFilterState = {
+      query: "",
+      published: "ALL",
+      foodType: "ALL",
+      flagged: "ALL",
+    };
+    setFilters(nextState);
+    props.onNavigate(pathname);
   };
 
   const hasActiveFilters =
-    query.trim().length > 0 ||
-    searchParams.get("published") !== null ||
-    searchParams.get("foodType") !== null ||
-    searchParams.get("flagged") !== null;
+    filters.query.trim().length > 0 ||
+    filters.published !== "ALL" ||
+    filters.foodType !== "ALL" ||
+    filters.flagged !== "ALL";
 
   return (
     <div className="rounded-2xl border bg-background p-4">
@@ -86,21 +108,26 @@ export function ModeratorProductsFilters() {
               <Input
                 className="pl-9"
                 placeholder="Search product, brand, store..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                value={filters.query}
+                onChange={(event) =>
+                  setFilters((current) => ({
+                    ...current,
+                    query: event.target.value,
+                  }))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
                     applySearch();
                   }
                 }}
-                disabled={isPending}
+                disabled={props.isPending}
               />
             </div>
 
             <Button
               type="button"
               onClick={applySearch}
-              disabled={isPending}
+              disabled={props.isPending}
               className="shrink-0"
             >
               Search
@@ -110,9 +137,9 @@ export function ModeratorProductsFilters() {
 
         <div className="xl:col-span-3">
           <Select
-            value={searchParams.get("published") ?? "ALL"}
-            onValueChange={(value) => setParam("published", value)}
-            disabled={isPending}
+            value={filters.published}
+            onValueChange={(value) => updateFilter("published", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Publish Status" />
@@ -127,9 +154,9 @@ export function ModeratorProductsFilters() {
 
         <div className="xl:col-span-3">
           <Select
-            value={searchParams.get("foodType") ?? "ALL"}
-            onValueChange={(value) => setParam("foodType", value)}
-            disabled={isPending}
+            value={filters.foodType}
+            onValueChange={(value) => updateFilter("foodType", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Product Type" />
@@ -144,9 +171,9 @@ export function ModeratorProductsFilters() {
 
         <div className="xl:col-span-2">
           <Select
-            value={searchParams.get("flagged") ?? "ALL"}
-            onValueChange={(value) => setParam("flagged", value)}
-            disabled={isPending}
+            value={filters.flagged}
+            onValueChange={(value) => updateFilter("flagged", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Moderation Flags" />
@@ -171,7 +198,7 @@ export function ModeratorProductsFilters() {
           variant="ghost"
           size="sm"
           onClick={clearFilters}
-          disabled={isPending || !hasActiveFilters}
+          disabled={props.isPending || !hasActiveFilters}
           className="shrink-0"
         >
           <X className="mr-2 h-4 w-4" />

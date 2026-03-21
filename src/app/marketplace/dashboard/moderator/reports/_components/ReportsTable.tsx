@@ -10,6 +10,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  formatModerationDate,
+  formatModerationDateTime,
+} from "@/lib/moderation/formatters";
 import { ReportStatusBadge } from "./ReportBadges";
 
 type ReportItem = Awaited<
@@ -41,7 +45,7 @@ function EmptyState() {
     <div
       className={`${styles.premiumSurface} py-10 text-center text-muted-foreground`}
     >
-      No user reports found.
+      No user reports matched your filters.
     </div>
   );
 }
@@ -49,14 +53,14 @@ function EmptyState() {
 function ReportCard({ report }: { report: ReportItem }) {
   return (
     <article className={`${styles.tintedSurface} p-4`}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <p className={styles.token}>Report</p>
-          <p className="font-semibold text-slate-950 dark:text-zinc-100">
+          <p className="break-all font-semibold text-slate-950 dark:text-zinc-100">
             {report.id.slice(0, 10)}
           </p>
           <p className="text-xs text-slate-500 dark:text-zinc-400">
-            {new Date(report.createdAt).toDateString()}
+            {formatModerationDate(report.createdAt)}
           </p>
         </div>
         <ReportStatusBadge status={report.status} />
@@ -69,7 +73,7 @@ function ReportCard({ report }: { report: ReportItem }) {
         </p>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <p className={styles.token}>Reporter</p>
           <p className="mt-1 font-medium text-slate-950 dark:text-zinc-100">
@@ -95,7 +99,7 @@ function ReportCard({ report }: { report: ReportItem }) {
           <p className="mt-1 font-medium text-slate-700 dark:text-zinc-200">
             {report.targetType}
           </p>
-          <p className="text-sm text-slate-500 line-clamp-1 dark:text-zinc-400">
+          <p className="break-all text-sm text-slate-500 dark:text-zinc-400">
             {report.targetId}
           </p>
         </div>
@@ -108,12 +112,12 @@ function ReportCard({ report }: { report: ReportItem }) {
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <div className="text-xs text-slate-500 dark:text-zinc-400">
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 break-words text-xs text-slate-500 dark:text-zinc-400">
           {report.moderationIncident ? (
             <Link
               href={`/marketplace/dashboard/moderator/incidents/${report.moderationIncident.id}`}
-              className="font-medium underline underline-offset-4"
+              className="break-all font-medium underline underline-offset-4"
             >
               Incident {report.moderationIncident.id.slice(0, 10)}
             </Link>
@@ -122,7 +126,7 @@ function ReportCard({ report }: { report: ReportItem }) {
           )}
         </div>
 
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
           <Link href={`/marketplace/dashboard/moderator/reports/${report.id}`}>
             <Eye className="mr-2 h-4 w-4" />
             Open
@@ -200,7 +204,7 @@ function ReportsDesktopTable({ reports }: { reports: ReportItem[] }) {
                   "N/A"
                 )}
               </TableCell>
-              <TableCell>{new Date(report.createdAt).toLocaleString()}</TableCell>
+              <TableCell>{formatModerationDateTime(report.createdAt)}</TableCell>
               <TableCell className="text-right">
                 <Button asChild variant="outline" size="sm">
                   <Link

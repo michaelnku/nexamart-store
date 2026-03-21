@@ -1,8 +1,8 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,70 +13,106 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function IncidentFilters() {
-  const router = useRouter();
+type IncidentFilterState = {
+  query: string;
+  status: string;
+  reviewStatus: string;
+  severity: string;
+  targetType: string;
+  source: string;
+};
+
+function readFilterState(
+  searchParams: ReturnType<typeof useSearchParams>,
+): IncidentFilterState {
+  return {
+    query: searchParams.get("q") ?? "",
+    status: searchParams.get("status") ?? "ALL",
+    reviewStatus: searchParams.get("reviewStatus") ?? "ALL",
+    severity: searchParams.get("severity") ?? "ALL",
+    targetType: searchParams.get("targetType") ?? "ALL",
+    source: searchParams.get("source") ?? "ALL",
+  };
+}
+
+export function IncidentFilters(props: {
+  isPending: boolean;
+  onNavigate: (href: string) => void;
+}) {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
-  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [filters, setFilters] = useState<IncidentFilterState>(() =>
+    readFilterState(searchParams),
+  );
 
   useEffect(() => {
-    setQuery(searchParams.get("q") ?? "");
+    setFilters(readFilterState(searchParams));
   }, [searchParams]);
 
-  const pushQuery = (nextParams: URLSearchParams) => {
+  const navigate = (nextState: IncidentFilterState) => {
+    const nextParams = new URLSearchParams();
+
+    if (nextState.query.trim()) {
+      nextParams.set("q", nextState.query.trim());
+    }
+
+    if (nextState.status !== "ALL") {
+      nextParams.set("status", nextState.status);
+    }
+
+    if (nextState.reviewStatus !== "ALL") {
+      nextParams.set("reviewStatus", nextState.reviewStatus);
+    }
+
+    if (nextState.severity !== "ALL") {
+      nextParams.set("severity", nextState.severity);
+    }
+
+    if (nextState.targetType !== "ALL") {
+      nextParams.set("targetType", nextState.targetType);
+    }
+
+    if (nextState.source !== "ALL") {
+      nextParams.set("source", nextState.source);
+    }
+
     const next = nextParams.toString();
-    router.push(
-      next
-        ? `/marketplace/dashboard/moderator/incidents?${next}`
-        : "/marketplace/dashboard/moderator/incidents",
-    );
+    props.onNavigate(next ? `${pathname}?${next}` : pathname);
   };
 
-  const setParam = (key: string, value: string) => {
-    startTransition(() => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.delete("page");
-
-      if (!value || value === "ALL") {
-        nextParams.delete(key);
-      } else {
-        nextParams.set(key, value);
-      }
-
-      pushQuery(nextParams);
-    });
+  const updateFilter = <K extends keyof IncidentFilterState>(
+    key: K,
+    value: IncidentFilterState[K],
+  ) => {
+    const nextState = { ...filters, [key]: value };
+    setFilters(nextState);
+    navigate(nextState);
   };
 
   const applySearch = () => {
-    startTransition(() => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      const next = query.trim();
-      nextParams.delete("page");
-
-      if (!next) {
-        nextParams.delete("q");
-      } else {
-        nextParams.set("q", next);
-      }
-
-      pushQuery(nextParams);
-    });
+    navigate(filters);
   };
 
   const clearFilters = () => {
-    startTransition(() => {
-      setQuery("");
-      router.push("/marketplace/dashboard/moderator/incidents");
-    });
+    const nextState: IncidentFilterState = {
+      query: "",
+      status: "ALL",
+      reviewStatus: "ALL",
+      severity: "ALL",
+      targetType: "ALL",
+      source: "ALL",
+    };
+    setFilters(nextState);
+    props.onNavigate(pathname);
   };
 
   const hasActiveFilters =
-    query.trim().length > 0 ||
-    searchParams.get("status") !== null ||
-    searchParams.get("reviewStatus") !== null ||
-    searchParams.get("severity") !== null ||
-    searchParams.get("targetType") !== null ||
-    searchParams.get("source") !== null;
+    filters.query.trim().length > 0 ||
+    filters.status !== "ALL" ||
+    filters.reviewStatus !== "ALL" ||
+    filters.severity !== "ALL" ||
+    filters.targetType !== "ALL" ||
+    filters.source !== "ALL";
 
   return (
     <div className="rounded-2xl border bg-background p-4">
@@ -88,14 +124,19 @@ export function IncidentFilters() {
               <Input
                 className="pl-9"
                 placeholder="Search incident, reason, user, policy..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                value={filters.query}
+                onChange={(event) =>
+                  setFilters((current) => ({
+                    ...current,
+                    query: event.target.value,
+                  }))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
                     applySearch();
                   }
                 }}
-                disabled={isPending}
+                disabled={props.isPending}
               />
             </div>
 
@@ -103,7 +144,7 @@ export function IncidentFilters() {
               type="button"
               variant="default"
               onClick={applySearch}
-              disabled={isPending}
+              disabled={props.isPending}
               className="shrink-0"
             >
               Search
@@ -113,9 +154,9 @@ export function IncidentFilters() {
 
         <div className="xl:col-span-2">
           <Select
-            value={searchParams.get("status") ?? "ALL"}
-            onValueChange={(value) => setParam("status", value)}
-            disabled={isPending}
+            value={filters.status}
+            onValueChange={(value) => updateFilter("status", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Status" />
@@ -132,9 +173,9 @@ export function IncidentFilters() {
 
         <div className="xl:col-span-2">
           <Select
-            value={searchParams.get("reviewStatus") ?? "ALL"}
-            onValueChange={(value) => setParam("reviewStatus", value)}
-            disabled={isPending}
+            value={filters.reviewStatus}
+            onValueChange={(value) => updateFilter("reviewStatus", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Review Status" />
@@ -153,9 +194,9 @@ export function IncidentFilters() {
 
         <div className="xl:col-span-2">
           <Select
-            value={searchParams.get("severity") ?? "ALL"}
-            onValueChange={(value) => setParam("severity", value)}
-            disabled={isPending}
+            value={filters.severity}
+            onValueChange={(value) => updateFilter("severity", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Severity" />
@@ -172,9 +213,34 @@ export function IncidentFilters() {
 
         <div className="xl:col-span-2">
           <Select
-            value={searchParams.get("source") ?? "ALL"}
-            onValueChange={(value) => setParam("source", value)}
-            disabled={isPending}
+            value={filters.targetType}
+            onValueChange={(value) => updateFilter("targetType", value)}
+            disabled={props.isPending}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Target Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Targets</SelectItem>
+              <SelectItem value="PRODUCT">Product</SelectItem>
+              <SelectItem value="PRODUCT_IMAGE">Product Image</SelectItem>
+              <SelectItem value="MESSAGE">Message</SelectItem>
+              <SelectItem value="CONVERSATION">Conversation</SelectItem>
+              <SelectItem value="REVIEW">Review</SelectItem>
+              <SelectItem value="STORE">Store</SelectItem>
+              <SelectItem value="USER">User</SelectItem>
+              <SelectItem value="DISPUTE">Dispute</SelectItem>
+              <SelectItem value="VERIFICATION">Verification</SelectItem>
+              <SelectItem value="ORDER">Order</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="xl:col-span-2">
+          <Select
+            value={filters.source}
+            onValueChange={(value) => updateFilter("source", value)}
+            disabled={props.isPending}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Source" />
@@ -199,7 +265,7 @@ export function IncidentFilters() {
           variant="ghost"
           size="sm"
           onClick={clearFilters}
-          disabled={isPending || !hasActiveFilters}
+          disabled={props.isPending || !hasActiveFilters}
           className="shrink-0"
         >
           <X className="mr-2 h-4 w-4" />

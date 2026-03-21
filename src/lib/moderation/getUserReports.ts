@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import {
   UserReportReason,
   UserReportStatus,
@@ -64,6 +65,7 @@ function buildUserReportWhere(
 }
 
 export async function getUserReports(filters: UserReportListFilters) {
+  noStore();
   const page = Math.max(1, filters.page ?? 1);
   const where = buildUserReportWhere(filters);
   const totalItems = await prisma.userReport.count({ where });
@@ -130,6 +132,7 @@ export async function getUserReports(filters: UserReportListFilters) {
 }
 
 export async function getUserReportOverview(filters: UserReportListFilters) {
+  noStore();
   const baseWhere = buildUserReportWhere(filters);
 
   const [openCount, underReviewCount, linkedIncidentCount] =
