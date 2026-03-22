@@ -175,6 +175,107 @@ function DashboardPageLoading() {
   );
 }
 
+function ModeratorQueuePageLoading() {
+  return (
+    <main className="space-y-6 text-slate-950 dark:text-zinc-100">
+      <div className="space-y-2">
+        <Skeleton className="h-6 w-32 rounded-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div
+            key={index}
+            className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_22px_60px_-40px_rgba(15,23,42,0.35)] dark:border-zinc-800 dark:bg-zinc-950"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 space-y-3">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+              <Skeleton className="h-11 w-11 rounded-2xl" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-2xl border bg-background p-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-12">
+          <Skeleton className="h-10 sm:col-span-2 xl:col-span-4" />
+          <Skeleton className="h-10 xl:col-span-2" />
+          <Skeleton className="h-10 xl:col-span-2" />
+          <Skeleton className="h-10 xl:col-span-2" />
+          <Skeleton className="hidden h-10 xl:block xl:col-span-2" />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-9 w-28" />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="grid gap-4 lg:hidden">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className="rounded-xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/70"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 space-y-2">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-5 w-36" />
+                  <Skeleton className="h-4 w-28" />
+                </div>
+                <Skeleton className="h-6 w-24 rounded-full" />
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Skeleton className="h-14 w-full rounded-xl" />
+                <Skeleton className="h-14 w-full rounded-xl" />
+                <Skeleton className="h-14 w-full rounded-xl" />
+                <Skeleton className="h-14 w-full rounded-xl" />
+              </div>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-9 w-full rounded-md sm:w-24" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden rounded-2xl border bg-background p-4 lg:block">
+          <div className="space-y-4">
+            <Skeleton className="h-10 w-full rounded-md" />
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div
+                key={index}
+                className="grid gap-3 border-t pt-4 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-10"
+              >
+                {Array.from({ length: 9 }).map((__, cellIndex) => (
+                  <Skeleton key={cellIndex} className="h-5 w-full" />
+                ))}
+                <Skeleton className="h-9 w-20 rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_22px_60px_-40px_rgba(15,23,42,0.2)] dark:border-zinc-800 dark:bg-zinc-950 md:flex-row md:items-center md:justify-between">
+          <Skeleton className="h-4 w-64" />
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-20 rounded-md" />
+            <Skeleton className="h-9 w-32 rounded-md" />
+            <Skeleton className="h-9 w-20 rounded-md" />
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
 function FormPageLoading() {
   return (
     <main className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
@@ -201,6 +302,7 @@ export {
   CenteredPageLoading,
   DashboardPageLoading,
   FormPageLoading,
+  ModeratorQueuePageLoading,
   SettingsPageLoading,
   SiteDetailLoading,
   SiteGridLoading,

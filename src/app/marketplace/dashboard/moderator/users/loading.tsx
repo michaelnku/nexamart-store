@@ -1,5 +1,5 @@
-import { DashboardPageLoading } from "@/components/skeletons/route-loading";
+import { ModeratorQueuePageLoading } from "@/components/skeletons/route-loading";
 
 export default function Loading() {
-  return <DashboardPageLoading />;
+  return <ModeratorQueuePageLoading />;
 }
