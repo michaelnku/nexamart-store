@@ -1,6 +1,13 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+import {
+  buildSqlWhere,
+  createIlikePattern,
+  normalizeSearchText,
+  omitAllFilter,
+  resolvePage,
+} from "@/lib/moderation/queryHelpers";
 
 export type ModeratorProductsFilters = {
   page?: number;
@@ -20,33 +27,37 @@ function buildModeratorProductsWhereSql(
     incident: Prisma.raw("ia"),
   },
 ) {
-  const q = filters.q?.trim();
+  const q = normalizeSearchText(filters.q);
   const conditions: Prisma.Sql[] = [];
 
-  if (filters.published === "YES") {
+  const published = omitAllFilter(filters.published);
+  const foodType = omitAllFilter(filters.foodType);
+  const flagged = omitAllFilter(filters.flagged);
+
+  if (published === "YES") {
     conditions.push(Prisma.sql`${aliases.product}."isPublished" = true`);
-  } else if (filters.published === "NO") {
+  } else if (published === "NO") {
     conditions.push(Prisma.sql`${aliases.product}."isPublished" = false`);
   }
 
-  if (filters.foodType === "FOOD") {
+  if (foodType === "FOOD") {
     conditions.push(Prisma.sql`${aliases.product}."isFoodProduct" = true`);
-  } else if (filters.foodType === "GENERAL") {
+  } else if (foodType === "GENERAL") {
     conditions.push(Prisma.sql`${aliases.product}."isFoodProduct" = false`);
   }
 
-  if (filters.flagged === "YES") {
+  if (flagged === "YES") {
     conditions.push(
       Prisma.sql`COALESCE(${aliases.incident}."linkedIncidentCount", 0) > 0`,
     );
-  } else if (filters.flagged === "NO") {
+  } else if (flagged === "NO") {
     conditions.push(
       Prisma.sql`COALESCE(${aliases.incident}."linkedIncidentCount", 0) = 0`,
     );
   }
 
   if (q) {
-    const query = `%${q}%`;
+    const query = createIlikePattern(q);
     conditions.push(Prisma.sql`
       (
         ${aliases.product}.id ILIKE ${query}
@@ -59,11 +70,7 @@ function buildModeratorProductsWhereSql(
     `);
   }
 
-  if (conditions.length === 0) {
-    return Prisma.empty;
-  }
-
-  return Prisma.sql`WHERE ${Prisma.join(conditions, Prisma.sql` AND `)}`;
+  return buildSqlWhere(conditions);
 }
 
 function productIncidentAggregationSql() {
@@ -135,7 +142,7 @@ function highestIncidentSeverity<
 
 export async function getModeratorProducts(filters: ModeratorProductsFilters) {
   noStore();
-  const page = Math.max(1, filters.page ?? 1);
+  const page = resolvePage(filters.page);
   const whereSql = buildModeratorProductsWhereSql(filters);
 
   const [{ totalItems }] = await prisma.$queryRaw<Array<{ totalItems: bigint }>>(

@@ -7,6 +7,11 @@ import {
 } from "@/generated/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  normalizeSearchText,
+  omitAllFilter,
+  resolvePage,
+} from "@/lib/moderation/queryHelpers";
 
 export type IncidentListFilters = {
   page?: number;
@@ -23,53 +28,63 @@ export const MODERATION_INCIDENTS_PAGE_SIZE = 24;
 function buildModerationIncidentWhere(
   filters: IncidentListFilters,
 ): Prisma.ModerationIncidentWhereInput {
-  const q = filters.q?.trim();
+  const q = normalizeSearchText(filters.q);
+  const conditions: Prisma.ModerationIncidentWhereInput[] = [];
+  const status = omitAllFilter(filters.status);
+  const reviewStatus = omitAllFilter(filters.reviewStatus);
+  const severity = omitAllFilter(filters.severity);
+  const targetType = omitAllFilter(filters.targetType);
 
-  return {
-    ...(filters.status && filters.status !== "ALL"
-      ? { status: filters.status }
-      : {}),
-    ...(filters.reviewStatus && filters.reviewStatus !== "ALL"
-      ? { reviewStatus: filters.reviewStatus }
-      : {}),
-    ...(filters.severity && filters.severity !== "ALL"
-      ? { severity: filters.severity }
-      : {}),
-    ...(filters.targetType && filters.targetType !== "ALL"
-      ? { targetType: filters.targetType }
-      : {}),
-    ...(filters.source === "AI"
-      ? { actorModerator: { type: "AI" } }
-      : filters.source === "HUMAN"
-        ? { actorModerator: { type: "HUMAN" } }
-        : {}),
-    ...(q
-      ? {
-          OR: [
-            { id: { contains: q, mode: "insensitive" } },
-            { reason: { contains: q, mode: "insensitive" } },
-            { policyCode: { contains: q, mode: "insensitive" } },
-            { targetId: { contains: q, mode: "insensitive" } },
-            {
-              subjectUser: {
-                is: {
-                  OR: [
-                    { name: { contains: q, mode: "insensitive" } },
-                    { email: { contains: q, mode: "insensitive" } },
-                    { username: { contains: q, mode: "insensitive" } },
-                  ],
-                },
-              },
+  if (status) {
+    conditions.push({ status });
+  }
+
+  if (reviewStatus) {
+    conditions.push({ reviewStatus });
+  }
+
+  if (severity) {
+    conditions.push({ severity });
+  }
+
+  if (targetType) {
+    conditions.push({ targetType });
+  }
+
+  if (filters.source === "AI") {
+    conditions.push({ actorModerator: { is: { type: "AI" } } });
+  } else if (filters.source === "HUMAN") {
+    conditions.push({ actorModerator: { is: { type: "HUMAN" } } });
+  }
+
+  if (q) {
+    conditions.push({
+      OR: [
+        { id: { contains: q, mode: "insensitive" } },
+        { reason: { contains: q, mode: "insensitive" } },
+        { policyCode: { contains: q, mode: "insensitive" } },
+        { targetId: { contains: q, mode: "insensitive" } },
+        {
+          subjectUser: {
+            is: {
+              OR: [
+                { name: { contains: q, mode: "insensitive" } },
+                { email: { contains: q, mode: "insensitive" } },
+                { username: { contains: q, mode: "insensitive" } },
+              ],
             },
-          ],
-        }
-      : {}),
-  };
+          },
+        },
+      ],
+    });
+  }
+
+  return conditions.length > 0 ? { AND: conditions } : {};
 }
 
 export async function getModerationIncidents(filters: IncidentListFilters) {
   noStore();
-  const page = Math.max(1, filters.page ?? 1);
+  const page = resolvePage(filters.page);
   const where = buildModerationIncidentWhere(filters);
   const totalItems = await prisma.moderationIncident.count({ where });
   const totalPages = Math.max(
