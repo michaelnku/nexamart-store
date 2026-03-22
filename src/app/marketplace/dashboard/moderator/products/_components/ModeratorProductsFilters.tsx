@@ -17,7 +17,7 @@ type ProductFilterState = {
   query: string;
   published: string;
   foodType: string;
-  flagged: string;
+  // flagged: string;
 };
 
 function readFilterState(
