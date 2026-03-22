@@ -6,6 +6,11 @@ import {
 } from "@/generated/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  normalizeSearchText,
+  omitAllFilter,
+  resolvePage,
+} from "@/lib/moderation/queryHelpers";
 
 export type UserReportListFilters = {
   page?: number;
@@ -20,53 +25,62 @@ export const MODERATION_REPORTS_PAGE_SIZE = 24;
 function buildUserReportWhere(
   filters: UserReportListFilters,
 ): Prisma.UserReportWhereInput {
-  const q = filters.q?.trim();
+  const q = normalizeSearchText(filters.q);
+  const conditions: Prisma.UserReportWhereInput[] = [];
+  const status = omitAllFilter(filters.status);
+  const reason = omitAllFilter(filters.reason);
+  const targetType = omitAllFilter(filters.targetType);
 
-  return {
-    ...(filters.status && filters.status !== "ALL"
-      ? { status: filters.status }
-      : {}),
-    ...(filters.reason && filters.reason !== "ALL"
-      ? { reason: filters.reason }
-      : {}),
-    ...(filters.targetType && filters.targetType !== "ALL"
-      ? { targetType: filters.targetType }
-      : {}),
-    ...(q
-      ? {
-          OR: [
-            { id: { contains: q, mode: "insensitive" } },
-            { targetId: { contains: q, mode: "insensitive" } },
-            { description: { contains: q, mode: "insensitive" } },
-            {
-              reporter: {
-                OR: [
-                  { name: { contains: q, mode: "insensitive" } },
-                  { email: { contains: q, mode: "insensitive" } },
-                  { username: { contains: q, mode: "insensitive" } },
-                ],
-              },
+  if (status) {
+    conditions.push({ status });
+  }
+
+  if (reason) {
+    conditions.push({ reason });
+  }
+
+  if (targetType) {
+    conditions.push({ targetType });
+  }
+
+  if (q) {
+    conditions.push({
+      OR: [
+        { id: { contains: q, mode: "insensitive" } },
+        { targetId: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+        {
+          reporter: {
+            is: {
+              OR: [
+                { name: { contains: q, mode: "insensitive" } },
+                { email: { contains: q, mode: "insensitive" } },
+                { username: { contains: q, mode: "insensitive" } },
+              ],
             },
-            {
-              reportedUser: {
-                is: {
-                  OR: [
-                    { name: { contains: q, mode: "insensitive" } },
-                    { email: { contains: q, mode: "insensitive" } },
-                    { username: { contains: q, mode: "insensitive" } },
-                  ],
-                },
-              },
+          },
+        },
+        {
+          reportedUser: {
+            is: {
+              OR: [
+                { name: { contains: q, mode: "insensitive" } },
+                { email: { contains: q, mode: "insensitive" } },
+                { username: { contains: q, mode: "insensitive" } },
+              ],
             },
-          ],
-        }
-      : {}),
-  };
+          },
+        },
+      ],
+    });
+  }
+
+  return conditions.length > 0 ? { AND: conditions } : {};
 }
 
 export async function getUserReports(filters: UserReportListFilters) {
   noStore();
-  const page = Math.max(1, filters.page ?? 1);
+  const page = resolvePage(filters.page);
   const where = buildUserReportWhere(filters);
   const totalItems = await prisma.userReport.count({ where });
   const totalPages = Math.max(

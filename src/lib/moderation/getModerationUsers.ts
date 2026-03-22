@@ -2,6 +2,11 @@ import { unstable_noStore as noStore } from "next/cache";
 import { UserRole } from "@/generated/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  normalizeSearchText,
+  omitAllFilter,
+  resolvePage,
+} from "@/lib/moderation/queryHelpers";
 
 export type ModerationUsersFilters = {
   page?: number;
@@ -15,42 +20,48 @@ export const MODERATION_USERS_PAGE_SIZE = 24;
 
 function buildModerationUsersWhere(
   filters: ModerationUsersFilters,
+  now: Date,
 ): Prisma.UserWhereInput {
-  const q = filters.q?.trim();
-  const now = new Date();
+  const q = normalizeSearchText(filters.q);
+  const conditions: Prisma.UserWhereInput[] = [];
+  const role = omitAllFilter(filters.role);
+  const state = omitAllFilter(filters.state);
 
-  return {
-    ...(filters.role && filters.role !== "ALL" ? { role: filters.role } : {}),
-    ...(filters.state && filters.state !== "ALL"
-      ? { moderationState: filters.state }
-      : {}),
-    ...(filters.blocked === "YES"
-      ? { softBlockedUntil: { gt: now } }
-      : filters.blocked === "NO"
-        ? {
-            OR: [
-              { softBlockedUntil: null },
-              { softBlockedUntil: { lte: now } },
-            ],
-          }
-        : {}),
-    ...(q
-      ? {
-          OR: [
-            { id: { contains: q, mode: "insensitive" } },
-            { name: { contains: q, mode: "insensitive" } },
-            { email: { contains: q, mode: "insensitive" } },
-            { username: { contains: q, mode: "insensitive" } },
-          ],
-        }
-      : {}),
-  };
+  if (role) {
+    conditions.push({ role });
+  }
+
+  if (state) {
+    conditions.push({ moderationState: state });
+  }
+
+  if (filters.blocked === "YES") {
+    conditions.push({ softBlockedUntil: { gt: now } });
+  } else if (filters.blocked === "NO") {
+    conditions.push({
+      OR: [{ softBlockedUntil: null }, { softBlockedUntil: { lte: now } }],
+    });
+  }
+
+  if (q) {
+    conditions.push({
+      OR: [
+        { id: { contains: q, mode: "insensitive" } },
+        { name: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+        { username: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  return conditions.length > 0 ? { AND: conditions } : {};
 }
 
 export async function getModerationUsers(filters: ModerationUsersFilters) {
   noStore();
-  const page = Math.max(1, filters.page ?? 1);
-  const where = buildModerationUsersWhere(filters);
+  const page = resolvePage(filters.page);
+  const now = new Date();
+  const where = buildModerationUsersWhere(filters, now);
   const totalItems = await prisma.user.count({ where });
   const totalPages = Math.max(1, Math.ceil(totalItems / MODERATION_USERS_PAGE_SIZE));
   const effectivePage = Math.min(page, totalPages);
@@ -105,8 +116,8 @@ export async function getModerationUsersOverview(
   filters: ModerationUsersFilters,
 ) {
   noStore();
-  const baseWhere = buildModerationUsersWhere(filters);
   const now = new Date();
+  const baseWhere = buildModerationUsersWhere(filters, now);
 
   const [blockedCount, warnedCount, highRiskCount] = await prisma.$transaction([
     prisma.user.count({

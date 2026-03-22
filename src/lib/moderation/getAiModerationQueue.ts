@@ -7,6 +7,11 @@ import {
   Prisma,
   ReviewStatus,
 } from "@/generated/prisma";
+import {
+  normalizeSearchText,
+  omitAllFilter,
+  resolvePage,
+} from "@/lib/moderation/queryHelpers";
 
 export type AiModerationQueueFilters = {
   page?: number;
@@ -56,58 +61,69 @@ export type AiModerationQueueItem = Prisma.ModerationIncidentGetPayload<{
 function buildAiModerationQueueWhere(
   filters: AiModerationQueueFilters,
 ): Prisma.ModerationIncidentWhereInput {
-  const q = filters.q?.trim();
-
-  return {
-    actorModerator: {
-      is: {
-        type: "AI",
+  const q = normalizeSearchText(filters.q);
+  const conditions: Prisma.ModerationIncidentWhereInput[] = [
+    {
+      actorModerator: {
+        is: {
+          type: "AI",
+        },
       },
     },
-    ...(filters.pendingOnly
-      ? {
-          reviewStatus: "PENDING_HUMAN_REVIEW",
-        }
-      : {}),
-    ...(filters.status && filters.status !== "ALL"
-      ? { status: filters.status }
-      : {}),
-    ...(filters.reviewStatus && filters.reviewStatus !== "ALL"
-      ? { reviewStatus: filters.reviewStatus }
-      : {}),
-    ...(filters.severity && filters.severity !== "ALL"
-      ? { severity: filters.severity }
-      : {}),
-    ...(filters.targetType && filters.targetType !== "ALL"
-      ? { targetType: filters.targetType }
-      : {}),
-    ...(q
-      ? {
-          OR: [
-            { id: { contains: q, mode: "insensitive" } },
-            { reason: { contains: q, mode: "insensitive" } },
-            { policyCode: { contains: q, mode: "insensitive" } },
-            { targetId: { contains: q, mode: "insensitive" } },
-            {
-              subjectUser: {
-                is: {
-                  OR: [
-                    { name: { contains: q, mode: "insensitive" } },
-                    { email: { contains: q, mode: "insensitive" } },
-                    { username: { contains: q, mode: "insensitive" } },
-                  ],
-                },
-              },
+  ];
+  const status = omitAllFilter(filters.status);
+  const reviewStatus = omitAllFilter(filters.reviewStatus);
+  const severity = omitAllFilter(filters.severity);
+  const targetType = omitAllFilter(filters.targetType);
+
+  if (filters.pendingOnly) {
+    conditions.push({ reviewStatus: "PENDING_HUMAN_REVIEW" });
+  }
+
+  if (status) {
+    conditions.push({ status });
+  }
+
+  if (reviewStatus) {
+    conditions.push({ reviewStatus });
+  }
+
+  if (severity) {
+    conditions.push({ severity });
+  }
+
+  if (targetType) {
+    conditions.push({ targetType });
+  }
+
+  if (q) {
+    conditions.push({
+      OR: [
+        { id: { contains: q, mode: "insensitive" } },
+        { reason: { contains: q, mode: "insensitive" } },
+        { policyCode: { contains: q, mode: "insensitive" } },
+        { targetId: { contains: q, mode: "insensitive" } },
+        {
+          subjectUser: {
+            is: {
+              OR: [
+                { name: { contains: q, mode: "insensitive" } },
+                { email: { contains: q, mode: "insensitive" } },
+                { username: { contains: q, mode: "insensitive" } },
+              ],
             },
-          ],
-        }
-      : {}),
-  };
+          },
+        },
+      ],
+    });
+  }
+
+  return { AND: conditions };
 }
 
 export async function getAiModerationQueue(filters: AiModerationQueueFilters) {
   noStore();
-  const page = Math.max(1, filters.page ?? 1);
+  const page = resolvePage(filters.page);
   const where = buildAiModerationQueueWhere(filters);
   const totalItems = await prisma.moderationIncident.count({ where });
   const totalPages = Math.max(1, Math.ceil(totalItems / AI_MODERATION_PAGE_SIZE));
