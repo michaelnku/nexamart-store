@@ -1,5 +1,9 @@
 import { z } from "zod";
 import type { AiModerationQueueFilters } from "@/lib/moderation/getAiModerationQueue";
+import {
+  firstSearchParamValue,
+  parseSearchParam,
+} from "@/lib/moderation/searchParamHelpers";
 
 const moderationStatusFilterSchema = z.enum([
   "ALL",
@@ -39,49 +43,50 @@ const moderationTargetTypeFilterSchema = z.enum([
   "ORDER",
 ]);
 
-const aiModerationSearchParamsSchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  q: z.string().trim().max(100).default(""),
-  status: moderationStatusFilterSchema.default("ALL"),
-  reviewStatus: reviewStatusFilterSchema.default("PENDING_HUMAN_REVIEW"),
-  severity: moderationSeverityFilterSchema.default("ALL"),
-  targetType: moderationTargetTypeFilterSchema.default("ALL"),
-});
-
-function firstValue(value: string | string[] | undefined) {
-  if (Array.isArray(value)) {
-    return value[0] ?? "";
-  }
-
-  return value ?? "";
-}
+const aiModerationPageSchema = z.coerce.number().int().min(1).default(1);
+const aiModerationQuerySchema = z.string().trim().max(100).default("");
+const aiModerationStatusParamSchema = moderationStatusFilterSchema.default("ALL");
+const aiModerationReviewStatusParamSchema =
+  reviewStatusFilterSchema.default("PENDING_HUMAN_REVIEW");
+const aiModerationSeverityParamSchema =
+  moderationSeverityFilterSchema.default("ALL");
+const aiModerationTargetTypeParamSchema =
+  moderationTargetTypeFilterSchema.default("ALL");
 
 export function parseAiModerationSearchParams(
   searchParams: Record<string, string | string[] | undefined> | undefined,
 ): AiModerationQueueFilters {
-  const parsed = aiModerationSearchParamsSchema.safeParse({
-    page: firstValue(searchParams?.page),
-    q: firstValue(searchParams?.q),
-    status: firstValue(searchParams?.status),
-    reviewStatus: firstValue(searchParams?.reviewStatus),
-    severity: firstValue(searchParams?.severity),
-    targetType: firstValue(searchParams?.targetType),
-  });
-
-  if (!parsed.success) {
-    return {
-      page: 1,
-      q: "",
-      status: "ALL",
-      reviewStatus: "PENDING_HUMAN_REVIEW",
-      severity: "ALL",
-      targetType: "ALL",
-      pendingOnly: true,
-    };
-  }
-
   return {
-    ...parsed.data,
-    pendingOnly: !searchParams?.reviewStatus,
+    page: parseSearchParam(
+      aiModerationPageSchema,
+      firstSearchParamValue(searchParams?.page),
+      1,
+    ),
+    q: parseSearchParam(
+      aiModerationQuerySchema,
+      firstSearchParamValue(searchParams?.q),
+      "",
+    ),
+    status: parseSearchParam(
+      aiModerationStatusParamSchema,
+      firstSearchParamValue(searchParams?.status),
+      "ALL",
+    ),
+    reviewStatus: parseSearchParam(
+      aiModerationReviewStatusParamSchema,
+      firstSearchParamValue(searchParams?.reviewStatus),
+      "PENDING_HUMAN_REVIEW",
+    ),
+    severity: parseSearchParam(
+      aiModerationSeverityParamSchema,
+      firstSearchParamValue(searchParams?.severity),
+      "ALL",
+    ),
+    targetType: parseSearchParam(
+      aiModerationTargetTypeParamSchema,
+      firstSearchParamValue(searchParams?.targetType),
+      "ALL",
+    ),
+    pendingOnly: firstSearchParamValue(searchParams?.reviewStatus) === undefined,
   };
 }

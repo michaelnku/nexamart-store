@@ -1,5 +1,9 @@
 import { z } from "zod";
 import type { ModerationUsersFilters } from "@/lib/moderation/getModerationUsers";
+import {
+  firstSearchParamValue,
+  parseSearchParam,
+} from "@/lib/moderation/searchParamHelpers";
 
 const moderationUserRoleFilterSchema = z.enum([
   "ALL",
@@ -21,42 +25,43 @@ const moderationUserStateFilterSchema = z.enum([
 
 const moderationUserBlockedFilterSchema = z.enum(["ALL", "YES", "NO"]);
 
-const moderationUsersSearchParamsSchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  q: z.string().trim().max(100).default(""),
-  role: moderationUserRoleFilterSchema.default("ALL"),
-  state: moderationUserStateFilterSchema.default("ALL"),
-  blocked: moderationUserBlockedFilterSchema.default("ALL"),
-});
-
-function firstValue(value: string | string[] | undefined) {
-  if (Array.isArray(value)) {
-    return value[0] ?? "";
-  }
-
-  return value ?? "";
-}
+const moderationUsersPageSchema = z.coerce.number().int().min(1).default(1);
+const moderationUsersQuerySchema = z.string().trim().max(100).default("");
+const moderationUsersRoleParamSchema =
+  moderationUserRoleFilterSchema.default("ALL");
+const moderationUsersStateParamSchema =
+  moderationUserStateFilterSchema.default("ALL");
+const moderationUsersBlockedParamSchema =
+  moderationUserBlockedFilterSchema.default("ALL");
 
 export function parseModerationUsersSearchParams(
   searchParams: Record<string, string | string[] | undefined> | undefined,
 ): ModerationUsersFilters {
-  const parsed = moderationUsersSearchParamsSchema.safeParse({
-    page: firstValue(searchParams?.page),
-    q: firstValue(searchParams?.q),
-    role: firstValue(searchParams?.role),
-    state: firstValue(searchParams?.state),
-    blocked: firstValue(searchParams?.blocked),
-  });
-
-  if (!parsed.success) {
-    return {
-      page: 1,
-      q: "",
-      role: "ALL",
-      state: "ALL",
-      blocked: "ALL",
-    };
-  }
-
-  return parsed.data;
+  return {
+    page: parseSearchParam(
+      moderationUsersPageSchema,
+      firstSearchParamValue(searchParams?.page),
+      1,
+    ),
+    q: parseSearchParam(
+      moderationUsersQuerySchema,
+      firstSearchParamValue(searchParams?.q),
+      "",
+    ),
+    role: parseSearchParam(
+      moderationUsersRoleParamSchema,
+      firstSearchParamValue(searchParams?.role),
+      "ALL",
+    ),
+    state: parseSearchParam(
+      moderationUsersStateParamSchema,
+      firstSearchParamValue(searchParams?.state),
+      "ALL",
+    ),
+    blocked: parseSearchParam(
+      moderationUsersBlockedParamSchema,
+      firstSearchParamValue(searchParams?.blocked),
+      "ALL",
+    ),
+  };
 }

@@ -1,5 +1,9 @@
 import { z } from "zod";
 import type { IncidentListFilters } from "@/lib/moderation/getModerationIncidents";
+import {
+  firstSearchParamValue,
+  parseSearchParam,
+} from "@/lib/moderation/searchParamHelpers";
 
 const moderationStatusFilterSchema = z.enum([
   "ALL",
@@ -41,48 +45,57 @@ const moderationTargetTypeFilterSchema = z.enum([
 
 const moderationSourceFilterSchema = z.enum(["ALL", "AI", "HUMAN"]);
 
-const moderationIncidentSearchParamsSchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  q: z.string().trim().max(100).default(""),
-  status: moderationStatusFilterSchema.default("ALL"),
-  reviewStatus: reviewStatusFilterSchema.default("ALL"),
-  severity: moderationSeverityFilterSchema.default("ALL"),
-  targetType: moderationTargetTypeFilterSchema.default("ALL"),
-  source: moderationSourceFilterSchema.default("ALL"),
-});
-
-function firstValue(value: string | string[] | undefined) {
-  if (Array.isArray(value)) {
-    return value[0] ?? "";
-  }
-
-  return value ?? "";
-}
+const moderationIncidentPageSchema = z.coerce.number().int().min(1).default(1);
+const moderationIncidentQuerySchema = z.string().trim().max(100).default("");
+const moderationIncidentStatusParamSchema =
+  moderationStatusFilterSchema.default("ALL");
+const moderationIncidentReviewStatusParamSchema =
+  reviewStatusFilterSchema.default("ALL");
+const moderationIncidentSeverityParamSchema =
+  moderationSeverityFilterSchema.default("ALL");
+const moderationIncidentTargetTypeParamSchema =
+  moderationTargetTypeFilterSchema.default("ALL");
+const moderationIncidentSourceParamSchema =
+  moderationSourceFilterSchema.default("ALL");
 
 export function parseModerationIncidentSearchParams(
   searchParams: Record<string, string | string[] | undefined> | undefined,
 ): IncidentListFilters {
-  const parsed = moderationIncidentSearchParamsSchema.safeParse({
-    page: firstValue(searchParams?.page),
-    q: firstValue(searchParams?.q),
-    status: firstValue(searchParams?.status),
-    reviewStatus: firstValue(searchParams?.reviewStatus),
-    severity: firstValue(searchParams?.severity),
-    targetType: firstValue(searchParams?.targetType),
-    source: firstValue(searchParams?.source),
-  });
-
-  if (!parsed.success) {
-    return {
-      page: 1,
-      q: "",
-      status: "ALL",
-      reviewStatus: "ALL",
-      severity: "ALL",
-      targetType: "ALL",
-      source: "ALL",
-    };
-  }
-
-  return parsed.data;
+  return {
+    page: parseSearchParam(
+      moderationIncidentPageSchema,
+      firstSearchParamValue(searchParams?.page),
+      1,
+    ),
+    q: parseSearchParam(
+      moderationIncidentQuerySchema,
+      firstSearchParamValue(searchParams?.q),
+      "",
+    ),
+    status: parseSearchParam(
+      moderationIncidentStatusParamSchema,
+      firstSearchParamValue(searchParams?.status),
+      "ALL",
+    ),
+    reviewStatus: parseSearchParam(
+      moderationIncidentReviewStatusParamSchema,
+      firstSearchParamValue(searchParams?.reviewStatus),
+      "ALL",
+    ),
+    severity: parseSearchParam(
+      moderationIncidentSeverityParamSchema,
+      firstSearchParamValue(searchParams?.severity),
+      "ALL",
+    ),
+    targetType: parseSearchParam(
+      moderationIncidentTargetTypeParamSchema,
+      firstSearchParamValue(searchParams?.targetType),
+      "ALL",
+    ),
+    source: parseSearchParam(
+      moderationIncidentSourceParamSchema,
+      firstSearchParamValue(searchParams?.source),
+      "ALL",
+    ),
+  };
 }

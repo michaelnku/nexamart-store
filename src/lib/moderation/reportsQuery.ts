@@ -1,5 +1,9 @@
 import { z } from "zod";
 import type { UserReportListFilters } from "@/lib/moderation/getUserReports";
+import {
+  firstSearchParamValue,
+  parseSearchParam,
+} from "@/lib/moderation/searchParamHelpers";
 
 const userReportStatusFilterSchema = z.enum([
   "ALL",
@@ -34,42 +38,43 @@ const userReportTargetTypeFilterSchema = z.enum([
   "ORDER",
 ]);
 
-const moderationReportSearchParamsSchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  q: z.string().trim().max(100).default(""),
-  status: userReportStatusFilterSchema.default("ALL"),
-  reason: userReportReasonFilterSchema.default("ALL"),
-  targetType: userReportTargetTypeFilterSchema.default("ALL"),
-});
-
-function firstValue(value: string | string[] | undefined) {
-  if (Array.isArray(value)) {
-    return value[0] ?? "";
-  }
-
-  return value ?? "";
-}
+const moderationReportPageSchema = z.coerce.number().int().min(1).default(1);
+const moderationReportQuerySchema = z.string().trim().max(100).default("");
+const moderationReportStatusParamSchema =
+  userReportStatusFilterSchema.default("ALL");
+const moderationReportReasonParamSchema =
+  userReportReasonFilterSchema.default("ALL");
+const moderationReportTargetTypeParamSchema =
+  userReportTargetTypeFilterSchema.default("ALL");
 
 export function parseModerationReportSearchParams(
   searchParams: Record<string, string | string[] | undefined> | undefined,
 ): UserReportListFilters {
-  const parsed = moderationReportSearchParamsSchema.safeParse({
-    page: firstValue(searchParams?.page),
-    q: firstValue(searchParams?.q),
-    status: firstValue(searchParams?.status),
-    reason: firstValue(searchParams?.reason),
-    targetType: firstValue(searchParams?.targetType),
-  });
-
-  if (!parsed.success) {
-    return {
-      page: 1,
-      q: "",
-      status: "ALL",
-      reason: "ALL",
-      targetType: "ALL",
-    };
-  }
-
-  return parsed.data;
+  return {
+    page: parseSearchParam(
+      moderationReportPageSchema,
+      firstSearchParamValue(searchParams?.page),
+      1,
+    ),
+    q: parseSearchParam(
+      moderationReportQuerySchema,
+      firstSearchParamValue(searchParams?.q),
+      "",
+    ),
+    status: parseSearchParam(
+      moderationReportStatusParamSchema,
+      firstSearchParamValue(searchParams?.status),
+      "ALL",
+    ),
+    reason: parseSearchParam(
+      moderationReportReasonParamSchema,
+      firstSearchParamValue(searchParams?.reason),
+      "ALL",
+    ),
+    targetType: parseSearchParam(
+      moderationReportTargetTypeParamSchema,
+      firstSearchParamValue(searchParams?.targetType),
+      "ALL",
+    ),
+  };
 }
