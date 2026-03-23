@@ -7,6 +7,7 @@ import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useRouter } from "next/navigation";
 import { createStaffProfile } from "@/actions/staff/createStaffProfile";
 import { updateStaffProfile } from "@/actions/staff/updateStaffProfile";
 import { UploadButton } from "@/utils/uploadthing";
@@ -79,6 +80,7 @@ export default function StaffProfileForm({
   initialUser,
 }: Props) {
   const { data: user } = useCurrentUserQuery(initialUser);
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
@@ -122,6 +124,9 @@ export default function StaffProfileForm({
         : await createStaffProfile(userId, payload as StaffProfileInput);
 
       if ("error" in result) {
+        if ("code" in result && result.code === "EMAIL_NOT_VERIFIED") {
+          router.refresh();
+        }
         toast.error(result.error);
         return;
       }

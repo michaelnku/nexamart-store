@@ -3,6 +3,7 @@ export const publicRoutes = [
   "/403",
   "/auth/forgot-password",
   "/auth/reset-password",
+  "/auth/verify-email",
   "/api/uploadthing",
   "/category",
   "/product/:slug",

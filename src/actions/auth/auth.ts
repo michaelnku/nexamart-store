@@ -5,6 +5,7 @@ import { registerSchema, registerSchemaType } from "@/lib/zodValidation";
 import bcrypt from "bcryptjs";
 import { getUserByEmail } from "@/components/helper/data";
 import { UserRole } from "@/generated/prisma/client";
+import { sendEmailVerificationEmail } from "@/lib/email-verification/service";
 
 /**
  * Create privileged users (RIDER, SELLER, ADMIN, MODERATOR)
@@ -17,8 +18,9 @@ export const createRoleUserAction = async (values: registerSchemaType) => {
     }
 
     const { name, username, email, password, role } = validatedFields.data;
+    const normalizedEmail = email.toLowerCase().trim();
 
-    const existingUser = await getUserByEmail(email);
+    const existingUser = await getUserByEmail(normalizedEmail);
     if (existingUser) {
       return { error: "This email already exists. Please login." };
     }
@@ -35,17 +37,35 @@ export const createRoleUserAction = async (values: registerSchemaType) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         name,
         username,
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
         role,
+        emailVerified: null,
       },
     });
 
-    return { success: `${role} account created successfully` };
+    try {
+      await sendEmailVerificationEmail({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        emailVerified: user.emailVerified,
+      });
+    } catch (verificationError) {
+      console.error(
+        "Failed to send signup verification email for user",
+        user.id,
+        verificationError,
+      );
+    }
+
+    return {
+      success: `${role} account created successfully. Check your email to verify your NexaMart account.`,
+    };
   } catch (error) {
     console.error("error creating role user", error);
     return { error: "Something went wrong" };

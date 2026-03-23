@@ -12,6 +12,8 @@ import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { getOrCreateStripeCustomerForUser } from "@/lib/stripe/getOrCreateStripeCustomer";
 import { getUserTransactionHistory } from "@/lib/wallet/getUserTransactionHistory";
+import { requireVerifiedEmail } from "@/lib/email-verification/guard";
+import { isEmailNotVerifiedError } from "@/lib/email-verification/errors";
 
 const BUYER_WALLET_REVALIDATE_PATHS = [
   "/customer/wallet",
@@ -46,8 +48,11 @@ type ActivateBuyerWalletResult =
         | "UNAUTHORIZED"
         | "FORBIDDEN"
         | "ACCOUNT_BLOCKED"
-        | "STRIPE_NOT_CONFIGURED";
+        | "STRIPE_NOT_CONFIGURED"
+        | "EMAIL_NOT_VERIFIED";
       message: string;
+      requiresEmailVerification?: true;
+      email?: string;
     };
 
 function revalidateBuyerWalletPaths() {
@@ -149,6 +154,25 @@ export async function activateBuyerWalletAction(): Promise<ActivateBuyerWalletRe
       code: "STRIPE_NOT_CONFIGURED",
       message: "Stripe is not configured.",
     };
+  }
+
+  try {
+    await requireVerifiedEmail({
+      userId: user.id,
+      reason: "wallet_activation",
+    });
+  } catch (error) {
+    if (isEmailNotVerifiedError(error)) {
+      return {
+        success: false,
+        code: "EMAIL_NOT_VERIFIED",
+        message: "Verify your email before activating your wallet.",
+        requiresEmailVerification: true,
+        email: error.email,
+      };
+    }
+
+    throw error;
   }
 
   const existingWallet = await prisma.wallet.findUnique({

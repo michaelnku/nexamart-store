@@ -63,7 +63,8 @@ export default function RegisterForm() {
           setError("");
           document.cookie = "ref_code=; path=/; max-age=0";
           form.reset();
-          router.push("/auth/login");
+          const email = encodeURIComponent(values.email.toLowerCase().trim());
+          router.push(`/auth/verify-email?email=${email}&next=%2Fauth%2Flogin`);
         }
       });
     });

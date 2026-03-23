@@ -102,6 +102,9 @@ export default function CreateStoreForm() {
     startTransition(async () => {
       const res = await createStoreAction(values);
       if (res?.error) {
+        if ("code" in res && res.code === "EMAIL_NOT_VERIFIED") {
+          router.refresh();
+        }
         toast.error(res.error);
         return;
       }

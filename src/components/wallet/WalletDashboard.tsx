@@ -49,6 +49,7 @@ import { WalletTransaction, WalletTransactionType } from "@/lib/types";
 import { useWallet } from "@/hooks/useWallet";
 import { WalletRole } from "@/types/wallet";
 import { WALLET_ROLE_CONFIG } from "@/lib/wallet/walletRoleConfig";
+import { EmailVerificationGate } from "@/components/email-verification/EmailVerificationGate";
 
 type WalletDashboardProps = {
   role: WalletRole;
@@ -260,11 +261,26 @@ function InactiveBuyerWalletState({
   balance,
   onActivate,
   isActivating,
+  email,
+  isEmailVerified,
 }: {
   balance: number;
   onActivate: () => void;
   isActivating: boolean;
+  email?: string | null;
+  isEmailVerified: boolean;
 }) {
+  if (!isEmailVerified) {
+    return (
+      <main className="mx-auto max-w-4xl px-3 py-4 sm:px-4 sm:py-6">
+        <EmailVerificationGate
+          email={email}
+          description="Wallet activation is only available after you verify the email address on your NexaMart account."
+        />
+      </main>
+    );
+  }
+
   const hasPendingFunds = balance > 0;
 
   return (
@@ -422,6 +438,9 @@ export default function WalletDashboard({ role }: WalletDashboardProps) {
         const result = await activateBuyerWalletAction();
 
         if (!result.success) {
+          if (result.code === "EMAIL_NOT_VERIFIED") {
+            router.refresh();
+          }
           toast.error(result.message);
           return;
         }
@@ -478,6 +497,8 @@ export default function WalletDashboard({ role }: WalletDashboardProps) {
         balance={wallet.balance}
         onActivate={handleActivateWallet}
         isActivating={isActivating}
+        email={user?.email ?? null}
+        isEmailVerified={Boolean(user?.isEmailVerified)}
       />
     );
   }

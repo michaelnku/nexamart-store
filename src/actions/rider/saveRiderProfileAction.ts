@@ -7,15 +7,41 @@ import {
   riderProfileSchema,
   riderProfileSchemaType,
 } from "@/lib/zodValidation";
+import { requireVerifiedEmail } from "@/lib/email-verification/guard";
+import { isEmailNotVerifiedError } from "@/lib/email-verification/errors";
 
 export async function saveRiderProfileAction(
   rawData: riderProfileSchemaType,
-): Promise<{ success?: RiderProfileDTO; error?: string }> {
+): Promise<{
+  success?: RiderProfileDTO;
+  error?: string;
+  code?: "EMAIL_NOT_VERIFIED";
+  requiresEmailVerification?: true;
+  email?: string;
+}> {
   const userId = await CurrentUserId();
   const role = await CurrentRole();
 
   if (!userId) return { error: "Unauthorized" };
   if (role !== "RIDER") return { error: "Forbidden" };
+
+  try {
+    await requireVerifiedEmail({
+      userId,
+      reason: "rider_profile_setup",
+    });
+  } catch (error) {
+    if (isEmailNotVerifiedError(error)) {
+      return {
+        error: "Verify your email before setting up your rider profile.",
+        code: "EMAIL_NOT_VERIFIED",
+        requiresEmailVerification: true,
+        email: error.email,
+      };
+    }
+
+    throw error;
+  }
 
   const parsed = riderProfileSchema.safeParse(rawData);
 
@@ -198,12 +224,36 @@ export async function toggleRiderAvailabilityAction(
 
 export async function updateRiderProfileAction(
   rawData: riderProfileSchemaType,
-): Promise<{ success?: boolean; error?: string }> {
+): Promise<{
+  success?: boolean;
+  error?: string;
+  code?: "EMAIL_NOT_VERIFIED";
+  requiresEmailVerification?: true;
+  email?: string;
+}> {
   const userId = await CurrentUserId();
   const role = await CurrentRole();
 
   if (!userId) return { error: "Unauthorized" };
   if (role !== "RIDER") return { error: "Forbidden" };
+
+  try {
+    await requireVerifiedEmail({
+      userId,
+      reason: "rider_profile_setup",
+    });
+  } catch (error) {
+    if (isEmailNotVerifiedError(error)) {
+      return {
+        error: "Verify your email before updating your rider profile.",
+        code: "EMAIL_NOT_VERIFIED",
+        requiresEmailVerification: true,
+        email: error.email,
+      };
+    }
+
+    throw error;
+  }
 
   const parsed = riderProfileSchema.safeParse(rawData);
 

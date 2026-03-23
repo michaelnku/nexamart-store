@@ -21,14 +21,17 @@ import { loggedInUser } from "@/actions/auth/user";
 import Link from "next/link";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function RiderLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [error, setError] = useState<string | undefined>();
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const verificationSent = searchParams.get("verification") === "sent";
+  const verificationEmail = searchParams.get("email");
 
   const form = useForm<loggedInUserSchemaType>({
     resolver: zodResolver(loggedInUserSchema),
@@ -58,6 +61,15 @@ export default function RiderLoginForm() {
           <Alert variant="destructive" className="text-sm rounded-lg">
             <AlertCircle className="w-4 h-4" />
             <AlertTitle>{error}</AlertTitle>
+          </Alert>
+        )}
+        {verificationSent && (
+          <Alert className="border-emerald-200 bg-emerald-50 text-emerald-700">
+            <AlertTitle>
+              Verification email sent
+              {verificationEmail ? ` to ${verificationEmail}` : ""}. Verify your
+              inbox before setting up your rider profile.
+            </AlertTitle>
           </Alert>
         )}
 

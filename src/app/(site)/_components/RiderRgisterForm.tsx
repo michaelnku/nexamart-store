@@ -56,7 +56,10 @@ const RiderRgisterForm = () => {
             confirmPassword: "",
             role: "RIDER",
           });
-          router.push("/auth/rider/login");
+          const email = encodeURIComponent(values.email.toLowerCase().trim());
+          router.push(
+            `/auth/verify-email?email=${email}&next=%2Fauth%2Frider%2Flogin`,
+          );
         }
       });
     });

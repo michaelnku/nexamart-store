@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export default function RiderSettingsClient({
 }: {
   riderProfile: RiderProfileDTO | null;
 }) {
+  const router = useRouter();
   const [profile, setProfile] = useState<RiderProfileDTO | null>(riderProfile);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -108,6 +110,9 @@ export default function RiderSettingsClient({
         : await saveRiderProfileAction(parsed.data);
 
       if (res?.error) {
+        if ("code" in res && res.code === "EMAIL_NOT_VERIFIED") {
+          router.refresh();
+        }
         toast.error(res.error);
         return;
       }

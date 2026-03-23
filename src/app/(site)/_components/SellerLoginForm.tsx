@@ -21,7 +21,7 @@ import { loggedInUser } from "@/actions/auth/user";
 import Link from "next/link";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { AlertCircleIcon, Eye, EyeOff, Store } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const SellerLoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -29,6 +29,9 @@ const SellerLoginForm = () => {
 
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const verificationSent = searchParams.get("verification") === "sent";
+  const verificationEmail = searchParams.get("email");
 
   const form = useForm<loggedInUserSchemaType>({
     resolver: zodResolver(loggedInUserSchema),
@@ -66,6 +69,15 @@ const SellerLoginForm = () => {
           <Alert variant="destructive" className="mb-6">
             <AlertCircleIcon className="w-4 h-4" />
             <AlertTitle>{error}</AlertTitle>
+          </Alert>
+        )}
+        {verificationSent && (
+          <Alert className="mb-6 border-emerald-200 bg-emerald-50 text-emerald-700">
+            <AlertTitle>
+              Verification email sent
+              {verificationEmail ? ` to ${verificationEmail}` : ""}. Verify your
+              inbox before creating your seller setup.
+            </AlertTitle>
           </Alert>
         )}
 

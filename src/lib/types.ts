@@ -510,6 +510,8 @@ export type UserDTO = {
   id: string;
   email: string;
   role: UserRole;
+  emailVerifiedAt: string | null;
+  isEmailVerified: boolean;
 
   profileAvatar?: ProfileImage | null;
 

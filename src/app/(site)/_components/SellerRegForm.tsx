@@ -57,7 +57,10 @@ const SellerRegisterForm = () => {
             confirmPassword: "",
             role: "SELLER",
           });
-          router.push("/auth/seller/login");
+          const email = encodeURIComponent(values.email.toLowerCase().trim());
+          router.push(
+            `/auth/verify-email?email=${email}&next=%2Fauth%2Fseller%2Flogin`,
+          );
         }
       });
     });

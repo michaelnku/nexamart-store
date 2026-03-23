@@ -8,6 +8,8 @@ import {
   type UpdateStaffProfileInput,
 } from "@/lib/zodValidation";
 import { revalidatePath } from "next/cache";
+import { requireVerifiedEmail } from "@/lib/email-verification/guard";
+import { isEmailNotVerifiedError } from "@/lib/email-verification/errors";
 
 function normalizePhone(phone?: string): string | null {
   if (!phone) return null;
@@ -22,6 +24,24 @@ export async function updateStaffProfile(input: UpdateStaffProfileInput) {
   if (!userId) return { error: "Unauthorized" };
   if (user.role !== UserRole.ADMIN && user.role !== UserRole.MODERATOR) {
     return { error: "Only admin and moderator can update staff profile" };
+  }
+
+  try {
+    await requireVerifiedEmail({
+      userId,
+      reason: "staff_profile_setup",
+    });
+  } catch (error) {
+    if (isEmailNotVerifiedError(error)) {
+      return {
+        error: "Verify your email before updating your staff profile.",
+        code: "EMAIL_NOT_VERIFIED",
+        requiresEmailVerification: true,
+        email: error.email,
+      };
+    }
+
+    throw error;
   }
 
   const parsed = updateStaffProfileSchema.safeParse(input);

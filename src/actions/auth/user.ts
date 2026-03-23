@@ -25,6 +25,7 @@ import { createWelcomeCouponForUser } from "@/lib/coupons/createWelcomeCoupon";
 import { createReferralCodeForUser } from "@/lib/referrals/createReferralCode";
 import { processReferralSignup } from "@/lib/referrals/processReferralSignup";
 import { cookies } from "next/headers";
+import { sendEmailVerificationEmail } from "@/lib/email-verification/service";
 
 const utapi = new UTApi();
 
@@ -79,8 +80,9 @@ export const createUser = async (values: registerSchemaType) => {
     }
 
     const { email, username, password, referralCode } = validatedFields.data;
+    const normalizedEmail = email.toLowerCase().trim();
 
-    const existingUser = await getUserByEmail(email);
+    const existingUser = await getUserByEmail(normalizedEmail);
 
     if (existingUser)
       return {
@@ -92,8 +94,9 @@ export const createUser = async (values: registerSchemaType) => {
     const user = await prisma.user.create({
       data: {
         username,
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
+        emailVerified: null,
       },
     });
 
@@ -104,10 +107,28 @@ export const createUser = async (values: registerSchemaType) => {
     await createReferralCodeForUser(user.id);
     await createWelcomeCouponForUser(user.id);
     if (refCode) await processReferralSignup(user.id, refCode);
+    try {
+      await sendEmailVerificationEmail({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        emailVerified: user.emailVerified,
+      });
+    } catch (verificationError) {
+      console.error(
+        "Failed to send signup verification email for user",
+        user.id,
+        verificationError,
+      );
+    }
 
-    return { success: "New user created!" };
+    return {
+      success:
+        "Account created. Check your email to verify your NexaMart account.",
+    };
   } catch (error) {
     console.error("error creating user", error);
+    return { error: "Something went wrong while creating your account." };
   }
 };
 

@@ -1,8 +1,9 @@
 "use server";
-import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/resend/mail";
 import bcrypt from "bcryptjs";
+import { hashToken, generateSecureToken } from "@/lib/security/tokens";
+import { getAppBaseUrl } from "@/lib/config/appUrl";
 
 async function checkRateLimit(email: string, ip?: string | null) {
   const fifteenMinutesAgo = new Date(Date.now() - 1000 * 60 * 15);
@@ -24,17 +25,13 @@ async function checkRateLimit(email: string, ip?: string | null) {
   });
 }
 
-function hashToken(token: string) {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
-
 export async function forgotPassword(email: string, ip?: string | null) {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) return;
 
   await checkRateLimit(email, ip);
 
-  const rawToken = crypto.randomBytes(32).toString("hex");
+  const rawToken = generateSecureToken(32);
   const token = hashToken(rawToken);
 
   const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
@@ -49,7 +46,7 @@ export async function forgotPassword(email: string, ip?: string | null) {
     data: { email, token, expiresAt },
   });
 
-  const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${rawToken}`;
+  const resetLink = `${getAppBaseUrl()}/auth/reset-password?token=${rawToken}`;
 
   await sendEmail({
     to: email,

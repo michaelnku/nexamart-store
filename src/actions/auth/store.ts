@@ -11,6 +11,8 @@ import {
 import { revalidatePath } from "next/cache";
 import { UTApi } from "uploadthing/server";
 import { geocodeAddress } from "@/lib/shipping/mapboxGeocode";
+import { requireVerifiedEmail } from "@/lib/email-verification/guard";
+import { isEmailNotVerifiedError } from "@/lib/email-verification/errors";
 
 const utapi = new UTApi();
 const INVALID_ADDRESS_ERROR = "Please select a valid address from suggestions.";
@@ -38,6 +40,11 @@ export const createStoreAction = async (values: storeFormType) => {
     if (user.role !== "SELLER") {
       return { error: "Only sellers can create a store" };
     }
+
+    await requireVerifiedEmail({
+      userId: user.id,
+      reason: "seller_store_creation",
+    });
 
     const validated = storeSchema.safeParse(values);
     if (!validated.success) return { error: "Invalid store data" };
@@ -120,6 +127,15 @@ export const createStoreAction = async (values: storeFormType) => {
 
     return { success: "Store created successfully!" };
   } catch (error) {
+    if (isEmailNotVerifiedError(error)) {
+      return {
+        error: "Verify your email before creating a store.",
+        code: "EMAIL_NOT_VERIFIED",
+        requiresEmailVerification: true,
+        email: error.email,
+      };
+    }
+
     console.error("Error creating store", error);
     return { error: "Something went wrong while creating the store" };
   }

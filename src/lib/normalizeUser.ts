@@ -30,6 +30,8 @@ export async function normalizeUser(
     id: db.id,
     email: db.email,
     role: db.role,
+    emailVerifiedAt: db.emailVerified?.toISOString() ?? null,
+    isEmailVerified: Boolean(db.emailVerified),
     name: db.name ?? "",
     username: db.username ?? "",
     image: db.image ?? null,

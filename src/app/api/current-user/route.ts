@@ -17,7 +17,19 @@ export async function GET() {
   if (!user) return Response.json(null);
 
   return Response.json({
-    ...user,
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    name: user.name ?? "",
+    username: user.username ?? "",
+    image: user.image ?? null,
+    profileAvatar: user.profileAvatar ?? null,
+    isBanned: user.isBanned,
+    emailVerifiedAt: user.emailVerified?.toISOString() ?? null,
+    isEmailVerified: Boolean(user.emailVerified),
+    store: user.store,
+    riderProfile: user.riderProfile,
+    staffProfile: user.staffProfile,
     isVerified:
       user.role === "SELLER"
         ? user.store?.isVerified

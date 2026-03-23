@@ -4,9 +4,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCurrentRiderProfile } from "@/lib/settings/getCurrentRiderProfile";
+import { CurrentUser } from "@/lib/currentUser";
+import { EmailVerificationGate } from "@/components/email-verification/EmailVerificationGate";
 
 export default async function RiderProfileSettingsPage() {
+  const user = await CurrentUser();
   const profile = await getCurrentRiderProfile();
+
+  if (!user?.isEmailVerified) {
+    return (
+      <EmailVerificationGate
+        email={user?.email ?? null}
+        description="Rider profile setup is available only after you verify the email address on your NexaMart account."
+      />
+    );
+  }
 
   return (
     <Card>
