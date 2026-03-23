@@ -4,8 +4,8 @@ import { SenderType } from "@/generated/prisma/client";
 import { CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import {
-  createConversationMessage,
-  publishConversationMessage,
+  persistConversationMessage,
+  processConversationMessageAfterWrite,
 } from "@/lib/inbox/conversationService";
 import { revalidatePath } from "next/cache";
 
@@ -107,7 +107,7 @@ export async function startProductInquiryConversationAction({
           })
         ).id;
 
-      const createdMessage = await createConversationMessage(tx, {
+      const createdMessage = await persistConversationMessage(tx, {
         conversationId,
         senderId: buyerId,
         senderType: SenderType.USER,
@@ -121,7 +121,9 @@ export async function startProductInquiryConversationAction({
     },
   );
 
-  await publishConversationMessage(createdMessage);
+  await processConversationMessageAfterWrite(createdMessage, {
+    publish: true,
+  });
   revalidatePath("/messages");
 
   return {

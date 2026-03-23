@@ -5,6 +5,8 @@ import {
   type Prisma,
   type PrismaClient,
 } from "@/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
+import { moderateMessageAfterCreate } from "@/lib/moderation/messageModeration";
 import { pusherServer } from "@/lib/pusher";
 
 export type RealtimeMessagePayload = {
@@ -17,8 +19,16 @@ export type RealtimeMessagePayload = {
 };
 
 type MessageWriter = Prisma.TransactionClient | PrismaClient;
+type PersistedConversationMessage = {
+  id: string;
+  conversationId: string;
+  senderId: string | null;
+  senderType: SenderType;
+  content: string;
+  createdAt: Date;
+};
 
-export async function createConversationMessage(
+export async function persistConversationMessage(
   db: MessageWriter,
   input: {
     conversationId: string;
@@ -44,6 +54,44 @@ export async function createConversationMessage(
   });
 
   return message;
+}
+
+export async function processConversationMessageAfterWrite(
+  message: PersistedConversationMessage,
+  options?: {
+    publish?: boolean;
+  },
+) {
+  if (options?.publish) {
+    await publishConversationMessage(message);
+  }
+
+  try {
+    await moderateMessageAfterCreate(prisma, message);
+  } catch (error) {
+    console.error("Message moderation failed", {
+      messageId: message.id,
+      conversationId: message.conversationId,
+      error,
+    });
+  }
+
+  return message;
+}
+
+export async function createAndProcessConversationMessage(
+  input: {
+    conversationId: string;
+    senderId?: string | null;
+    senderType: SenderType;
+    content: string;
+  },
+  options?: {
+    publish?: boolean;
+  },
+) {
+  const message = await persistConversationMessage(prisma, input);
+  return processConversationMessageAfterWrite(message, options);
 }
 
 function toRealtimeMessagePayload(message: {

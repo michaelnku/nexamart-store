@@ -2,11 +2,10 @@
 
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
-import { SenderType } from "@/generated/prisma/client";
 import {
-  createConversationMessage,
-  publishConversationMessage,
+  createAndProcessConversationMessage,
 } from "@/lib/inbox/conversationService";
+import { SenderType } from "@/generated/prisma/client";
 
 export async function sendMessageAction({
   conversationId,
@@ -34,14 +33,14 @@ export async function sendMessageAction({
     return { error: "Not allowed in this conversation" };
   }
 
-  const userMessage = await createConversationMessage(prisma, {
+  await createAndProcessConversationMessage({
     conversationId,
     senderId: userId,
     senderType: SenderType.USER,
     content: text,
+  }, {
+    publish: true,
   });
-
-  await publishConversationMessage(userMessage);
 
   return { success: true };
 }

@@ -1,4 +1,10 @@
-import { Bot, FileWarning, PackageSearch, ShieldCheck, Users } from "lucide-react";
+import {
+  Bot,
+  FileWarning,
+  PackageSearch,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { redirect } from "next/navigation";
 
 import {
@@ -79,7 +85,7 @@ const page = async () => {
             />
             <PremiumActionCard
               href="/marketplace/dashboard/moderator/ai"
-              title="AI Moderation Center"
+              title="AI Review Queue"
               description="Manage automation queues, confidence thresholds, and assisted review flows."
               icon={Bot}
               tintClassName="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300"
@@ -95,7 +101,8 @@ const page = async () => {
               Policy Coverage
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-zinc-400">
-              Use the reports and product review queues to keep enforcement consistent across user and catalog activity.
+              Use the reports and product review queues to keep enforcement
+              consistent across user and catalog activity.
             </p>
           </div>
 
@@ -105,7 +112,8 @@ const page = async () => {
               Queue Discipline
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-zinc-400">
-              Prioritize newly opened reports first, then work older unresolved cases to keep response times predictable.
+              Prioritize newly opened reports first, then work older unresolved
+              cases to keep response times predictable.
             </p>
           </div>
 
@@ -115,7 +123,8 @@ const page = async () => {
               Automation Oversight
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-zinc-400">
-              AI moderation should accelerate review, not replace it. Keep edge cases inside the human workflow.
+              AI moderation should accelerate review, not replace it. Keep edge
+              cases inside the human workflow.
             </p>
           </div>
         </section>

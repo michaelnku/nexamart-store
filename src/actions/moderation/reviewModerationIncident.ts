@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ReviewStatus } from "@/generated/prisma/client";
 import { createAuditLog } from "@/lib/audit/service";
+import { applyModerationEnforcement } from "@/lib/moderation/enforcement";
 import { requireModerator } from "@/lib/moderation/guardModerator";
 import { prisma } from "@/lib/prisma";
 
@@ -14,16 +15,6 @@ const REVIEW_ACTION_LABELS: Record<ReviewActionType, string> = {
   ignore: "ignored",
   escalate: "escalated",
 };
-
-function buildModerationState(
-  strikeCount: number,
-  softBlockedUntil: Date | null,
-) {
-  if (softBlockedUntil && softBlockedUntil > new Date()) return "SOFT_BLOCKED";
-  if (strikeCount >= 3) return "RESTRICTED";
-  if (strikeCount >= 1) return "WARNED";
-  return "CLEAR";
-}
 
 function isPendingHumanReview(reviewStatus: ReviewStatus) {
   return reviewStatus === "PENDING_HUMAN_REVIEW";
@@ -95,54 +86,12 @@ export async function reviewModerationIncidentAction(
       }
 
       if (currentIncident.subjectUserId) {
-        const subjectUser = await tx.user.findUnique({
-          where: { id: currentIncident.subjectUserId },
-          select: {
-            id: true,
-            moderationStrikeCount: true,
-            moderationRiskScore: true,
-            softBlockedUntil: true,
-          },
+        await applyModerationEnforcement(tx, {
+          userId: currentIncident.subjectUserId,
+          strikeWeight: currentIncident.strikeWeight,
+          severity: currentIncident.severity,
+          now,
         });
-
-        if (subjectUser) {
-          const nextStrikeCount =
-            (subjectUser.moderationStrikeCount ?? 0) +
-            currentIncident.strikeWeight;
-          const nextRiskScore =
-            (subjectUser.moderationRiskScore ?? 0) +
-            currentIncident.strikeWeight;
-
-          const shouldSoftBlock =
-            nextStrikeCount >= 3 || currentIncident.severity === "CRITICAL";
-          const softBlockedUntil =
-            shouldSoftBlock &&
-            (!subjectUser.softBlockedUntil || subjectUser.softBlockedUntil <= now)
-              ? new Date(now.getTime() + 1000 * 60 * 60 * 24 * 3)
-              : subjectUser.softBlockedUntil;
-
-          await tx.user.update({
-            where: { id: subjectUser.id },
-            data: {
-              moderationStrikeCount: nextStrikeCount,
-              moderationRiskScore: nextRiskScore,
-              moderationLastIncidentAt: now,
-              softBlockedUntil,
-              moderationState: buildModerationState(
-                nextStrikeCount,
-                softBlockedUntil,
-              ),
-            },
-          });
-
-          await tx.userStrikeSnapshot.create({
-            data: {
-              userId: subjectUser.id,
-              totalStrikes: nextStrikeCount,
-              riskScore: nextRiskScore,
-            },
-          });
-        }
       }
 
       await createAuditLog(

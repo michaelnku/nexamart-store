@@ -2,11 +2,10 @@
 
 import { prisma } from "@/lib/prisma";
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
-import { SenderType } from "@/generated/prisma/client";
 import {
-  createConversationMessage,
-  publishConversationMessage,
+  createAndProcessConversationMessage,
 } from "@/lib/inbox/conversationService";
+import { SenderType } from "@/generated/prisma/client";
 
 export async function sendSupportMessageAction({
   conversationId,
@@ -32,14 +31,14 @@ export async function sendSupportMessageAction({
     return { error: "Assigned to another agent" };
   }
 
-  const supportMessage = await createConversationMessage(prisma, {
+  await createAndProcessConversationMessage({
     conversationId,
     senderId: userId,
     senderType: SenderType.SUPPORT,
     content: text,
+  }, {
+    publish: true,
   });
-
-  await publishConversationMessage(supportMessage);
 
   return { success: true };
 }

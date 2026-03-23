@@ -3,7 +3,10 @@
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
 import { SenderType } from "@/generated/prisma/client";
-import { createConversationMessage } from "@/lib/inbox/conversationService";
+import {
+  persistConversationMessage,
+  processConversationMessageAfterWrite,
+} from "@/lib/inbox/conversationService";
 
 export async function createConversationAction({
   subject,
@@ -37,13 +40,13 @@ export async function createConversationAction({
       },
     });
 
-    await createConversationMessage(tx, {
+    await persistConversationMessage(tx, {
       conversationId: createdConversation.id,
       senderType: SenderType.SYSTEM,
       content: "Hello. I'm NexaMart AI Assistant. A support agent will assist you shortly.",
     });
 
-    await createConversationMessage(tx, {
+    const createdUserMessage = await persistConversationMessage(tx, {
       conversationId: createdConversation.id,
       senderId: userId,
       senderType: SenderType.USER,
@@ -57,9 +60,12 @@ export async function createConversationAction({
 
     return {
       ...createdConversation,
+      createdUserMessage,
       messages,
     };
   });
+
+  await processConversationMessageAfterWrite(conversation.createdUserMessage);
 
   return {
     ok: true,

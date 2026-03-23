@@ -14,6 +14,8 @@ export const AUDIT_ACTION_TYPES = [
   "USER_MODERATION_SOFT_BLOCKED",
   "USER_MODERATION_SOFT_BLOCK_CLEARED",
   "USER_MODERATION_SUMMARY_RESET",
+  "MESSAGE_MODERATION_INCIDENT_CREATED",
+  "MESSAGE_MODERATION_ENFORCED",
   "PRODUCT_MODERATION_UNPUBLISHED",
   "PRODUCT_MODERATION_REPUBLISHED",
   "DISPUTE_RESOLVED",
@@ -90,6 +92,9 @@ export const AUDIT_ACTION_LABELS: Record<AuditActionType, string> = {
   USER_MODERATION_SOFT_BLOCKED: "User moderation soft block applied",
   USER_MODERATION_SOFT_BLOCK_CLEARED: "User moderation soft block cleared",
   USER_MODERATION_SUMMARY_RESET: "User moderation summary reset",
+  MESSAGE_MODERATION_INCIDENT_CREATED:
+    "Message moderation incident created",
+  MESSAGE_MODERATION_ENFORCED: "Message moderation enforcement applied",
   PRODUCT_MODERATION_UNPUBLISHED: "Product unpublished by moderation",
   PRODUCT_MODERATION_REPUBLISHED: "Product republished by moderation",
   DISPUTE_RESOLVED: "Dispute resolved",
