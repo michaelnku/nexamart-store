@@ -12,10 +12,8 @@ import {
 } from "@/lib/otp/errors";
 import {
   hasConfiguredOtpManagedVerificationProvider,
-  getTwilioMessagingConfig,
   getTwilioVerifyConfig,
-  hasTwilioMessagingConfig,
-  hasTwilioWhatsappConfig,
+  hasTwilioVerifyConfig,
 } from "@/lib/otp/config";
 import type {
   OtpChannel,
@@ -48,9 +46,12 @@ function mapTwilioError(error: unknown, fallback: Error): Error {
     }
 
     if (status >= 500) {
-      return new OtpProviderUnavailableError("Twilio is temporarily unavailable.", {
-        cause: error,
-      });
+      return new OtpProviderUnavailableError(
+        "Twilio is temporarily unavailable.",
+        {
+          cause: error,
+        },
+      );
     }
 
     if (status >= 400) {
@@ -75,13 +76,18 @@ function mapTwilioError(error: unknown, fallback: Error): Error {
     }
 
     if (code === 20429) {
-      return new OtpRateLimitError("Twilio rate limit exceeded.", { cause: error });
+      return new OtpRateLimitError("Twilio rate limit exceeded.", {
+        cause: error,
+      });
     }
 
     if (code === 21211 || code === 21614) {
-      return new OtpProviderRejectedError("Twilio rejected the destination phone number.", {
-        cause: error,
-      });
+      return new OtpProviderRejectedError(
+        "Twilio rejected the destination phone number.",
+        {
+          cause: error,
+        },
+      );
     }
   }
 
@@ -107,15 +113,19 @@ function mapTwilioError(error: unknown, fallback: Error): Error {
   return fallback;
 }
 
-function supportsTwilioChannel(channel: OtpChannel, feature: OtpProviderFeature): boolean {
+function supportsTwilioChannel(
+  channel: OtpChannel,
+  feature: OtpProviderFeature,
+): boolean {
   if (channel === "sms") return true;
   if (channel === "whatsapp" && feature === "messaging") return true;
-  if (channel === "whatsapp" && feature === "managed_verification") return false;
+  if (channel === "whatsapp" && feature === "managed_verification")
+    return false;
   return false;
 }
 
 function getMessagingClient() {
-  const config = getTwilioMessagingConfig();
+  const config = getTwilioVerifyConfig();
   return {
     client: Twilio(config.accountSid, config.authToken),
     config,
@@ -137,18 +147,33 @@ export class TwilioOtpProvider implements OtpProvider {
     return supportsTwilioChannel(channel, feature);
   }
 
-  async sendMessage(input: OtpTransportRequest): Promise<{ provider: "twilio" }> {
+  async sendMessage(
+    input: OtpTransportRequest,
+  ): Promise<{ provider: "twilio" }> {
     if (!this.supportsChannel(input.channel, "messaging")) {
-      throw new UnsupportedOtpChannelError(input.channel, this.name, "messaging");
+      throw new UnsupportedOtpChannelError(
+        input.channel,
+        this.name,
+        "messaging",
+      );
     }
 
-    if (input.channel === "sms" && !hasTwilioMessagingConfig()) {
+    if (input.channel === "sms" && !hasTwilioVerifyConfig()) {
       throw new OtpProviderUnavailableError(
         "Twilio messaging is not configured for OTP delivery.",
       );
     }
 
-    if (input.channel === "whatsapp" && !hasTwilioWhatsappConfig()) {
+    const phoneNumber = process.env.TWILIO_PHONE_NUMBER?.trim() || "";
+    const whatsappFrom = process.env.TWILIO_WHATSAPP_FROM?.trim() || "";
+
+    if (input.channel === "sms" && !phoneNumber) {
+      throw new OtpProviderUnavailableError(
+        "Twilio phone number is not configured for OTP delivery.",
+      );
+    }
+
+    if (input.channel === "whatsapp" && (!hasTwilioVerifyConfig() || !whatsappFrom)) {
       throw new OtpProviderUnavailableError(
         "Twilio WhatsApp messaging is not configured for OTP delivery.",
       );
@@ -156,26 +181,39 @@ export class TwilioOtpProvider implements OtpProvider {
 
     try {
       const { client, config } = getMessagingClient();
+      const messagePayload =
+        input.channel === "whatsapp"
+          ? {
+              to: `whatsapp:${input.phone}`,
+              from: whatsappFrom,
+              body: input.message,
+            }
+          : {
+              to: input.phone,
+              body: input.message,
+              from: phoneNumber,
+            };
+
       await client.messages.create({
-        to: input.channel === "whatsapp" ? `whatsapp:${input.phone}` : input.phone,
-        from:
-          input.channel === "whatsapp"
-            ? config.whatsappFrom
-            : config.phoneNumber,
-        body: input.message,
+        ...messagePayload,
       });
       return { provider: this.name };
     } catch (error) {
       throw mapTwilioError(
         error,
-        new OtpDeliveryFailedError("Twilio failed to deliver the OTP message.", {
-          cause: error,
-        }),
+        new OtpDeliveryFailedError(
+          "Twilio failed to deliver the OTP message.",
+          {
+            cause: error,
+          },
+        ),
       );
     }
   }
 
-  async sendVerification(input: SendManagedOtpRequest): Promise<{ status: string }> {
+  async sendVerification(
+    input: SendManagedOtpRequest,
+  ): Promise<{ status: string }> {
     if (!this.supportsChannel(input.channel, "managed_verification")) {
       throw new UnsupportedOtpChannelError(
         input.channel,
@@ -210,7 +248,9 @@ export class TwilioOtpProvider implements OtpProvider {
     }
   }
 
-  async verifyCode(input: VerifyManagedOtpRequest): Promise<{ approved: boolean; status: string }> {
+  async verifyCode(
+    input: VerifyManagedOtpRequest,
+  ): Promise<{ approved: boolean; status: string }> {
     if (!this.supportsChannel(input.channel, "managed_verification")) {
       throw new UnsupportedOtpChannelError(
         input.channel,
@@ -241,9 +281,12 @@ export class TwilioOtpProvider implements OtpProvider {
     } catch (error) {
       throw mapTwilioError(
         error,
-        new OtpVerificationFailedError("Twilio Verify failed to verify the OTP.", {
-          cause: error,
-        }),
+        new OtpVerificationFailedError(
+          "Twilio Verify failed to verify the OTP.",
+          {
+            cause: error,
+          },
+        ),
       );
     }
   }

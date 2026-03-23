@@ -3,12 +3,18 @@ import "server-only";
 import { OtpConfigError } from "@/lib/otp/errors";
 import type { OtpProviderName } from "@/lib/otp/types";
 
-const SUPPORTED_PROVIDER_NAMES: OtpProviderName[] = ["twilio", "vonage", "plivo"];
+const SUPPORTED_PROVIDER_NAMES: OtpProviderName[] = [
+  "twilio",
+  "vonage",
+  "plivo",
+];
 
 function readRequiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) {
-    throw new OtpConfigError(`Missing required OTP environment variable: ${name}`);
+    throw new OtpConfigError(
+      `Missing required OTP environment variable: ${name}`,
+    );
   }
   return value;
 }
@@ -37,7 +43,9 @@ export function getConfiguredSmsProviderNames(): OtpProviderName[] {
     .map(parseProviderName);
 
   if (providerNames.length === 0) {
-    throw new OtpConfigError("At least one OTP SMS provider must be configured.");
+    throw new OtpConfigError(
+      "At least one OTP SMS provider must be configured.",
+    );
   }
 
   return providerNames;
@@ -52,31 +60,10 @@ export function getPrimaryManagedVerificationProviderName(): OtpProviderName {
   return getConfiguredSmsProviderNames()[0];
 }
 
-export function getTwilioMessagingConfig() {
-  return {
-    accountSid: readRequiredEnv("TWILIO_ACCOUNT_SID"),
-    authToken: readRequiredEnv("TWILIO_AUTH_TOKEN"),
-    phoneNumber: process.env.TWILIO_PHONE_NUMBER?.trim() || "",
-    whatsappFrom: process.env.TWILIO_WHATSAPP_FROM?.trim() || "",
-  };
-}
-
-export function hasTwilioMessagingConfig(): boolean {
-  return Boolean(
-    process.env.TWILIO_ACCOUNT_SID?.trim() &&
-      process.env.TWILIO_AUTH_TOKEN?.trim() &&
-      process.env.TWILIO_PHONE_NUMBER?.trim(),
-  );
-}
-
-export function hasTwilioWhatsappConfig(): boolean {
-  return Boolean(
-    process.env.TWILIO_ACCOUNT_SID?.trim() &&
-      process.env.TWILIO_AUTH_TOKEN?.trim() &&
-      process.env.TWILIO_WHATSAPP_FROM?.trim(),
-  );
-}
-
+/**
+ * Twilio Verify config for managed OTP only.
+ * This is intentionally separate from Twilio Messaging API config.
+ */
 export function getTwilioVerifyConfig() {
   return {
     accountSid: readRequiredEnv("TWILIO_ACCOUNT_SID"),
@@ -85,28 +72,12 @@ export function getTwilioVerifyConfig() {
   };
 }
 
-export function hasConfiguredOtpMessagingProvider(): boolean {
-  const providers = getConfiguredSmsProviderNames();
-
-  return providers.some((provider) => {
-    switch (provider) {
-      case "twilio":
-        return hasTwilioMessagingConfig();
-      case "vonage":
-      case "plivo":
-        return false;
-    }
-  });
-}
-
-export function hasConfiguredProviderMessaging(provider: OtpProviderName): boolean {
-  switch (provider) {
-    case "twilio":
-      return hasTwilioMessagingConfig();
-    case "vonage":
-    case "plivo":
-      return false;
-  }
+export function hasTwilioVerifyConfig(): boolean {
+  return Boolean(
+    process.env.TWILIO_ACCOUNT_SID?.trim() &&
+    process.env.TWILIO_AUTH_TOKEN?.trim() &&
+    process.env.TWILIO_VERIFY_SERVICE_SID?.trim(),
+  );
 }
 
 export function isOtpWhatsappEnabled(): boolean {
@@ -118,15 +89,35 @@ export function hasConfiguredOtpManagedVerificationProvider(): boolean {
 
   switch (provider) {
     case "twilio":
-      return Boolean(
-          process.env.TWILIO_ACCOUNT_SID?.trim() &&
-          process.env.TWILIO_AUTH_TOKEN?.trim() &&
-          process.env.TWILIO_VERIFY_SERVICE_SID?.trim(),
-      );
+      return hasTwilioVerifyConfig();
     case "vonage":
     case "plivo":
       return false;
   }
+}
 
-  return false;
+export function hasConfiguredOtpMessagingProvider(): boolean {
+  const providers = getConfiguredSmsProviderNames();
+
+  return providers.some((provider) => {
+    switch (provider) {
+      case "twilio":
+        return hasTwilioVerifyConfig();
+      case "vonage":
+      case "plivo":
+        return false;
+    }
+  });
+}
+
+export function hasConfiguredProviderMessaging(
+  provider: OtpProviderName,
+): boolean {
+  switch (provider) {
+    case "twilio":
+      return hasTwilioVerifyConfig();
+    case "vonage":
+    case "plivo":
+      return false;
+  }
 }
