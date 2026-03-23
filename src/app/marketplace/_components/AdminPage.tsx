@@ -17,7 +17,8 @@ type AdminStats = {
   totalUsers: number;
   totalProducts: number;
   totalRevenue: number;
-  pendingReports: number;
+  openAdminAttentionCount: number;
+  sellerGroupsInPayoutPipeline: number;
 };
 
 const AdminPage = ({ stats }: { stats: AdminStats }) => {
@@ -47,10 +48,10 @@ const AdminPage = ({ stats }: { stats: AdminStats }) => {
         "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300",
     },
     {
-      title: "Pending Reports",
-      value: stats.pendingReports,
+      title: "Open Admin Attention",
+      value: stats.openAdminAttentionCount,
       icon: AlertTriangle,
-      description: "Items needing review or administrative follow-up.",
+      description: "Payout items currently requiring administrative or finance follow-up.",
       tintClassName:
         "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300",
     },
@@ -65,11 +66,11 @@ const AdminPage = ({ stats }: { stats: AdminStats }) => {
         accentClassName="bg-[linear-gradient(135deg,#0f172a_0%,#334155_48%,#0f766e_100%)]"
       />
 
-      {stats.pendingReports > 0 && (
+      {stats.openAdminAttentionCount > 0 && (
         <PremiumNotice
           icon={AlertTriangle}
           title="Open Admin Attention"
-          description={`${stats.pendingReports} report${stats.pendingReports === 1 ? "" : "s"} currently require administrative review or follow-up.`}
+          description={`${stats.openAdminAttentionCount} payout item${stats.openAdminAttentionCount === 1 ? "" : "s"} currently require${stats.openAdminAttentionCount === 1 ? "s" : ""} administrative review or follow-up.`}
           toneClassName="border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-100"
         />
       )}

@@ -171,10 +171,9 @@ export default function LoginForm() {
               {isPending ? (
                 <span className="inline-flex gap-2 items-center">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <p>Signing in...</p>
                 </span>
               ) : (
-                "Sign in"
+                "Login"
               )}
             </Button>
           </form>

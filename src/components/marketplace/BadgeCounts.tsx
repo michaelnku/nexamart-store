@@ -44,7 +44,7 @@ const CartBadge = () => {
         className={`h-5 w-5 transition ${
           count > 0
             ? "stroke-blue-700 dark:stroke-[var(--brand-blue)]"
-            : "stroke-gray-400 hover:stroke-primary dark:stroke-zinc-500"
+            : "stroke-gray-400 hover:stroke-blue-700 dark:stroke-zinc-500"
         }`}
       />
     </IconCountBadge>
@@ -186,9 +186,4 @@ const VerifiedBadge = ({ user: providedUser }: { user?: UserDTO | null }) => {
   );
 };
 
-export {
-  WishlistBadge,
-  CartBadge,
-  NotificationBadge,
-  VerifiedBadge,
-};
+export { WishlistBadge, CartBadge, NotificationBadge, VerifiedBadge };

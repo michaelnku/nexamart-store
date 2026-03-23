@@ -2,6 +2,10 @@
 
 import { prisma } from "@/lib/prisma";
 import { CurrentUser } from "@/lib/currentUser";
+import {
+  countSellerGroupsInPayoutPipeline,
+  countSellerPayoutAdminAttention,
+} from "@/lib/services/admin/adminSellerPayoutAttentionService";
 
 export async function getSellerStats() {
   const user = await CurrentUser();
@@ -210,7 +214,7 @@ export async function getAdminStats() {
     throw new Error("Unauthorized");
   }
 
-  const [totalUsers, totalProducts, totalRevenue, pendingPayouts] =
+  const [totalUsers, totalProducts, totalRevenue, openAdminAttentionCount, sellerGroupsInPayoutPipeline] =
     await Promise.all([
       //  Total users
       prisma.user.count(),
@@ -231,19 +235,19 @@ export async function getAdminStats() {
         },
       }),
 
-      //  Pending seller payouts
-      prisma.orderSellerGroup.count({
-        where: {
-          payoutStatus: "PENDING",
-        },
-      }),
+      // Seller payout items that are release-ready or otherwise in finance follow-up state.
+      countSellerPayoutAdminAttention(),
+
+      // Broader operational payout pipeline count, kept separate from admin attention.
+      countSellerGroupsInPayoutPipeline(),
     ]);
 
   return {
     totalUsers,
     totalProducts,
     totalRevenue: totalRevenue._sum.totalAmount ?? 0,
-    pendingReports: pendingPayouts,
+    openAdminAttentionCount,
+    sellerGroupsInPayoutPipeline,
   };
 }
 

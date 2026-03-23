@@ -135,7 +135,7 @@ export default function SiteNavbar({
                           setAccountMenuOpen(false);
                         }}
                       >
-                        Sign in / Create Account
+                        Login / Create Account
                       </Button>
                     </div>
                     <DropdownMenuSeparator />
@@ -268,7 +268,9 @@ export default function SiteNavbar({
               href="/customer/order/history"
               className="hidden xl:flex flex-col leading-tight transition hover:text-[#3c9ee0]"
             >
-              <span className="text-xs text-gray-400 dark:text-zinc-400">Orders</span>
+              <span className="text-xs text-gray-400 dark:text-zinc-400">
+                Orders
+              </span>
               <span className="font-semibold">Returns & History</span>
             </Link>
 
@@ -352,16 +354,18 @@ export default function SiteNavbar({
 
                 <div className="flex items-center gap-3 border-b p-5 dark:border-zinc-800">
                   {avatarUrl ? (
-                    <Image
-                      src={avatarUrl}
-                      alt="profile"
-                      width={40}
-                      height={40}
-                      className="rounded-full object-cover"
-                    />
+                    <div className="shrink-0">
+                      <Image
+                        src={avatarUrl}
+                        alt="profile"
+                        width={40}
+                        height={40}
+                        className="rounded-full object-cover"
+                      />
+                    </div>
                   ) : (
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-300 dark:bg-zinc-800">
-                      <span className="text-xs font-semibold text-gray-700 dark:text-zinc-200">
+                      <span className="text-xs font-semibold text-gray-700 dark:text-zinc-200 shrink-0">
                         {initials}
                       </span>
                     </div>
@@ -372,7 +376,9 @@ export default function SiteNavbar({
                         ? `Welcome back, ${user.name?.split(" ")[0] || user.username}`
                         : "Welcome to NexaMart"}
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-zinc-400">{user?.email}</p>
+                    <p className="text-sm text-gray-500 dark:text-zinc-400">
+                      {user?.email}
+                    </p>
                   </span>
                 </div>
 
@@ -393,7 +399,7 @@ export default function SiteNavbar({
                       className="w-full bg-[#3c9ee0] hover:bg-[#3187c9] text-white rounded-lg"
                       onClick={() => setSheetOpen(false)}
                     >
-                      <Link href="/auth/login">Sign In / Create Account</Link>
+                      <Link href="/auth/login">Login / Create Account</Link>
                     </Button>
                   </div>
                 )}
