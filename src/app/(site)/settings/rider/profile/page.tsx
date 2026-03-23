@@ -6,12 +6,13 @@ import { Label } from "@/components/ui/label";
 import { getCurrentRiderProfile } from "@/lib/settings/getCurrentRiderProfile";
 import { CurrentUser } from "@/lib/currentUser";
 import { EmailVerificationGate } from "@/components/email-verification/EmailVerificationGate";
+import { UnverifiedEmailBanner } from "@/components/email-verification/UnverifiedEmailBanner";
 
 export default async function RiderProfileSettingsPage() {
   const user = await CurrentUser();
   const profile = await getCurrentRiderProfile();
 
-  if (!user?.isEmailVerified) {
+  if (!user?.isEmailVerified && !profile) {
     return (
       <EmailVerificationGate
         email={user?.email ?? null}
@@ -21,62 +22,68 @@ export default async function RiderProfileSettingsPage() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Rider Profile</CardTitle>
-      </CardHeader>
+    <div className="space-y-6">
+      {!user?.isEmailVerified && profile ? (
+        <UnverifiedEmailBanner description="Your rider profile already exists, so you can keep using it. Verify your email to secure your rider account and complete the new rollout." />
+      ) : null}
 
-      <CardContent>
-        <form action={saveRiderProfileModule} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Vehicle Type</Label>
-            <Input
-              name="vehicleType"
-              defaultValue={profile?.vehicleType ?? ""}
-              required
-            />
-          </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Rider Profile</CardTitle>
+        </CardHeader>
 
-          <div className="space-y-2">
-            <Label>Plate Number</Label>
-            <Input
-              name="plateNumber"
-              defaultValue={profile?.plateNumber ?? ""}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>License Number</Label>
-            <Input
-              name="licenseNumber"
-              defaultValue={profile?.licenseNumber ?? ""}
-            />
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
+        <CardContent>
+          <form action={saveRiderProfileModule} className="space-y-4">
             <div className="space-y-2">
-              <Label>Vehicle Model</Label>
+              <Label>Vehicle Type</Label>
               <Input
-                name="vehicleModel"
-                defaultValue={profile?.vehicleModel ?? ""}
+                name="vehicleType"
+                defaultValue={profile?.vehicleType ?? ""}
+                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Vehicle Color</Label>
+              <Label>Plate Number</Label>
               <Input
-                name="vehicleColor"
-                defaultValue={profile?.vehicleColor ?? ""}
+                name="plateNumber"
+                defaultValue={profile?.plateNumber ?? ""}
+                required
               />
             </div>
-          </div>
 
-          <Button type="submit">
-            {profile ? "Save Changes" : "Submit Registration"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+            <div className="space-y-2">
+              <Label>License Number</Label>
+              <Input
+                name="licenseNumber"
+                defaultValue={profile?.licenseNumber ?? ""}
+              />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Vehicle Model</Label>
+                <Input
+                  name="vehicleModel"
+                  defaultValue={profile?.vehicleModel ?? ""}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Vehicle Color</Label>
+                <Input
+                  name="vehicleColor"
+                  defaultValue={profile?.vehicleColor ?? ""}
+                />
+              </div>
+            </div>
+
+            <Button type="submit">
+              {profile ? "Save Changes" : "Submit Registration"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

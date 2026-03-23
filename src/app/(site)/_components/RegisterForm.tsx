@@ -293,11 +293,10 @@ export default function RegisterForm() {
             href="/auth/login"
             className="text-[var(--brand-blue)] hover:underline font-medium"
           >
-            Sign in
+            Login
           </Link>
         </p>
       </div>
     </main>
   );
 }
-

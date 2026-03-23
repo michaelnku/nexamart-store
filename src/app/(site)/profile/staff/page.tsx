@@ -5,6 +5,7 @@ import { CurrentUser } from "@/lib/currentUser";
 import { UserRole } from "@/generated/prisma/client";
 import { getStaffProfile } from "@/actions/staff/getStaffProfile";
 import { EmailVerificationGate } from "@/components/email-verification/EmailVerificationGate";
+import { UnverifiedEmailBanner } from "@/components/email-verification/UnverifiedEmailBanner";
 
 export default async function StaffProfilePage() {
   const user = await CurrentUser();
@@ -16,7 +17,10 @@ export default async function StaffProfilePage() {
     redirect("/profile");
   }
 
-  if (!user.isEmailVerified) {
+  const result = await getStaffProfile();
+  const profile = "error" in result ? null : result.profile;
+
+  if (!user.isEmailVerified && !profile) {
     return (
       <main className="mx-auto w-full max-w-3xl px-4">
         <EmailVerificationGate
@@ -27,14 +31,15 @@ export default async function StaffProfilePage() {
     );
   }
 
-  const result = await getStaffProfile();
-  const profile = "error" in result ? null : result.profile;
   const fullName = (user.name ?? "").trim();
   const [initialFirstName, ...rest] = fullName.split(/\s+/).filter(Boolean);
   const initialLastName = rest.join(" ");
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4">
+    <main className="mx-auto w-full max-w-3xl space-y-6 px-4">
+      {!user.isEmailVerified && profile ? (
+        <UnverifiedEmailBanner description="Your staff profile already exists, so you can keep using it. Verify your email to secure your account and complete the new rollout." />
+      ) : null}
       <Card>
         <CardHeader>
           <CardTitle>

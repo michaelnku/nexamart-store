@@ -50,6 +50,7 @@ import { useWallet } from "@/hooks/useWallet";
 import { WalletRole } from "@/types/wallet";
 import { WALLET_ROLE_CONFIG } from "@/lib/wallet/walletRoleConfig";
 import { EmailVerificationGate } from "@/components/email-verification/EmailVerificationGate";
+import { UnverifiedEmailBanner } from "@/components/email-verification/UnverifiedEmailBanner";
 
 type WalletDashboardProps = {
   role: WalletRole;
@@ -519,6 +520,10 @@ export default function WalletDashboard({ role }: WalletDashboardProps) {
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-3 py-4 sm:space-y-8 sm:px-4 sm:py-6">
+      {role === "buyer" && wallet.status === "ACTIVE" && !user?.isEmailVerified ? (
+        <UnverifiedEmailBanner description="Your wallet is already active, so you can keep using it. Verify your email to secure your account and unlock any future protected setup actions." />
+      ) : null}
+
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">

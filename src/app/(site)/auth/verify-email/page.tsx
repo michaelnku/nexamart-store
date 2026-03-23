@@ -77,8 +77,8 @@ export default async function VerifyEmailPage({
     if (result.status === "verified") {
       return (
         <VerifyStateCard
-          title="Email verified"
-          description="Your NexaMart email is verified. You can now continue to the normal app flow."
+          title="Email verified!"
+          description="Your email is now verified. You can continue using your NexaMart account."
           icon={<CheckCircle2 className="h-7 w-7" />}
           toneClassName="bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
           primaryHref={nextPath}
@@ -90,7 +90,7 @@ export default async function VerifyEmailPage({
     if (result.status === "already_verified") {
       return (
         <VerifyStateCard
-          title="Email already verified"
+          title="Email already verified!"
           description="This email address has already been verified. You can continue using your NexaMart account."
           icon={<CheckCircle2 className="h-7 w-7" />}
           toneClassName="bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
@@ -103,7 +103,7 @@ export default async function VerifyEmailPage({
     if (result.status === "expired") {
       return (
         <VerifyStateCard
-          title="Verification link expired"
+          title="Verification link expired!"
           description="This verification link has expired. Return to the verification page and request a fresh email."
           icon={<ShieldAlert className="h-7 w-7" />}
           toneClassName="bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400"

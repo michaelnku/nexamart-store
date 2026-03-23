@@ -27,6 +27,7 @@ export async function GET() {
     isBanned: user.isBanned,
     emailVerifiedAt: user.emailVerified?.toISOString() ?? null,
     isEmailVerified: Boolean(user.emailVerified),
+    hasPassword: Boolean(user.password),
     store: user.store,
     riderProfile: user.riderProfile,
     staffProfile: user.staffProfile,

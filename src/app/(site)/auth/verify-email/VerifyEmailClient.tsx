@@ -6,6 +6,7 @@ import { MailCheck, RefreshCw, ShieldCheck } from "lucide-react";
 
 import {
   getEmailVerificationStatus,
+  getEmailVerificationResendState,
   resendEmailVerificationForCurrentUser,
 } from "@/actions/email-verification/emailVerification";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,29 @@ export default function VerifyEmailClient({
     };
   }, [email, nextPath, router]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncCooldown = async () => {
+      const result = await getEmailVerificationResendState({ email });
+
+      if (cancelled) return;
+
+      setCooldownNow(Date.now());
+      setCooldownEndsAt(
+        result.cooldownEndsAt
+          ? new Date(result.cooldownEndsAt).getTime()
+          : null,
+      );
+    };
+
+    void syncCooldown();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [email]);
+
   const secondsRemaining = useMemo(() => {
     if (!cooldownEndsAt) return 0;
     return Math.max(0, Math.ceil((cooldownEndsAt - cooldownNow) / 1000));
@@ -80,6 +104,7 @@ export default function VerifyEmailClient({
     startResendTransition(async () => {
       const result = await resendEmailVerificationForCurrentUser({ email });
       setMessage(result.message);
+      setCooldownNow(Date.now());
       setCooldownEndsAt(
         result.cooldownEndsAt
           ? new Date(result.cooldownEndsAt).getTime()
@@ -124,13 +149,9 @@ export default function VerifyEmailClient({
               <ShieldCheck className="mt-0.5 h-5 w-5 text-[#3c9ee0]" />
               <div className="space-y-2 text-sm leading-6 text-slate-600 dark:text-zinc-300">
                 <p className="font-medium text-slate-900 dark:text-zinc-100">
-                  You can verify later.
+                  Verify later.
                 </p>
-                <p>
-                  Until then, NexaMart will keep these actions restricted:
-                  wallet activation, store creation, rider profile setup, and
-                  staff profile setup.
-                </p>
+                <p>You can always verify your email later.</p>
               </div>
             </div>
           </div>
@@ -138,35 +159,48 @@ export default function VerifyEmailClient({
           <div className="rounded-xl border bg-slate-50/80 p-4 text-sm text-slate-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300">
             <p>1. Open your inbox</p>
             <p>2. Click the verification link</p>
-            <p>3. Return here and we will continue automatically</p>
+            <p>3. Return here to continue using NexaMart </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleResend}
-              disabled={isResending || secondsRemaining > 0}
-              className="gap-2 border-[#3c9ee0]/20 text-[#3c9ee0] hover:bg-[#3c9ee0]/5 hover:text-[#3c9ee0]"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${isResending ? "animate-spin" : ""}`}
-              />
-              {secondsRemaining > 0
-                ? `Resend in ${secondsRemaining}s`
-                : isResending
-                  ? "Sending..."
-                  : "Resend verification email"}
-            </Button>
+          <div className="space-y-3">
+            <div className="rounded-xl border bg-slate-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
+              <p className="text-sm font-medium text-slate-900 dark:text-zinc-100">
+                Didn&apos;t get a link?
+              </p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-zinc-300">
+                {secondsRemaining > 0
+                  ? `Resend available in ${secondsRemaining}s`
+                  : "You can request a fresh verification email now."}
+              </p>
+            </div>
 
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => router.replace(nextPath)}
-              className="text-slate-700 hover:text-slate-900 dark:text-zinc-300 dark:hover:text-zinc-100"
-            >
-              Verify later
-            </Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResend}
+                disabled={isResending || secondsRemaining > 0}
+                className="gap-2 border-[#3c9ee0]/20 text-[#3c9ee0] hover:bg-[#3c9ee0]/5 hover:text-[#3c9ee0]"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isResending ? "animate-spin" : ""}`}
+                />
+                {secondsRemaining > 0
+                  ? `Resend in ${secondsRemaining}s`
+                  : isResending
+                    ? "Sending..."
+                    : "Resend verification email"}
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => router.replace(nextPath)}
+                className="text-slate-700 hover:text-slate-900 dark:text-zinc-300 dark:hover:text-zinc-100"
+              >
+                Verify later
+              </Button>
+            </div>
           </div>
 
           {message ? (
@@ -177,9 +211,8 @@ export default function VerifyEmailClient({
         </CardContent>
 
         <CardFooter className="border-t bg-slate-50/70 text-sm leading-6 text-slate-500 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400">
-          Your account can still sign in later through the normal NexaMart entry
-          path. Verification is only required before the protected setup actions
-          above.
+          Your email is not verified yet. Email verification is only required to
+          use some features.
         </CardFooter>
       </Card>
     </main>

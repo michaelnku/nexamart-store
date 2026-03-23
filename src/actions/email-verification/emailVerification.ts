@@ -3,6 +3,7 @@
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { resendEmailVerificationForUser } from "@/lib/email-verification/service";
+import { EMAIL_VERIFICATION_RESEND_COOLDOWN_MS } from "@/lib/email-verification/constants";
 
 export type ResendEmailVerificationActionResult =
   | {
@@ -130,4 +131,67 @@ export async function getEmailVerificationStatus(options?: {
   });
 
   return { verified: Boolean(user?.emailVerified) };
+}
+
+export async function getEmailVerificationResendState(options?: {
+  email?: string;
+}): Promise<{ retryAfterSeconds: number; cooldownEndsAt?: string }> {
+  const currentUser = await CurrentUser();
+  const normalizedEmail = options?.email?.toLowerCase().trim();
+
+  const user = currentUser?.id
+    ? await prisma.user.findUnique({
+        where: { id: currentUser.id },
+        select: {
+          id: true,
+          email: true,
+        },
+      })
+    : normalizedEmail
+      ? await prisma.user.findUnique({
+          where: { email: normalizedEmail },
+          select: {
+            id: true,
+            email: true,
+          },
+        })
+      : null;
+
+  if (!user) {
+    return { retryAfterSeconds: 0 };
+  }
+
+  const latestToken = await prisma.emailVerificationToken.findFirst({
+    where: {
+      userId: user.id,
+      email: user.email.toLowerCase().trim(),
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    select: {
+      createdAt: true,
+    },
+  });
+
+  if (!latestToken) {
+    return { retryAfterSeconds: 0 };
+  }
+
+  const cooldownEndsAt = new Date(
+    latestToken.createdAt.getTime() + EMAIL_VERIFICATION_RESEND_COOLDOWN_MS,
+  );
+  const retryAfterSeconds = Math.max(
+    0,
+    Math.ceil((cooldownEndsAt.getTime() - Date.now()) / 1000),
+  );
+
+  if (retryAfterSeconds === 0) {
+    return { retryAfterSeconds: 0 };
+  }
+
+  return {
+    retryAfterSeconds,
+    cooldownEndsAt: cooldownEndsAt.toISOString(),
+  };
 }

@@ -3,9 +3,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { DEFAULT_LOGIN_REDIRECT, MARKET_PLACE_LOGIN_REDIRECT } from "@/routes";
+import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 import { useAuthStore } from "@/stores/useAuthstore";
 import Image from "next/image";
+import { getDashboardRedirectForRole } from "@/lib/auth/roleRedirect";
 
 export default function RedirectingPage() {
   const router = useRouter();
@@ -35,10 +36,21 @@ export default function RedirectingPage() {
   useEffect(() => {
     if (!user) return;
 
-    const isMarketplaceRole = ["ADMIN", "SELLER", "RIDER"].includes(user.role);
-    router.push(
-      isMarketplaceRole ? MARKET_PLACE_LOGIN_REDIRECT : DEFAULT_LOGIN_REDIRECT,
-    );
+    const nextPath =
+      getDashboardRedirectForRole(user.role) ?? DEFAULT_LOGIN_REDIRECT;
+    const verifyLaterPath = user.hasPassword ? "/auth/login" : "/";
+
+    if (!user.isEmailVerified) {
+      const params = new URLSearchParams({
+        email: user.email,
+        next: verifyLaterPath,
+      });
+
+      router.replace(`/auth/verify-email?${params.toString()}`);
+      return;
+    }
+
+    router.replace(nextPath);
   }, [user, router]);
 
   return (
