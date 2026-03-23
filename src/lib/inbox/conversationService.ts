@@ -67,6 +67,7 @@ export async function processConversationMessageAfterWrite(
   }
 
   try {
+    // Moderation can reach external AI, so it must stay outside tx-capable writes.
     await moderateMessageAfterCreate(prisma, message);
   } catch (error) {
     console.error("Message moderation failed", {

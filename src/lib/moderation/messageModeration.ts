@@ -7,13 +7,11 @@ import {
   ReviewStatus,
   SenderType,
   UserRole,
-  type Prisma,
   type PrismaClient,
 } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 import { createAuditLog } from "@/lib/audit/service";
 import { applyModerationEnforcement } from "@/lib/moderation/enforcement";
-
-type ModerationDbClient = Prisma.TransactionClient | PrismaClient;
 
 type MessageModerationTarget = {
   id: string;
@@ -188,7 +186,7 @@ function chooseHighestSeveritySignal(signals: MessageModerationSignal[]) {
   })[0];
 }
 
-async function getOrCreateAiModeratorIdentity(db: ModerationDbClient) {
+async function getOrCreateAiModeratorIdentity(db: PrismaClient) {
   const existing = await db.moderatorIdentity.findFirst({
     where: {
       type: ModeratorIdentityType.AI,
@@ -213,7 +211,7 @@ async function getOrCreateAiModeratorIdentity(db: ModerationDbClient) {
 }
 
 async function resolveMessageModerationTarget(
-  db: ModerationDbClient,
+  db: PrismaClient,
   messageId: string,
 ): Promise<MessageModerationTarget | null> {
   return db.message.findUnique({
@@ -239,7 +237,7 @@ async function resolveMessageModerationTarget(
 }
 
 async function detectSpamSignal(
-  db: ModerationDbClient,
+  db: PrismaClient,
   target: MessageModerationTarget,
   normalizedContent: string,
 ): Promise<MessageModerationSignal | null> {
@@ -305,7 +303,7 @@ async function detectSpamSignal(
 }
 
 async function evaluateMessageRules(
-  db: ModerationDbClient,
+  db: PrismaClient,
   target: MessageModerationTarget,
 ): Promise<MessageModerationOutcome | null> {
   const normalizedContent = normalizeMessageContent(target.content);
@@ -543,7 +541,7 @@ Return JSON only:
 }
 
 async function evaluateMessageModeration(
-  db: ModerationDbClient,
+  db: PrismaClient,
   target: MessageModerationTarget,
 ) {
   const rulesOutcome = await evaluateMessageRules(db, target);
@@ -584,7 +582,7 @@ function buildIncidentMetadata(
 }
 
 export async function moderateMessageAfterCreate(
-  db: ModerationDbClient,
+  db: PrismaClient,
   message: {
     id: string;
     conversationId: string;
