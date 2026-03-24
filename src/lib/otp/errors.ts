@@ -18,6 +18,12 @@ export class OtpConfigError extends OtpError {
   }
 }
 
+export class InvalidOtpPhoneError extends OtpError {
+  constructor(message = "Invalid phone number. Use a valid international number.", options?: { cause?: unknown }) {
+    super(message, "OTP_INVALID_PHONE", options);
+  }
+}
+
 export class UnsupportedOtpChannelError extends OtpError {
   constructor(
     channel: OtpChannel,

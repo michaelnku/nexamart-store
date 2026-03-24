@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher";
-import { OtpProviderUnavailableError } from "@/lib/otp";
+import { InvalidOtpPhoneError, OtpProviderUnavailableError } from "@/lib/otp";
 import { hasConfiguredOtpMessagingProvider } from "@/lib/otp/config";
 import { sendOtpSms } from "@/services/sendOtpSms";
 
@@ -11,6 +11,7 @@ export type DeliveryOtpSendResult =
       code:
         | "USER_NOT_FOUND"
         | "MISSING_PHONE"
+        | "INVALID_PHONE"
         | "SMS_PROVIDER_UNAVAILABLE"
         | "OTP_SERVICE_UNAVAILABLE";
       message: string;
@@ -98,10 +99,15 @@ export async function sendDeliveryOtpToCustomer(
     return {
       success: false,
       code:
-        error instanceof OtpProviderUnavailableError
-          ? "SMS_PROVIDER_UNAVAILABLE"
-          : "OTP_SERVICE_UNAVAILABLE",
-      message: "OTP service temporarily unavailable.",
+        error instanceof InvalidOtpPhoneError
+          ? "INVALID_PHONE"
+          : error instanceof OtpProviderUnavailableError
+            ? "SMS_PROVIDER_UNAVAILABLE"
+            : "OTP_SERVICE_UNAVAILABLE",
+      message:
+        error instanceof InvalidOtpPhoneError
+          ? error.message
+          : "OTP service temporarily unavailable.",
     };
   }
 }

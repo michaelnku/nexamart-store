@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { OtpError, otpService } from "@/lib/otp";
+import { InvalidOtpPhoneError, OtpError, otpService } from "@/lib/otp";
 
 export async function POST(req: Request) {
   try {
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
             ? error.message
             : "Failed to send verification code.",
       },
-      { status: 500 },
+      { status: error instanceof InvalidOtpPhoneError ? 400 : 500 },
     );
   }
 }

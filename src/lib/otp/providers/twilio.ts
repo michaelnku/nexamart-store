@@ -24,6 +24,28 @@ import type {
   VerifyManagedOtpRequest,
 } from "@/lib/otp/types";
 
+function getTwilioErrorDetails(error: unknown) {
+  if (typeof error !== "object" || error === null) {
+    return { raw: error };
+  }
+
+  const candidate = error as {
+    status?: number;
+    code?: number | string;
+    message?: string;
+    moreInfo?: string;
+    details?: unknown;
+  };
+
+  return {
+    status: candidate.status,
+    code: candidate.code,
+    message: candidate.message,
+    moreInfo: candidate.moreInfo,
+    details: candidate.details,
+  };
+}
+
 function mapTwilioError(error: unknown, fallback: Error): Error {
   if (
     typeof error === "object" &&
@@ -180,7 +202,7 @@ export class TwilioOtpProvider implements OtpProvider {
     }
 
     try {
-      const { client, config } = getMessagingClient();
+      const { client } = getMessagingClient();
       const messagePayload =
         input.channel === "whatsapp"
           ? {
@@ -199,6 +221,7 @@ export class TwilioOtpProvider implements OtpProvider {
       });
       return { provider: this.name };
     } catch (error) {
+      console.error("[otp][twilio] message send failed", getTwilioErrorDetails(error));
       throw mapTwilioError(
         error,
         new OtpDeliveryFailedError(
@@ -239,6 +262,7 @@ export class TwilioOtpProvider implements OtpProvider {
 
       return { status: verification.status };
     } catch (error) {
+      console.error("[otp][twilio] verify send failed", getTwilioErrorDetails(error));
       throw mapTwilioError(
         error,
         new OtpDeliveryFailedError("Twilio Verify failed to send the OTP.", {
@@ -279,6 +303,7 @@ export class TwilioOtpProvider implements OtpProvider {
         status: verificationCheck.status,
       };
     } catch (error) {
+      console.error("[otp][twilio] verify check failed", getTwilioErrorDetails(error));
       throw mapTwilioError(
         error,
         new OtpVerificationFailedError(

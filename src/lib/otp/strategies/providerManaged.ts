@@ -9,12 +9,14 @@ import {
   logOtpVerifyFailure,
   logOtpVerifySuccess,
 } from "@/lib/otp/logging";
+import { normalizeOtpPhoneToE164 } from "@/lib/otp/phone";
 import type { SendManagedOtpRequest, VerifyManagedOtpRequest } from "@/lib/otp/types";
 
 export async function sendProviderManagedOtp(input: SendManagedOtpRequest) {
   const provider = getManagedVerificationProvider();
+  const normalizedPhone = normalizeOtpPhoneToE164(input.phone);
   const context = {
-    phone: input.phone,
+    phone: normalizedPhone,
     channel: input.channel,
     purpose: input.purpose,
     strategy: "provider_managed" as const,
@@ -25,7 +27,10 @@ export async function sendProviderManagedOtp(input: SendManagedOtpRequest) {
   logOtpSendAttempt(context);
 
   try {
-    const result = await provider.sendVerification(input);
+    const result = await provider.sendVerification({
+      ...input,
+      phone: normalizedPhone,
+    });
     logOtpSendSuccess(context);
     return { provider: provider.name, ...result };
   } catch (error) {
@@ -36,8 +41,9 @@ export async function sendProviderManagedOtp(input: SendManagedOtpRequest) {
 
 export async function verifyProviderManagedOtp(input: VerifyManagedOtpRequest) {
   const provider = getManagedVerificationProvider();
+  const normalizedPhone = normalizeOtpPhoneToE164(input.phone);
   const context = {
-    phone: input.phone,
+    phone: normalizedPhone,
     channel: input.channel,
     purpose: input.purpose,
     strategy: "provider_managed" as const,
@@ -48,7 +54,10 @@ export async function verifyProviderManagedOtp(input: VerifyManagedOtpRequest) {
   logOtpVerifyAttempt(context);
 
   try {
-    const result = await provider.verifyCode(input);
+    const result = await provider.verifyCode({
+      ...input,
+      phone: normalizedPhone,
+    });
     if (result.approved) {
       logOtpVerifySuccess(context);
     } else {

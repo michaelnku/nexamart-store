@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getSmsOtpProviderChain } from "@/lib/otp/factory";
+import { normalizeOtpPhoneToE164 } from "@/lib/otp/phone";
 import { sendWithProviderFallbackChain } from "@/lib/otp/providerChain";
 import type {
   OtpChannel,
@@ -10,7 +11,7 @@ import type {
 
 export async function sendLocalDeliveryOtpMessage(phone: string, message: string, userId?: string) {
   return sendWithProviderFallbackChain(getSmsOtpProviderChain(), {
-    phone,
+    phone: normalizeOtpPhoneToE164(phone),
     channel: "sms",
     purpose: "delivery",
     message,
@@ -27,5 +28,8 @@ export async function sendTransportOtpMessage(input: {
   userId?: string;
   strategy?: OtpStrategy;
 }) {
-  return sendWithProviderFallbackChain(getSmsOtpProviderChain(), input);
+  return sendWithProviderFallbackChain(getSmsOtpProviderChain(), {
+    ...input,
+    phone: normalizeOtpPhoneToE164(input.phone),
+  });
 }
