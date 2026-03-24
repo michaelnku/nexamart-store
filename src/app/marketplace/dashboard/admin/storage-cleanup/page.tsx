@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import AdminStorageCleanupClient from "@/app/marketplace/dashboard/admin/_components/AdminStorageCleanupClient";
 import { CurrentUser } from "@/lib/currentUser";
+import { UserRole } from "@/generated/prisma";
 
 export default async function AdminStorageCleanupPage() {
   const user = await CurrentUser();
@@ -10,7 +11,7 @@ export default async function AdminStorageCleanupPage() {
     redirect("/auth/login");
   }
 
-  if (user.role !== "ADMIN") {
+  if (user.role !== UserRole.ADMIN) {
     redirect("/403");
   }
 

@@ -4,6 +4,7 @@ import { sendEmail } from "@/lib/resend/mail";
 import bcrypt from "bcryptjs";
 import { hashToken, generateSecureToken } from "@/lib/security/tokens";
 import { getAppBaseUrl } from "@/lib/config/appUrl";
+import { PasswordResetEmailTemplate } from "@/lib/password-reset/passwordResetEmailTemplate";
 
 async function checkRateLimit(email: string, ip?: string | null) {
   const fifteenMinutesAgo = new Date(Date.now() - 1000 * 60 * 15);
@@ -53,18 +54,10 @@ export async function forgotPassword(email: string, ip?: string | null) {
     from: `NexaMart <${process.env.EMAIL_FROM_NO_REPLY ?? process.env.EMAIL_FROM}>`,
     replyTo: `NexaMart Support <${process.env.EMAIL_FROM_SUPPORT ?? process.env.EMAIL_FROM}>`,
     subject: "Reset your password",
-    html: `
-      <p>You requested a password reset.</p>
-      <p>
-        <a href="${resetLink}">Reset Password</a>
-      </p>
-      
-      <p>
-        Or copy and paste the following link into your browser:<br/>
-        <small>${resetLink}</small>
-      </p>
-      <p>This link expires in 30 minutes.</p>
-    `,
+    html: PasswordResetEmailTemplate({
+      resetUrl: resetLink,
+      expiresInMinutes: 30,
+    }),
   });
 }
 

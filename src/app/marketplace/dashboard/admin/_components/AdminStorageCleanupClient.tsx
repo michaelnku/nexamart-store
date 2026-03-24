@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import {
-  HardDrive,
-  Search,
-  ShieldAlert,
-  Trash2,
-} from "lucide-react";
+import { HardDrive, Search, ShieldAlert, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { cleanupOrphanedUploadThingImagesAction } from "@/actions/admin/cleanupOrphanedUploadThingImages";
@@ -28,7 +23,9 @@ type ScanState = {
 export default function AdminStorageCleanupClient() {
   const [scanState, setScanState] = useState<ScanState | null>(null);
   const [hasScanned, setHasScanned] = useState(false);
-  const [lastActionMessage, setLastActionMessage] = useState<string | null>(null);
+  const [lastActionMessage, setLastActionMessage] = useState<string | null>(
+    null,
+  );
   const [isScanning, startScanTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
 
@@ -107,7 +104,7 @@ export default function AdminStorageCleanupClient() {
         accentClassName="bg-[linear-gradient(135deg,#111827_0%,#0f3d5e_44%,#0f766e_100%)]"
       />
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <PremiumStatCard
           title="Scanned Files"
           value={formatAnalyticsCount(scanState?.scanned ?? 0)}
@@ -118,7 +115,7 @@ export default function AdminStorageCleanupClient() {
         <PremiumStatCard
           title="Referenced Files"
           value={formatAnalyticsCount(scanState?.referenced ?? 0)}
-          description="Persisted UploadThing references found across the current codebase schema."
+          description="Image files referenced by persisted admin, catalog, account, dispute, and marketing records."
           icon={HardDrive}
           tintClassName="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
         />

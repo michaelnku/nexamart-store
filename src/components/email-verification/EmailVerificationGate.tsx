@@ -2,11 +2,16 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { MailCheck, RefreshCcw } from "lucide-react";
 
-import { resendEmailVerificationForCurrentUser } from "@/actions/email-verification/emailVerification";
+import {
+  getEmailVerificationStatus,
+  resendEmailVerificationForCurrentUser,
+} from "@/actions/email-verification/emailVerification";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { UserDTO } from "@/lib/types";
 
 type EmailVerificationGateProps = {
   description: string;
@@ -20,6 +25,7 @@ export function EmailVerificationGate({
   title = "Verify your email to continue",
 }: EmailVerificationGateProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [feedback, setFeedback] = useState<string | null>(null);
   const [feedbackTone, setFeedbackTone] = useState<"neutral" | "success" | "error">(
     "neutral",
@@ -43,7 +49,34 @@ export function EmailVerificationGate({
   };
 
   const handleRefresh = () => {
-    startRefreshTransition(() => {
+    startRefreshTransition(async () => {
+      const result = await getEmailVerificationStatus(
+        email ? { email } : undefined,
+      );
+
+      if (!result.verified) {
+        setFeedback(
+          "We still show your email as unverified. Open the latest verification link in your inbox, then try again.",
+        );
+        setFeedbackTone("neutral");
+        return;
+      }
+
+      queryClient.setQueryData<UserDTO | null>(
+        ["currentUser"],
+        (currentUser) =>
+          currentUser
+            ? {
+                ...currentUser,
+                isEmailVerified: true,
+                emailVerifiedAt: new Date().toISOString(),
+              }
+            : currentUser,
+      );
+      await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+
+      setFeedback("Email verified. Refreshing your access now.");
+      setFeedbackTone("success");
       router.refresh();
     });
   };
@@ -89,7 +122,7 @@ export function EmailVerificationGate({
             disabled={isRefreshing}
           >
             <RefreshCcw className="mr-2 h-4 w-4" />
-            {isRefreshing ? "Refreshing..." : "I already verified"}
+            {isRefreshing ? "Checking..." : "I've already verified"}
           </Button>
         </div>
 
