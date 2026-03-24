@@ -32,6 +32,7 @@ import {
   StoreIcon,
   Award,
   ShieldAlert,
+  HardDrive,
 } from "lucide-react";
 
 export const DashboardMenu = {
@@ -300,6 +301,11 @@ export const DashboardMenu = {
           name: "Audit Logs",
           href: "/marketplace/dashboard/admin/audit-logs",
           icon: FileChartColumn,
+        },
+        {
+          name: "Storage Cleanup",
+          href: "/marketplace/dashboard/admin/storage-cleanup",
+          icon: HardDrive,
         },
       ],
     },
