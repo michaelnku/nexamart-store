@@ -51,6 +51,17 @@ type AdminJobsClientProps = {
   };
 };
 
+type JobTableRow = {
+  id: string;
+  type: string;
+  status: string;
+  attempts: number;
+  maxRetries: number;
+  runAt: string;
+  createdAt: string;
+  lastError: string | null;
+};
+
 function LoadingState() {
   return (
     <div className="space-y-8">
@@ -82,6 +93,15 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
+function formatJobType(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function getStatusBadgeClass(status: string) {
   if (["COMPLETED", "SUCCESS", "DONE"].includes(status)) {
     return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300";
@@ -111,16 +131,7 @@ function JobsTable({
 }: {
   title: string;
   description: string;
-  rows: Array<{
-    id: string;
-    type: string;
-    status: string;
-    attempts: number;
-    maxRetries: number;
-    runAt: string;
-    createdAt: string;
-    lastError: string | null;
-  }>;
+  rows: JobTableRow[];
   emptyTitle: string;
   emptyDescription: string;
 }) {
@@ -137,65 +148,129 @@ function JobsTable({
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-separate border-spacing-0">
-            <thead>
-              <tr>
-                {[
-                  "Type",
-                  "Status",
-                  "Attempts",
-                  "Run At",
-                  "Created",
-                  "Last Error",
-                ].map((column) => (
-                  <th
-                    key={column}
-                    className="border-b border-slate-200/80 px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-zinc-800 dark:text-zinc-400"
+        <div className="space-y-4">
+          <div className="space-y-3 lg:hidden">
+            {rows.map((row) => (
+              <div
+                key={row.id}
+                className="rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950/60"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-950 dark:text-white">
+                      {formatJobType(row.type)}
+                    </p>
+                    <p className="mt-1 break-all text-xs text-slate-500 dark:text-zinc-400">
+                      {row.id}
+                    </p>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={cn(getStatusBadgeClass(row.status))}
                   >
-                    {column}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td className="border-b border-slate-200/60 px-4 py-4 text-sm font-medium text-slate-950 dark:border-zinc-900 dark:text-white">
-                    <div className="min-w-[12rem]">
-                      <p>{row.type}</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
-                        {row.id}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="border-b border-slate-200/60 px-4 py-4 dark:border-zinc-900">
-                    <Badge
-                      variant="outline"
-                      className={cn(getStatusBadgeClass(row.status))}
-                    >
-                      {row.status}
-                    </Badge>
-                  </td>
-                  <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200">
-                    {formatAnalyticsCount(row.attempts)} /{" "}
-                    {formatAnalyticsCount(row.maxRetries)}
-                  </td>
-                  <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200">
-                    {formatDateTime(row.runAt)}
-                  </td>
-                  <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200">
-                    {formatDateTime(row.createdAt)}
-                  </td>
-                  <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-600 dark:border-zinc-900 dark:text-zinc-300">
-                    <div className="max-w-[24rem] whitespace-pre-wrap break-words">
+                    {row.status}
+                  </Badge>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-slate-200/70 bg-slate-50/80 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/70">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                      Attempts
+                    </p>
+                    <p className="mt-1 text-sm text-slate-900 dark:text-zinc-100">
+                      {formatAnalyticsCount(row.attempts)} /{" "}
+                      {formatAnalyticsCount(row.maxRetries)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200/70 bg-slate-50/80 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/70">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                      Run At
+                    </p>
+                    <p className="mt-1 text-sm text-slate-900 dark:text-zinc-100">
+                      {formatDateTime(row.runAt)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200/70 bg-slate-50/80 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/70 sm:col-span-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                      Created
+                    </p>
+                    <p className="mt-1 text-sm text-slate-900 dark:text-zinc-100">
+                      {formatDateTime(row.createdAt)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200/70 bg-slate-50/80 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/70 sm:col-span-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                      Last Error
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700 dark:text-zinc-300">
                       {row.lastError || "—"}
-                    </div>
-                  </td>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto lg:block">
+            <table className="min-w-full border-separate border-spacing-0">
+              <thead>
+                <tr>
+                  {[
+                    "Type",
+                    "Status",
+                    "Attempts",
+                    "Run At",
+                    "Created",
+                    "Last Error",
+                  ].map((column) => (
+                    <th
+                      key={column}
+                      className="border-b border-slate-200/80 px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-zinc-800 dark:text-zinc-400"
+                    >
+                      {column}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id}>
+                    <td className="border-b border-slate-200/60 px-4 py-4 text-sm font-medium text-slate-950 dark:border-zinc-900 dark:text-white">
+                      <div className="min-w-[12rem]">
+                        <p>{formatJobType(row.type)}</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+                          {row.id}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="border-b border-slate-200/60 px-4 py-4 dark:border-zinc-900">
+                      <Badge
+                        variant="outline"
+                        className={cn(getStatusBadgeClass(row.status))}
+                      >
+                        {row.status}
+                      </Badge>
+                    </td>
+                    <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200">
+                      {formatAnalyticsCount(row.attempts)} /{" "}
+                      {formatAnalyticsCount(row.maxRetries)}
+                    </td>
+                    <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200">
+                      {formatDateTime(row.runAt)}
+                    </td>
+                    <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200">
+                      {formatDateTime(row.createdAt)}
+                    </td>
+                    <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-600 dark:border-zinc-900 dark:text-zinc-300">
+                      <div className="max-w-[24rem] whitespace-pre-wrap break-words">
+                        {row.lastError || "—"}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </PremiumPanel>
@@ -213,11 +288,6 @@ export default function AdminJobsClient({
   }
 
   if (query.isError || !query.data) {
-    const errorMessage =
-      query.error instanceof Error
-        ? query.error.message
-        : "Failed to load background jobs dashboard.";
-
     return (
       <div className="space-y-6">
         <DashboardHero
@@ -227,7 +297,7 @@ export default function AdminJobsClient({
           accentClassName="bg-[linear-gradient(135deg,#111827_0%,#1e3a8a_48%,#0f766e_100%)]"
         />
         <div className="rounded-[24px] border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
-          {errorMessage}
+          Failed to load the background jobs dashboard.
         </div>
       </div>
     );
@@ -334,6 +404,18 @@ export default function AdminJobsClient({
   ];
 
   const hasNoJobs = dashboard.snapshot.totalJobs === 0;
+  const jobsByTypeRows = dashboard.breakdowns.jobsByType.map((row) => ({
+    ...row,
+    label: formatJobType(row.label),
+  }));
+  const failureHotspotRows = dashboard.breakdowns.failureHotspots.map((row) => ({
+    ...row,
+    label: formatJobType(row.label),
+  }));
+  const retryHotspotRows = dashboard.breakdowns.retryHotspots.map((row) => ({
+    ...row,
+    label: formatJobType(row.label),
+  }));
 
   return (
     <main className="mx-auto max-w-7xl space-y-8 px-4 py-6">
@@ -367,8 +449,8 @@ export default function AdminJobsClient({
             Current Snapshot
           </p>
           <p className="text-sm text-slate-600 dark:text-zinc-300">
-            Live queue state across pending, running, completed, failed,
-            overdue, and retrying jobs.
+            Live queue state across pending, running, completed, failed, overdue,
+            and retrying jobs.
           </p>
         </div>
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -467,16 +549,14 @@ export default function AdminJobsClient({
             <AnalyticsBreakdownList
               title="Jobs By Type"
               description="Most common job types created in the selected period."
-              rows={dashboard.breakdowns.jobsByType}
+              rows={jobsByTypeRows}
               valueFormatter={(value) => formatAnalyticsCount(value)}
             />
             <AnalyticsRankedList
               title="Failure Hotspots"
               description="Job types with the highest failed-job concentration."
-              rows={dashboard.breakdowns.failureHotspots}
-              primaryFormatter={(value) =>
-                `${formatAnalyticsCount(value)} failed`
-              }
+              rows={failureHotspotRows}
+              primaryFormatter={(value) => `${formatAnalyticsCount(value)} failed`}
               secondaryLabel={(value) =>
                 `${formatAnalyticsCount(value)} total attempts`
               }
@@ -484,13 +564,9 @@ export default function AdminJobsClient({
             <AnalyticsRankedList
               title="Retry Hotspots"
               description="Job types generating the most retry pressure."
-              rows={dashboard.breakdowns.retryHotspots}
-              primaryFormatter={(value) =>
-                `${formatAnalyticsCount(value)} jobs`
-              }
-              secondaryLabel={(value) =>
-                `${Number(value).toFixed(1)} avg attempts`
-              }
+              rows={retryHotspotRows}
+              primaryFormatter={(value) => `${formatAnalyticsCount(value)} jobs`}
+              secondaryLabel={(value) => `${Number(value).toFixed(1)} avg attempts`}
             />
           </section>
         </>

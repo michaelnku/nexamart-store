@@ -5,7 +5,6 @@ import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { autoAssignRider } from "@/lib/rider/logistics";
 import { completeDeliveryAndPayRider } from "@/lib/rider/completeDeliveryPayout";
 import { DeliveryStatus, OrderStatus } from "@/generated/prisma/client";
-import { hashOtp } from "@/lib/otp";
 import { moveOrderEarningsToPending } from "@/lib/payout/moveToPendingOnDelivery";
 import { ensureOrderPayoutReleaseJobInTx } from "@/lib/payout/orderPayoutRelease";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
@@ -173,7 +172,7 @@ export async function riderCancelAssignedDeliveryAction(deliveryId: string) {
 }
 
 export async function verifyDeliveryOTPAction(deliveryId: string, otp: string) {
-  const MAX_OTP_ATTEMPTS = 5;
+  void otp;
 
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
@@ -196,51 +195,11 @@ export async function verifyDeliveryOTPAction(deliveryId: string, otp: string) {
     return { error: `Delivery status ${delivery.status} cannot be verified` };
   }
 
-  if (delivery.isLocked) {
-    return {
-      error:
-        "Delivery is locked after too many invalid OTP attempts. Contact admin support.",
-    };
-  }
-
-  if (!delivery.otpHash || !delivery.otpExpiresAt)
-    return { error: "OTP not generated" };
-
-  if (delivery.otpExpiresAt < new Date()) return { error: "OTP expired" };
-
-  const normalizedOtp = otp.trim();
-  const otpMatches = hashOtp(normalizedOtp) === delivery.otpHash;
-
-  if (!otpMatches) {
-    const nextAttempts = (delivery.otpAttempts ?? 0) + 1;
-
-    if (nextAttempts >= MAX_OTP_ATTEMPTS) {
-      await prisma.delivery.update({
-        where: { id: deliveryId },
-        data: {
-          otpAttempts: nextAttempts,
-          isLocked: true,
-          lockedAt: new Date(),
-        },
-      });
-
-      return {
-        error:
-          "Invalid OTP. Attempt limit exceeded and delivery has been locked.",
-      };
-    }
-
-    const attemptsLeft = MAX_OTP_ATTEMPTS - nextAttempts;
-
-    await prisma.delivery.update({
-      where: { id: deliveryId },
-      data: { otpAttempts: nextAttempts },
-    });
-
-    return {
-      error: `Invalid OTP. ${attemptsLeft} attempt${attemptsLeft === 1 ? "" : "s"} left.`,
-    };
-  }
+  console.warn("[verifyDeliveryOTPAction] OTP verification temporarily bypassed", {
+    deliveryId,
+    riderId: userId,
+    deliveryStatus: delivery.status,
+  });
 
   const confirmedAt = new Date();
   const payoutEligibleAt = getPayoutEligibleAtFrom(

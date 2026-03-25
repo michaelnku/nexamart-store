@@ -22,7 +22,10 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { getAdminAuditLogs, parseAdminAuditLogsSearchParams } from "@/lib/audit/query";
+import {
+  getAdminAuditLogs,
+  parseAdminAuditLogsSearchParams,
+} from "@/lib/audit/query";
 import {
   AUDIT_ACTION_LABELS,
   AUDIT_ACTION_TYPES,
@@ -109,7 +112,11 @@ function buildQueryString(
   return params.toString();
 }
 
-function MetadataPreview({ metadata }: { metadata: Record<string, AuditMetadata> | null }) {
+function MetadataPreview({
+  metadata,
+}: {
+  metadata: Record<string, AuditMetadata> | null;
+}) {
   if (!metadata) return <span className="text-slate-400">No metadata</span>;
 
   const entries = Object.entries(metadata).slice(0, 3);
@@ -143,11 +150,15 @@ function AuditRow({ item }: { item: AuditLogListItem }) {
       <tr className="align-top">
         <td className="px-6 py-5 text-sm text-slate-600 dark:text-zinc-300">
           <div className="space-y-1">
-            <p className="font-semibold text-slate-950 dark:text-white">{actorLabel}</p>
+            <p className="font-semibold text-slate-950 dark:text-white">
+              {actorLabel}
+            </p>
             <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
               {item.actor.role}
             </p>
-            {item.actor.email ? <p className="text-xs">{item.actor.email}</p> : null}
+            {item.actor.email ? (
+              <p className="text-xs">{item.actor.email}</p>
+            ) : null}
           </div>
         </td>
         <td className="px-6 py-5">
@@ -162,7 +173,10 @@ function AuditRow({ item }: { item: AuditLogListItem }) {
           <div className="space-y-2">
             <Badge
               variant="outline"
-              className={cn("border", getEntityBadgeClass(item.targetEntityType))}
+              className={cn(
+                "border",
+                getEntityBadgeClass(item.targetEntityType),
+              )}
             >
               {AUDIT_ENTITY_LABELS[item.targetEntityType]}
             </Badge>
@@ -258,7 +272,7 @@ export default async function AdminAuditLogsPage({ searchParams }: Props) {
 
       <PremiumPanel
         title="Audit Timeline"
-        description="Server-rendered filters and searchable audit history for platform oversight."
+        description="Filter and sort audit activity in reverse-chronological order."
       >
         <div className="space-y-6">
           <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
@@ -410,7 +424,9 @@ export default async function AdminAuditLogsPage({ searchParams }: Props) {
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="space-y-1">
-                          <p className="font-semibold text-slate-950">{actorLabel}</p>
+                          <p className="font-semibold text-slate-950">
+                            {actorLabel}
+                          </p>
                           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
                             {item.actor.role}
                           </p>
@@ -423,7 +439,10 @@ export default async function AdminAuditLogsPage({ searchParams }: Props) {
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Badge
                           variant="outline"
-                          className={cn("border", getActionBadgeClass(item.actionType))}
+                          className={cn(
+                            "border",
+                            getActionBadgeClass(item.actionType),
+                          )}
                         >
                           {AUDIT_ACTION_LABELS[item.actionType]}
                         </Badge>

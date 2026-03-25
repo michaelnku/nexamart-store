@@ -1,8 +1,6 @@
 import { prisma } from "../prisma";
 import { pusherServer } from "../pusher";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
-import { generateDeliveryOTP } from "@/lib/delivery/generateDeliveryOtp";
-import { sendDeliveryOtpToCustomer } from "@/lib/delivery/sendDeliveryOtpToCustomer";
 import { DeliveryStatus } from "@/generated/prisma/edge";
 import { createRealtimeNotification } from "../notifications/createNotification";
 
@@ -129,7 +127,6 @@ export async function autoAssignRider(
 
   const riderId = riderProfile.userId;
   const assignedAt = new Date();
-  let generatedOtp: string | null = null;
   let assignedDeliveryId: string | null = null;
 
   await prisma.$transaction(async (tx) => {
@@ -205,20 +202,18 @@ export async function autoAssignRider(
       throw new Error("Failed to reserve rider");
     }
 
-    generatedOtp = await generateDeliveryOTP(tx, assignedDeliveryId);
-
     console.info("[autoAssignRider] delivery assignment transaction complete", {
       orderId,
       deliveryId: assignedDeliveryId,
       riderId,
-      otpGenerated: Boolean(generatedOtp),
+      otpGenerated: false,
     });
 
     await createOrderTimelineIfMissing(
       {
         orderId,
         status: "READY",
-        message: "Rider assigned. Delivery OTP has been generated.",
+        message: "Rider assigned.",
       },
       tx,
     );
@@ -258,62 +253,12 @@ export async function autoAssignRider(
     riderId,
   });
 
-  if (generatedOtp) {
-    console.info("[autoAssignRider] sending delivery otp to customer", {
-      orderId,
-      riderId,
-      hasDeliveryPhone: Boolean(order.deliveryPhone),
-    });
-    const otpSendResult = await sendDeliveryOtpToCustomer(
-      order.userId,
-      order.deliveryPhone,
-      generatedOtp,
-    );
-
-    if (!otpSendResult.success) {
-      console.warn("[autoAssignRider] delivery otp send unavailable", {
-        orderId,
-        riderId,
-        deliveryId: assignedDeliveryId,
-        code: otpSendResult.code,
-        message: otpSendResult.message,
-      });
-
-      await createOrderTimelineIfMissing({
-        orderId,
-        status: "READY",
-        message:
-          "OTP service temporarily unavailable. Rider assigned successfully, but customer OTP delivery needs attention.",
-      });
-
-      return {
-        assigned: true,
-        warningMessage:
-          "OTP service temporarily unavailable. Rider assigned successfully, but the customer did not receive the delivery OTP automatically.",
-      };
-    }
-
-    console.info("[autoAssignRider] delivery otp send completed", {
-      orderId,
-      riderId,
-      channel: otpSendResult.channel,
-    });
-
-    await createOrderTimelineIfMissing({
-      orderId,
-      status: "READY",
-      message: "Delivery OTP has been sent to customer.",
-    });
-  } else {
-    console.warn(
-      "[autoAssignRider] otp send skipped: reusable otp already exists",
-      {
-        orderId,
-        riderId,
-        deliveryId: assignedDeliveryId,
-      },
-    );
-  }
+  console.warn("[autoAssignRider] delivery otp trigger temporarily disabled", {
+    orderId,
+    riderId,
+    deliveryId: assignedDeliveryId,
+    hasDeliveryPhone: Boolean(order.deliveryPhone),
+  });
 
   return { assigned: true };
 }

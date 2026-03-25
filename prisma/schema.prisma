@@ -1550,6 +1550,12 @@ model UserReport {
 /// * ===========================
 /// * ENUMS AND CONSTANTS
 /// * ===========================
+enum AccountType {
+  ESCROW
+  PLATFORM
+  REFERRAL
+}
+
 enum ProductModerationStatus {
   PENDING_REVIEW
   APPROVED

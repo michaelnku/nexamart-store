@@ -293,14 +293,14 @@ export const DashboardMenu = {
       title: "System Monitoring",
       links: [
         {
-          name: "Background Jobs",
-          href: "/marketplace/dashboard/admin/jobs",
-          icon: Activity,
-        },
-        {
           name: "Audit Logs",
           href: "/marketplace/dashboard/admin/audit-logs",
           icon: FileChartColumn,
+        },
+        {
+          name: "Background Jobs",
+          href: "/marketplace/dashboard/admin/jobs",
+          icon: Activity,
         },
         {
           name: "Storage Cleanup",
