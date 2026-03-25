@@ -11,7 +11,9 @@ import {
   UnsupportedOtpChannelError,
 } from "@/lib/otp/errors";
 import {
+  hasConfiguredProviderMessaging,
   hasConfiguredOtpManagedVerificationProvider,
+  getTwilioMessagingConfig,
   getTwilioVerifyConfig,
 } from "@/lib/otp/config";
 import type {
@@ -138,7 +140,15 @@ function supportsTwilioChannel(
   channel: OtpChannel,
   feature: OtpProviderFeature,
 ): boolean {
-  return channel === "sms" && feature === "managed_verification";
+  return channel === "sms" && (feature === "messaging" || feature === "managed_verification");
+}
+
+function getMessagingClient() {
+  const config = getTwilioMessagingConfig();
+  return {
+    client: Twilio(config.accountSid, config.authToken),
+    config,
+  };
 }
 
 function getVerifyClient() {
@@ -159,7 +169,35 @@ export class TwilioOtpProvider implements OtpProvider {
   async sendMessage(
     input: OtpTransportRequest,
   ): Promise<{ provider: "twilio" }> {
-    throw new UnsupportedOtpChannelError(input.channel, this.name, "messaging");
+    if (!this.supportsChannel(input.channel, "messaging")) {
+      throw new UnsupportedOtpChannelError(input.channel, this.name, "messaging");
+    }
+
+    if (!hasConfiguredProviderMessaging(this.name)) {
+      throw new OtpProviderUnavailableError(
+        "Twilio messaging is not configured for OTP delivery.",
+      );
+    }
+
+    try {
+      const { client, config } = getMessagingClient();
+
+      await client.messages.create({
+        to: input.phone,
+        body: input.message,
+        messagingServiceSid: config.messagingServiceSid,
+      });
+
+      return { provider: this.name };
+    } catch (error) {
+      console.error("[otp][twilio] message send failed", getTwilioErrorDetails(error));
+      throw mapTwilioError(
+        error,
+        new OtpDeliveryFailedError("Twilio failed to deliver the OTP message.", {
+          cause: error,
+        }),
+      );
+    }
   }
 
   async sendVerification(

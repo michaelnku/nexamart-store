@@ -15,9 +15,16 @@ export default function NotificationListener({ userId }: { userId: string }) {
 
     const channel = pusher.subscribe(`notifications-${userId}`);
 
-    channel.bind("new-notification", (notification: NotificationDTO) => {
-      toast(notification.title, {
-        description: notification.message,
+    channel.bind("new-notification", (notification: Partial<NotificationDTO>) => {
+      const title = notification.title?.trim();
+      const message = notification.message?.trim();
+
+      if (!title && !message) {
+        return;
+      }
+
+      toast(title ?? "New notification", {
+        description: message,
         duration: 5000,
       });
     });

@@ -4,7 +4,7 @@ import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import { generateDeliveryOTP } from "@/lib/delivery/generateDeliveryOtp";
 import { sendDeliveryOtpToCustomer } from "@/lib/delivery/sendDeliveryOtpToCustomer";
 import { DeliveryStatus } from "@/generated/prisma/edge";
-import { createNotification } from "../notifications/createNotification";
+import { createRealtimeNotification } from "../notifications/createNotification";
 
 export type AutoAssignRiderResult = {
   assigned: boolean;
@@ -228,7 +228,7 @@ export async function autoAssignRider(
     return { assigned: false };
   }
 
-  await createNotification({
+  await createRealtimeNotification({
     userId: riderId,
     event: "RIDER_ASSIGNED",
     title: "New Delivery Assigned",
@@ -241,7 +241,7 @@ export async function autoAssignRider(
     },
   });
 
-  await createNotification({
+  await createRealtimeNotification({
     userId: order.userId,
     event: "RIDER_ASSIGNED",
     title: "Rider Assigned",
@@ -253,19 +253,6 @@ export async function autoAssignRider(
       type: "delivery",
     },
   });
-
-  await Promise.all([
-    pusherServer.trigger(`notifications-${riderId}`, "new-notification", {
-      event: "RIDER_ASSIGNED",
-      orderId,
-    }),
-
-    pusherServer.trigger(`notifications-${order.userId}`, "new-notification", {
-      event: "RIDER_ASSIGNED",
-      orderId,
-    }),
-  ]);
-
   await pusherServer.trigger(`user-${order.userId}`, "rider-assigned", {
     orderId,
     riderId,

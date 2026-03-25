@@ -60,10 +60,22 @@ export function getPrimaryManagedVerificationProviderName(): OtpProviderName {
   return getConfiguredSmsProviderNames()[0];
 }
 
-/**
- * Twilio Verify config for managed OTP only.
- * This is intentionally separate from Twilio Messaging API config.
- */
+export function getTwilioMessagingConfig() {
+  return {
+    accountSid: readRequiredEnv("TWILIO_ACCOUNT_SID"),
+    authToken: readRequiredEnv("TWILIO_AUTH_TOKEN"),
+    messagingServiceSid: readRequiredEnv("TWILIO_MESSAGING_SERVICE_SID"),
+  };
+}
+
+export function hasTwilioMessagingConfig(): boolean {
+  return Boolean(
+    process.env.TWILIO_ACCOUNT_SID?.trim() &&
+    process.env.TWILIO_AUTH_TOKEN?.trim() &&
+    process.env.TWILIO_MESSAGING_SERVICE_SID?.trim(),
+  );
+}
+
 export function getTwilioVerifyConfig() {
   return {
     accountSid: readRequiredEnv("TWILIO_ACCOUNT_SID"),
@@ -102,7 +114,7 @@ export function hasConfiguredOtpMessagingProvider(): boolean {
   return providers.some((provider) => {
     switch (provider) {
       case "twilio":
-        return false;
+        return hasTwilioMessagingConfig();
       case "vonage":
       case "plivo":
         return false;
@@ -115,7 +127,7 @@ export function hasConfiguredProviderMessaging(
 ): boolean {
   switch (provider) {
     case "twilio":
-      return false;
+      return hasTwilioMessagingConfig();
     case "vonage":
     case "plivo":
       return false;
