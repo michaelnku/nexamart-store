@@ -1,7 +1,7 @@
 import { Prisma } from "@/generated/prisma";
 import { generateOtp, hashOtp } from "@/lib/otp";
 
-const OTP_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const OTP_TTL_MS = 10 * 60 * 1000;
 
 type Tx = Prisma.TransactionClient;
 

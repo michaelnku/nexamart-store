@@ -84,7 +84,7 @@ export async function sendDeliveryOtpToCustomer(
   });
 
   try {
-    await sendOtpSms(phone, otp);
+    await sendOtpSms(phone, otp, user.id);
     console.info("[sendDeliveryOtpToCustomer] sms otp sent", {
       userId: user.id,
       phone,
