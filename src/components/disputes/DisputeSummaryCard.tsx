@@ -1,7 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import DisputeReasonLabel from "@/components/disputes/DisputeReasonLabel";
 import DisputeStatusBadge from "@/components/disputes/DisputeStatusBadge";
-import { getDisputeResolutionLabel } from "@/lib/disputes/ui";
+import {
+  getDisputeResolutionLabel,
+  humanizeDisputeValue,
+} from "@/lib/disputes/ui";
 import { OrderDisputeSummaryDTO } from "@/lib/types";
 
 type Props = {
@@ -97,7 +100,7 @@ export default function DisputeSummaryCard({
         {dispute.returnRequest ? (
           <div className="rounded-lg border p-3 text-sm">
             <p className="font-medium">Return Request</p>
-            <p>Status: {dispute.returnRequest.status.replaceAll("_", " ")}</p>
+            <p>Status: {humanizeDisputeValue(dispute.returnRequest.status)}</p>
             <p>Tracking: {dispute.returnRequest.trackingNumber ?? "N/A"}</p>
             <p>Carrier: {dispute.returnRequest.carrier ?? "N/A"}</p>
           </div>

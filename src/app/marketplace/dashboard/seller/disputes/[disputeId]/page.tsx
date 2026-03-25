@@ -6,7 +6,7 @@ import DisputeSummaryCard from "@/components/disputes/DisputeSummaryCard";
 import DisputeTimeline from "@/components/disputes/DisputeTimeline";
 import { Button } from "@/components/ui/button";
 import { CurrentUser } from "@/lib/currentUser";
-import { buildDisputeTimeline } from "@/lib/disputes/ui";
+import { buildDisputeTimeline, humanizeDisputeValue } from "@/lib/disputes/ui";
 import { prisma } from "@/lib/prisma";
 
 export default async function SellerDisputeDetailPage({
@@ -174,11 +174,11 @@ export default async function SellerDisputeDetailPage({
                   {dispute.order.customer.name ?? dispute.order.customer.email}
                 </span>
               </p>
-              <p>Status: {dispute.order.status.replaceAll("_", " ")}</p>
+              <p>Status: {humanizeDisputeValue(dispute.order.status)}</p>
               {dispute.order.delivery ? (
                 <>
                   <p>
-                    Delivery: {dispute.order.delivery.status.replaceAll("_", " ")}
+                    Delivery: {humanizeDisputeValue(dispute.order.delivery.status)}
                   </p>
                   <p>
                     Rider:{" "}

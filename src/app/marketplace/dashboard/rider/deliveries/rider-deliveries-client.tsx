@@ -56,9 +56,6 @@ export default function RiderDeliveriesClient() {
   const [verifyingDeliveryId, setVerifyingDeliveryId] = useState<string | null>(
     null,
   );
-  const [otpByDeliveryId, setOtpByDeliveryId] = useState<
-    Record<string, string>
-  >({});
   const [otpErrorByDeliveryId, setOtpErrorByDeliveryId] = useState<
     Record<string, string>
   >({});
@@ -114,30 +111,12 @@ export default function RiderDeliveriesClient() {
   };
 
   const handleVerifyOtp = (deliveryId: string) => {
-    const otp = (otpByDeliveryId[deliveryId] ?? "").trim();
-
-    if (!otp) {
-      setOtpErrorByDeliveryId((prev) => ({
-        ...prev,
-        [deliveryId]: "Enter OTP from customer.",
-      }));
-      return;
-    }
-
-    if (!/^\d{6}$/.test(otp)) {
-      setOtpErrorByDeliveryId((prev) => ({
-        ...prev,
-        [deliveryId]: "OTP must be a 6-digit code.",
-      }));
-      return;
-    }
-
     setOtpErrorByDeliveryId((prev) => ({ ...prev, [deliveryId]: "" }));
     setVerifyingDeliveryId(deliveryId);
 
     startVerifyTransition(async () => {
       try {
-        const res = await riderVerifyDeliveryOtpAction(deliveryId, otp);
+        const res = await riderVerifyDeliveryOtpAction(deliveryId, "");
 
         if ("error" in res) {
           setOtpErrorByDeliveryId((prev) => ({
@@ -147,18 +126,17 @@ export default function RiderDeliveriesClient() {
           return;
         }
 
-        toast.success("Delivery verified and marked delivered");
-        setOtpByDeliveryId((prev) => ({ ...prev, [deliveryId]: "" }));
+        toast.success("Delivery marked delivered");
         setOtpErrorByDeliveryId((prev) => ({ ...prev, [deliveryId]: "" }));
         await queryClient.invalidateQueries({
           queryKey: ["rider-deliveries"],
         });
         router.push("/marketplace/dashboard/rider/deliveries?status=ongoing");
       } catch (error) {
-        console.error("Failed to verify delivery OTP:", error);
+        console.error("Failed to mark delivery delivered:", error);
         setOtpErrorByDeliveryId((prev) => ({
           ...prev,
-          [deliveryId]: "Failed to verify OTP. Please try again.",
+          [deliveryId]: "Failed to mark delivery delivered. Please try again.",
         }));
       } finally {
         setVerifyingDeliveryId(null);
@@ -271,12 +249,6 @@ export default function RiderDeliveriesClient() {
         <div className="space-y-4">
           {deliveries.map((delivery) => {
             const order = delivery.order;
-            const otpAttempts =
-              typeof delivery.otpAttempts === "number"
-                ? delivery.otpAttempts
-                : 0;
-            const attemptsLeft = Math.max(0, 5 - otpAttempts);
-            const isLocked = Boolean(delivery.isLocked);
             const formattedFee = formatMoneyFromUSD(delivery.fee ?? 0);
 
             return (
@@ -406,55 +378,23 @@ export default function RiderDeliveriesClient() {
                             </div>
                             <div>
                               <label
-                                htmlFor={`otp-${delivery.id}`}
                                 className="text-sm font-semibold text-slate-900 dark:text-zinc-100"
                               >
-                                Verify customer OTP
+                                Mark delivery complete
                               </label>
-                              <p
-                                className={`text-xs ${
-                                  isLocked
-                                    ? "text-red-600 dark:text-red-400"
-                                    : "text-gray-500 dark:text-zinc-400"
-                                }`}
-                              >
-                                {isLocked
-                                  ? "Delivery locked after 3 invalid OTP attempts."
-                                  : `${attemptsLeft} attempt${attemptsLeft === 1 ? "" : "s"} left`}
+                              <p className="text-xs text-gray-500 dark:text-zinc-400">
+                                Temporary testing bypass. This will mark the
+                                order delivered and customer confirmed.
                               </p>
                             </div>
                           </div>
 
                           <div className="flex flex-col gap-2">
-                            <input
-                              id={`otp-${delivery.id}`}
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="Enter 6-digit OTP"
-                              value={otpByDeliveryId[delivery.id] ?? ""}
-                              disabled={isLocked}
-                              onChange={(e) => {
-                                const next = e.target.value
-                                  .replace(/\D/g, "")
-                                  .slice(0, 6);
-                                setOtpByDeliveryId((prev) => ({
-                                  ...prev,
-                                  [delivery.id]: next,
-                                }));
-                                setOtpErrorByDeliveryId((prev) => ({
-                                  ...prev,
-                                  [delivery.id]: "",
-                                }));
-                              }}
-                              className="h-10 w-full rounded-xl border border-gray-300 bg-white px-3 text-sm outline-none focus:border-[var(--brand-blue)] focus:ring-2 focus:ring-[var(--brand-blue)]/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                            />
-
                             <Button
                               onClick={() => handleVerifyOtp(delivery.id)}
                               disabled={
-                                isLocked ||
-                                (isVerifyPending &&
-                                  verifyingDeliveryId === delivery.id)
+                                isVerifyPending &&
+                                verifyingDeliveryId === delivery.id
                               }
                               className={styles.verifyAction}
                             >
@@ -462,10 +402,10 @@ export default function RiderDeliveriesClient() {
                               verifyingDeliveryId === delivery.id ? (
                                 <span className="inline-flex items-center gap-2">
                                   <Loader2 className="h-4 w-4 animate-spin" />
-                                  Verifying...
+                                  Completing...
                                 </span>
                               ) : (
-                                "Verify OTP & Deliver"
+                                "Mark Delivered"
                               )}
                             </Button>
                           </div>

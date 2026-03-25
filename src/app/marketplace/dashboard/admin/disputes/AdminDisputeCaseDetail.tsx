@@ -10,7 +10,11 @@ import DisputeTimeline from "@/components/disputes/DisputeTimeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getDisputeAttentionBadgeClass } from "@/lib/disputes/admin-ui";
-import { buildDisputeTimeline, getDisputeStatusLabel } from "@/lib/disputes/ui";
+import {
+  buildDisputeTimeline,
+  getDisputeStatusLabel,
+  humanizeDisputeValue,
+} from "@/lib/disputes/ui";
 import type { AdminDisputeDetailDTO } from "@/lib/types";
 
 function formatDateTime(value?: string | null) {
@@ -75,7 +79,7 @@ export default function AdminDisputeCaseDetail({
                   Delivery type
                 </p>
                 <p className="font-medium text-slate-950 dark:text-white">
-                  {dispute.deliveryType?.replaceAll("_", " ") ?? "Unknown"}
+                  {humanizeDisputeValue(dispute.deliveryType)}
                 </p>
               </div>
               <div>
@@ -141,7 +145,7 @@ export default function AdminDisputeCaseDetail({
                 </p>
                 <p className="text-sm text-slate-500 dark:text-zinc-400">
                   {dispute.delivery
-                    ? `${dispute.delivery.status.replaceAll("_", " ")}`
+                    ? humanizeDisputeValue(dispute.delivery.status)
                     : "No delivery record"}
                 </p>
               </div>
@@ -211,7 +215,7 @@ export default function AdminDisputeCaseDetail({
                     Rider payout
                   </p>
                   <p className="mt-2 text-slate-600 dark:text-zinc-300">
-                    Delivery status: {dispute.delivery.status.replaceAll("_", " ")}
+                    Delivery status: {humanizeDisputeValue(dispute.delivery.status)}
                   </p>
                   <p className="text-slate-600 dark:text-zinc-300">
                     Payout locked: {dispute.delivery.payoutLocked ? "Yes" : "No"}
@@ -228,7 +232,7 @@ export default function AdminDisputeCaseDetail({
                     Return request
                   </p>
                   <p className="mt-2 text-slate-600 dark:text-zinc-300">
-                    Status: {dispute.returnRequest.status.replaceAll("_", " ")}
+                    Status: {humanizeDisputeValue(dispute.returnRequest.status)}
                   </p>
                   <p className="text-slate-600 dark:text-zinc-300">
                     Tracking: {dispute.returnRequest.trackingNumber ?? "Not submitted"}

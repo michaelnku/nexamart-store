@@ -377,7 +377,7 @@ export default function AdminJobsClient({
     {
       title: "Jobs Scheduled",
       value: formatAnalyticsCount(dashboard.rangeSummary.jobsScheduled),
-      description: "Jobs whose runAt fell inside the selected period.",
+      description: "Jobs created in range that are currently scheduled.",
       icon: Clock3,
       tintClassName:
         "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-300",
@@ -408,10 +408,12 @@ export default function AdminJobsClient({
     ...row,
     label: formatJobType(row.label),
   }));
-  const failureHotspotRows = dashboard.breakdowns.failureHotspots.map((row) => ({
-    ...row,
-    label: formatJobType(row.label),
-  }));
+  const failureHotspotRows = dashboard.breakdowns.failureHotspots.map(
+    (row) => ({
+      ...row,
+      label: formatJobType(row.label),
+    }),
+  );
   const retryHotspotRows = dashboard.breakdowns.retryHotspots.map((row) => ({
     ...row,
     label: formatJobType(row.label),
@@ -449,8 +451,8 @@ export default function AdminJobsClient({
             Current Snapshot
           </p>
           <p className="text-sm text-slate-600 dark:text-zinc-300">
-            Live queue state across pending, running, completed, failed, overdue,
-            and retrying jobs.
+            Live queue state across pending, running, completed, failed,
+            overdue, and retrying jobs.
           </p>
         </div>
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -556,7 +558,9 @@ export default function AdminJobsClient({
               title="Failure Hotspots"
               description="Job types with the highest failed-job concentration."
               rows={failureHotspotRows}
-              primaryFormatter={(value) => `${formatAnalyticsCount(value)} failed`}
+              primaryFormatter={(value) =>
+                `${formatAnalyticsCount(value)} failed`
+              }
               secondaryLabel={(value) =>
                 `${formatAnalyticsCount(value)} total attempts`
               }
@@ -565,8 +569,12 @@ export default function AdminJobsClient({
               title="Retry Hotspots"
               description="Job types generating the most retry pressure."
               rows={retryHotspotRows}
-              primaryFormatter={(value) => `${formatAnalyticsCount(value)} jobs`}
-              secondaryLabel={(value) => `${Number(value).toFixed(1)} avg attempts`}
+              primaryFormatter={(value) =>
+                `${formatAnalyticsCount(value)} jobs`
+              }
+              secondaryLabel={(value) =>
+                `${Number(value).toFixed(1)} avg attempts`
+              }
             />
           </section>
         </>

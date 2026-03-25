@@ -18,6 +18,13 @@ export type DisputeTimelineItem = {
   tone?: "default" | "success" | "warning" | "danger";
 };
 
+export function humanizeDisputeValue(
+  value?: string | null,
+  fallback = "Unknown",
+): string {
+  return value ? value.replaceAll("_", " ") : fallback;
+}
+
 const reasonLabels: Record<DisputeReason, string> = {
   ITEM_NOT_RECEIVED: "Item not received",
   ITEM_DAMAGED: "Item damaged",
@@ -157,7 +164,7 @@ export function buildDisputeTimeline(
       )
       .map((item) => ({
         id: `order-timeline-${item.id}`,
-        title: item.status.replaceAll("_", " "),
+        title: humanizeDisputeValue(item.status),
         description: item.message,
         createdAt: item.createdAt,
         tone:

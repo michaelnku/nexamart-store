@@ -681,7 +681,9 @@ export default function AdminDisputesClient({
                                 "No rider"}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-zinc-400">
-                              {dispute.delivery?.status.replaceAll("_", " ") ?? "N/A"}
+                              {dispute.delivery?.status
+                                ? dispute.delivery.status.replaceAll("_", " ")
+                                : "N/A"}
                             </p>
                           </div>
                         </td>
