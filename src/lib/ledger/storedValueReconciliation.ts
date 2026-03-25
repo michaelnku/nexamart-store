@@ -50,8 +50,6 @@ export async function getStoredValueReconciliationSnapshot(
     `,
   );
 
-  // Treasury stored-value entries are liability-signed opposite to user-wallet
-  // balances, so negate the treasury ledger balance for reconciliation.
   const treasuryStoredValueLiability = Number(
     (-treasuryStoredValueBalanceRaw).toFixed(2),
   );

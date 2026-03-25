@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
+import { getPayoutEligibleAtFrom } from "@/lib/payout/timing";
 const ESCROW_DELAY_MS = 24 * 60 * 60 * 1000;
 
 type PendingMoveResult = { success: true } | { skipped: true; reason: string };
@@ -141,9 +142,9 @@ export async function moveOrderEarningsToPending(
     }
 
     // ---------------- PAYOUT TIMERS ----------------
-    const releaseAt = new Date(
-      order.customerConfirmedAt.getTime() + ESCROW_DELAY_MS,
-    );
+    const releaseAt = order.isFoodOrder
+      ? getPayoutEligibleAtFrom(order.customerConfirmedAt, true)
+      : new Date(order.customerConfirmedAt.getTime() + ESCROW_DELAY_MS);
 
     await tx.delivery.updateMany({
       where: {
