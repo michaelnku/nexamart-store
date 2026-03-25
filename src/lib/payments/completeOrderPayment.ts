@@ -323,6 +323,8 @@ export async function completeOrderPaymentCore({
             entryType: "ESCROW_DEPOSIT",
             amount: order.totalAmount,
             reference: escrowReference,
+            fromAccountType: "ESCROW",
+            toAccountType: "ESCROW",
             resolveFromWallet: method === "WALLET",
             resolveToWallet: false,
             context,

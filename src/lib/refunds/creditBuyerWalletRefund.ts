@@ -57,6 +57,9 @@ export async function creditBuyerWalletRefundInTx(
     entryType: "REFUND",
     amount,
     reference: `${input.reference}-ledger`,
+    fromAccountType: "PLATFORM",
+    toAccountType: "PLATFORM",
+    debitBalanceAccountType: "PLATFORM",
     allowNegativeFromWallet: true,
   });
 

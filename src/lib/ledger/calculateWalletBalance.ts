@@ -1,6 +1,9 @@
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
-import { LedgerEntryTypeValue } from "@/lib/ledger/types";
+import {
+  AccountTypeValue,
+  LedgerEntryTypeValue,
+} from "@/lib/ledger/types";
 
 // Ledger entries are the source of truth for wallet balances.
 // Wallet.balance, Wallet.pending, and Wallet.totalEarnings are cached/display fields only.
@@ -43,6 +46,57 @@ export async function calculateWalletBalance(
         entryType: {
           in: DEBIT_ENTRY_TYPES,
         },
+      },
+    }),
+  ]);
+
+  const totalCredits = creditsAgg._sum?.amount ?? 0;
+  const totalDebits = debitsAgg._sum?.amount ?? 0;
+
+  return totalCredits - totalDebits;
+}
+
+function buildAccountTypeFilter(accountType: AccountTypeValue) {
+  if (accountType === "ESCROW") {
+    return {
+      OR: [{ accountType }, { accountType: null }],
+    } satisfies Prisma.LedgerEntryWhereInput;
+  }
+
+  return {
+    accountType,
+  } satisfies Prisma.LedgerEntryWhereInput;
+}
+
+export async function calculateWalletBalanceByAccountType(
+  walletId: string,
+  accountType: AccountTypeValue,
+  tx?: Prisma.TransactionClient,
+) {
+  const client = tx ?? prisma;
+  const accountTypeFilter = buildAccountTypeFilter(accountType);
+
+  const [creditsAgg, debitsAgg] = await Promise.all([
+    client.ledgerEntry.aggregate({
+      _sum: { amount: true },
+      where: {
+        walletId,
+        direction: "CREDIT",
+        entryType: {
+          in: CREDIT_ENTRY_TYPES,
+        },
+        ...accountTypeFilter,
+      },
+    }),
+    client.ledgerEntry.aggregate({
+      _sum: { amount: true },
+      where: {
+        walletId,
+        direction: "DEBIT",
+        entryType: {
+          in: DEBIT_ENTRY_TYPES,
+        },
+        ...accountTypeFilter,
       },
     }),
   ]);

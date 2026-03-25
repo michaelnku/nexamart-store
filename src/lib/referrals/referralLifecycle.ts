@@ -7,7 +7,7 @@ import {
   buildReferralExpiryJobId,
 } from "@/lib/jobs/jobTypes";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
-import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
+import { calculateWalletBalanceByAccountType } from "@/lib/ledger/calculateWalletBalance";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { prisma } from "@/lib/prisma";
 import { isReferralAwaitingRewardStatus } from "@/lib/referrals/status";
@@ -379,6 +379,9 @@ async function settleReferralRewardSideInTx(
     entryType: "REFERRAL_BONUS",
     amount: side.amount,
     reference: side.reference,
+    fromAccountType: "REFERRAL",
+    toAccountType: "REFERRAL",
+    debitBalanceAccountType: "REFERRAL",
     resolveFromWallet: false,
     resolveToWallet: false,
   });
@@ -434,7 +437,11 @@ async function settleQualifiedReferralInTx(
   );
   const sides = getRewardSideDefinitions(referral);
   const treasuryState = {
-    availableBalance: await calculateWalletBalance(treasuryAccount.walletId, tx),
+    availableBalance: await calculateWalletBalanceByAccountType(
+      treasuryAccount.walletId,
+      "REFERRAL",
+      tx,
+    ),
   };
 
   let hasPendingSide = false;

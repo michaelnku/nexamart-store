@@ -657,15 +657,16 @@ model EscrowLedger {
 }
 
 model LedgerEntry {
-  id        String          @id @default(cuid())
-  orderId   String?
-  userId    String?
-  walletId  String?
-  entryType LedgerEntryType
-  direction LedgerDirection
-  amount    Float
-  reference String?         @unique
-  createdAt DateTime        @default(now())
+  id          String          @id @default(cuid())
+  orderId     String?
+  userId      String?
+  walletId    String?
+  accountType AccountType?
+  entryType   LedgerEntryType
+  direction   LedgerDirection
+  amount      Float
+  reference   String?         @unique
+  createdAt   DateTime        @default(now())
 
   @@index([orderId])
   @@index([userId])
@@ -1550,12 +1551,6 @@ model UserReport {
 /// * ===========================
 /// * ENUMS AND CONSTANTS
 /// * ===========================
-enum AccountType {
-  ESCROW
-  PLATFORM
-  REFERRAL
-}
-
 enum ProductModerationStatus {
   PENDING_REVIEW
   APPROVED
@@ -1909,6 +1904,12 @@ enum LedgerEntryType {
   PLATFORM_FEE
   WALLET_TOPUP
   WALLET_WITHDRAWAL
+}
+
+enum AccountType {
+  ESCROW
+  PLATFORM
+  REFERRAL
 }
 
 enum LedgerDirection {

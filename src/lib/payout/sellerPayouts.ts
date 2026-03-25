@@ -285,6 +285,25 @@ export async function releaseSellerGroupPayoutInTx(
     });
   }
 
+  if (platformFee > 0) {
+    await createDoubleEntryLedger(tx, {
+      orderId: group.orderId,
+      fromUserId: systemEscrowAccount.userId,
+      fromWalletId: systemEscrowAccount.walletId,
+      toUserId: systemEscrowAccount.userId,
+      toWalletId: systemEscrowAccount.walletId,
+      entryType: "PLATFORM_FEE",
+      amount: platformFee,
+      reference: `platform-accounting-${group.id}`,
+      fromAccountType: "ESCROW",
+      toAccountType: "PLATFORM",
+      debitBalanceAccountType: "ESCROW",
+      resolveFromWallet: false,
+      resolveToWallet: false,
+      context: options.context,
+    });
+  }
+
   if (sellerAmount > 0) {
     await createDoubleEntryLedger(tx, {
       orderId: group.orderId,
@@ -294,6 +313,9 @@ export async function releaseSellerGroupPayoutInTx(
       entryType: "SELLER_PAYOUT",
       amount: sellerAmount,
       reference: `seller-payout-${group.id}`,
+      fromAccountType: "ESCROW",
+      toAccountType: "ESCROW",
+      debitBalanceAccountType: "ESCROW",
       context: options.context,
     });
   }

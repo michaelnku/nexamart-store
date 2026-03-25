@@ -3,7 +3,7 @@
 import { createAuditLog } from "@/lib/audit/service";
 import { CurrentUser, CurrentRole } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
+import { calculateWalletBalanceByAccountType } from "@/lib/ledger/calculateWalletBalance";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { createServiceContext } from "@/lib/system/serviceContext";
@@ -79,7 +79,11 @@ export async function requestPlatformWithdrawalAction(
     });
     if (!wallet) throw new Error("System wallet missing.");
 
-    const availableBalance = await calculateWalletBalance(wallet.id, tx);
+    const availableBalance = await calculateWalletBalanceByAccountType(
+      wallet.id,
+      "PLATFORM",
+      tx,
+    );
     if (amount > availableBalance) {
       throw new Error("Insufficient platform wallet balance.");
     }
@@ -104,6 +108,8 @@ export async function requestPlatformWithdrawalAction(
       entryType: "PLATFORM_FEE",
       amount,
       reference: `platform-withdrawal-debit-${created.id}`,
+      fromAccountType: "PLATFORM",
+      debitBalanceAccountType: "PLATFORM",
       resolveFromWallet: false,
       resolveToWallet: false,
       context,

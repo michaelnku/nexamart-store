@@ -854,6 +854,8 @@ export async function placeOrderAction({
             entryType: "ESCROW_DEPOSIT",
             amount: checkoutTotalAmount,
             reference: `escrow-fund-${checkoutGroupId ?? createdOrderIds[0]}`,
+            fromAccountType: "ESCROW",
+            toAccountType: "ESCROW",
             resolveFromWallet: false,
             resolveToWallet: false,
           });

@@ -1,7 +1,13 @@
 import { Prisma } from "@/generated/prisma";
-import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
+import {
+  calculateWalletBalance,
+  calculateWalletBalanceByAccountType,
+} from "@/lib/ledger/calculateWalletBalance";
 import { ServiceContext } from "@/lib/system/serviceContext";
-import { LedgerEntryTypeValue } from "@/lib/ledger/types";
+import {
+  AccountTypeValue,
+  LedgerEntryTypeValue,
+} from "@/lib/ledger/types";
 
 type Tx = Prisma.TransactionClient;
 
@@ -14,6 +20,9 @@ type CreateDoubleEntryLedgerInput = {
   amount: number;
   entryType: LedgerEntryTypeValue;
   reference: string;
+  fromAccountType?: AccountTypeValue;
+  toAccountType?: AccountTypeValue;
+  debitBalanceAccountType?: AccountTypeValue;
   resolveFromWallet?: boolean;
   resolveToWallet?: boolean;
   allowNegativeFromWallet?: boolean;
@@ -29,7 +38,11 @@ type DoubleEntryLedgerRowsInput = {
   amount: number;
   entryType: LedgerEntryTypeValue;
   reference: string;
+  fromAccountType?: AccountTypeValue;
+  toAccountType?: AccountTypeValue;
 };
+
+type LedgerRow = ReturnType<typeof buildDoubleEntryLedgerRows>["rows"][number];
 
 export function buildDoubleEntryLedgerRows(input: DoubleEntryLedgerRowsInput) {
   const amount = Number(input.amount);
@@ -48,6 +61,7 @@ export function buildDoubleEntryLedgerRows(input: DoubleEntryLedgerRowsInput) {
         orderId: input.orderId,
         userId: input.fromUserId,
         walletId: input.fromWalletId,
+        accountType: input.fromAccountType,
         entryType: input.entryType,
         direction: "DEBIT" as const,
         amount,
@@ -57,6 +71,7 @@ export function buildDoubleEntryLedgerRows(input: DoubleEntryLedgerRowsInput) {
         orderId: input.orderId,
         userId: input.toUserId,
         walletId: input.toWalletId,
+        accountType: input.toAccountType,
         entryType: input.entryType,
         direction: "CREDIT" as const,
         amount,
@@ -64,6 +79,54 @@ export function buildDoubleEntryLedgerRows(input: DoubleEntryLedgerRowsInput) {
       },
     ],
   };
+}
+
+function normalizeNullableValue(value: string | null | undefined) {
+  return value ?? null;
+}
+
+function assertLedgerRowMatchesExpected(
+  existing: Pick<
+    Prisma.LedgerEntryGetPayload<{
+      select: {
+        reference: true;
+        orderId: true;
+        userId: true;
+        walletId: true;
+        accountType: true;
+        entryType: true;
+        direction: true;
+        amount: true;
+      };
+    }>,
+    | "reference"
+    | "orderId"
+    | "userId"
+    | "walletId"
+    | "accountType"
+    | "entryType"
+    | "direction"
+    | "amount"
+  >,
+  expected: LedgerRow,
+) {
+  if (
+    normalizeNullableValue(existing.orderId) !==
+      normalizeNullableValue(expected.orderId) ||
+    normalizeNullableValue(existing.userId) !==
+      normalizeNullableValue(expected.userId) ||
+    normalizeNullableValue(existing.walletId) !==
+      normalizeNullableValue(expected.walletId) ||
+    normalizeNullableValue(existing.accountType) !==
+      normalizeNullableValue(expected.accountType) ||
+    existing.entryType !== expected.entryType ||
+    existing.direction !== expected.direction ||
+    Number(existing.amount) !== Number(expected.amount)
+  ) {
+    throw new Error(
+      `Ledger pair reference ${existing.reference} exists with inconsistent data`,
+    );
+  }
 }
 
 async function ensureWalletId(
@@ -110,19 +173,77 @@ export async function createDoubleEntryLedger(
     amount: input.amount,
     entryType: input.entryType,
     reference: input.reference,
+    fromAccountType: input.fromAccountType,
+    toAccountType: input.toAccountType,
   });
 
   const amount = Number(input.amount);
-  const inserted = await tx.ledgerEntry.createMany({
-    data: rows,
-    skipDuplicates: true,
+  const existingRows = await tx.ledgerEntry.findMany({
+    where: {
+      reference: {
+        in: [debitRef, creditRef],
+      },
+    },
+    select: {
+      reference: true,
+      orderId: true,
+      userId: true,
+      walletId: true,
+      accountType: true,
+      entryType: true,
+      direction: true,
+      amount: true,
+    },
   });
+  const existingByReference = new Map(
+    existingRows.map((row) => [row.reference, row]),
+  );
 
-  if (inserted.count === 1) {
-    throw new Error("Incomplete double-entry ledger pair");
+  for (const row of rows) {
+    const existing = existingByReference.get(row.reference);
+    if (existing) {
+      assertLedgerRowMatchesExpected(existing, row);
+    }
   }
 
-  if (inserted.count === 2 && fromWalletId && !input.allowNegativeFromWallet) {
+  const missingRows = rows.filter((row) => !existingByReference.has(row.reference));
+
+  if (missingRows.length > 0) {
+    await tx.ledgerEntry.createMany({
+      data: missingRows,
+      skipDuplicates: true,
+    });
+  }
+
+  const finalRows = await tx.ledgerEntry.findMany({
+    where: {
+      reference: {
+        in: [debitRef, creditRef],
+      },
+    },
+    select: {
+      reference: true,
+      orderId: true,
+      userId: true,
+      walletId: true,
+      accountType: true,
+      entryType: true,
+      direction: true,
+      amount: true,
+    },
+  });
+  const finalByReference = new Map(finalRows.map((row) => [row.reference, row]));
+
+  for (const row of rows) {
+    const finalRow = finalByReference.get(row.reference);
+    if (!finalRow) {
+      throw new Error("Unable to restore complete double-entry ledger pair");
+    }
+    assertLedgerRowMatchesExpected(finalRow, row);
+  }
+
+  const createdFreshPair = existingRows.length === 0 && missingRows.length === 2;
+  if (createdFreshPair && fromWalletId && !input.allowNegativeFromWallet) {
     const sourceWallet = await tx.wallet.findUnique({
       where: { id: fromWalletId },
       select: { id: true },
@@ -130,7 +251,13 @@ export async function createDoubleEntryLedger(
     if (!sourceWallet) {
       throw new Error("Source wallet not found");
     }
-    const availableBalance = await calculateWalletBalance(fromWalletId, tx);
+    const availableBalance = input.debitBalanceAccountType
+      ? await calculateWalletBalanceByAccountType(
+          fromWalletId,
+          input.debitBalanceAccountType,
+          tx,
+        )
+      : await calculateWalletBalance(fromWalletId, tx);
     if (availableBalance < amount) {
       throw new Error("Insufficient wallet balance for debit ledger entry");
     }
@@ -138,7 +265,7 @@ export async function createDoubleEntryLedger(
 
   // Wallet cache fields are display/reconciliation projections of the ledger.
   // Keep cache writes here limited to sync after authoritative ledger entries land.
-  if (inserted.count === 2) {
+  if (createdFreshPair) {
     await Promise.all([
       fromWalletId
         ? tx.wallet.update({

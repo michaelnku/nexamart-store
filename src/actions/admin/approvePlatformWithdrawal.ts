@@ -213,6 +213,8 @@ export async function approvePlatformWithdrawalAction(
           entryType: "PLATFORM_FEE",
           amount: fresh.amount,
           reference: `platform-withdrawal-settlement-${withdrawalId}`,
+          fromAccountType: "PLATFORM",
+          debitBalanceAccountType: "PLATFORM",
           resolveFromWallet: false,
           resolveToWallet: false,
           context,
