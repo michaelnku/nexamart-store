@@ -68,6 +68,25 @@ type EscrowExposureSummaryRow = {
   lastActivityAt: string | null;
 };
 
+function toNumber(
+  value:
+    | Prisma.Decimal
+    | bigint
+    | number
+    | null
+    | undefined,
+) {
+  if (value instanceof Prisma.Decimal) {
+    return value.toNumber();
+  }
+
+  if (typeof value === "bigint") {
+    return Number(value);
+  }
+
+  return value ?? 0;
+}
+
 export type EscrowPayoutControlResponse = {
   range: AnalyticsDateRange;
   snapshot: {
@@ -258,10 +277,11 @@ async function getSnapshotSummary(snapshotAsOfDate: Date) {
   const pendingRiderPayouts = riderPendingAggregate._sum.riderPayoutAmount ?? 0;
 
   return {
-    totalPendingPayoutLiability: pendingSellerPayouts + pendingRiderPayouts,
-    pendingSellerPayouts,
-    pendingRiderPayouts,
-    escrowHeldCommission: heldCommissionRows[0]?.value ?? 0,
+    totalPendingPayoutLiability:
+      toNumber(pendingSellerPayouts) + toNumber(pendingRiderPayouts),
+    pendingSellerPayouts: toNumber(pendingSellerPayouts),
+    pendingRiderPayouts: toNumber(pendingRiderPayouts),
+    escrowHeldCommission: toNumber(heldCommissionRows[0]?.value),
     ordersAwaitingPayoutRelease,
     deliveriesAwaitingPayoutRelease,
     sellersWithPendingPayouts: sellersWithPendingRows.length,
@@ -300,9 +320,10 @@ async function getRangeSummary(rangeStartDate: Date, rangeEndDate: Date) {
     riderReleasedAggregate._sum.riderPayoutAmount ?? 0;
 
   return {
-    releasedSellerPayouts,
-    releasedRiderPayouts,
-    totalReleasedPayouts: releasedSellerPayouts + releasedRiderPayouts,
+    releasedSellerPayouts: toNumber(releasedSellerPayouts),
+    releasedRiderPayouts: toNumber(releasedRiderPayouts),
+    totalReleasedPayouts:
+      toNumber(releasedSellerPayouts) + toNumber(releasedRiderPayouts),
   };
 }
 
@@ -518,12 +539,54 @@ async function getBreakdowns(
         count: riderCompletedCount,
       },
     ],
-    sellerPayoutExposure: sellerExposure,
-    riderPayoutExposure: riderExposure,
-    topSellersByReleasedPayout: topReleasedSellers,
-    topRidersByReleasedPayout: topReleasedRiders,
-    longestWaitingSellers,
-    longestWaitingRiders,
+    sellerPayoutExposure: sellerExposure.map((row) => ({
+      ...row,
+      value: toNumber(row.value),
+      secondaryValue:
+        row.secondaryValue === undefined
+          ? undefined
+          : toNumber(row.secondaryValue),
+    })),
+    riderPayoutExposure: riderExposure.map((row) => ({
+      ...row,
+      value: toNumber(row.value),
+      secondaryValue:
+        row.secondaryValue === undefined
+          ? undefined
+          : toNumber(row.secondaryValue),
+    })),
+    topSellersByReleasedPayout: topReleasedSellers.map((row) => ({
+      ...row,
+      value: toNumber(row.value),
+      secondaryValue:
+        row.secondaryValue === undefined
+          ? undefined
+          : toNumber(row.secondaryValue),
+    })),
+    topRidersByReleasedPayout: topReleasedRiders.map((row) => ({
+      ...row,
+      value: toNumber(row.value),
+      secondaryValue:
+        row.secondaryValue === undefined
+          ? undefined
+          : toNumber(row.secondaryValue),
+    })),
+    longestWaitingSellers: longestWaitingSellers.map((row) => ({
+      ...row,
+      value: toNumber(row.value),
+      secondaryValue:
+        row.secondaryValue === undefined
+          ? undefined
+          : toNumber(row.secondaryValue),
+    })),
+    longestWaitingRiders: longestWaitingRiders.map((row) => ({
+      ...row,
+      value: toNumber(row.value),
+      secondaryValue:
+        row.secondaryValue === undefined
+          ? undefined
+          : toNumber(row.secondaryValue),
+    })),
   };
 }
 
@@ -605,11 +668,11 @@ async function getSellerQueue(range: AnalyticsDateRange) {
   return rows.map((row) => ({
     key: row.key,
     sellerLabel: row.sellerLabel,
-    awaitingOrdersCount: row.awaitingOrdersCount,
-    pendingAmount: row.pendingAmount,
-    releasedAmount: row.releasedAmount,
+    awaitingOrdersCount: toNumber(row.awaitingOrdersCount),
+    pendingAmount: toNumber(row.pendingAmount),
+    releasedAmount: toNumber(row.releasedAmount),
     lastReleaseDate: row.lastReleaseDate?.toISOString() ?? null,
-    payoutStatusSummary: `${row.pendingGroups} pending / ${row.completedGroups} completed / ${row.cancelledGroups} cancelled`,
+    payoutStatusSummary: `${toNumber(row.pendingGroups)} pending / ${toNumber(row.completedGroups)} completed / ${toNumber(row.cancelledGroups)} cancelled`,
   }));
 }
 
@@ -679,9 +742,9 @@ async function getRiderQueue(range: AnalyticsDateRange) {
   return rows.map((row) => ({
     key: row.key,
     riderLabel: row.riderLabel,
-    awaitingDeliveriesCount: row.awaitingDeliveriesCount,
-    pendingAmount: row.pendingAmount,
-    releasedAmount: row.releasedAmount,
+    awaitingDeliveriesCount: toNumber(row.awaitingDeliveriesCount),
+    pendingAmount: toNumber(row.pendingAmount),
+    releasedAmount: toNumber(row.releasedAmount),
     lastReleaseDate: row.lastReleaseDate?.toISOString() ?? null,
   }));
 }
@@ -735,11 +798,13 @@ async function getReleasedPayoutHistory(range: AnalyticsDateRange) {
     ...sellerRows.map((row) => ({
       ...row,
       entityType: "SELLER" as const,
+      amount: toNumber(row.amount),
       releasedAt: row.releasedAt.toISOString(),
     })),
     ...riderRows.map((row) => ({
       ...row,
       entityType: "RIDER" as const,
+      amount: toNumber(row.amount),
       releasedAt: row.releasedAt.toISOString(),
     })),
   ]
@@ -777,6 +842,8 @@ async function getEscrowExposureSummary() {
 
   return rows.map((row) => ({
     ...row,
+    heldAmount: toNumber(row.heldAmount),
+    entriesCount: toNumber(row.entriesCount),
     lastActivityAt: row.lastActivityAt?.toISOString() ?? null,
   }));
 }
