@@ -75,7 +75,7 @@ export default function StaffProfileForm({
   const [countryCode, setCountryCode] = useState(
     parsedPhone.countryCode ? `+${parsedPhone.countryCode}` : "+1",
   );
-  const [localPhone, setLocalPhone] = useState(parsedPhone.localPhone);
+  const [localPhone, setLocalPhone] = useState(parsedPhone.localNumber);
 
   const form = useForm<StaffProfileFormValues>({
     resolver: zodResolver(createStaffProfileSchema),
