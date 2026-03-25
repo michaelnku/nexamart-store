@@ -23,7 +23,6 @@ const AddToCartControl = ({
   availableStock = 0,
 }: Props) => {
   const [isPending, startTransition] = useTransition();
-
   const toastCart = useCartToast();
 
   const qty = useCartStore(
@@ -47,7 +46,7 @@ const AddToCartControl = ({
 
   const increase = () => {
     startTransition(async () => {
-      const res = await updateQuantityAction(productId, variantId, +1);
+      const res = await updateQuantityAction(productId, variantId, 1);
       if (res?.success) {
         useCartStore.getState().sync(res.items);
         toastCart.updated();
@@ -80,7 +79,7 @@ const AddToCartControl = ({
     });
   };
 
-  if (isOutOfStock)
+  if (isOutOfStock) {
     return (
       <Button
         disabled
@@ -89,42 +88,48 @@ const AddToCartControl = ({
         OUT OF STOCK
       </Button>
     );
+  }
 
-  if (qty === 0)
+  if (qty === 0) {
     return (
       <Button
         onClick={addItem}
         disabled={isPending}
-        className="w-full h-11 rounded-lg font-semibold flex items-center justify-center gap-2 
-        bg-brand hover:bg-brand-hover text-white shadow-md transition disabled:opacity-50"
+        className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand font-semibold text-white shadow-md transition hover:bg-brand-hover disabled:opacity-50"
       >
-        <ShoppingBag className="w-4 h-4" />
+        <ShoppingBag className="h-4 w-4" />
         Cart
       </Button>
     );
+  }
 
   return (
-    <div className="flex items-center gap-3">
-      <Button
-        onClick={decrease}
-        disabled={isPending}
-        className="h-9 w-9 flex items-center justify-center rounded-lg text-[20px] font-bold 
-        bg-brand-light hover:bg-brand text-brand hover:text-white transition"
-      >
-        −
-      </Button>
+    <div className="flex w-full justify-center">
+      <div className="flex w-full max-w-[11rem] items-center justify-between">
+        <Button
+          onClick={decrease}
+          disabled={isPending}
+          aria-label="Decrease quantity"
+          className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-light text-[20px] font-bold text-brand transition hover:bg-brand hover:text-white"
+        >
+          -
+        </Button>
 
-      <span className="w-8 text-center font-semibold text-gray-800">{qty}</span>
+        <span className="min-w-[2.5rem] text-center text-base font-semibold text-gray-800">
+          {qty}
+        </span>
 
-      <Button
-        onClick={increase}
-        disabled={isPending || atStockLimit}
-        className="h-9 w-9 flex items-center justify-center rounded-lg text-[20px] font-bold
-        bg-brand hover:bg-brand-hover text-white transition"
-      >
-        +
-      </Button>
+        <Button
+          onClick={increase}
+          disabled={isPending || atStockLimit}
+          aria-label="Increase quantity"
+          className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand text-[20px] font-bold text-white transition hover:bg-brand-hover"
+        >
+          +
+        </Button>
+      </div>
     </div>
   );
 };
+
 export default AddToCartControl;
