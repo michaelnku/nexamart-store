@@ -48,8 +48,8 @@ function formatNotificationTime(value: string) {
   });
 }
 
-function formatNotificationType(type: string) {
-  return type.replaceAll("_", " ");
+function formatNotificationType(type?: string | null) {
+  return type ? type.replaceAll("_", " ") : "SYSTEM";
 }
 
 export default function NotificationMenu() {
