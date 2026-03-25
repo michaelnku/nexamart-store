@@ -10,13 +10,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { requireVerifiedEmail } from "@/lib/email-verification/guard";
 import { isEmailNotVerifiedError } from "@/lib/email-verification/errors";
-
-function normalizePhone(phone?: string): string | null {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, "");
-  if (!digits) return null;
-  return `+${digits}`;
-}
+import { normalizeOptionalPhoneToE164 } from "@/lib/otp/phone";
 
 function staffPrefixForRole(role: UserRole): "ADM" | "MDR" | null {
   if (role === "ADMIN") return "ADM";
@@ -93,7 +87,7 @@ export async function createStaffProfile(
         staffId,
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
-        phone: normalizePhone(parsed.data.phone),
+        phone: normalizeOptionalPhoneToE164(parsed.data.phone),
         department: parsed.data.department ?? null,
         employmentType: parsed.data.employmentType ?? null,
         isVerified: false,

@@ -10,13 +10,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { requireVerifiedEmail } from "@/lib/email-verification/guard";
 import { isEmailNotVerifiedError } from "@/lib/email-verification/errors";
-
-function normalizePhone(phone?: string): string | null {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, "");
-  if (!digits) return null;
-  return `+${digits}`;
-}
+import { normalizeOptionalPhoneToE164 } from "@/lib/otp/phone";
 
 export async function updateStaffProfile(input: UpdateStaffProfileInput) {
   const user = await CurrentUser();
@@ -62,7 +56,7 @@ export async function updateStaffProfile(input: UpdateStaffProfileInput) {
       return { error: "Staff profile not found" };
     }
 
-    const nextPhone = normalizePhone(parsed.data.phone);
+    const nextPhone = normalizeOptionalPhoneToE164(parsed.data.phone);
     const identityChanged =
       existingProfile.firstName !== parsed.data.firstName ||
       existingProfile.lastName !== parsed.data.lastName ||

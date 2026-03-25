@@ -40,6 +40,10 @@ import {
   type StaffProfileInput,
 } from "@/lib/zodValidation";
 import { UserDTO } from "@/lib/types";
+import {
+  normalizePhoneToE164,
+  splitNormalizedPhone,
+} from "@/lib/otp/phone";
 
 type Props = {
   userId: string;
@@ -50,27 +54,6 @@ type Props = {
 };
 
 type StaffProfileFormValues = z.input<typeof createStaffProfileSchema>;
-
-function splitPhone(phone?: string | null) {
-  if (!phone) return { countryCode: "+1", localPhone: "" };
-  const digits = phone.replace(/\D/g, "");
-  if (!digits) return { countryCode: "+1", localPhone: "" };
-
-  const codeLength = Math.max(1, Math.min(3, digits.length - 10));
-  const countryCode = `+${digits.slice(0, codeLength)}`;
-  const localPhone = digits.slice(codeLength);
-  return { countryCode, localPhone };
-}
-
-function composePhone(
-  countryCode: string,
-  localPhone: string,
-): string | undefined {
-  const cc = countryCode.replace(/\D/g, "");
-  const local = localPhone.replace(/\D/g, "");
-  if (!local) return undefined;
-  return `+${cc}${local}`;
-}
 
 export default function StaffProfileForm({
   userId,
@@ -86,10 +69,12 @@ export default function StaffProfileForm({
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
   const isEditMode = Boolean(profile);
   const parsedPhone = useMemo(
-    () => splitPhone(profile?.phone),
+    () => splitNormalizedPhone(profile?.phone),
     [profile?.phone],
   );
-  const [countryCode, setCountryCode] = useState(parsedPhone.countryCode);
+  const [countryCode, setCountryCode] = useState(
+    parsedPhone.countryCode ? `+${parsedPhone.countryCode}` : "+1",
+  );
   const [localPhone, setLocalPhone] = useState(parsedPhone.localPhone);
 
   const form = useForm<StaffProfileFormValues>({
@@ -105,17 +90,25 @@ export default function StaffProfileForm({
 
   const onSubmit = (values: StaffProfileFormValues) => {
     startTransition(async () => {
-      if (
-        localPhone.trim().length > 0 &&
-        countryCode.replace(/\D/g, "").length === 0
-      ) {
-        toast.error("Country code is required when phone number is provided.");
-        return;
+      let normalizedPhone: string | undefined;
+
+      if (localPhone.trim().length > 0) {
+        try {
+          normalizedPhone = normalizePhoneToE164({
+            countryCode,
+            localNumber: localPhone,
+          });
+        } catch (error) {
+          toast.error(
+            error instanceof Error ? error.message : "Phone number is invalid.",
+          );
+          return;
+        }
       }
 
       const payload = {
         ...values,
-        phone: composePhone(countryCode, localPhone),
+        phone: normalizedPhone,
         department: values.department?.trim() || undefined,
       };
 

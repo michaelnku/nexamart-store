@@ -9,12 +9,12 @@ import {
   logOtpVerifyFailure,
   logOtpVerifySuccess,
 } from "@/lib/otp/logging";
-import { normalizeOtpPhoneToE164 } from "@/lib/otp/phone";
+import { normalizePhoneToE164 } from "@/lib/otp/phone";
 import type { SendManagedOtpRequest, VerifyManagedOtpRequest } from "@/lib/otp/types";
 
 export async function sendProviderManagedOtp(input: SendManagedOtpRequest) {
   const provider = getManagedVerificationProvider();
-  const normalizedPhone = normalizeOtpPhoneToE164(input.phone);
+  const normalizedPhone = normalizePhoneToE164(input.phone);
   const context = {
     phone: normalizedPhone,
     channel: input.channel,
@@ -41,7 +41,7 @@ export async function sendProviderManagedOtp(input: SendManagedOtpRequest) {
 
 export async function verifyProviderManagedOtp(input: VerifyManagedOtpRequest) {
   const provider = getManagedVerificationProvider();
-  const normalizedPhone = normalizeOtpPhoneToE164(input.phone);
+  const normalizedPhone = normalizePhoneToE164(input.phone);
   const context = {
     phone: normalizedPhone,
     channel: input.channel,

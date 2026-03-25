@@ -3,6 +3,13 @@ import { InvalidOtpPhoneError } from "@/lib/otp/errors";
 const E164_PHONE_PATTERN = /^\+[1-9]\d{7,14}$/;
 const NON_DIGIT_SEPARATORS_PATTERN = /[\s().-]/g;
 
+type SplitPhoneInput = {
+  countryCode: string;
+  localNumber: string;
+};
+
+type PhoneInput = string | SplitPhoneInput;
+
 function sanitizePhoneInput(phone: string): string {
   const trimmed = phone.trim();
   if (!trimmed) {
@@ -30,8 +37,35 @@ function sanitizePhoneInput(phone: string): string {
   return `+${digits}`;
 }
 
-export function normalizePhoneToE164(phone: string): string {
-  const sanitized = sanitizePhoneInput(phone);
+function isSplitPhoneInput(input: PhoneInput): input is SplitPhoneInput {
+  return typeof input !== "string";
+}
+
+function buildPhoneInputString(input: PhoneInput): string {
+  if (!isSplitPhoneInput(input)) {
+    return input;
+  }
+
+  const cleanCountry = input.countryCode.replace(/\D/g, "");
+  const cleanLocal = input.localNumber.replace(/\D/g, "");
+
+  if (!cleanCountry || !cleanLocal) {
+    throw new InvalidOtpPhoneError(
+      "Phone number must include country code and number.",
+    );
+  }
+
+  const nationalNumber = cleanLocal.replace(/^0+/, "");
+
+  if (!nationalNumber) {
+    throw new InvalidOtpPhoneError("Phone number is required.");
+  }
+
+  return `+${cleanCountry}${nationalNumber}`;
+}
+
+export function normalizePhoneToE164(input: PhoneInput): string {
+  const sanitized = sanitizePhoneInput(buildPhoneInputString(input));
 
   if (!E164_PHONE_PATTERN.test(sanitized)) {
     throw new InvalidOtpPhoneError(
@@ -42,19 +76,12 @@ export function normalizePhoneToE164(phone: string): string {
   return sanitized;
 }
 
-export function normalizeOtpPhoneToE164(phone: string): string {
-  return normalizePhoneToE164(phone);
-}
-
-export function buildPhoneDraft(countryCode: string, localNumber: string): string {
-  const cleanCountry = countryCode.replace(/\D/g, "");
-  const cleanLocal = localNumber.replace(/\D/g, "");
-
-  if (!cleanCountry || !cleanLocal) {
-    return "";
+export function normalizeOptionalPhoneToE164(phone?: string | null): string | null {
+  if (!phone?.trim()) {
+    return null;
   }
 
-  return `+${cleanCountry}${cleanLocal}`;
+  return normalizePhoneToE164(phone);
 }
 
 export function splitNormalizedPhone(phone?: string | null) {

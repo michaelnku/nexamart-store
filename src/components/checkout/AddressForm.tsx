@@ -32,7 +32,6 @@ import {
 
 import { Address } from "@/lib/types";
 import {
-  buildPhoneDraft,
   normalizePhoneToE164,
   splitNormalizedPhone,
 } from "@/lib/otp/phone";
@@ -318,20 +317,13 @@ export default function AddressForm({
   };
 
   const onSubmit = (values: addressSchemaType) => {
-    const phoneDraft = buildPhoneDraft(countryCode, localPhoneNumber);
-
-    if (!phoneDraft) {
-      form.setError("phone", {
-        type: "manual",
-        message: "Enter country code and phone number.",
-      });
-      return;
-    }
-
     let normalizedPhone: string;
 
     try {
-      normalizedPhone = normalizePhoneToE164(phoneDraft);
+      normalizedPhone = normalizePhoneToE164({
+        countryCode,
+        localNumber: localPhoneNumber,
+      });
     } catch (error) {
       form.setError("phone", {
         type: "manual",
@@ -444,9 +436,16 @@ export default function AddressForm({
                           "",
                         );
                         setCountryCode(nextCountry);
-                        field.onChange(
-                          buildPhoneDraft(nextCountry, localPhoneNumber),
-                        );
+                        try {
+                          field.onChange(
+                            normalizePhoneToE164({
+                              countryCode: nextCountry,
+                              localNumber: localPhoneNumber,
+                            }),
+                          );
+                        } catch {
+                          field.onChange("");
+                        }
                       }}
                       placeholder="1"
                       className="border-0 shadow-none focus-visible:ring-0"
@@ -466,9 +465,16 @@ export default function AddressForm({
                       onChange={(event) => {
                         const nextLocal = event.target.value.replace(/\D/g, "");
                         setLocalPhoneNumber(nextLocal);
-                        field.onChange(
-                          buildPhoneDraft(countryCode, nextLocal),
-                        );
+                        try {
+                          field.onChange(
+                            normalizePhoneToE164({
+                              countryCode,
+                              localNumber: nextLocal,
+                            }),
+                          );
+                        } catch {
+                          field.onChange("");
+                        }
                       }}
                       placeholder="Phone number"
                     />
