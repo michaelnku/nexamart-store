@@ -1,25 +1,25 @@
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
-import {
-  AccountTypeValue,
-  LedgerEntryTypeValue,
-} from "@/lib/ledger/types";
+import { AccountTypeValue } from "@/lib/ledger/types";
 
-// Ledger entries are the source of truth for wallet balances.
-// Wallet.balance, Wallet.pending, and Wallet.totalEarnings are cached/display fields only.
-// Critical financial decisions must use ledger-derived calculations from this module.
-const CREDIT_ENTRY_TYPES: LedgerEntryTypeValue[] = [
-  "WALLET_TOPUP",
-  "REFUND",
-  "BUYER_CREDIT",
-  "REFERRAL_BONUS",
-  "ESCROW_RELEASE",
-];
+function buildWalletBalanceWhereInput(
+  walletId: string,
+  direction: "CREDIT" | "DEBIT",
+  accountType?: AccountTypeValue,
+): Prisma.LedgerEntryWhereInput {
+  if (!accountType) {
+    return {
+      walletId,
+      direction,
+    };
+  }
 
-const DEBIT_ENTRY_TYPES: LedgerEntryTypeValue[] = [
-  "ESCROW_DEPOSIT",
-  "WALLET_WITHDRAWAL",
-];
+  return {
+    walletId,
+    direction,
+    ...buildAccountTypeFilter(accountType),
+  };
+}
 
 export async function calculateWalletBalance(
   walletId: string,
@@ -30,23 +30,11 @@ export async function calculateWalletBalance(
   const [creditsAgg, debitsAgg] = await Promise.all([
     client.ledgerEntry.aggregate({
       _sum: { amount: true },
-      where: {
-        walletId,
-        direction: "CREDIT",
-        entryType: {
-          in: CREDIT_ENTRY_TYPES,
-        },
-      },
+      where: buildWalletBalanceWhereInput(walletId, "CREDIT"),
     }),
     client.ledgerEntry.aggregate({
       _sum: { amount: true },
-      where: {
-        walletId,
-        direction: "DEBIT",
-        entryType: {
-          in: DEBIT_ENTRY_TYPES,
-        },
-      },
+      where: buildWalletBalanceWhereInput(walletId, "DEBIT"),
     }),
   ]);
 
@@ -74,30 +62,15 @@ export async function calculateWalletBalanceByAccountType(
   tx?: Prisma.TransactionClient,
 ) {
   const client = tx ?? prisma;
-  const accountTypeFilter = buildAccountTypeFilter(accountType);
 
   const [creditsAgg, debitsAgg] = await Promise.all([
     client.ledgerEntry.aggregate({
       _sum: { amount: true },
-      where: {
-        walletId,
-        direction: "CREDIT",
-        entryType: {
-          in: CREDIT_ENTRY_TYPES,
-        },
-        ...accountTypeFilter,
-      },
+      where: buildWalletBalanceWhereInput(walletId, "CREDIT", accountType),
     }),
     client.ledgerEntry.aggregate({
       _sum: { amount: true },
-      where: {
-        walletId,
-        direction: "DEBIT",
-        entryType: {
-          in: DEBIT_ENTRY_TYPES,
-        },
-        ...accountTypeFilter,
-      },
+      where: buildWalletBalanceWhereInput(walletId, "DEBIT", accountType),
     }),
   ]);
 

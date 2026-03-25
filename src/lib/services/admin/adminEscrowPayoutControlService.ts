@@ -73,6 +73,7 @@ function toNumber(
     | Prisma.Decimal
     | bigint
     | number
+    | { toNumber?: () => number; valueOf?: () => unknown }
     | null
     | undefined,
 ) {
@@ -80,8 +81,25 @@ function toNumber(
     return value.toNumber();
   }
 
+  if (
+    value &&
+    typeof value === "object" &&
+    "toNumber" in value &&
+    typeof value.toNumber === "function"
+  ) {
+    return value.toNumber();
+  }
+
   if (typeof value === "bigint") {
     return Number(value);
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const numericValue = Number(value.valueOf());
+
+    if (!Number.isNaN(numericValue)) {
+      return numericValue;
+    }
   }
 
   return value ?? 0;

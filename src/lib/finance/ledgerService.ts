@@ -4,10 +4,7 @@ import {
   calculateWalletBalanceByAccountType,
 } from "@/lib/ledger/calculateWalletBalance";
 import { ServiceContext } from "@/lib/system/serviceContext";
-import {
-  AccountTypeValue,
-  LedgerEntryTypeValue,
-} from "@/lib/ledger/types";
+import { AccountTypeValue, LedgerEntryTypeValue } from "@/lib/ledger/types";
 
 type Tx = Prisma.TransactionClient;
 
@@ -206,7 +203,9 @@ export async function createDoubleEntryLedger(
     }
   }
 
-  const missingRows = rows.filter((row) => !existingByReference.has(row.reference));
+  const missingRows = rows.filter(
+    (row) => !existingByReference.has(row.reference),
+  );
 
   if (missingRows.length > 0) {
     await tx.ledgerEntry.createMany({
@@ -232,7 +231,9 @@ export async function createDoubleEntryLedger(
       amount: true,
     },
   });
-  const finalByReference = new Map(finalRows.map((row) => [row.reference, row]));
+  const finalByReference = new Map(
+    finalRows.map((row) => [row.reference, row]),
+  );
 
   for (const row of rows) {
     const finalRow = finalByReference.get(row.reference);
@@ -242,7 +243,8 @@ export async function createDoubleEntryLedger(
     assertLedgerRowMatchesExpected(finalRow, row);
   }
 
-  const createdFreshPair = existingRows.length === 0 && missingRows.length === 2;
+  const createdFreshPair =
+    existingRows.length === 0 && missingRows.length === 2;
   if (createdFreshPair && fromWalletId && !input.allowNegativeFromWallet) {
     const sourceWallet = await tx.wallet.findUnique({
       where: { id: fromWalletId },
@@ -259,12 +261,63 @@ export async function createDoubleEntryLedger(
         )
       : await calculateWalletBalance(fromWalletId, tx);
     if (availableBalance < amount) {
+      const blendedBalance = await calculateWalletBalance(fromWalletId, tx);
+      const [orderFundingEntries, recentCompetingDebits] = await Promise.all([
+        input.orderId
+          ? tx.ledgerEntry.findMany({
+              where: {
+                orderId: input.orderId,
+                walletId: fromWalletId,
+                direction: "CREDIT",
+              },
+              orderBy: { createdAt: "asc" },
+              select: {
+                reference: true,
+                entryType: true,
+                accountType: true,
+                amount: true,
+              },
+              take: 20,
+            })
+          : Promise.resolve([]),
+        tx.ledgerEntry.findMany({
+          where: {
+            walletId: fromWalletId,
+            direction: "DEBIT",
+            ...(input.debitBalanceAccountType
+              ? { accountType: input.debitBalanceAccountType }
+              : {}),
+          },
+          orderBy: { createdAt: "desc" },
+          select: {
+            reference: true,
+            orderId: true,
+            entryType: true,
+            accountType: true,
+            amount: true,
+          },
+          take: 20,
+        }),
+      ]);
+
+      console.error("Ledger debit balance check failed", {
+        reference: input.reference,
+        orderId: input.orderId ?? null,
+        fromWalletId,
+        fromUserId: input.fromUserId ?? null,
+        entryType: input.entryType,
+        amount,
+        debitBalanceAccountType: input.debitBalanceAccountType ?? null,
+        availableBalance,
+        blendedBalance,
+        orderFundingEntries,
+        recentCompetingDebits,
+      });
+
       throw new Error("Insufficient wallet balance for debit ledger entry");
     }
   }
 
-  // Wallet cache fields are display/reconciliation projections of the ledger.
-  // Keep cache writes here limited to sync after authoritative ledger entries land.
   if (createdFreshPair) {
     await Promise.all([
       fromWalletId

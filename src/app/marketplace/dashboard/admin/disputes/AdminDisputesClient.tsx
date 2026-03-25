@@ -56,6 +56,7 @@ import { formatAnalyticsCount } from "@/lib/analytics/format";
 import { getDisputeAttentionBadgeClass } from "@/lib/disputes/admin-ui";
 import { getDisputeStatusLabel } from "@/lib/disputes/ui";
 import type { AdminDisputeDetailDTO } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 type AdminDisputesClientProps = {
   initialRange: {
@@ -123,6 +124,12 @@ function getPrimarySellerLabel(dispute: AdminDisputeDetailDTO) {
   );
 }
 
+function getDeliveryStatusLabel(dispute: AdminDisputeDetailDTO) {
+  return dispute.delivery?.status
+    ? dispute.delivery.status.replaceAll("_", " ")
+    : "N/A";
+}
+
 export default function AdminDisputesClient({
   initialRange,
 }: AdminDisputesClientProps) {
@@ -154,7 +161,10 @@ export default function AdminDisputesClient({
         )
         .join(" ")
         .toLowerCase();
-      const riderText = [dispute.delivery?.riderName, dispute.delivery?.riderEmail]
+      const riderText = [
+        dispute.delivery?.riderName,
+        dispute.delivery?.riderEmail,
+      ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -227,7 +237,8 @@ export default function AdminDisputesClient({
     {
       title: "Open Disputes",
       value: formatAnalyticsCount(dashboard.snapshot.openDisputes),
-      description: "Current unresolved disputes across all active queue states.",
+      description:
+        "Current unresolved disputes across all active queue states.",
       icon: ShieldAlert,
       tintClassName:
         "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300",
@@ -261,7 +272,8 @@ export default function AdminDisputesClient({
       value: formatAnalyticsCount(
         dashboard.snapshot.waitingForCustomerOrReturnDisputes,
       ),
-      description: "Cases waiting on customer action or a return workflow update.",
+      description:
+        "Cases waiting on customer action or a return workflow update.",
       icon: Wallet,
       tintClassName:
         "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700 dark:border-fuchsia-900/60 dark:bg-fuchsia-950/30 dark:text-fuchsia-300",
@@ -281,7 +293,8 @@ export default function AdminDisputesClient({
     {
       title: "Resolved Disputes",
       value: formatAnalyticsCount(dashboard.rangeSummary.resolvedDisputes),
-      description: "Disputes in a resolved state updated during the selected period.",
+      description:
+        "Disputes in a resolved state updated during the selected period.",
       icon: ShieldCheck,
       tintClassName:
         "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300",
@@ -298,8 +311,11 @@ export default function AdminDisputesClient({
     },
     {
       title: "Refund-Recorded Cases",
-      value: formatAnalyticsCount(dashboard.rangeSummary.refundRecordedDisputes),
-      description: "Disputes with successful refund transactions recorded in range.",
+      value: formatAnalyticsCount(
+        dashboard.rangeSummary.refundRecordedDisputes,
+      ),
+      description:
+        "Disputes with successful refund transactions recorded in range.",
       icon: Wallet,
       tintClassName:
         "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-300",
@@ -308,7 +324,8 @@ export default function AdminDisputesClient({
     {
       title: "Refund Amount Recorded",
       value: formatMoney(dashboard.rangeSummary.refundRecordedAmount),
-      description: "Successful dispute-linked refund transactions recorded in range.",
+      description:
+        "Successful dispute-linked refund transactions recorded in range.",
       icon: Wallet,
       tintClassName:
         "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300",
@@ -352,7 +369,8 @@ export default function AdminDisputesClient({
             Current Snapshot
           </p>
           <p className="text-sm text-slate-600 dark:text-zinc-300">
-            Live dispute workload and queue-state visibility across the marketplace.
+            Live dispute workload and queue-state visibility across the
+            marketplace.
           </p>
         </div>
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -375,7 +393,8 @@ export default function AdminDisputesClient({
             Selected Period
           </p>
           <p className="text-sm text-slate-600 dark:text-zinc-300">
-            Reporting metrics tied to disputes opened, closed, and refunded in the active range.
+            Reporting metrics tied to disputes opened, closed, and refunded in
+            the active range.
           </p>
         </div>
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-5">
@@ -405,7 +424,8 @@ export default function AdminDisputesClient({
               </EmptyMedia>
               <EmptyTitle>No disputes recorded</EmptyTitle>
               <EmptyDescription>
-                Try a wider date range or wait for dispute cases to be opened and processed.
+                Try a wider date range or wait for dispute cases to be opened
+                and processed.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -462,13 +482,17 @@ export default function AdminDisputesClient({
               title="Repeat Dispute Stores"
               description="Stores generating the highest dispute counts in the selected range."
               rows={dashboard.breakdowns.repeatStores}
-              primaryFormatter={(value) => `${formatAnalyticsCount(value)} cases`}
+              primaryFormatter={(value) =>
+                `${formatAnalyticsCount(value)} cases`
+              }
             />
             <AnalyticsRankedList
               title="Repeat Dispute Customers"
               description="Customers generating the highest dispute counts in the selected range."
               rows={dashboard.breakdowns.repeatCustomers}
-              primaryFormatter={(value) => `${formatAnalyticsCount(value)} cases`}
+              primaryFormatter={(value) =>
+                `${formatAnalyticsCount(value)} cases`
+              }
             />
             <PremiumPanel
               title="Urgent Queue"
@@ -499,7 +523,9 @@ export default function AdminDisputesClient({
                       </div>
                       <Badge
                         variant="outline"
-                        className={getDisputeAttentionBadgeClass(dispute.attentionLevel)}
+                        className={getDisputeAttentionBadgeClass(
+                          dispute.attentionLevel,
+                        )}
                       >
                         {dispute.attentionLevel}
                       </Badge>
@@ -512,7 +538,9 @@ export default function AdminDisputesClient({
                         size="sm"
                         className="h-auto px-0 text-xs text-slate-700 hover:text-slate-950 dark:text-zinc-300 dark:hover:text-white"
                       >
-                        <Link href={`/marketplace/dashboard/admin/disputes/${dispute.id}`}>
+                        <Link
+                          href={`/marketplace/dashboard/admin/disputes/${dispute.id}`}
+                        >
                           Open case
                           <ArrowRight className="h-3.5 w-3.5" />
                         </Link>
@@ -526,14 +554,14 @@ export default function AdminDisputesClient({
         </>
       )}
 
-      <section className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
+      <section className="grid gap-6 2xl:grid-cols-[1.2fr,0.8fr]">
         <PremiumPanel
           title="Case Management Queue"
           description="Disputes created in the selected range. Filter by actor, status, reason, and refund recording state."
         >
           <div className="space-y-5">
-            <div className="grid gap-3 xl:grid-cols-[1.5fr,0.8fr,0.8fr,0.9fr]">
-              <div className="relative">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.9fr)]">
+              <div className="relative md:col-span-2 xl:col-span-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={query}
@@ -551,9 +579,15 @@ export default function AdminDisputesClient({
                   <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="OPEN">Open</SelectItem>
                   <SelectItem value="UNDER_REVIEW">Under review</SelectItem>
-                  <SelectItem value="WAITING_FOR_SELLER">Waiting for seller</SelectItem>
-                  <SelectItem value="WAITING_FOR_CUSTOMER">Waiting for customer</SelectItem>
-                  <SelectItem value="WAITING_FOR_RETURN">Waiting for return</SelectItem>
+                  <SelectItem value="WAITING_FOR_SELLER">
+                    Waiting for seller
+                  </SelectItem>
+                  <SelectItem value="WAITING_FOR_CUSTOMER">
+                    Waiting for customer
+                  </SelectItem>
+                  <SelectItem value="WAITING_FOR_RETURN">
+                    Waiting for return
+                  </SelectItem>
                   <SelectItem value="RESOLVED">Resolved</SelectItem>
                   <SelectItem value="REJECTED">Rejected</SelectItem>
                 </SelectContent>
@@ -565,10 +599,14 @@ export default function AdminDisputesClient({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All reasons</SelectItem>
-                  <SelectItem value="ITEM_NOT_RECEIVED">Item not received</SelectItem>
+                  <SelectItem value="ITEM_NOT_RECEIVED">
+                    Item not received
+                  </SelectItem>
                   <SelectItem value="ITEM_DAMAGED">Item damaged</SelectItem>
                   <SelectItem value="WRONG_ITEM">Wrong item</SelectItem>
-                  <SelectItem value="NOT_AS_DESCRIBED">Not as described</SelectItem>
+                  <SelectItem value="NOT_AS_DESCRIBED">
+                    Not as described
+                  </SelectItem>
                   <SelectItem value="MISSING_ITEMS">Missing items</SelectItem>
                   <SelectItem value="OTHER">Other</SelectItem>
                 </SelectContent>
@@ -576,7 +614,9 @@ export default function AdminDisputesClient({
 
               <Select
                 value={refundFilter}
-                onValueChange={(value) => setRefundFilter(value as RefundFilter)}
+                onValueChange={(value) =>
+                  setRefundFilter(value as RefundFilter)
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Refunds" />
@@ -584,7 +624,9 @@ export default function AdminDisputesClient({
                 <SelectContent>
                   <SelectItem value="all">All refund states</SelectItem>
                   <SelectItem value="recorded">Refund recorded</SelectItem>
-                  <SelectItem value="not-recorded">No refund recorded</SelectItem>
+                  <SelectItem value="not-recorded">
+                    No refund recorded
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -597,205 +639,316 @@ export default function AdminDisputesClient({
                   </EmptyMedia>
                   <EmptyTitle>No disputes match these filters</EmptyTitle>
                   <EmptyDescription>
-                    Adjust the search or filter state to surface a different set of dispute cases.
+                    Adjust the search or filter state to surface a different set
+                    of dispute cases.
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-separate border-spacing-0">
-                  <thead>
-                    <tr>
-                      {[
-                        "Case",
-                        "Customer",
-                        "Seller / Store",
-                        "Rider",
-                        "Reason",
-                        "Status",
-                        "Attention",
-                        "Refund",
-                        "Created",
-                        "Updated",
-                        "",
-                      ].map((column) => (
-                        <th
-                          key={column}
-                          className="border-b border-slate-200/80 px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-zinc-800 dark:text-zinc-400"
+              <div className="space-y-4">
+                <div className="space-y-3 xl:hidden">
+                  {filteredCases.map((dispute) => (
+                    <button
+                      key={dispute.id}
+                      type="button"
+                      onClick={() => setSelectedId(dispute.id)}
+                      className={cn(
+                        "w-full rounded-2xl border p-4 text-left transition-colors",
+                        selectedCase?.id === dispute.id
+                          ? "border-slate-900 bg-slate-50 dark:border-zinc-200 dark:bg-zinc-900"
+                          : "border-slate-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-950",
+                      )}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-slate-950 dark:text-white">
+                            {dispute.orderTrackingNumber ?? dispute.orderId}
+                          </p>
+                          <p className="mt-1 break-all text-xs text-slate-500 dark:text-zinc-400">
+                            {dispute.id}
+                          </p>
+                        </div>
+                        <DisputeStatusBadge status={dispute.status} />
+                      </div>
+
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-xl border border-slate-200/80 px-3 py-2 dark:border-zinc-800">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                            Customer
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-slate-950 dark:text-white">
+                            {dispute.customer.name ?? "Customer"}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-zinc-400">
+                            {dispute.customer.email}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200/80 px-3 py-2 dark:border-zinc-800">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                            Seller / Store
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-slate-950 dark:text-white">
+                            {getPrimarySellerLabel(dispute)}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-zinc-400">
+                            {dispute.sellers.length} impacted group
+                            {dispute.sellers.length === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200/80 px-3 py-2 dark:border-zinc-800">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                            Rider
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-slate-950 dark:text-white">
+                            {dispute.delivery?.riderName ??
+                              dispute.delivery?.riderEmail ??
+                              "No rider"}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-zinc-400">
+                            {getDeliveryStatusLabel(dispute)}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200/80 px-3 py-2 dark:border-zinc-800">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                            Refund
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-slate-950 dark:text-white">
+                            {dispute.refundRecordedAt
+                              ? formatMoney(dispute.refundAmount ?? 0)
+                              : "Pending"}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-zinc-400">
+                            {dispute.refundRecordedAt
+                              ? "Recorded"
+                              : "Not recorded"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <DisputeReasonLabel reason={dispute.reason} />
+                        <Badge
+                          variant="outline"
+                          className={getDisputeAttentionBadgeClass(
+                            dispute.attentionLevel,
+                          )}
                         >
-                          {column}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCases.map((dispute) => (
-                      <tr
-                        key={dispute.id}
-                        className={
-                          selectedCase?.id === dispute.id
-                            ? "bg-slate-50/70 dark:bg-zinc-900/50"
-                            : ""
-                        }
-                      >
-                        <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedId(dispute.id)}
-                            className="min-w-[10rem] text-left"
+                          {dispute.attentionLevel}
+                        </Badge>
+                        <Badge variant="outline">
+                          Created {formatDateTime(dispute.createdAt)}
+                        </Badge>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="hidden overflow-x-auto xl:block">
+                  <table className="min-w-full border-separate border-spacing-0">
+                    <thead>
+                      <tr>
+                        {[
+                          "Case",
+                          "Customer",
+                          "Seller / Store",
+                          "Rider",
+                          "Reason",
+                          "Status",
+                          "Attention",
+                          "Refund",
+                          "Created",
+                          "Updated",
+                          "",
+                        ].map((column) => (
+                          <th
+                            key={column}
+                            className="border-b border-slate-200/80 px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-zinc-800 dark:text-zinc-400"
                           >
-                            <p className="font-medium text-slate-950 dark:text-white">
-                              {dispute.orderTrackingNumber ?? dispute.orderId}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-zinc-400">
-                              {dispute.id}
-                            </p>
-                          </button>
-                        </td>
-                        <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
-                          <div className="min-w-[11rem]">
-                            <p className="font-medium text-slate-950 dark:text-white">
-                              {dispute.customer.name ?? "Customer"}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-zinc-400">
-                              {dispute.customer.email}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
-                          <div className="min-w-[11rem]">
-                            <p className="font-medium text-slate-950 dark:text-white">
-                              {getPrimarySellerLabel(dispute)}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-zinc-400">
-                              {dispute.sellers.length} impacted group
-                              {dispute.sellers.length === 1 ? "" : "s"}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
-                          <div className="min-w-[9rem]">
-                            <p className="font-medium text-slate-950 dark:text-white">
-                              {dispute.delivery?.riderName ??
-                                dispute.delivery?.riderEmail ??
-                                "No rider"}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-zinc-400">
-                              {dispute.delivery?.status
-                                ? dispute.delivery.status.replaceAll("_", " ")
-                                : "N/A"}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200">
-                          <DisputeReasonLabel reason={dispute.reason} />
-                        </td>
-                        <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
-                          <DisputeStatusBadge status={dispute.status} />
-                        </td>
-                        <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
-                          <Badge
-                            variant="outline"
-                            className={getDisputeAttentionBadgeClass(dispute.attentionLevel)}
-                          >
-                            {dispute.attentionLevel}
-                          </Badge>
-                        </td>
-                        <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
-                          <div className="min-w-[8rem]">
-                            <p className="font-medium text-slate-950 dark:text-white">
-                              {dispute.refundRecordedAt
-                                ? formatMoney(dispute.refundAmount ?? 0)
-                                : "Pending"}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-zinc-400">
-                              {dispute.refundRecordedAt
-                                ? "Recorded"
-                                : "Not recorded"}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200">
-                          {formatDateTime(dispute.createdAt)}
-                        </td>
-                        <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200">
-                          {formatDateTime(dispute.updatedAt)}
-                        </td>
-                        <td className="border-b border-slate-200/60 px-4 py-4 text-right text-sm dark:border-zinc-900">
-                          <Button asChild variant="ghost" size="sm">
-                            <Link href={`/marketplace/dashboard/admin/disputes/${dispute.id}`}>
-                              Open
-                            </Link>
-                          </Button>
-                        </td>
+                            {column}
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filteredCases.map((dispute) => (
+                        <tr
+                          key={dispute.id}
+                          className={
+                            selectedCase?.id === dispute.id
+                              ? "bg-slate-50/70 dark:bg-zinc-900/50"
+                              : ""
+                          }
+                        >
+                          <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedId(dispute.id)}
+                              className="min-w-[10rem] text-left"
+                            >
+                              <p className="font-medium text-slate-950 dark:text-white">
+                                {dispute.orderTrackingNumber ?? dispute.orderId}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                                {dispute.id}
+                              </p>
+                            </button>
+                          </td>
+                          <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
+                            <div className="min-w-[11rem]">
+                              <p className="font-medium text-slate-950 dark:text-white">
+                                {dispute.customer.name ?? "Customer"}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                                {dispute.customer.email}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
+                            <div className="min-w-[11rem]">
+                              <p className="font-medium text-slate-950 dark:text-white">
+                                {getPrimarySellerLabel(dispute)}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                                {dispute.sellers.length} impacted group
+                                {dispute.sellers.length === 1 ? "" : "s"}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
+                            <div className="min-w-[9rem]">
+                              <p className="font-medium text-slate-950 dark:text-white">
+                                {dispute.delivery?.riderName ??
+                                  dispute.delivery?.riderEmail ??
+                                  "No rider"}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                                {getDeliveryStatusLabel(dispute)}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200">
+                            <DisputeReasonLabel reason={dispute.reason} />
+                          </td>
+                          <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
+                            <DisputeStatusBadge status={dispute.status} />
+                          </td>
+                          <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
+                            <Badge
+                              variant="outline"
+                              className={getDisputeAttentionBadgeClass(
+                                dispute.attentionLevel,
+                              )}
+                            >
+                              {dispute.attentionLevel}
+                            </Badge>
+                          </td>
+                          <td className="border-b border-slate-200/60 px-4 py-4 text-sm dark:border-zinc-900">
+                            <div className="min-w-[8rem]">
+                              <p className="font-medium text-slate-950 dark:text-white">
+                                {dispute.refundRecordedAt
+                                  ? formatMoney(dispute.refundAmount ?? 0)
+                                  : "Pending"}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                                {dispute.refundRecordedAt
+                                  ? "Recorded"
+                                  : "Not recorded"}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200">
+                            {formatDateTime(dispute.createdAt)}
+                          </td>
+                          <td className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200">
+                            {formatDateTime(dispute.updatedAt)}
+                          </td>
+                          <td className="border-b border-slate-200/60 px-4 py-4 text-right text-sm dark:border-zinc-900">
+                            <Button asChild variant="ghost" size="sm">
+                              <Link
+                                href={`/marketplace/dashboard/admin/disputes/${dispute.id}`}
+                              >
+                                Open
+                              </Link>
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
         </PremiumPanel>
 
-        <PremiumPanel
-          title="Selected Case"
-          description={
-            selectedCase
-              ? "Review the currently selected case and jump into the full dispute workspace if you need more context."
-              : "Select a dispute row to inspect the current case."
-          }
-        >
-          {selectedCase ? (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-slate-200/80 px-4 py-4 dark:border-zinc-800">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-slate-950 dark:text-white">
-                      {selectedCase.orderTrackingNumber ?? selectedCase.orderId}
-                    </p>
-                    <p className="text-sm text-slate-500 dark:text-zinc-400">
-                      {selectedCase.customer.name ?? selectedCase.customer.email}
-                    </p>
+        <div className="self-start 2xl:sticky 2xl:top-6">
+          <PremiumPanel
+            title="Selected Case"
+            description={
+              selectedCase
+                ? "Review the currently selected case and jump into the full dispute workspace if you need more context."
+                : "Select a dispute row to inspect the current case."
+            }
+          >
+            {selectedCase ? (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-slate-200/80 px-4 py-4 dark:border-zinc-800">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-950 dark:text-white">
+                        {selectedCase.orderTrackingNumber ??
+                          selectedCase.orderId}
+                      </p>
+                      <p className="break-words text-sm text-slate-500 dark:text-zinc-400">
+                        {selectedCase.customer.name ??
+                          selectedCase.customer.email}
+                      </p>
+                    </div>
+                    <DisputeStatusBadge status={selectedCase.status} />
                   </div>
-                  <DisputeStatusBadge status={selectedCase.status} />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Badge
+                      variant="outline"
+                      className={getDisputeAttentionBadgeClass(
+                        selectedCase.attentionLevel,
+                      )}
+                    >
+                      {selectedCase.attentionLevel}
+                    </Badge>
+                    <Badge variant="outline">
+                      {selectedCase.attentionAgeHours ?? 0}h in queue
+                    </Badge>
+                    <Badge variant="outline">
+                      {getDisputeStatusLabel(selectedCase.status)}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge
-                    variant="outline"
-                    className={getDisputeAttentionBadgeClass(selectedCase.attentionLevel)}
-                  >
-                    {selectedCase.attentionLevel}
-                  </Badge>
-                  <Badge variant="outline">
-                    {selectedCase.attentionAgeHours ?? 0}h in queue
-                  </Badge>
-                  <Badge variant="outline">
-                    {getDisputeStatusLabel(selectedCase.status)}
-                  </Badge>
-                </div>
-              </div>
 
-              <Button asChild className="w-full">
-                <Link href={`/marketplace/dashboard/admin/disputes/${selectedCase.id}`}>
-                  Open Full Case
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          ) : (
-            <Empty className="border-slate-200/80 dark:border-zinc-800">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Gavel />
-                </EmptyMedia>
-                <EmptyTitle>No case selected</EmptyTitle>
-                <EmptyDescription>
-                  Pick a case from the queue to inspect its current state and actions.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )}
-        </PremiumPanel>
+                <Button asChild className="w-full">
+                  <Link
+                    href={`/marketplace/dashboard/admin/disputes/${selectedCase.id}`}
+                  >
+                    Open Full Case
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <Empty className="border-slate-200/80 dark:border-zinc-800">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Gavel />
+                  </EmptyMedia>
+                  <EmptyTitle>No case selected</EmptyTitle>
+                  <EmptyDescription>
+                    Pick a case from the queue to inspect its current state and
+                    actions.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </PremiumPanel>
+        </div>
       </section>
 
       {selectedCase ? (
