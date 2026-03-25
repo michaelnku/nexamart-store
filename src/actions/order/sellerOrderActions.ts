@@ -238,6 +238,17 @@ export const acceptOrderAction = async (
       );
 
       if (group.order.isFoodOrder && prepReadyAt) {
+        await createOrderTimelineIfMissing(
+          {
+            orderId: group.orderId,
+            status: "PREPARING",
+            message: `Seller ${group.store.name} started preparing your order. Estimated ready time is ${prepTimeMinutes} minute${prepTimeMinutes === 1 ? "" : "s"}.`,
+          },
+          tx,
+        );
+      }
+
+      if (group.order.isFoodOrder && prepReadyAt) {
         await tx.job.upsert({
           where: { id: `mark-ready-${sellerGroupId}` },
           update: {
