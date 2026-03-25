@@ -102,7 +102,7 @@ export function hasConfiguredOtpMessagingProvider(): boolean {
   return providers.some((provider) => {
     switch (provider) {
       case "twilio":
-        return hasTwilioVerifyConfig();
+        return false;
       case "vonage":
       case "plivo":
         return false;
@@ -115,7 +115,7 @@ export function hasConfiguredProviderMessaging(
 ): boolean {
   switch (provider) {
     case "twilio":
-      return hasTwilioVerifyConfig();
+      return false;
     case "vonage":
     case "plivo":
       return false;

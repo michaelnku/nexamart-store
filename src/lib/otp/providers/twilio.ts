@@ -13,7 +13,6 @@ import {
 import {
   hasConfiguredOtpManagedVerificationProvider,
   getTwilioVerifyConfig,
-  hasTwilioVerifyConfig,
 } from "@/lib/otp/config";
 import type {
   OtpChannel,
@@ -139,19 +138,7 @@ function supportsTwilioChannel(
   channel: OtpChannel,
   feature: OtpProviderFeature,
 ): boolean {
-  if (channel === "sms") return true;
-  if (channel === "whatsapp" && feature === "messaging") return true;
-  if (channel === "whatsapp" && feature === "managed_verification")
-    return false;
-  return false;
-}
-
-function getMessagingClient() {
-  const config = getTwilioVerifyConfig();
-  return {
-    client: Twilio(config.accountSid, config.authToken),
-    config,
-  };
+  return channel === "sms" && feature === "managed_verification";
 }
 
 function getVerifyClient() {
@@ -172,66 +159,7 @@ export class TwilioOtpProvider implements OtpProvider {
   async sendMessage(
     input: OtpTransportRequest,
   ): Promise<{ provider: "twilio" }> {
-    if (!this.supportsChannel(input.channel, "messaging")) {
-      throw new UnsupportedOtpChannelError(
-        input.channel,
-        this.name,
-        "messaging",
-      );
-    }
-
-    if (input.channel === "sms" && !hasTwilioVerifyConfig()) {
-      throw new OtpProviderUnavailableError(
-        "Twilio messaging is not configured for OTP delivery.",
-      );
-    }
-
-    const phoneNumber = process.env.TWILIO_PHONE_NUMBER?.trim() || "";
-    const whatsappFrom = process.env.TWILIO_WHATSAPP_FROM?.trim() || "";
-
-    if (input.channel === "sms" && !phoneNumber) {
-      throw new OtpProviderUnavailableError(
-        "Twilio phone number is not configured for OTP delivery.",
-      );
-    }
-
-    if (input.channel === "whatsapp" && (!hasTwilioVerifyConfig() || !whatsappFrom)) {
-      throw new OtpProviderUnavailableError(
-        "Twilio WhatsApp messaging is not configured for OTP delivery.",
-      );
-    }
-
-    try {
-      const { client } = getMessagingClient();
-      const messagePayload =
-        input.channel === "whatsapp"
-          ? {
-              to: `whatsapp:${input.phone}`,
-              from: whatsappFrom,
-              body: input.message,
-            }
-          : {
-              to: input.phone,
-              body: input.message,
-              from: phoneNumber,
-            };
-
-      await client.messages.create({
-        ...messagePayload,
-      });
-      return { provider: this.name };
-    } catch (error) {
-      console.error("[otp][twilio] message send failed", getTwilioErrorDetails(error));
-      throw mapTwilioError(
-        error,
-        new OtpDeliveryFailedError(
-          "Twilio failed to deliver the OTP message.",
-          {
-            cause: error,
-          },
-        ),
-      );
-    }
+    throw new UnsupportedOtpChannelError(input.channel, this.name, "messaging");
   }
 
   async sendVerification(

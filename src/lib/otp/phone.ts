@@ -1,5 +1,3 @@
-import "server-only";
-
 import { InvalidOtpPhoneError } from "@/lib/otp/errors";
 
 const E164_PHONE_PATTERN = /^\+[1-9]\d{7,14}$/;
@@ -32,7 +30,7 @@ function sanitizePhoneInput(phone: string): string {
   return `+${digits}`;
 }
 
-export function normalizeOtpPhoneToE164(phone: string): string {
+export function normalizePhoneToE164(phone: string): string {
   const sanitized = sanitizePhoneInput(phone);
 
   if (!E164_PHONE_PATTERN.test(sanitized)) {
@@ -42,4 +40,34 @@ export function normalizeOtpPhoneToE164(phone: string): string {
   }
 
   return sanitized;
+}
+
+export function normalizeOtpPhoneToE164(phone: string): string {
+  return normalizePhoneToE164(phone);
+}
+
+export function buildPhoneDraft(countryCode: string, localNumber: string): string {
+  const cleanCountry = countryCode.replace(/\D/g, "");
+  const cleanLocal = localNumber.replace(/\D/g, "");
+
+  if (!cleanCountry || !cleanLocal) {
+    return "";
+  }
+
+  return `+${cleanCountry}${cleanLocal}`;
+}
+
+export function splitNormalizedPhone(phone?: string | null) {
+  const raw = (phone ?? "").trim();
+  if (!raw) return { countryCode: "", localNumber: "" };
+
+  const normalized = raw.startsWith("+") ? raw.slice(1) : raw;
+  const digits = normalized.replace(/\D/g, "");
+  if (!digits) return { countryCode: "", localNumber: "" };
+
+  const codeLength = digits.length > 10 ? Math.min(3, digits.length - 10) : 1;
+  return {
+    countryCode: digits.slice(0, codeLength),
+    localNumber: digits.slice(codeLength),
+  };
 }

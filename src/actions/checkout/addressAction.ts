@@ -3,19 +3,9 @@
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
 import { revalidatePath } from "next/cache";
+import { normalizePhoneToE164 } from "@/lib/otp/phone";
 import { addressSchema, addressSchemaType } from "@/lib/zodValidation";
 import { geocodeAddress } from "@/lib/shipping/mapboxGeocode";
-
-function normalizePhone(phone: string): string {
-  const trimmed = phone.trim();
-  const digitsOnly = trimmed.replace(/\D/g, "");
-
-  if (!digitsOnly) {
-    throw new Error("Invalid phone number");
-  }
-
-  return `+${digitsOnly}`;
-}
 
 export async function createAddressAction(values: addressSchemaType) {
   const userId = await CurrentUserId();
@@ -27,7 +17,7 @@ export async function createAddressAction(values: addressSchemaType) {
   }
 
   try {
-    const normalizedPhone = normalizePhone(values.phone);
+    const normalizedPhone = normalizePhoneToE164(values.phone);
 
     const coordinates = await geocodeAddress({
       street: values.street,
@@ -91,7 +81,7 @@ export async function updateAddressAction(
   }
 
   try {
-    const normalizedPhone = normalizePhone(values.phone);
+    const normalizedPhone = normalizePhoneToE164(values.phone);
 
     const coordinates = await geocodeAddress({
       street: values.street,

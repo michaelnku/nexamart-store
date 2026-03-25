@@ -31,6 +31,11 @@ import {
 } from "@/actions/checkout/addressAction";
 
 import { Address } from "@/lib/types";
+import {
+  buildPhoneDraft,
+  normalizePhoneToE164,
+  splitNormalizedPhone,
+} from "@/lib/otp/phone";
 import { addressSchema, addressSchemaType } from "@/lib/zodValidation";
 import {
   AddressSuggestion,
@@ -47,28 +52,6 @@ type Props = {
   initialData?: Partial<Address>;
   onBackToSelection?: () => void | Promise<void>;
 };
-
-function splitStoredPhone(phone?: string | null) {
-  const raw = (phone ?? "").trim();
-  if (!raw) return { countryCode: "", localNumber: "" };
-
-  const normalized = raw.startsWith("+") ? raw.slice(1) : raw;
-  const digits = normalized.replace(/\D/g, "");
-  if (!digits) return { countryCode: "", localNumber: "" };
-
-  const codeLength = digits.length > 10 ? Math.min(3, digits.length - 10) : 1;
-  return {
-    countryCode: digits.slice(0, codeLength),
-    localNumber: digits.slice(codeLength),
-  };
-}
-
-function buildNormalizedPhone(country: string, local: string): string {
-  const cleanCountry = country.replace(/\D/g, "");
-  const cleanLocal = local.replace(/\D/g, "");
-  if (!cleanCountry || !cleanLocal) return "";
-  return `+${cleanCountry}${cleanLocal}`;
-}
 
 export default function AddressForm({
   onSuccess,
@@ -92,10 +75,10 @@ export default function AddressForm({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [countryCode, setCountryCode] = useState(
-    () => splitStoredPhone(initialData?.phone).countryCode,
+    () => splitNormalizedPhone(initialData?.phone).countryCode,
   );
   const [localPhoneNumber, setLocalPhoneNumber] = useState(
-    () => splitStoredPhone(initialData?.phone).localNumber,
+    () => splitNormalizedPhone(initialData?.phone).localNumber,
   );
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -149,7 +132,7 @@ export default function AddressForm({
   }, [formattedInitialAddress, initialData?.latitude, initialData?.longitude]);
 
   useEffect(() => {
-    const parsed = splitStoredPhone(initialData?.phone);
+    const parsed = splitNormalizedPhone(initialData?.phone);
     setCountryCode(parsed.countryCode);
     setLocalPhoneNumber(parsed.localNumber);
   }, [initialData?.phone]);
@@ -335,9 +318,9 @@ export default function AddressForm({
   };
 
   const onSubmit = (values: addressSchemaType) => {
-    const normalizedPhone = buildNormalizedPhone(countryCode, localPhoneNumber);
+    const phoneDraft = buildPhoneDraft(countryCode, localPhoneNumber);
 
-    if (!normalizedPhone) {
+    if (!phoneDraft) {
       form.setError("phone", {
         type: "manual",
         message: "Enter country code and phone number.",
@@ -345,10 +328,15 @@ export default function AddressForm({
       return;
     }
 
-    if (normalizedPhone.length < 7) {
+    let normalizedPhone: string;
+
+    try {
+      normalizedPhone = normalizePhoneToE164(phoneDraft);
+    } catch (error) {
       form.setError("phone", {
         type: "manual",
-        message: "Phone number is invalid.",
+        message:
+          error instanceof Error ? error.message : "Phone number is invalid.",
       });
       return;
     }
@@ -457,7 +445,7 @@ export default function AddressForm({
                         );
                         setCountryCode(nextCountry);
                         field.onChange(
-                          buildNormalizedPhone(nextCountry, localPhoneNumber),
+                          buildPhoneDraft(nextCountry, localPhoneNumber),
                         );
                       }}
                       placeholder="1"
@@ -479,7 +467,7 @@ export default function AddressForm({
                         const nextLocal = event.target.value.replace(/\D/g, "");
                         setLocalPhoneNumber(nextLocal);
                         field.onChange(
-                          buildNormalizedPhone(countryCode, nextLocal),
+                          buildPhoneDraft(countryCode, nextLocal),
                         );
                       }}
                       placeholder="Phone number"
