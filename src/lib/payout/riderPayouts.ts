@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { TREASURY_LEDGER_ROUTING } from "@/lib/ledger/treasurySubledgers";
 import { PlatformTreasuryAccount } from "@/lib/ledger/systemEscrowWallet";
 import { settlePendingPayoutTransaction } from "@/lib/payout/pendingPayoutTransactions";
 import { syncOrderPayoutReleasedStateInTx } from "@/lib/payout/sellerPayouts";
@@ -156,9 +157,7 @@ export async function releaseRiderDeliveryPayoutInTx(
     entryType: "RIDER_PAYOUT",
     amount: delivery.riderPayoutAmount,
     reference: `rider-release-${delivery.id}`,
-    fromAccountType: "ESCROW",
-    toAccountType: "ESCROW",
-    debitBalanceAccountType: "ESCROW",
+    ...TREASURY_LEDGER_ROUTING.riderPayoutRelease,
     resolveFromWallet: false,
     resolveToWallet: false,
     context,

@@ -162,21 +162,6 @@ export const DashboardMenu = {
       title: "COMMUNICATION",
       links: [
         {
-          href: "/messages",
-          icon: Mail,
-          name: "Messages",
-        },
-        {
-          href: "/support",
-          icon: HelpCircle,
-          name: "Help & Support",
-        },
-      ],
-    },
-    {
-      title: "Account",
-      links: [
-        {
           name: "Messages",
           href: "/messages",
           icon: MessageSquare,
@@ -186,6 +171,11 @@ export const DashboardMenu = {
           href: "/support",
           icon: HelpCircle,
         },
+      ],
+    },
+    {
+      title: "Account",
+      links: [
         {
           name: "Profile",
           href: "/profile",

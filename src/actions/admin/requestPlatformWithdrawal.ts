@@ -6,6 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { calculateWalletBalanceByAccountType } from "@/lib/ledger/calculateWalletBalance";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import {
+  TREASURY_ACCOUNT_TYPE,
+  TREASURY_LEDGER_ROUTING,
+} from "@/lib/ledger/treasurySubledgers";
 import { createServiceContext } from "@/lib/system/serviceContext";
 
 type PlatformWithdrawalRequestResult =
@@ -81,7 +85,7 @@ export async function requestPlatformWithdrawalAction(
 
     const availableBalance = await calculateWalletBalanceByAccountType(
       wallet.id,
-      "PLATFORM",
+      TREASURY_ACCOUNT_TYPE.PLATFORM_REVENUE,
       tx,
     );
     if (amount > availableBalance) {
@@ -108,8 +112,7 @@ export async function requestPlatformWithdrawalAction(
       entryType: "PLATFORM_FEE",
       amount,
       reference: `platform-withdrawal-debit-${created.id}`,
-      fromAccountType: "PLATFORM",
-      debitBalanceAccountType: "PLATFORM",
+      ...TREASURY_LEDGER_ROUTING.platformWithdrawal,
       resolveFromWallet: false,
       resolveToWallet: false,
       context,

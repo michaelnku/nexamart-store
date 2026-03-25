@@ -5,6 +5,7 @@ import { evaluateOrderForDispatch } from "@/lib/order/evaluateOrderForDispatch";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
 import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { TREASURY_LEDGER_ROUTING } from "@/lib/ledger/treasurySubledgers";
 
 const LOCK_NAME = "PROCESS_HUB_TIMEOUTS";
 const HUB_TIMEOUT_MS = 48 * 60 * 60 * 1000;
@@ -120,6 +121,7 @@ export async function processHubTimeouts() {
           entryType: "REFUND",
           amount: group.subtotal,
           reference: `${refundReference}-ledger`,
+          ...TREASURY_LEDGER_ROUTING.orderRefundRelease,
         });
 
         const existingRefundTx = await tx.transaction.findUnique({

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { Prisma } from "@/generated/prisma";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { TREASURY_LEDGER_ROUTING } from "@/lib/ledger/treasurySubledgers";
 import { createServiceContext } from "@/lib/system/serviceContext";
 
 type ApprovePlatformWithdrawalResult =
@@ -213,8 +214,7 @@ export async function approvePlatformWithdrawalAction(
           entryType: "PLATFORM_FEE",
           amount: fresh.amount,
           reference: `platform-withdrawal-settlement-${withdrawalId}`,
-          fromAccountType: "PLATFORM",
-          debitBalanceAccountType: "PLATFORM",
+          ...TREASURY_LEDGER_ROUTING.platformWithdrawal,
           resolveFromWallet: false,
           resolveToWallet: false,
           context,

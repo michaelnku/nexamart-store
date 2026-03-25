@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
+import { TREASURY_LEDGER_ROUTING } from "@/lib/ledger/treasurySubledgers";
 import { settlePendingPayoutTransaction } from "@/lib/payout/pendingPayoutTransactions";
 import { isDeliveryRiderPayoutPending } from "@/lib/payout/riderPayouts";
 import { ServiceContext } from "@/lib/system/serviceContext";
@@ -295,9 +296,7 @@ export async function releaseSellerGroupPayoutInTx(
       entryType: "PLATFORM_FEE",
       amount: platformFee,
       reference: `platform-accounting-${group.id}`,
-      fromAccountType: "ESCROW",
-      toAccountType: "PLATFORM",
-      debitBalanceAccountType: "ESCROW",
+      ...TREASURY_LEDGER_ROUTING.platformCommissionRelease,
       resolveFromWallet: false,
       resolveToWallet: false,
       context: options.context,
@@ -313,9 +312,7 @@ export async function releaseSellerGroupPayoutInTx(
       entryType: "SELLER_PAYOUT",
       amount: sellerAmount,
       reference: `seller-payout-${group.id}`,
-      fromAccountType: "ESCROW",
-      toAccountType: "ESCROW",
-      debitBalanceAccountType: "ESCROW",
+      ...TREASURY_LEDGER_ROUTING.sellerPayoutRelease,
       context: options.context,
     });
   }

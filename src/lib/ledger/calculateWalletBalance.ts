@@ -6,6 +6,9 @@ function buildWalletBalanceWhereInput(
   walletId: string,
   direction: "CREDIT" | "DEBIT",
   accountType?: AccountTypeValue,
+  options?: {
+    includeLegacyUntyped?: boolean;
+  },
 ): Prisma.LedgerEntryWhereInput {
   if (!accountType) {
     return {
@@ -17,7 +20,7 @@ function buildWalletBalanceWhereInput(
   return {
     walletId,
     direction,
-    ...buildAccountTypeFilter(accountType),
+    ...buildAccountTypeFilter(accountType, options),
   };
 }
 
@@ -44,8 +47,13 @@ export async function calculateWalletBalance(
   return totalCredits - totalDebits;
 }
 
-function buildAccountTypeFilter(accountType: AccountTypeValue) {
-  if (accountType === "ESCROW") {
+function buildAccountTypeFilter(
+  accountType: AccountTypeValue,
+  options?: {
+    includeLegacyUntyped?: boolean;
+  },
+) {
+  if (options?.includeLegacyUntyped) {
     return {
       OR: [{ accountType }, { accountType: null }],
     } satisfies Prisma.LedgerEntryWhereInput;
@@ -60,17 +68,30 @@ export async function calculateWalletBalanceByAccountType(
   walletId: string,
   accountType: AccountTypeValue,
   tx?: Prisma.TransactionClient,
+  options?: {
+    includeLegacyUntyped?: boolean;
+  },
 ) {
   const client = tx ?? prisma;
 
   const [creditsAgg, debitsAgg] = await Promise.all([
     client.ledgerEntry.aggregate({
       _sum: { amount: true },
-      where: buildWalletBalanceWhereInput(walletId, "CREDIT", accountType),
+      where: buildWalletBalanceWhereInput(
+        walletId,
+        "CREDIT",
+        accountType,
+        options,
+      ),
     }),
     client.ledgerEntry.aggregate({
       _sum: { amount: true },
-      where: buildWalletBalanceWhereInput(walletId, "DEBIT", accountType),
+      where: buildWalletBalanceWhereInput(
+        walletId,
+        "DEBIT",
+        accountType,
+        options,
+      ),
     }),
   ]);
 

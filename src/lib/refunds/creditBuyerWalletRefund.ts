@@ -2,6 +2,7 @@ import { Prisma } from "@/generated/prisma";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
+import { TREASURY_LEDGER_ROUTING } from "@/lib/ledger/treasurySubledgers";
 
 type Tx = Prisma.TransactionClient;
 
@@ -57,10 +58,7 @@ export async function creditBuyerWalletRefundInTx(
     entryType: "REFUND",
     amount,
     reference: `${input.reference}-ledger`,
-    fromAccountType: "PLATFORM",
-    toAccountType: "PLATFORM",
-    debitBalanceAccountType: "PLATFORM",
-    allowNegativeFromWallet: true,
+    ...TREASURY_LEDGER_ROUTING.orderRefundRelease,
   });
 
   const transactionReference = input.transactionReference ?? `${input.reference}-tx`;

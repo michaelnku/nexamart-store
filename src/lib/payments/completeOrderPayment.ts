@@ -4,6 +4,7 @@ import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
 import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
 import { createEscrowEntryIdempotent } from "@/lib/ledger/idempotentEntries";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
+import { TREASURY_LEDGER_ROUTING } from "@/lib/ledger/treasurySubledgers";
 import { ServiceContext } from "@/lib/system/serviceContext";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import { processPendingJobs } from "@/worker";
@@ -323,8 +324,7 @@ export async function completeOrderPaymentCore({
             entryType: "ESCROW_DEPOSIT",
             amount: order.totalAmount,
             reference: escrowReference,
-            fromAccountType: "ESCROW",
-            toAccountType: "ESCROW",
+            ...TREASURY_LEDGER_ROUTING.orderEscrowFunding,
             resolveFromWallet: method === "WALLET",
             resolveToWallet: false,
             context,

@@ -10,6 +10,7 @@ import {
 } from "@/lib/ledger/calculateWalletBalance";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
+import { TREASURY_LEDGER_ROUTING } from "@/lib/ledger/treasurySubledgers";
 import { getOrCreateStripeCustomerForUser } from "@/lib/stripe/getOrCreateStripeCustomer";
 import { getUserTransactionHistory } from "@/lib/wallet/getUserTransactionHistory";
 import { requireVerifiedEmail } from "@/lib/email-verification/guard";
@@ -272,6 +273,7 @@ export async function creditBuyerWalletAction(
       entryType: "BUYER_CREDIT",
       amount,
       reference: reference ?? `buyer-credit-${userId}-${Date.now()}`,
+      ...TREASURY_LEDGER_ROUTING.buyerWalletCredit,
     });
 
     await tx.transaction.create({
@@ -349,6 +351,7 @@ export async function debitBuyerWalletAction(
       entryType: "ESCROW_DEPOSIT",
       amount,
       reference: reference ?? `buyer-debit-${userId}-${Date.now()}`,
+      ...TREASURY_LEDGER_ROUTING.orderEscrowFunding,
     });
 
     await tx.transaction.create({

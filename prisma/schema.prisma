@@ -1908,8 +1908,10 @@ enum LedgerEntryType {
 
 enum AccountType {
   ESCROW
-  PLATFORM
+  STORED_VALUE
+  PLATFORM_REVENUE
   REFERRAL
+  REFUND_CLEARING
 }
 
 enum LedgerDirection {

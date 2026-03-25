@@ -5,6 +5,7 @@ import { useSellerSalesReport } from "@/hooks/useSellerSalesReport";
 import { useSellerAnalytics } from "@/hooks/useSellerAnalytics";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileChartColumn, LineChart } from "lucide-react";
 import SellerAnalyticsChart from "@/lib/services/seller/SellerAnalyticsChart";
 import { Separator } from "@/components/ui/separator";
@@ -74,16 +75,16 @@ export default function SellerReportsPage() {
         }
       />
 
-      <div className="flex items-center gap-12 border-b pb-2">
-        <span>
-          <button
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setTab(value as "sales" | "analytics")}
+        className="w-full"
+      >
+        <TabsList className="h-auto w-full justify-start gap-2 border-b bg-transparent p-0 pb-2">
+          <TabsTrigger
+            value="sales"
             disabled={isLoading}
-            onClick={() => setTab("sales")}
-            className={
-              tab === "sales"
-                ? "inline-flex items-center gap-1 font-semibold text-[var(--brand-blue)]"
-                : "inline-flex items-center gap-1 text-primary"
-            }
+            className="min-w-fit gap-2 rounded-md px-3 py-2 data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-blue)] data-[state=active]:shadow-none"
           >
             <FileChartColumn className="h-4 w-4" />
             Sales
@@ -92,24 +93,17 @@ export default function SellerReportsPage() {
                 Refreshing...
               </span>
             ) : null}
-          </button>
-        </span>
-        |
-        <span>
-          <button
+          </TabsTrigger>
+          <TabsTrigger
+            value="analytics"
             disabled={isLoading}
-            onClick={() => setTab("analytics")}
-            className={
-              tab === "analytics"
-                ? "inline-flex items-center gap-1 font-semibold text-[var(--brand-blue)]"
-                : "inline-flex items-center gap-1 text-primary"
-            }
+            className="min-w-fit gap-2 rounded-md px-3 py-2 data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-blue)] data-[state=active]:shadow-none"
           >
             <LineChart className="h-4 w-4" />
             Analytics
-          </button>
-        </span>
-      </div>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {tab === "sales" && (
         <>

@@ -9,6 +9,10 @@ import {
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { calculateWalletBalanceByAccountType } from "@/lib/ledger/calculateWalletBalance";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
+import {
+  TREASURY_ACCOUNT_TYPE,
+  TREASURY_LEDGER_ROUTING,
+} from "@/lib/ledger/treasurySubledgers";
 import { prisma } from "@/lib/prisma";
 import { isReferralAwaitingRewardStatus } from "@/lib/referrals/status";
 
@@ -379,9 +383,7 @@ async function settleReferralRewardSideInTx(
     entryType: "REFERRAL_BONUS",
     amount: side.amount,
     reference: side.reference,
-    fromAccountType: "REFERRAL",
-    toAccountType: "REFERRAL",
-    debitBalanceAccountType: "REFERRAL",
+    ...TREASURY_LEDGER_ROUTING.referralReward,
     resolveFromWallet: false,
     resolveToWallet: false,
   });
@@ -439,7 +441,7 @@ async function settleQualifiedReferralInTx(
   const treasuryState = {
     availableBalance: await calculateWalletBalanceByAccountType(
       treasuryAccount.walletId,
-      "REFERRAL",
+      TREASURY_ACCOUNT_TYPE.REFERRAL,
       tx,
     ),
   };

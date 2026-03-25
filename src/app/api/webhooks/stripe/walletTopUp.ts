@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { createServiceContext } from "@/lib/system/serviceContext";
 import { getOrCreateSystemEscrowAccount } from "@/lib/ledger/systemEscrowWallet";
+import { TREASURY_LEDGER_ROUTING } from "@/lib/ledger/treasurySubledgers";
 
 export async function handleWalletTopUp(session: Stripe.Checkout.Session) {
   const context = createServiceContext("WALLET_TOPUP_WEBHOOK");
@@ -70,8 +71,8 @@ export async function handleWalletTopUp(session: Stripe.Checkout.Session) {
         entryType: "WALLET_TOPUP",
         amount,
         reference: topupReference,
+        ...TREASURY_LEDGER_ROUTING.walletTopUp,
         resolveToWallet: false,
-        allowNegativeFromWallet: true,
         context,
       });
     });

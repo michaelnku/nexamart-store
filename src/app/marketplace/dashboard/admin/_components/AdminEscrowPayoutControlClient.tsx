@@ -116,36 +116,63 @@ function ControlTable({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full border-separate border-spacing-0">
-        <thead>
-          <tr>
-            {columns.map((column) => (
-              <th
-                key={column}
-                className="border-b border-slate-200/80 px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-zinc-800 dark:text-zinc-400"
-              >
-                {column}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
-              {row.map((cell, cellIndex) => (
-                <td
-                  key={cellIndex}
-                  className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200"
+    <>
+      <div className="space-y-4 lg:hidden">
+        {rows.map((row, rowIndex) => (
+          <div
+            key={rowIndex}
+            className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
+          >
+            <dl className="space-y-3">
+              {columns.map((column, columnIndex) => (
+                <div
+                  key={`${rowIndex}-${column}`}
+                  className="space-y-1 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0 dark:border-zinc-900"
                 >
-                  {cell}
-                </td>
+                  <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-zinc-400">
+                    {column}
+                  </dt>
+                  <dd className="text-sm text-slate-700 dark:text-zinc-200">
+                    {row[columnIndex] ?? "-"}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto lg:block">
+        <table className="min-w-full border-separate border-spacing-0">
+          <thead>
+            <tr>
+              {columns.map((column) => (
+                <th
+                  key={column}
+                  className="border-b border-slate-200/80 px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-zinc-800 dark:text-zinc-400"
+                >
+                  {column}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, cellIndex) => (
+                  <td
+                    key={cellIndex}
+                    className="border-b border-slate-200/60 px-4 py-4 text-sm text-slate-700 dark:border-zinc-900 dark:text-zinc-200"
+                  >
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -480,17 +507,20 @@ export default function AdminEscrowPayoutControlClient({
               "Pending Amount",
               "Released Amount",
               "Last Release",
-              "Status Summary",
             ]}
             rows={control.tables.sellerPayoutQueue.map((row) => [
-              <div key={`${row.key}-seller`} className="min-w-[14rem] font-medium text-slate-950 dark:text-white">
-                {row.sellerLabel}
+              <div key={`${row.key}-seller`} className="min-w-[14rem] space-y-1">
+                <div className="font-medium text-slate-950 dark:text-white">
+                  {row.sellerLabel}
+                </div>
+                <div className="text-xs text-slate-500 dark:text-zinc-400">
+                  {row.payoutStatusSummary}
+                </div>
               </div>,
               formatAnalyticsCount(row.awaitingOrdersCount),
               formatMoney(row.pendingAmount),
               formatMoney(row.releasedAmount),
               formatDateTime(row.lastReleaseDate),
-              row.payoutStatusSummary,
             ])}
             emptyTitle="No seller payout queue"
             emptyDescription="Seller payout queue rows will appear once delivered seller earnings are waiting for release."

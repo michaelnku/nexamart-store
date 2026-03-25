@@ -16,6 +16,7 @@ import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
 import { getCartAvailabilityError } from "@/lib/inventory/cartAvailability";
 import { reserveOrderInventoryInTx } from "@/lib/inventory/reservationService";
 import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
+import { TREASURY_LEDGER_ROUTING } from "@/lib/ledger/treasurySubledgers";
 import { createDoubleEntryLedger } from "@/lib/finance/ledgerService";
 import { calculatePlatformCommission } from "@/lib/finance/calculatePlatformCommission";
 import { pusherServer } from "@/lib/pusher";
@@ -854,8 +855,7 @@ export async function placeOrderAction({
             entryType: "ESCROW_DEPOSIT",
             amount: checkoutTotalAmount,
             reference: `escrow-fund-${checkoutGroupId ?? createdOrderIds[0]}`,
-            fromAccountType: "ESCROW",
-            toAccountType: "ESCROW",
+            ...TREASURY_LEDGER_ROUTING.orderEscrowFunding,
             resolveFromWallet: false,
             resolveToWallet: false,
           });

@@ -1,5 +1,10 @@
 export type LedgerDirectionValue = "CREDIT" | "DEBIT";
-export type AccountTypeValue = "ESCROW" | "PLATFORM" | "REFERRAL";
+export type AccountTypeValue =
+  | "ESCROW"
+  | "STORED_VALUE"
+  | "PLATFORM_REVENUE"
+  | "REFERRAL"
+  | "REFUND_CLEARING";
 
 export type LedgerEntryTypeValue =
   | "ESCROW_DEPOSIT"
