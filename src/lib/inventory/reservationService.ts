@@ -13,6 +13,12 @@ type InventoryOrderItemRecord = {
   productId: string;
   variantId: string;
   quantity: number;
+  product: {
+    isFoodProduct: boolean;
+    foodProductConfig: {
+      inventoryMode: "STOCK_TRACKED" | "AVAILABILITY_ONLY";
+    } | null;
+  };
   order: {
     isPaid: boolean;
     // Backward-compatibility bootstrap signal for legacy orders only.
@@ -57,6 +63,14 @@ function aggregateVariantQuantities(
     .sort((a, b) => a.variantId.localeCompare(b.variantId));
 }
 
+function shouldTrackInventory(item: InventoryOrderItemRecord) {
+  if (!item.product.isFoodProduct) {
+    return true;
+  }
+
+  return item.product.foodProductConfig?.inventoryMode !== "AVAILABILITY_ONLY";
+}
+
 async function loadInventoryOrderItemsByOrderId(
   tx: Tx,
   orderId: string,
@@ -73,6 +87,16 @@ async function loadInventoryOrderItemsByOrderId(
       productId: true,
       variantId: true,
       quantity: true,
+      product: {
+        select: {
+          isFoodProduct: true,
+          foodProductConfig: {
+            select: {
+              inventoryMode: true,
+            },
+          },
+        },
+      },
       order: {
         select: {
           isPaid: true,
@@ -91,6 +115,7 @@ async function loadInventoryOrderItemsByOrderId(
       productId: item.productId,
       variantId: item.variantId,
       quantity: item.quantity,
+      product: item.product,
       order: item.order,
     }));
 }
@@ -111,6 +136,16 @@ async function loadInventoryOrderItemsBySellerGroupId(
       productId: true,
       variantId: true,
       quantity: true,
+      product: {
+        select: {
+          isFoodProduct: true,
+          foodProductConfig: {
+            select: {
+              inventoryMode: true,
+            },
+          },
+        },
+      },
       order: {
         select: {
           isPaid: true,
@@ -129,6 +164,7 @@ async function loadInventoryOrderItemsBySellerGroupId(
       productId: item.productId,
       variantId: item.variantId,
       quantity: item.quantity,
+      product: item.product,
       order: item.order,
     }));
 }
@@ -297,20 +333,21 @@ export async function reserveOrderInventoryInTx(
   },
 ) {
   const items = options?.orderItems ?? (await loadInventoryOrderItemsByOrderId(tx, orderId));
+  const trackedItems = items.filter(shouldTrackInventory);
 
-  if (items.length === 0) {
+  if (trackedItems.length === 0) {
     return { reservedCount: 0, alreadyReservedCount: 0 };
   }
 
   const existingReservations = await loadReservationsByOrderItemIds(
     tx,
-    items.map((item) => item.id),
+    trackedItems.map((item) => item.id),
   );
   const existingByOrderItemId = new Map(
     existingReservations.map((reservation) => [reservation.orderItemId, reservation]),
   );
 
-  const itemsToReserve = items.filter((item) => {
+  const itemsToReserve = trackedItems.filter((item) => {
     const existing = existingByOrderItemId.get(item.id);
 
     if (!existing) return true;
@@ -351,12 +388,13 @@ export async function reserveOrderInventoryInTx(
 
 export async function commitOrderInventoryInTx(tx: Tx, orderId: string) {
   const items = await loadInventoryOrderItemsByOrderId(tx, orderId);
+  const trackedItems = items.filter(shouldTrackInventory);
 
-  if (items.length === 0) {
+  if (trackedItems.length === 0) {
     return { committedCount: 0, alreadyCommittedCount: 0 };
   }
 
-  const reservations = await ensureReservationsForCommitInTx(tx, items);
+  const reservations = await ensureReservationsForCommitInTx(tx, trackedItems);
   const releasedReservations = reservations.filter(
     (reservation) => reservation.status === "RELEASED",
   );
@@ -476,14 +514,15 @@ export async function releaseOrderInventoryInTx(
   options?: ReleaseInventoryOptions,
 ) {
   const items = await loadInventoryOrderItemsByOrderId(tx, orderId);
+  const trackedItems = items.filter(shouldTrackInventory);
 
-  if (items.length === 0) {
+  if (trackedItems.length === 0) {
     return { releasedCount: 0, alreadyReleasedCount: 0 };
   }
 
   const reservations = await ensureReservationsForReleaseInTx(
     tx,
-    items,
+    trackedItems,
     options?.reason ?? "ORDER_CANCELLED",
   );
 
@@ -499,14 +538,15 @@ export async function releaseSellerGroupInventoryInTx(
   options?: ReleaseInventoryOptions,
 ) {
   const items = await loadInventoryOrderItemsBySellerGroupId(tx, sellerGroupId);
+  const trackedItems = items.filter(shouldTrackInventory);
 
-  if (items.length === 0) {
+  if (trackedItems.length === 0) {
     return { releasedCount: 0, alreadyReleasedCount: 0 };
   }
 
   const reservations = await ensureReservationsForReleaseInTx(
     tx,
-    items,
+    trackedItems,
     options?.reason ?? "SELLER_CANCELLATION",
   );
 

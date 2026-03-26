@@ -31,6 +31,15 @@ export default async function Page({
     include: {
       images: true,
       variants: true,
+      foodProductConfig: true,
+      foodOptionGroups: {
+        orderBy: { displayOrder: "asc" },
+        include: {
+          options: {
+            orderBy: { displayOrder: "asc" },
+          },
+        },
+      },
       store: {
         select: {
           id: true,

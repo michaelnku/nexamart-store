@@ -66,6 +66,12 @@ const deliveryMethod = [
 type CheckoutCartItem = {
   id: string;
   quantity: number;
+  cartItemSelectedOptions?: Array<{
+    id: string;
+    optionGroupName: string;
+    optionName: string;
+    priceDeltaUSD: number;
+  }>;
   variant?: {
     priceUSD: number;
     color?: string | null;
@@ -75,10 +81,12 @@ type CheckoutCartItem = {
     id: string;
     name: string;
     basePriceUSD: number;
+    isFoodProduct?: boolean;
     images: { imageUrl: string }[];
     store: {
       id: string;
       shippingRatePerMile: number;
+      type?: "FOOD" | "GENERAL";
     };
   };
 };
@@ -424,7 +432,11 @@ export default function CheckoutSummary({ cart, address }: Props) {
 
           {cart.items.map((item) => {
             const priceUSD =
-              item.variant?.priceUSD ?? item.product.basePriceUSD;
+              (item.variant?.priceUSD ?? item.product.basePriceUSD) +
+              (item.cartItemSelectedOptions?.reduce(
+                (sum, option) => sum + option.priceDeltaUSD,
+                0,
+              ) ?? 0);
 
             return (
               <div
@@ -449,6 +461,15 @@ export default function CheckoutSummary({ cart, address }: Props) {
                       {item.variant.color} {item.variant.size}
                     </p>
                   )}
+                  {item.cartItemSelectedOptions?.length ? (
+                    <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                      {item.cartItemSelectedOptions.map((option) => (
+                        <p key={option.id}>
+                          {option.optionGroupName}: {option.optionName}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
                   <p className="font-semibold text-lg text-black mt-1 dark:text-gray-400">
                     {formatMoneyFromUSD(priceUSD * item.quantity)}
                     <span className="text-sm text-gray-500 ml-1 dark:text-gray-400">

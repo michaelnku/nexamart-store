@@ -27,6 +27,16 @@ const getProductById = cache(async (productId: string) => {
       variants: {
         orderBy: { priceUSD: "asc" },
       },
+      foodProductConfig: true,
+      foodOptionGroups: {
+        where: { isActive: true },
+        orderBy: { displayOrder: "asc" },
+        include: {
+          options: {
+            orderBy: { displayOrder: "asc" },
+          },
+        },
+      },
       store: {
         select: {
           id: true,
@@ -136,7 +146,13 @@ export default async function Page({ params }: PageProps) {
   const cart = userId
     ? await prisma.cart.findUnique({
         where: { userId },
-        include: { items: true },
+        include: {
+          items: {
+            include: {
+              cartItemSelectedOptions: true,
+            },
+          },
+        },
       })
     : null;
 

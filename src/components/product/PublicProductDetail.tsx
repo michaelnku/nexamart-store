@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { ShieldCheck, Store, Truck } from "lucide-react";
 import type { UserRole } from "@/generated/prisma/client";
-import { FoodDetails, FullProduct } from "@/lib/types";
+import { FoodDetails, FoodSelectedOptionInput, FullProduct } from "@/lib/types";
 import { useState, useEffect, useRef, useMemo } from "react";
 import WishlistButton from "./WishlistButton";
 import AddToCartControl from "./AddtoCartButton";
@@ -24,6 +24,7 @@ import ProductInformationSections from "./ProductInformationSections";
 import { normalizeFoodDetails } from "@/app/marketplace/_components/productFormHelpers";
 import AskStoreQuestionDialog from "./AskStoreQuestionDialog";
 import { MarketplaceImagePreview } from "@/components/media/MarketplaceImagePreview";
+import { buildFoodSelectionFingerprint } from "@/lib/food/ordering";
 
 type ProductVariant = FullProduct["variants"][number];
 
@@ -31,9 +32,15 @@ type Props = {
   data: FullProduct;
   defaultVariant: ProductVariant;
   cartItems: {
+    id?: string;
     productId: string;
     variantId: string | null;
+    selectionFingerprint?: string;
     quantity: number;
+    cartItemSelectedOptions?: Array<{
+      optionGroupId: string;
+      optionId: string;
+    }>;
   }[];
   isWishlisted: boolean;
   userId?: string | null;
@@ -114,17 +121,54 @@ export default function ProductPublicDetail({
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedVariant, setSelectedVariant] = useState(defaultVariant);
+  const [selectedFoodOptions, setSelectedFoodOptions] = useState<
+    FoodSelectedOptionInput[]
+  >([]);
 
-  const priceUSD = selectedVariant.priceUSD;
+  const foodOptionGroups = data.foodOptionGroups ?? [];
+  const selectedOptionDetails = selectedFoodOptions
+    .map((selection) => {
+      const group = foodOptionGroups.find(
+        (optionGroup) => optionGroup.id === selection.optionGroupId,
+      );
+      const option = group?.options.find(
+        (groupOption) => groupOption.id === selection.optionId,
+      );
+
+      if (!group || !option) return null;
+
+      return {
+        groupId: group.id,
+        groupName: group.name,
+        optionId: option.id,
+        optionName: option.name,
+        priceDeltaUSD: option.priceDeltaUSD,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const optionsPriceUSD = selectedOptionDetails.reduce(
+    (sum, option) => sum + option.priceDeltaUSD,
+    0,
+  );
+  const priceUSD = selectedVariant.priceUSD + optionsPriceUSD;
   const oldPriceUSD = selectedVariant.oldPriceUSD ?? null;
+  const selectionFingerprint = buildFoodSelectionFingerprint(selectedFoodOptions);
 
   const discount =
-    oldPriceUSD && oldPriceUSD > priceUSD
-      ? Math.round(((oldPriceUSD - priceUSD) / oldPriceUSD) * 100)
+    oldPriceUSD && oldPriceUSD > selectedVariant.priceUSD
+      ? Math.round(
+          ((oldPriceUSD - selectedVariant.priceUSD) / oldPriceUSD) * 100,
+        )
       : null;
 
-  const totalStock = selectedVariant.stock;
-  const inStock = totalStock > 0;
+  const inventoryMode = data.foodProductConfig?.inventoryMode;
+  const totalStock =
+    inventoryMode === "AVAILABILITY_ONLY" ? null : selectedVariant.stock;
+  const inStock =
+    inventoryMode === "AVAILABILITY_ONLY"
+      ? (data.foodProductConfig?.isAvailable ?? true) &&
+        !(data.foodProductConfig?.isSoldOut ?? false)
+      : (totalStock ?? 0) > 0;
 
   useEffect(() => {
     setSelectedColor(defaultVariant.color ?? null);
@@ -142,6 +186,28 @@ export default function ProductPublicDetail({
       setSelectedVariant(match);
     }
   }, [selectedColor, selectedSize, data.variants]);
+
+  useEffect(() => {
+    if (!data.isFoodProduct) {
+      setSelectedFoodOptions([]);
+      return;
+    }
+
+    const defaults = foodOptionGroups.flatMap((group) => {
+      const defaultOptions = group.options.filter(
+        (option) => option.isDefault && option.isAvailable,
+      );
+      const selectedDefaults =
+        group.type === "SINGLE_SELECT" ? defaultOptions.slice(0, 1) : defaultOptions;
+
+      return selectedDefaults.map((option) => ({
+        optionGroupId: group.id,
+        optionId: option.id,
+      }));
+    });
+
+    setSelectedFoodOptions(defaults);
+  }, [data.isFoodProduct, foodOptionGroups]);
 
   useEffect(() => {
     setIsImageFading(true);
@@ -162,6 +228,48 @@ export default function ProductPublicDetail({
   const normalizedFoodDetails = normalizeFoodDetails(foodDetails);
   const isSellerViewer = userRole === "SELLER";
   const isOwner = Boolean(userId && userId === data.store.userId);
+
+  const toggleFoodOption = (
+    optionGroupId: string,
+    optionId: string,
+    groupType: "SINGLE_SELECT" | "MULTI_SELECT",
+  ) => {
+    setSelectedFoodOptions((current) => {
+      const group = foodOptionGroups.find((item) => item.id === optionGroupId);
+      const existingForGroup = current.filter(
+        (selection) => selection.optionGroupId === optionGroupId,
+      );
+      const alreadySelected = existingForGroup.some(
+        (selection) => selection.optionId === optionId,
+      );
+
+      if (groupType === "SINGLE_SELECT") {
+        return current
+          .filter((selection) => selection.optionGroupId !== optionGroupId)
+          .concat({ optionGroupId, optionId });
+      }
+
+      if (alreadySelected) {
+        return current.filter(
+          (selection) =>
+            !(
+              selection.optionGroupId === optionGroupId &&
+              selection.optionId === optionId
+            ),
+        );
+      }
+
+      if (
+        groupType === "MULTI_SELECT" &&
+        group?.maxSelections != null &&
+        existingForGroup.length >= group.maxSelections
+      ) {
+        return current;
+      }
+
+      return [...current, { optionGroupId, optionId }];
+    });
+  };
 
   return (
     <main className="mx-auto w-full max-w-7xl space-y-10 px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -232,7 +340,9 @@ export default function ProductPublicDetail({
                 <div className="flex flex-wrap items-center gap-2">
                   {inStock ? (
                     <InfoPill variant="success">
-                      In stock · {totalStock} available
+                      {totalStock == null
+                        ? "Available to order"
+                        : `In stock · ${totalStock} available`}
                     </InfoPill>
                   ) : (
                     <InfoPill variant="danger">Out of stock</InfoPill>
@@ -288,10 +398,17 @@ export default function ProductPublicDetail({
 
               {discount && oldPriceUSD !== null && (
                 <p className="mt-2 text-sm text-red-600 dark:text-red-400">
-                  Save {formatMoneyFromUSD(oldPriceUSD - priceUSD)} on this
+                  Save {formatMoneyFromUSD(oldPriceUSD - selectedVariant.priceUSD)} on this
                   option
                 </p>
               )}
+
+              {optionsPriceUSD > 0 ? (
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  Includes {formatMoneyFromUSD(optionsPriceUSD)} in selected
+                  add-ons.
+                </p>
+              ) : null}
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
@@ -383,6 +500,68 @@ export default function ProductPublicDetail({
               </div>
             )}
 
+            {data.isFoodProduct && foodOptionGroups.length > 0 ? (
+              <div className="space-y-4">
+                {foodOptionGroups.map((group) => {
+                  const selectedIds = new Set(
+                    selectedFoodOptions
+                      .filter((selection) => selection.optionGroupId === group.id)
+                      .map((selection) => selection.optionId),
+                  );
+
+                  return (
+                    <div
+                      key={group.id}
+                      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                            {group.name}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {group.isRequired ? "Required" : "Optional"} •{" "}
+                            {group.type === "SINGLE_SELECT"
+                              ? "Choose one"
+                              : `Choose up to ${group.maxSelections ?? group.options.length}`}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {group.options
+                          .filter((option) => option.isAvailable)
+                          .map((option) => {
+                            const isSelected = selectedIds.has(option.id);
+                            return (
+                              <button
+                                key={option.id}
+                                type="button"
+                                onClick={() =>
+                                  toggleFoodOption(group.id, option.id, group.type)
+                                }
+                                className={`rounded-xl border px-3 py-2 text-sm transition ${
+                                  isSelected
+                                    ? "border-[#3c9ee0] bg-[#3c9ee0] text-white"
+                                    : "border-slate-300 bg-white text-slate-700 hover:border-[#3c9ee0]/60 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
+                                }`}
+                              >
+                                <span className="font-medium">{option.name}</span>
+                                {option.priceDeltaUSD > 0 ? (
+                                  <span className="ml-2 text-xs">
+                                    +{formatMoneyFromUSD(option.priceDeltaUSD)}
+                                  </span>
+                                ) : null}
+                              </button>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
               {isOwner ? (
                 <Link
@@ -395,7 +574,10 @@ export default function ProductPublicDetail({
                 <AddToCartControl
                   productId={data.id}
                   variantId={selectedVariant?.id ?? null}
-                  availableStock={selectedVariant?.stock ?? 0}
+                  availableStock={totalStock}
+                  isOrderable={inStock}
+                  selectionFingerprint={selectionFingerprint}
+                  selectedOptions={selectedFoodOptions}
                 />
               ) : (
                 <p className="text-center text-sm text-slate-500 dark:text-slate-400">

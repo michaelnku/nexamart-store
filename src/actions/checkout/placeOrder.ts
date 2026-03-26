@@ -13,7 +13,6 @@ import {
 import { calculateDrivingDistance } from "@/lib/shipping/mapboxDistance";
 import { calculateStoreDeliveryFee } from "@/lib/shipping/shippingCalculator";
 import { calculateWalletBalance } from "@/lib/ledger/calculateWalletBalance";
-import { getCartAvailabilityError } from "@/lib/inventory/cartAvailability";
 import { reserveOrderInventoryInTx } from "@/lib/inventory/reservationService";
 import { getOrCreateSystemEscrowWallet } from "@/lib/ledger/systemEscrowWallet";
 import { TREASURY_LEDGER_ROUTING } from "@/lib/ledger/treasurySubledgers";
@@ -23,6 +22,7 @@ import { pusherServer } from "@/lib/pusher";
 import { createSellerOrderNotification } from "@/lib/notifications/createSellerOrderNotification";
 import { createNotification } from "@/lib/notifications/createNotification";
 import { buildAuthoritativePayoutBasis } from "@/lib/payout/payoutBasis";
+import { resolveAuthoritativeCartLines } from "@/lib/checkout/cartPricing";
 
 type StoreGroup = {
   storeId: string;
@@ -38,6 +38,14 @@ type StoreGroup = {
     variantId: string;
     quantity: number;
     priceUSD: number;
+    basePriceUSD: number;
+    optionsPriceUSD: number;
+    lineTotalUSD: number;
+    selectedOptions: Array<{
+      optionGroupName: string;
+      optionName: string;
+      priceDeltaUSD: number;
+    }>;
   }>;
   subtotal: number;
   shippingFee: number;
@@ -227,6 +235,12 @@ export async function placeOrderAction({
     include: {
       items: {
         include: {
+          cartItemSelectedOptions: {
+            select: {
+              optionGroupId: true,
+              optionId: true,
+            },
+          },
           product: {
             include: {
               store: {
@@ -240,9 +254,49 @@ export async function placeOrderAction({
                   type: true,
                 },
               },
+              foodProductConfig: {
+                select: {
+                  inventoryMode: true,
+                  isAvailable: true,
+                  isSoldOut: true,
+                  dailyOrderLimit: true,
+                  availableFrom: true,
+                  availableUntil: true,
+                  availableDays: true,
+                },
+              },
+              foodOptionGroups: {
+                where: { isActive: true },
+                select: {
+                  id: true,
+                  name: true,
+                  type: true,
+                  isRequired: true,
+                  minSelections: true,
+                  maxSelections: true,
+                  isActive: true,
+                  options: {
+                    select: {
+                      id: true,
+                      name: true,
+                      priceDeltaUSD: true,
+                      isAvailable: true,
+                      stock: true,
+                    },
+                  },
+                },
+              },
             },
           },
-          variant: true,
+          variant: {
+            select: {
+              id: true,
+              stock: true,
+              priceUSD: true,
+              color: true,
+              size: true,
+            },
+          },
         },
       },
     },
@@ -252,32 +306,25 @@ export async function placeOrderAction({
     return { error: "Cart is empty" };
   }
 
-  for (const item of cart.items) {
-    if (!item.variantId || !item.variant) {
-      return { error: "Invalid cart item. Please reselect product variant." };
-    }
-
-    const stockError = getCartAvailabilityError({
-      stock: item.variant.stock,
-      requestedQuantity: item.quantity,
-      productName: item.product.name,
-    });
-
-    if (stockError) {
-      return { error: stockError };
-    }
+  let pricedCartItems;
+  try {
+    pricedCartItems = await resolveAuthoritativeCartLines(prisma, cart.items);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Checkout failed. Please try again.";
+    return { error: message };
   }
 
-  const itemsByStore = new Map<string, typeof cart.items>();
+  const itemsByStore = new Map<string, typeof pricedCartItems>();
 
-  for (const item of cart.items) {
+  for (const item of pricedCartItems) {
     const storeId = item.product.store.id;
     if (!itemsByStore.has(storeId)) itemsByStore.set(storeId, []);
     itemsByStore.get(storeId)!.push(item);
   }
 
-  const checkoutSubtotal = cart.items.reduce(
-    (s, i) => s + i.quantity * i.variant!.priceUSD,
+  const checkoutSubtotal = pricedCartItems.reduce(
+    (s, i) => s + i.lineTotalUSD,
     0,
   );
 
@@ -364,7 +411,7 @@ export async function placeOrderAction({
         }
 
         const subtotal = items.reduce(
-          (sum, item) => sum + item.quantity * item.variant!.priceUSD,
+          (sum, item) => sum + item.lineTotalUSD,
           0,
         );
 
@@ -375,8 +422,8 @@ export async function placeOrderAction({
 
         return {
           storeId,
-          sellerId: store.userId,
-          storeName: store.name,
+          sellerId: store.userId!,
+          storeName: store.name!,
           storeType: store.type,
           commissionRate,
 
@@ -385,7 +432,15 @@ export async function placeOrderAction({
             productId: item.productId,
             variantId: item.variantId!,
             quantity: item.quantity,
-            priceUSD: item.variant!.priceUSD,
+            priceUSD: item.unitPriceUSD,
+            basePriceUSD: item.basePriceUSD,
+            optionsPriceUSD: item.optionsPriceUSD,
+            lineTotalUSD: item.lineTotalUSD,
+            selectedOptions: item.selectedOptions.map((selection) => ({
+              optionGroupName: selection.optionGroupName,
+              optionName: selection.optionName,
+              priceDeltaUSD: selection.priceDeltaUSD,
+            })),
           })),
 
           subtotal,
@@ -636,16 +691,35 @@ export async function placeOrderAction({
             },
           });
 
-          await tx.orderItem.createMany({
-            data: storeGroup.items.map((item) => ({
-              orderId: createdOrder.id,
-              sellerGroupId: createdSellerGroup.id,
-              productId: item.productId,
-              variantId: item.variantId,
-              quantity: item.quantity,
-              price: item.priceUSD,
-            })),
-          });
+          for (const item of storeGroup.items) {
+            const createdOrderItem = await tx.orderItem.create({
+              data: {
+                orderId: createdOrder.id,
+                sellerGroupId: createdSellerGroup.id,
+                productId: item.productId,
+                variantId: item.variantId,
+                quantity: item.quantity,
+                price: item.priceUSD,
+                basePrice: item.basePriceUSD,
+                optionsPrice: item.optionsPriceUSD,
+                lineTotal: item.lineTotalUSD,
+              },
+              select: {
+                id: true,
+              },
+            });
+
+            if (item.selectedOptions.length > 0) {
+              await tx.orderItemSelectedOption.createMany({
+                data: item.selectedOptions.map((selection) => ({
+                  orderItemId: createdOrderItem.id,
+                  optionGroupName: selection.optionGroupName,
+                  optionName: selection.optionName,
+                  priceDeltaUSD: selection.priceDeltaUSD,
+                })),
+              });
+            }
+          }
 
           sellerGroups.push({
             ...createdSellerGroup,

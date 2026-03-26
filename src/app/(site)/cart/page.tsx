@@ -14,15 +14,31 @@ export default async function page() {
     include: {
       items: {
         include: {
+          cartItemSelectedOptions: {
+            select: {
+              id: true,
+              optionGroupId: true,
+              optionId: true,
+              optionGroupName: true,
+              optionName: true,
+              priceDeltaUSD: true,
+            },
+          },
           product: {
             select: {
               id: true,
               name: true,
               basePriceUSD: true,
+              isFoodProduct: true,
               images: true,
               store: {
                 select: {
                   type: true,
+                },
+              },
+              foodProductConfig: {
+                select: {
+                  inventoryMode: true,
                 },
               },
             },

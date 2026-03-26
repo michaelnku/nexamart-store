@@ -32,45 +32,47 @@ const CartPage = ({ cart, mixedCart }: Props) => {
   const { change, remove } = useCartStore();
 
   const subtotalUSD = cart.items.reduce((sum, item) => {
-    const priceUSD = item.variant?.priceUSD ?? item.product.basePriceUSD;
+    const optionsPriceUSD =
+      item.cartItemSelectedOptions?.reduce(
+        (optionsSum, option) => optionsSum + option.priceDeltaUSD,
+        0,
+      ) ?? 0;
+    const priceUSD =
+      (item.variant?.priceUSD ?? item.product.basePriceUSD) + optionsPriceUSD;
 
     return sum + priceUSD * item.quantity;
   }, 0);
 
   const approxUSD = currency !== "USD" ? subtotalUSD : null;
 
-  const increase = (productId: string, variantId: string | null) => {
-    change(productId, variantId, +1);
+  const increase = (cartItemId: string) => {
+    change(cartItemId, +1);
     startTransition(async () => {
-      const res = await updateQuantityAction(productId, variantId, +1);
+      const res = await updateQuantityAction(cartItemId, +1);
       if (res?.error) {
-        change(productId, variantId, -1);
+        change(cartItemId, -1);
       }
     });
   };
 
-  const decrease = (
-    productId: string,
-    variantId: string | null,
-    qty: number,
-  ) => {
+  const decrease = (cartItemId: string, qty: number) => {
     if (qty <= 1) {
-      remove(productId, variantId);
+      remove(cartItemId);
       startTransition(async () => {
-        await removeFromCartAction(productId, variantId);
+        await removeFromCartAction(cartItemId);
       });
       return;
     }
-    change(productId, variantId, -1);
+    change(cartItemId, -1);
     startTransition(async () => {
-      await updateQuantityAction(productId, variantId, -1);
+      await updateQuantityAction(cartItemId, -1);
     });
   };
 
-  const removeItem = (productId: string, variantId: string | null) => {
-    remove(productId, variantId);
+  const removeItem = (cartItemId: string) => {
+    remove(cartItemId);
     startTransition(async () => {
-      await removeFromCartAction(productId, variantId);
+      await removeFromCartAction(cartItemId);
     });
   };
 
@@ -105,12 +107,22 @@ const CartPage = ({ cart, mixedCart }: Props) => {
           <div className="lg:col-span-2 space-y-4">
             {cart.items.map((item) => {
               const priceUSD =
-                item.variant?.priceUSD ?? item.product.basePriceUSD;
+                (item.variant?.priceUSD ?? item.product.basePriceUSD) +
+                (item.cartItemSelectedOptions?.reduce(
+                  (optionsSum, option) => optionsSum + option.priceDeltaUSD,
+                  0,
+                ) ?? 0);
 
               const totalPriceUSD = priceUSD * item.quantity;
-              const stock = item.variant?.stock ?? 0;
-              const atStockLimit = !!item.variant && item.quantity >= stock;
-              const isOutOfStock = !!item.variant && stock <= 0;
+              const stock =
+                item.product.foodProductConfig?.inventoryMode ===
+                "AVAILABILITY_ONLY"
+                  ? null
+                  : (item.variant?.stock ?? 0);
+              const atStockLimit =
+                stock != null && !!item.variant && item.quantity >= stock;
+              const isOutOfStock =
+                stock != null && !!item.variant && stock <= 0;
 
               const displayPrice = formatMoneyFromUSD(totalPriceUSD);
 
@@ -146,11 +158,19 @@ const CartPage = ({ cart, mixedCart }: Props) => {
                           </p>
                         )}
 
+                        {item.cartItemSelectedOptions?.length ? (
+                          <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                            {item.cartItemSelectedOptions.map((option) => (
+                              <p key={option.id}>
+                                {option.optionGroupName}: {option.optionName}
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
+
                         {/* Remove */}
                         <button
-                          onClick={() =>
-                            removeItem(item.productId, item.variantId)
-                          }
+                          onClick={() => removeItem(item.id)}
                           className="flex items-center text-xs text-red-500 hover:underline gap-1 mt-1"
                         >
                           <Trash2 size={14} /> Remove
@@ -175,13 +195,7 @@ const CartPage = ({ cart, mixedCart }: Props) => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() =>
-                            decrease(
-                              item.productId,
-                              item.variantId,
-                              item.quantity,
-                            )
-                          }
+                          onClick={() => decrease(item.id, item.quantity)}
                         >
                           <Minus size={16} />
                         </Button>
@@ -191,9 +205,7 @@ const CartPage = ({ cart, mixedCart }: Props) => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() =>
-                            increase(item.productId, item.variantId)
-                          }
+                          onClick={() => increase(item.id)}
                           disabled={pending || atStockLimit || isOutOfStock}
                         >
                           <Plus size={16} />

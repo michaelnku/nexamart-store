@@ -4,19 +4,25 @@ import { createJSONStorage, persist } from "zustand/middleware";
 export type VariantId = string | null;
 
 type CartItem = {
+  id?: string;
   productId: string;
   quantity: number;
   variantId: VariantId;
+  selectionFingerprint?: string;
 };
 
 type CartState = {
   items: CartItem[];
 
-  add: (productId: string, variantId: VariantId) => void;
+  add: (
+    productId: string,
+    variantId: VariantId,
+    selectionFingerprint?: string,
+  ) => void;
 
-  change: (productId: string, variantId: VariantId, delta: number) => void;
+  change: (cartItemId: string, delta: number) => void;
 
-  remove: (productId: string, variantId: VariantId) => void;
+  remove: (cartItemId: string) => void;
 
   sync: (items: CartItem[]) => void;
 
@@ -28,16 +34,21 @@ export const useCartStore = create<CartState>()(
     (set) => ({
       items: [],
 
-      add: (productId, variantId) =>
+      add: (productId, variantId, selectionFingerprint = "") =>
         set((state) => {
           const existing = state.items.find(
-            (i) => i.productId === productId && i.variantId === variantId,
+            (i) =>
+              i.productId === productId &&
+              i.variantId === variantId &&
+              (i.selectionFingerprint ?? "") === selectionFingerprint,
           );
 
           if (existing) {
             return {
               items: state.items.map((i) =>
-                i.productId === productId && i.variantId === variantId
+                i.productId === productId &&
+                i.variantId === variantId &&
+                (i.selectionFingerprint ?? "") === selectionFingerprint
                   ? { ...i, quantity: i.quantity + 1 }
                   : i,
               ),
@@ -45,28 +56,25 @@ export const useCartStore = create<CartState>()(
           }
 
           return {
-            items: [...state.items, { productId, variantId, quantity: 1 }],
+            items: [
+              ...state.items,
+              { productId, variantId, selectionFingerprint, quantity: 1 },
+            ],
           };
         }),
 
-      change: (productId, variantId, delta) =>
+      change: (cartItemId, delta) =>
         set((state) => {
           const updated = state.items
-            .map((i) =>
-              i.productId === productId && i.variantId === variantId
-                ? { ...i, quantity: i.quantity + delta }
-                : i,
-            )
+            .map((i) => (i.id === cartItemId ? { ...i, quantity: i.quantity + delta } : i))
             .filter((i) => i.quantity > 0);
 
           return { items: updated };
         }),
 
-      remove: (productId, variantId) =>
+      remove: (cartItemId) =>
         set((state) => ({
-          items: state.items.filter(
-            (i) => !(i.productId === productId && i.variantId === variantId),
-          ),
+          items: state.items.filter((i) => i.id !== cartItemId),
         })),
 
       sync: (items) => set({ items }),

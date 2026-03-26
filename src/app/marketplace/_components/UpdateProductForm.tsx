@@ -32,9 +32,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Category, FullProduct } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { productSchema, type productSchemaType } from "@/lib/zodValidation";
+import {
+  updateProductSchema,
+  type updateProductSchemaType,
+} from "@/lib/zodValidation";
 
 import {
+  DEFAULT_FOOD_CONFIG,
   createEmptyVariant,
   getCategoryLevels,
   getProductFormDefaults,
@@ -112,12 +116,12 @@ export default function UpdateProductForm({
   const [isPending, startTransition] = useTransition();
   const isUploadingImages = uploading || isImageProcessing;
 
-  const form = useForm<productSchemaType>({
-    resolver: zodResolver(productSchema),
+  const form = useForm<any>({
+    resolver: zodResolver(updateProductSchema),
     defaultValues: getProductFormDefaults({
       isFoodStore,
       initialData,
-    }) as productSchemaType,
+    }),
   });
 
   const { control, handleSubmit, setValue, getValues, watch } = form;
@@ -128,6 +132,7 @@ export default function UpdateProductForm({
     (category) => category.parentId === level2,
   );
   const watchedImages = watch("images");
+  const foodInventoryMode = watch("foodConfig.inventoryMode");
 
   const { fields, append, remove, replace } = useFieldArray({
     control,
@@ -159,10 +164,18 @@ export default function UpdateProductForm({
           size: undefined,
         },
       ]);
+      if (!getValues("foodConfig")) {
+        setValue("foodConfig", DEFAULT_FOOD_CONFIG);
+      }
+      if (!Array.isArray(getValues("foodOptionGroups"))) {
+        setValue("foodOptionGroups", []);
+      }
       return;
     }
 
     setValue("foodDetails", undefined);
+    setValue("foodConfig", undefined);
+    setValue("foodOptionGroups", []);
   }, [getValues, isFoodStore, replace, setValue]);
 
   const generateSimpleSku = (name: string) => {
@@ -185,7 +198,7 @@ export default function UpdateProductForm({
     return new Set(skus).size !== skus.length;
   };
 
-  const onSubmit = (values: productSchemaType) => {
+  const onSubmit = (values: updateProductSchemaType) => {
     if (!values.categoryId) {
       toast.error("Please select a category");
       return;
@@ -201,18 +214,24 @@ export default function UpdateProductForm({
       return;
     }
 
-    const normalizedValues: productSchemaType = {
+    const normalizedValues: updateProductSchemaType = {
       ...values,
       isFoodProduct: isFoodStore,
       description: values.description.trim(),
       brand: values.brand?.trim() || "",
       foodDetails: isFoodStore ? values.foodDetails : undefined,
+      foodConfig: isFoodStore ? values.foodConfig : undefined,
+      foodOptionGroups: isFoodStore ? values.foodOptionGroups ?? [] : [],
       technicalDetails: isFoodStore ? [] : (values.technicalDetails ?? []),
       specifications: isFoodStore ? "" : (values.specifications ?? "").trim(),
       variants: values.variants.map((variant) => ({
         ...variant,
         color: isFoodStore ? undefined : variant.color?.trim() || "",
         size: isFoodStore ? undefined : variant.size?.trim() || "",
+        stock:
+          isFoodStore && values.foodConfig?.inventoryMode === "AVAILABILITY_ONLY"
+            ? 0
+            : variant.stock,
         sku:
           variant.sku?.trim() ||
           (isFoodStore
@@ -264,7 +283,7 @@ export default function UpdateProductForm({
       await deleteProductImageAction(key);
       setValue(
         "images",
-        getValues("images").filter((image) => image.key !== key),
+        getValues("images").filter((image: any) => image.key !== key),
       );
       toast.success("Image deleted");
     } catch {
@@ -654,11 +673,27 @@ export default function UpdateProductForm({
                             <Input
                               type="number"
                               {...field}
+                              disabled={
+                                isFoodStore &&
+                                foodInventoryMode === "AVAILABILITY_ONLY"
+                              }
+                              placeholder={
+                                isFoodStore &&
+                                foodInventoryMode === "AVAILABILITY_ONLY"
+                                  ? "Not required"
+                                  : undefined
+                              }
                               onChange={(event) =>
                                 field.onChange(Number(event.target.value))
                               }
                             />
                           </FormControl>
+                          {isFoodStore &&
+                          foodInventoryMode === "AVAILABILITY_ONLY" ? (
+                            <p className="text-xs text-slate-500 dark:text-zinc-400">
+                              Stock is skipped for availability-only food items.
+                            </p>
+                          ) : null}
                           <FormMessage />
                         </FormItem>
                       )}

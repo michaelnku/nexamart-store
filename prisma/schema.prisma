@@ -241,6 +241,8 @@ model Product {
   wishlistItems          WishlistItem[]
   conversations          Conversation[]
   featuredPlacements     FeaturedProductPlacement[]
+  foodProductConfig      FoodProductConfig?
+  foodOptionGroups       FoodOptionGroup[]
 
   @@index([storeId])
   @@index([categoryId])
@@ -294,6 +296,71 @@ model Category {
   @@index([path])
 }
 
+model FoodProductConfig {
+  id        String  @id @default(cuid())
+  productId String  @unique
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  itemType      FoodItemType
+  inventoryMode FoodInventoryMode @default(AVAILABILITY_ONLY)
+
+  isAvailable Boolean @default(true)
+  isSoldOut   Boolean @default(false)
+
+  preparationTimeMinutes Int?
+  dailyOrderLimit        Int?
+  ordersTodayCount       Int  @default(0)
+
+  availableFrom  String?
+  availableUntil String?
+  availableDays  String[] @default([])
+
+  allowScheduledOrder  Boolean @default(false)
+  allowSameDayPreorder Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FoodOptionGroup {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  name          String
+  type          FoodOptionGroupType
+  isRequired    Boolean             @default(false)
+  minSelections Int                 @default(0)
+  maxSelections Int?
+  displayOrder  Int                 @default(0)
+  isActive      Boolean             @default(true)
+
+  options   FoodOption[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([productId, isActive])
+}
+
+model FoodOption {
+  id      String          @id @default(cuid())
+  groupId String
+  group   FoodOptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  name          String
+  description   String?
+  priceDeltaUSD Float   @default(0)
+  isDefault     Boolean @default(false)
+  isAvailable   Boolean @default(true)
+  stock         Int?
+  displayOrder  Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([groupId, isAvailable])
+}
+
 /// *
 /// * ===========================
 /// * REVIEWS & SEARCH
@@ -345,19 +412,38 @@ model Cart {
 }
 
 model CartItem {
-  id        String          @id @default(cuid())
-  cartId    String
-  productId String
-  variantId String?
-  quantity  Int             @default(1)
-  cart      Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product   Product         @relation(fields: [productId], references: [id])
-  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+  id                      String                   @id @default(cuid())
+  cartId                  String
+  productId               String
+  variantId               String?
+  selectionFingerprint    String                   @default("")
+  quantity                Int                      @default(1)
+  cart                    Cart                     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product                 Product                  @relation(fields: [productId], references: [id])
+  variant                 ProductVariant?          @relation(fields: [variantId], references: [id])
+  cartItemSelectedOptions CartItemSelectedOption[]
 
-  @@unique([cartId, productId, variantId])
+  @@unique([cartId, productId, variantId, selectionFingerprint])
   @@index([cartId])
   @@index([productId])
   @@index([variantId])
+}
+
+model CartItemSelectedOption {
+  id         String   @id @default(cuid())
+  cartItemId String
+  cartItem   CartItem @relation(fields: [cartItemId], references: [id], onDelete: Cascade)
+
+  optionGroupId String
+  optionId      String
+
+  optionGroupName String
+  optionName      String
+  priceDeltaUSD   Float
+
+  createdAt DateTime @default(now())
+
+  @@index([cartItemId])
 }
 
 model Wishlist {
@@ -497,18 +583,23 @@ model OrderSellerGroup {
 }
 
 model OrderItem {
-  id                   String                @id @default(cuid())
-  orderId              String
-  sellerGroupId        String?
-  productId            String
-  variantId            String?
-  quantity             Int
-  price                Float
-  inventoryReservation InventoryReservation?
-  order                Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product              Product               @relation(fields: [productId], references: [id])
-  sellerGroup          OrderSellerGroup?     @relation("GroupItems", fields: [sellerGroupId], references: [id])
-  variant              ProductVariant?       @relation(fields: [variantId], references: [id])
+  id            String  @id @default(cuid())
+  orderId       String
+  sellerGroupId String?
+  productId     String
+  variantId     String?
+  quantity      Int
+  price         Float
+  basePrice     Float?
+  optionsPrice  Float?  @default(0)
+  lineTotal     Float?
+
+  inventoryReservation     InventoryReservation?
+  order                    Order                     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product                  Product                   @relation(fields: [productId], references: [id])
+  sellerGroup              OrderSellerGroup?         @relation("GroupItems", fields: [sellerGroupId], references: [id])
+  variant                  ProductVariant?           @relation(fields: [variantId], references: [id])
+  orderItemSelectedOptions OrderItemSelectedOption[]
 
   @@index([sellerGroupId])
 }
@@ -550,6 +641,20 @@ model CheckoutGroup {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+model OrderItemSelectedOption {
+  id          String    @id @default(cuid())
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  optionGroupName String
+  optionName      String
+  priceDeltaUSD   Float
+
+  createdAt DateTime @default(now())
+
+  @@index([orderItemId])
 }
 
 /// *
@@ -1551,6 +1656,23 @@ model UserReport {
 /// * ===========================
 /// * ENUMS AND CONSTANTS
 /// * ===========================
+enum FoodInventoryMode {
+  STOCK_TRACKED
+  AVAILABILITY_ONLY
+}
+
+enum FoodItemType {
+  PREPARED_MEAL
+  PACKAGED_FOOD
+  FRESH_DRINK
+  BAKED_ITEM
+}
+
+enum FoodOptionGroupType {
+  SINGLE_SELECT
+  MULTI_SELECT
+}
+
 enum ProductModerationStatus {
   PENDING_REVIEW
   APPROVED

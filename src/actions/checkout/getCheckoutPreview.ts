@@ -2,11 +2,11 @@
 
 import { DeliveryType } from "@/generated/prisma/client";
 import { CurrentUserId } from "@/lib/currentUser";
-import { getCartAvailabilityError } from "@/lib/inventory/cartAvailability";
 import { prisma } from "@/lib/prisma";
 import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
 import { calculateDrivingDistance } from "@/lib/shipping/mapboxDistance";
 import { calculateStoreDeliveryFee } from "@/lib/shipping/shippingCalculator";
+import { resolveAuthoritativeCartLines } from "@/lib/checkout/cartPricing";
 
 export type StoreShippingBreakdown = {
   storeId: string;
@@ -42,6 +42,12 @@ export async function getCheckoutPreviewAction({
     include: {
       items: {
         include: {
+          cartItemSelectedOptions: {
+            select: {
+              optionGroupId: true,
+              optionId: true,
+            },
+          },
           product: {
             include: {
               store: {
@@ -53,10 +59,42 @@ export async function getCheckoutPreviewAction({
                   type: true,
                 },
               },
+              foodProductConfig: {
+                select: {
+                  inventoryMode: true,
+                  isAvailable: true,
+                  isSoldOut: true,
+                  dailyOrderLimit: true,
+                  availableFrom: true,
+                  availableUntil: true,
+                  availableDays: true,
+                },
+              },
+              foodOptionGroups: {
+                where: { isActive: true },
+                select: {
+                  id: true,
+                  name: true,
+                  type: true,
+                  isRequired: true,
+                  minSelections: true,
+                  maxSelections: true,
+                  isActive: true,
+                  options: {
+                    select: {
+                      id: true,
+                      name: true,
+                      priceDeltaUSD: true,
+                      isAvailable: true,
+                      stock: true,
+                    },
+                  },
+                },
+              },
             },
           },
           variant: {
-            select: { priceUSD: true, stock: true },
+            select: { id: true, priceUSD: true, stock: true },
           },
         },
       },
@@ -67,20 +105,13 @@ export async function getCheckoutPreviewAction({
     return { error: "Cart is empty" };
   }
 
-  for (const item of cart.items) {
-    if (!item.variant) {
-      return { error: "Invalid cart item. Please reselect product variant." };
-    }
-
-    const stockError = getCartAvailabilityError({
-      stock: item.variant.stock,
-      requestedQuantity: item.quantity,
-      productName: item.product.name,
-    });
-
-    if (stockError) {
-      return { error: stockError };
-    }
+  let pricedCartItems;
+  try {
+    pricedCartItems = await resolveAuthoritativeCartLines(prisma, cart.items);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Cart validation failed.";
+    return { error: message };
   }
 
   const address = await prisma.address.findFirst({
@@ -96,8 +127,8 @@ export async function getCheckoutPreviewAction({
     return { error: "Invalid address" };
   }
 
-  const subtotalUSD = cart.items.reduce(
-    (sum, item) => sum + item.quantity * item.variant!.priceUSD,
+  const subtotalUSD = pricedCartItems.reduce(
+    (sum, item) => sum + item.lineTotalUSD,
     0,
   );
 
@@ -151,8 +182,8 @@ export async function getCheckoutPreviewAction({
   const addressLatitude = address.latitude;
   const addressLongitude = address.longitude;
 
-  const itemsByStore = new Map<string, typeof cart.items>();
-  for (const item of cart.items) {
+  const itemsByStore = new Map<string, typeof pricedCartItems>();
+  for (const item of pricedCartItems) {
     const storeId = item.product.store.id;
     if (!itemsByStore.has(storeId)) itemsByStore.set(storeId, []);
     itemsByStore.get(storeId)!.push(item);

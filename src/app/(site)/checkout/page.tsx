@@ -18,13 +18,31 @@ export default async function CheckoutPage() {
     include: {
       items: {
         include: {
+          cartItemSelectedOptions: {
+            select: {
+              id: true,
+              optionGroupId: true,
+              optionId: true,
+              optionGroupName: true,
+              optionName: true,
+              priceDeltaUSD: true,
+            },
+          },
           product: {
             include: {
               images: true,
+              foodProductConfig: true,
+              foodOptionGroups: {
+                where: { isActive: true },
+                include: {
+                  options: true,
+                },
+              },
               store: {
                 select: {
                   id: true,
                   shippingRatePerMile: true,
+                  type: true,
                 },
               },
             },

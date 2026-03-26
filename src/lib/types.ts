@@ -5,6 +5,12 @@ import {
   DisputeStatus,
   DeliveryStatus,
   EmploymentType,
+  FoodInventoryMode,
+  FoodItemType,
+  FoodOptionGroupType,
+  FoodOption,
+  FoodOptionGroup,
+  FoodProductConfig,
   PaymentMethod,
   Product,
   ProductImage,
@@ -33,6 +39,10 @@ export type FullProduct = Product & {
   images: ProductImage[];
   variants: FullProductVariant[];
   store: Pick<Store, "id" | "userId" | "name" | "slug" | "logo" | "type">;
+  foodProductConfig?: FoodProductConfig | null;
+  foodOptionGroups?: (FoodOptionGroup & {
+    options: FoodOption[];
+  })[];
   brand?: string | null;
   category?: {
     id: string;
@@ -407,12 +417,22 @@ export interface CartItemDTO {
   id: string;
   productId: string;
   variantId: string | null;
+  selectionFingerprint: string;
   quantity: number;
+  cartItemSelectedOptions?: {
+    id: string;
+    optionGroupId: string;
+    optionId: string;
+    optionGroupName: string;
+    optionName: string;
+    priceDeltaUSD: number;
+  }[];
 
   product: {
     id: string;
     name: string;
     basePriceUSD: number;
+    isFoodProduct?: boolean;
     images: { imageUrl: string }[];
   };
 
@@ -430,10 +450,14 @@ export type FullCart = {
       id: string;
       name: string;
       basePriceUSD: number;
+      isFoodProduct?: boolean;
       images: ProductImage[];
       store?: {
         type?: "GENERAL" | "FOOD";
       };
+      foodProductConfig?: {
+        inventoryMode: "STOCK_TRACKED" | "AVAILABILITY_ONLY";
+      } | null;
     };
     variant?: {
       id: string;
@@ -862,6 +886,48 @@ export type FoodDetails = {
   dietaryTags?: string[];
   isPerishable?: boolean;
   expiresAt?: string | Date;
+};
+
+export type FoodProductConfigInput = {
+  itemType: FoodItemType;
+  inventoryMode: FoodInventoryMode;
+  isAvailable: boolean;
+  isSoldOut: boolean;
+  preparationTimeMinutes?: number | null;
+  dailyOrderLimit?: number | null;
+  availableFrom?: string | null;
+  availableUntil?: string | null;
+  availableDays: string[];
+  allowScheduledOrder: boolean;
+  allowSameDayPreorder: boolean;
+};
+
+export type FoodOptionInput = {
+  id?: string;
+  name: string;
+  description?: string | null;
+  priceDeltaUSD: number;
+  isDefault: boolean;
+  isAvailable: boolean;
+  stock?: number | null;
+  displayOrder: number;
+};
+
+export type FoodOptionGroupInput = {
+  id?: string;
+  name: string;
+  type: FoodOptionGroupType;
+  isRequired: boolean;
+  minSelections: number;
+  maxSelections?: number | null;
+  displayOrder: number;
+  isActive: boolean;
+  options: FoodOptionInput[];
+};
+
+export type FoodSelectedOptionInput = {
+  optionGroupId: string;
+  optionId: string;
 };
 
 export type SiteConfig = Pick<

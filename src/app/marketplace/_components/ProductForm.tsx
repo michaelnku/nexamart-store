@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { productSchema, type productSchemaType } from "@/lib/zodValidation";
 
 import {
+  DEFAULT_FOOD_CONFIG,
   createEmptyVariant,
   getProductFormDefaults,
 } from "./productFormHelpers";
@@ -105,11 +106,11 @@ export default function ProductForm({
     (category) => category.parentId === level2,
   );
 
-  const form = useForm<productSchemaType>({
+  const form = useForm<any>({
     resolver: zodResolver(productSchema),
     defaultValues: getProductFormDefaults({
       isFoodStore,
-    }) as productSchemaType,
+    }),
   });
 
   const {
@@ -122,9 +123,19 @@ export default function ProductForm({
     watch,
   } = form;
   const watchedImages = watch("images");
-  const categoryError = form.formState.errors.categoryId?.message;
-  const imagesError = form.formState.errors.images?.message;
-  const variantsError = form.formState.errors.variants?.message;
+  const foodInventoryMode = watch("foodConfig.inventoryMode");
+  const categoryError =
+    typeof form.formState.errors.categoryId?.message === "string"
+      ? form.formState.errors.categoryId.message
+      : undefined;
+  const imagesError =
+    typeof form.formState.errors.images?.message === "string"
+      ? form.formState.errors.images.message
+      : undefined;
+  const variantsError =
+    typeof form.formState.errors.variants?.message === "string"
+      ? form.formState.errors.variants.message
+      : undefined;
 
   const { fields, append, remove, replace } = useFieldArray({
     control,
@@ -220,6 +231,39 @@ export default function ProductForm({
       return "Food Details";
     }
 
+    if (root === "foodConfig") {
+      if (second === "itemType") return "Food Configuration > Item Type";
+      if (second === "inventoryMode")
+        return "Food Configuration > Inventory Mode";
+      if (second === "isAvailable") return "Availability > Accepting Orders";
+      if (second === "isSoldOut") return "Availability > Sold Out";
+      if (second === "preparationTimeMinutes")
+        return "Food Configuration > Preparation Time";
+      if (second === "dailyOrderLimit")
+        return "Food Configuration > Daily Order Limit";
+      if (second === "availableFrom") return "Availability > Available From";
+      if (second === "availableUntil") return "Availability > Available Until";
+      if (second === "availableDays") return "Availability > Available Days";
+      if (second === "allowScheduledOrder") return "Schedule > Scheduled Orders";
+      if (second === "allowSameDayPreorder")
+        return "Schedule > Same-Day Preorder";
+      return "Food Configuration";
+    }
+
+    if (root === "foodOptionGroups") {
+      const groupLabel =
+        typeof second === "undefined"
+          ? "Food Option Groups"
+          : `Food Option Group ${Number(second) + 1}`;
+
+      if (third === "name") return `${groupLabel} Name`;
+      if (third === "type") return `${groupLabel} Type`;
+      if (third === "minSelections") return `${groupLabel} Min Selections`;
+      if (third === "maxSelections") return `${groupLabel} Max Selections`;
+      if (third === "options") return `${groupLabel} Options`;
+      return groupLabel;
+    }
+
     if (root === "technicalDetails") {
       const detailLabel =
         typeof second === "undefined"
@@ -258,6 +302,8 @@ export default function ProductForm({
 
     if (!isFoodStore) {
       setValue("foodDetails", undefined);
+      setValue("foodConfig", undefined);
+      setValue("foodOptionGroups", []);
       return;
     }
 
@@ -282,12 +328,20 @@ export default function ProductForm({
         expiresAt: undefined,
       });
     }
+
+    if (!getValues("foodConfig")) {
+      setValue("foodConfig", DEFAULT_FOOD_CONFIG);
+    }
+
+    if (!Array.isArray(getValues("foodOptionGroups"))) {
+      setValue("foodOptionGroups", []);
+    }
   }, [getValues, isFoodStore, replace, setValue]);
 
   useEffect(() => {
     const productName = getValues("name");
 
-    getValues("variants").forEach((variant, index) => {
+    getValues("variants").forEach((variant: any, index: number) => {
       if (!variant.sku) {
         const nextSku =
           !isFoodStore && (variant.color || variant.size)
@@ -331,12 +385,18 @@ export default function ProductForm({
       description: values.description.trim(),
       brand: values.brand?.trim() || "",
       foodDetails: isFoodStore ? values.foodDetails : undefined,
+      foodConfig: isFoodStore ? values.foodConfig : undefined,
+      foodOptionGroups: isFoodStore ? values.foodOptionGroups ?? [] : [],
       technicalDetails: isFoodStore ? [] : (values.technicalDetails ?? []),
       specifications: isFoodStore ? "" : (values.specifications ?? "").trim(),
-      variants: values.variants.map((variant) => ({
+      variants: values.variants.map((variant: any, index: number) => ({
         ...variant,
         color: isFoodStore ? undefined : variant.color?.trim() || "",
         size: isFoodStore ? undefined : variant.size?.trim() || "",
+        stock:
+          isFoodStore && values.foodConfig?.inventoryMode === "AVAILABILITY_ONLY"
+            ? 0
+            : variant.stock,
         sku:
           variant.sku?.trim() ||
           (isFoodStore
@@ -399,7 +459,7 @@ export default function ProductForm({
       await deleteFileAction(key);
       setValue(
         "images",
-        getValues("images").filter((image) => image.key !== key),
+        getValues("images").filter((image: any) => image.key !== key),
       );
       toast.success("Image deleted");
     } catch {
@@ -845,12 +905,28 @@ Dual SIM`}
                             <Input
                               type="number"
                               {...field}
+                              disabled={
+                                isFoodStore &&
+                                foodInventoryMode === "AVAILABILITY_ONLY"
+                              }
+                              placeholder={
+                                isFoodStore &&
+                                foodInventoryMode === "AVAILABILITY_ONLY"
+                                  ? "Not required"
+                                  : undefined
+                              }
                               className="focus-visible:ring-[var(--brand-blue)]"
                               onChange={(event) =>
                                 field.onChange(Number(event.target.value))
                               }
                             />
                           </FormControl>
+                          {isFoodStore &&
+                          foodInventoryMode === "AVAILABILITY_ONLY" ? (
+                            <p className="text-xs text-slate-500 dark:text-zinc-400">
+                              Stock is skipped for availability-only food items.
+                            </p>
+                          ) : null}
                           <FormMessage />
                         </FormItem>
                       )}

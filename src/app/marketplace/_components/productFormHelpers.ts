@@ -6,6 +6,8 @@ import type {
 
 type ProductFormValues = productSchemaType | updateProductSchemaType;
 type NormalizedFoodDetails = NonNullable<ProductFormValues["foodDetails"]>;
+type NormalizedFoodConfig = NonNullable<ProductFormValues["foodConfig"]>;
+type NormalizedFoodOptionGroups = NonNullable<ProductFormValues["foodOptionGroups"]>;
 
 const DEFAULT_FOOD_DETAILS: NonNullable<productSchemaType["foodDetails"]> = {
   ingredients: [""],
@@ -16,6 +18,45 @@ const DEFAULT_FOOD_DETAILS: NonNullable<productSchemaType["foodDetails"]> = {
   isPerishable: false,
   expiresAt: undefined,
 };
+
+const DEFAULT_FOOD_CONFIG: NonNullable<productSchemaType["foodConfig"]> = {
+  itemType: "PREPARED_MEAL",
+  inventoryMode: "AVAILABILITY_ONLY",
+  isAvailable: true,
+  isSoldOut: false,
+  preparationTimeMinutes: 15,
+  dailyOrderLimit: null,
+  availableFrom: null,
+  availableUntil: null,
+  availableDays: [],
+  allowScheduledOrder: false,
+  allowSameDayPreorder: false,
+};
+
+function createEmptyFoodOption() {
+  return {
+    name: "",
+    description: "",
+    priceDeltaUSD: 0,
+    isDefault: false,
+    isAvailable: true,
+    stock: null,
+    displayOrder: 0,
+  };
+}
+
+function createEmptyFoodOptionGroup() {
+  return {
+    name: "",
+    type: "SINGLE_SELECT" as const,
+    isRequired: false,
+    minSelections: 0,
+    maxSelections: 1,
+    displayOrder: 0,
+    isActive: true,
+    options: [createEmptyFoodOption()],
+  };
+}
 
 function createEmptyVariant(isFoodStore: boolean) {
   return {
@@ -100,6 +141,141 @@ function normalizeFoodDetails(
   };
 }
 
+function normalizeFoodConfig(input: unknown): NormalizedFoodConfig | undefined {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return undefined;
+  }
+
+  const data = input as Record<string, unknown>;
+
+  return {
+    itemType:
+      data.itemType === "PREPARED_MEAL" ||
+      data.itemType === "PACKAGED_FOOD" ||
+      data.itemType === "FRESH_DRINK" ||
+      data.itemType === "BAKED_ITEM"
+        ? data.itemType
+        : DEFAULT_FOOD_CONFIG.itemType,
+    inventoryMode:
+      data.inventoryMode === "STOCK_TRACKED" ||
+      data.inventoryMode === "AVAILABILITY_ONLY"
+        ? data.inventoryMode
+        : DEFAULT_FOOD_CONFIG.inventoryMode,
+    isAvailable:
+      typeof data.isAvailable === "boolean"
+        ? data.isAvailable
+        : DEFAULT_FOOD_CONFIG.isAvailable,
+    isSoldOut:
+      typeof data.isSoldOut === "boolean"
+        ? data.isSoldOut
+        : DEFAULT_FOOD_CONFIG.isSoldOut,
+    preparationTimeMinutes:
+      typeof data.preparationTimeMinutes === "number"
+        ? data.preparationTimeMinutes
+        : DEFAULT_FOOD_CONFIG.preparationTimeMinutes,
+    dailyOrderLimit:
+      typeof data.dailyOrderLimit === "number" ? data.dailyOrderLimit : null,
+    availableFrom:
+      typeof data.availableFrom === "string" ? data.availableFrom : null,
+    availableUntil:
+      typeof data.availableUntil === "string" ? data.availableUntil : null,
+    availableDays: Array.isArray(data.availableDays)
+      ? data.availableDays.filter(
+          (
+            item,
+          ): item is
+            | "SUNDAY"
+            | "MONDAY"
+            | "TUESDAY"
+            | "WEDNESDAY"
+            | "THURSDAY"
+            | "FRIDAY"
+            | "SATURDAY" =>
+            item === "SUNDAY" ||
+            item === "MONDAY" ||
+            item === "TUESDAY" ||
+            item === "WEDNESDAY" ||
+            item === "THURSDAY" ||
+            item === "FRIDAY" ||
+            item === "SATURDAY",
+        )
+      : [],
+    allowScheduledOrder:
+      typeof data.allowScheduledOrder === "boolean"
+        ? data.allowScheduledOrder
+        : DEFAULT_FOOD_CONFIG.allowScheduledOrder,
+    allowSameDayPreorder:
+      typeof data.allowSameDayPreorder === "boolean"
+        ? data.allowSameDayPreorder
+        : DEFAULT_FOOD_CONFIG.allowSameDayPreorder,
+  };
+}
+
+function normalizeFoodOptionGroups(
+  input: unknown,
+): NormalizedFoodOptionGroups | undefined {
+  if (!Array.isArray(input)) {
+    return undefined;
+  }
+
+  return input
+    .filter(
+      (group): group is Record<string, unknown> =>
+        typeof group === "object" && group !== null && !Array.isArray(group),
+    )
+    .map((group, groupIndex) => ({
+      id: typeof group.id === "string" ? group.id : undefined,
+      name: typeof group.name === "string" ? group.name : "",
+      type:
+        group.type === "SINGLE_SELECT" || group.type === "MULTI_SELECT"
+          ? group.type
+          : "SINGLE_SELECT",
+      isRequired:
+        typeof group.isRequired === "boolean" ? group.isRequired : false,
+      minSelections:
+        typeof group.minSelections === "number" ? group.minSelections : 0,
+      maxSelections:
+        typeof group.maxSelections === "number" ? group.maxSelections : null,
+      displayOrder:
+        typeof group.displayOrder === "number"
+          ? group.displayOrder
+          : groupIndex,
+      isActive: typeof group.isActive === "boolean" ? group.isActive : true,
+      options: Array.isArray(group.options)
+        ? group.options
+            .filter(
+              (option): option is Record<string, unknown> =>
+                typeof option === "object" &&
+                option !== null &&
+                !Array.isArray(option),
+            )
+            .map((option, optionIndex) => ({
+              id: typeof option.id === "string" ? option.id : undefined,
+              name: typeof option.name === "string" ? option.name : "",
+              description:
+                typeof option.description === "string"
+                  ? option.description
+                  : "",
+              priceDeltaUSD:
+                typeof option.priceDeltaUSD === "number"
+                  ? option.priceDeltaUSD
+                  : 0,
+              isDefault:
+                typeof option.isDefault === "boolean" ? option.isDefault : false,
+              isAvailable:
+                typeof option.isAvailable === "boolean"
+                  ? option.isAvailable
+                  : true,
+              stock: typeof option.stock === "number" ? option.stock : null,
+              displayOrder:
+                typeof option.displayOrder === "number"
+                  ? option.displayOrder
+                  : optionIndex,
+            }))
+        : [createEmptyFoodOption()],
+    }));
+}
+
 function getCategoryLevels(categories: Category[], categoryId?: string | null) {
   if (!categoryId) {
     return { level1: null, level2: null, level3: null };
@@ -143,11 +319,19 @@ function getProductFormDefaults(params: {
       images: [],
       isFoodProduct: isFoodStore,
       foodDetails: isFoodStore ? DEFAULT_FOOD_DETAILS : undefined,
+      foodConfig: isFoodStore ? DEFAULT_FOOD_CONFIG : undefined,
+      foodOptionGroups: isFoodStore ? [] : [],
       variants: [createEmptyVariant(isFoodStore)],
     };
   }
 
   const normalizedFoodDetails = normalizeFoodDetails(initialData.foodDetails);
+  const normalizedFoodConfig = normalizeFoodConfig(
+    initialData.foodProductConfig,
+  );
+  const normalizedFoodOptionGroups = normalizeFoodOptionGroups(
+    initialData.foodOptionGroups,
+  );
 
   return {
     name: initialData.name,
@@ -172,6 +356,13 @@ function getProductFormDefaults(params: {
             : DEFAULT_FOOD_DETAILS.ingredients,
         }
       : undefined,
+    foodConfig: isFoodStore
+      ? {
+          ...DEFAULT_FOOD_CONFIG,
+          ...normalizedFoodConfig,
+        }
+      : undefined,
+    foodOptionGroups: isFoodStore ? (normalizedFoodOptionGroups ?? []) : [],
     variants: initialData.variants.length
       ? initialData.variants.map((variant) => ({
           color: isFoodStore ? undefined : (variant.color ?? ""),
@@ -188,9 +379,14 @@ function getProductFormDefaults(params: {
 
 export {
   DEFAULT_FOOD_DETAILS,
+  DEFAULT_FOOD_CONFIG,
   createEmptyVariant,
+  createEmptyFoodOption,
+  createEmptyFoodOptionGroup,
   getCategoryLevels,
   getProductFormDefaults,
+  normalizeFoodConfig,
   normalizeFoodDetails,
+  normalizeFoodOptionGroups,
   normalizeTechnicalDetails,
 };

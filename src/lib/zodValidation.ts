@@ -1,5 +1,23 @@
 import z from "zod";
 
+const foodInventoryModes = ["STOCK_TRACKED", "AVAILABILITY_ONLY"] as const;
+const foodItemTypes = [
+  "PREPARED_MEAL",
+  "PACKAGED_FOOD",
+  "FRESH_DRINK",
+  "BAKED_ITEM",
+] as const;
+const foodOptionGroupTypes = ["SINGLE_SELECT", "MULTI_SELECT"] as const;
+const foodAvailableDays = [
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+] as const;
+
 //for images and files
 export const fileSchema = z.object({
   url: z.string().url(),
@@ -112,6 +130,88 @@ export const foodDetailsSchema = z
   })
   .strict();
 
+const timeOfDaySchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Time must be in HH:mm format");
+
+export const foodProductConfigSchema = z
+  .object({
+    itemType: z.enum(foodItemTypes),
+    inventoryMode: z.enum(foodInventoryModes),
+    isAvailable: z.boolean(),
+    isSoldOut: z.boolean(),
+    preparationTimeMinutes: z.number().int().min(0).optional().nullable(),
+    dailyOrderLimit: z.number().int().min(1).optional().nullable(),
+    availableFrom: timeOfDaySchema.optional().nullable(),
+    availableUntil: timeOfDaySchema.optional().nullable(),
+    availableDays: z.array(z.enum(foodAvailableDays)).default([]),
+    allowScheduledOrder: z.boolean(),
+    allowSameDayPreorder: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      (data.availableFrom && !data.availableUntil) ||
+      (!data.availableFrom && data.availableUntil)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["availableFrom"],
+        message: "Set both available-from and available-until times.",
+      });
+    }
+  });
+
+export const foodOptionSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().trim().min(1, "Option name is required"),
+  description: z.string().trim().optional().nullable(),
+  priceDeltaUSD: z.number().min(0, "Price delta cannot be negative"),
+  isDefault: z.boolean(),
+  isAvailable: z.boolean(),
+  stock: z.number().int().min(0).optional().nullable(),
+  displayOrder: z.number().int().min(0),
+});
+
+export const foodOptionGroupSchema = z
+  .object({
+    id: z.string().optional(),
+    name: z.string().trim().min(1, "Group name is required"),
+    type: z.enum(foodOptionGroupTypes),
+    isRequired: z.boolean(),
+    minSelections: z.number().int().min(0),
+    maxSelections: z.number().int().min(1).optional().nullable(),
+    displayOrder: z.number().int().min(0),
+    isActive: z.boolean(),
+    options: z.array(foodOptionSchema).min(1, "Add at least one option"),
+  })
+  .superRefine((data, ctx) => {
+    if (data.maxSelections != null && data.maxSelections < data.minSelections) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["maxSelections"],
+        message: "Maximum selections cannot be lower than minimum selections.",
+      });
+    }
+
+    if (data.type === "SINGLE_SELECT") {
+      if (data.minSelections > 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["minSelections"],
+          message: "Single-select groups can require at most one selection.",
+        });
+      }
+
+      if (data.maxSelections != null && data.maxSelections > 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["maxSelections"],
+          message: "Single-select groups can allow at most one selection.",
+        });
+      }
+    }
+  });
+
 // Product Variant Schema
 export const productVariantSchema = z.object({
   sku: z.string().min(1, "SKU is required"),
@@ -160,6 +260,8 @@ const baseProductSchema = z.object({
     .min(1, "At least one variant is required"),
   isFoodProduct: z.boolean().optional(),
   foodDetails: foodDetailsSchema.nullable().optional(),
+  foodConfig: foodProductConfigSchema.nullable().optional(),
+  foodOptionGroups: z.array(foodOptionGroupSchema).default([]),
 });
 
 export const productSchema = baseProductSchema
@@ -174,6 +276,41 @@ export const productSchema = baseProductSchema
   .refine((data) => data.isFoodProduct || data.foodDetails == null, {
     message: "foodDetails is only allowed for FOOD products",
     path: ["foodDetails"],
+  })
+  .refine((data) => !data.isFoodProduct || Boolean(data.foodConfig), {
+    message: "foodConfig is required for FOOD products",
+    path: ["foodConfig"],
+  })
+  .refine((data) => data.isFoodProduct || data.foodConfig == null, {
+    message: "foodConfig is only allowed for FOOD products",
+    path: ["foodConfig"],
+  })
+  .refine(
+    (data) => data.isFoodProduct || (data.foodOptionGroups?.length ?? 0) === 0,
+    {
+      message: "Food option groups are only allowed for FOOD products",
+      path: ["foodOptionGroups"],
+    },
+  )
+  .superRefine((data, ctx) => {
+    if (!data.isFoodProduct) {
+      return;
+    }
+
+    const inventoryMode = data.foodConfig?.inventoryMode;
+    if (inventoryMode === "STOCK_TRACKED") {
+      const invalidStockIndex = data.variants.findIndex(
+        (variant) => variant.stock < 0,
+      );
+
+      if (invalidStockIndex >= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["variants", invalidStockIndex, "stock"],
+          message: "Stock-tracked food items require a valid stock quantity.",
+        });
+      }
+    }
   });
 
 export type productSchemaType = z.infer<typeof productSchema>;
@@ -196,6 +333,40 @@ export const updateProductSchema = baseProductSchema
   .refine((data) => data.isFoodProduct || data.foodDetails == null, {
     message: "foodDetails is only allowed for FOOD products",
     path: ["foodDetails"],
+  })
+  .refine((data) => !data.isFoodProduct || Boolean(data.foodConfig), {
+    message: "foodConfig is required for FOOD products",
+    path: ["foodConfig"],
+  })
+  .refine((data) => data.isFoodProduct || data.foodConfig == null, {
+    message: "foodConfig is only allowed for FOOD products",
+    path: ["foodConfig"],
+  })
+  .refine(
+    (data) => data.isFoodProduct || (data.foodOptionGroups?.length ?? 0) === 0,
+    {
+      message: "Food option groups are only allowed for FOOD products",
+      path: ["foodOptionGroups"],
+    },
+  )
+  .superRefine((data, ctx) => {
+    if (!data.isFoodProduct) {
+      return;
+    }
+
+    if (data.foodConfig?.inventoryMode === "STOCK_TRACKED") {
+      const invalidStockIndex = data.variants.findIndex(
+        (variant) => variant.stock < 0,
+      );
+
+      if (invalidStockIndex >= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["variants", invalidStockIndex, "stock"],
+          message: "Stock-tracked food items require a valid stock quantity.",
+        });
+      }
+    }
   });
 
 export type updateProductSchemaType = z.infer<typeof updateProductSchema>;

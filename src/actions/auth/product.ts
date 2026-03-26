@@ -2,7 +2,6 @@
 
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@/generated/prisma/client";
 import {
   productSchema,
   productSchemaType,
@@ -12,6 +11,10 @@ import {
 import { revalidatePath } from "next/cache";
 import { UTApi } from "uploadthing/server";
 import { ensureVerifiedSeller } from "@/lib/verification/guards";
+import {
+  serializeFoodDetails,
+  syncFoodProductRelationsInTx,
+} from "@/lib/food/productWrite";
 
 const utapi = new UTApi();
 
@@ -53,6 +56,8 @@ export const createProductAction = async (values: productSchemaType) => {
     ...values,
     isFoodProduct: isFoodStore,
     foodDetails: isFoodStore ? values.foodDetails : null,
+    foodConfig: isFoodStore ? values.foodConfig : null,
+    foodOptionGroups: isFoodStore ? values.foodOptionGroups ?? [] : [],
     variants: normalizedVariants,
   };
 
@@ -69,6 +74,8 @@ export const createProductAction = async (values: productSchemaType) => {
     images,
     variants,
     foodDetails,
+    foodConfig,
+    foodOptionGroups,
   } = parsed.data;
 
   if (!variants?.length) {
@@ -86,16 +93,12 @@ export const createProductAction = async (values: productSchemaType) => {
       .map((s) => s.trim())
       .filter(Boolean) ?? [];
 
-  const serializedFoodDetails =
-    isFoodStore && foodDetails
-      ? {
-          ...foodDetails,
-          expiresAt: foodDetails.expiresAt?.toISOString(),
-        }
-      : Prisma.JsonNull;
+  const serializedFoodDetails = serializeFoodDetails(
+    isFoodStore ? foodDetails : null,
+  );
 
   await prisma.$transaction(async (tx) => {
-    await tx.product.create({
+    const createdProduct = await tx.product.create({
       data: {
         name,
         description,
@@ -131,7 +134,15 @@ export const createProductAction = async (values: productSchemaType) => {
           },
         },
       },
+      select: { id: true },
     });
+
+    if (isFoodStore) {
+      await syncFoodProductRelationsInTx(tx, createdProduct.id, {
+        foodConfig,
+        foodOptionGroups,
+      });
+    }
   });
 
   revalidatePath("/marketplace/dashboard/seller/products");
@@ -155,6 +166,12 @@ export const updateProductAction = async (
     include: {
       images: true,
       variants: true,
+      foodProductConfig: true,
+      foodOptionGroups: {
+        include: {
+          options: true,
+        },
+      },
       store: {
         select: {
           type: true,
@@ -186,6 +203,8 @@ export const updateProductAction = async (
     ...values,
     isFoodProduct: isFoodStore,
     foodDetails: isFoodStore ? values.foodDetails : null,
+    foodConfig: isFoodStore ? values.foodConfig : null,
+    foodOptionGroups: isFoodStore ? values.foodOptionGroups ?? [] : [],
     technicalDetails: isFoodStore ? [] : (values.technicalDetails ?? []),
     specifications: isFoodStore ? "" : values.specifications,
     variants: normalizedVariants,
@@ -206,6 +225,8 @@ export const updateProductAction = async (
     images,
     variants,
     foodDetails,
+    foodConfig,
+    foodOptionGroups,
   } = parsed.data;
 
   const specsArray =
@@ -222,13 +243,9 @@ export const updateProductAction = async (
   }
   const basePriceUSD = Math.min(...variants.map((v) => v.priceUSD));
 
-  const serializedFoodDetails =
-    isFoodStore && foodDetails
-      ? {
-          ...foodDetails,
-          expiresAt: foodDetails.expiresAt?.toISOString(),
-        }
-      : Prisma.JsonNull;
+  const serializedFoodDetails = serializeFoodDetails(
+    isFoodStore ? foodDetails : null,
+  );
 
   await prisma.$transaction(async (tx) => {
     await tx.product.update({
@@ -246,6 +263,11 @@ export const updateProductAction = async (
         isFoodProduct: isFoodStore,
         foodDetails: serializedFoodDetails,
       },
+    });
+
+    await syncFoodProductRelationsInTx(tx, productId, {
+      foodConfig: isFoodStore ? foodConfig : null,
+      foodOptionGroups: isFoodStore ? foodOptionGroups : [],
     });
 
     const deleted = existing.images.filter(

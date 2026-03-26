@@ -10,34 +10,45 @@ import {
   updateQuantityAction,
   removeFromCartAction,
 } from "@/actions/auth/cart";
+import type { FoodSelectedOptionInput } from "@/lib/types";
 
 type Props = {
   productId: string;
   variantId: string | null;
-  availableStock?: number;
+  selectionFingerprint?: string;
+  selectedOptions?: FoodSelectedOptionInput[];
+  availableStock?: number | null;
+  isOrderable?: boolean;
 };
 
 const AddToCartControl = ({
   productId,
   variantId = null,
-  availableStock = 0,
+  selectionFingerprint = "",
+  selectedOptions = [],
+  availableStock = null,
+  isOrderable = true,
 }: Props) => {
   const [isPending, startTransition] = useTransition();
   const toastCart = useCartToast();
 
-  const qty = useCartStore(
-    (s) =>
-      s.items.find(
-        (i) => i.productId === productId && i.variantId === variantId,
-      )?.quantity ?? 0,
+  const cartItem = useCartStore((state) =>
+    state.items.find(
+      (item) =>
+        item.productId === productId &&
+        item.variantId === variantId &&
+        (item.selectionFingerprint ?? "") === selectionFingerprint,
+    ),
   );
+  const qty = cartItem?.quantity ?? 0;
 
-  const atStockLimit = availableStock > 0 && qty >= availableStock;
-  const isOutOfStock = availableStock <= 0;
+  const atStockLimit = availableStock != null && availableStock > 0 && qty >= availableStock;
+  const isOutOfStock =
+    !isOrderable || (availableStock != null && availableStock <= 0);
 
   const addItem = () => {
     startTransition(async () => {
-      const res = await addToCartAction(productId, variantId, 1);
+      const res = await addToCartAction(productId, variantId, 1, selectedOptions);
       if (res?.success) toastCart.added();
       if (res?.success) useCartStore.getState().sync(res.items);
       if (res?.error) toastCart.error(res.error);
@@ -46,7 +57,8 @@ const AddToCartControl = ({
 
   const increase = () => {
     startTransition(async () => {
-      const res = await updateQuantityAction(productId, variantId, 1);
+      if (!cartItem?.id) return;
+      const res = await updateQuantityAction(cartItem.id, 1);
       if (res?.success) {
         useCartStore.getState().sync(res.items);
         toastCart.updated();
@@ -58,7 +70,8 @@ const AddToCartControl = ({
   const decrease = () => {
     if (qty <= 1) {
       startTransition(async () => {
-        const res = await removeFromCartAction(productId, variantId);
+        if (!cartItem?.id) return;
+        const res = await removeFromCartAction(cartItem.id);
         if (res?.ok) {
           useCartStore.getState().sync(res.items);
           toastCart.removed();
@@ -70,7 +83,8 @@ const AddToCartControl = ({
     }
 
     startTransition(async () => {
-      const res = await updateQuantityAction(productId, variantId, -1);
+      if (!cartItem?.id) return;
+      const res = await updateQuantityAction(cartItem.id, -1);
       if (res?.success) {
         useCartStore.getState().sync(res.items);
         toastCart.updated();
