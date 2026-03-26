@@ -1,6 +1,5 @@
 import { OrderStatus, Prisma } from "@/generated/prisma/client";
-
-const FOOD_TIME_ZONE = "Africa/Lagos";
+import { resolveStoreTimeZone } from "@/lib/food/storeTimeZone";
 
 export type FoodSelectionInput = {
   optionGroupId: string;
@@ -15,10 +14,16 @@ export type FoodSelectionSnapshot = {
   priceDeltaUSD: number;
 };
 
-type FoodProductWithOptions = {
+export type FoodProductWithOptions = {
   id: string;
   name: string;
   isFoodProduct: boolean;
+  store?: {
+    type?: "FOOD" | "GENERAL";
+    timeZone?: string | null;
+    location?: string | null;
+    address?: string | null;
+  } | null;
   foodProductConfig: {
     inventoryMode: "STOCK_TRACKED" | "AVAILABILITY_ONLY";
     isAvailable: boolean;
@@ -46,29 +51,63 @@ type FoodProductWithOptions = {
   }>;
 };
 
-type OrderDb = Pick<Prisma.TransactionClient, "orderItem">;
+export type OrderDb = Pick<Prisma.TransactionClient, "orderItem">;
 
-function getLagosNow(now = new Date()) {
+function getStoreLocalNow(
+  product: Pick<FoodProductWithOptions, "store">,
+  now = new Date(),
+) {
+  const timeZone = resolveStoreTimeZone(product.store);
   const dateFormatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: FOOD_TIME_ZONE,
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   });
   const timeFormatter = new Intl.DateTimeFormat("en-GB", {
-    timeZone: FOOD_TIME_ZONE,
+    timeZone,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   });
   const weekdayFormatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: FOOD_TIME_ZONE,
+    timeZone,
     weekday: "long",
   });
 
   const dateKey = dateFormatter.format(now);
-  const dayStartUtc = new Date(`${dateKey}T00:00:00+01:00`);
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(now)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  ) as Record<string, string>;
+
+  const asUtcMillis = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+  );
+  const offsetMs = asUtcMillis - now.getTime();
+  const dayStartUtc = new Date(
+    Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)) -
+      offsetMs,
+  );
+
   return {
+    timeZone,
     dateKey,
     currentTime: timeFormatter.format(now),
     weekday: weekdayFormatter.format(now).toUpperCase(),
@@ -124,7 +163,7 @@ export async function assertAvailabilityOnlyFoodCanBeOrdered(
     throw new Error(`${product.name} is currently sold out.`);
   }
 
-  const nowInfo = getLagosNow();
+  const nowInfo = getStoreLocalNow(product);
 
   if (
     config.availableDays.length > 0 &&
