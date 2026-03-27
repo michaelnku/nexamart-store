@@ -38,7 +38,9 @@ type SellerGroupPayoutRecord = {
     id: string;
     isPaid: boolean;
     status: string;
-    disputeId: string | null;
+    dispute: {
+      id: string;
+    } | null;
   };
 };
 
@@ -63,7 +65,9 @@ async function loadSellerGroup(
           id: true,
           isPaid: true,
           status: true,
-          disputeId: true,
+          dispute: {
+            select: { id: true },
+          },
         },
       },
     },
@@ -190,7 +194,7 @@ export async function releaseSellerGroupPayoutInTx(
     };
   }
 
-  if (group.order.disputeId && !options.allowDisputedOrder) {
+  if (group.order.dispute && !options.allowDisputedOrder) {
     await unlockSellerGroupIfNeeded(tx, group.id, shouldUnlockOnExit);
     return {
       skipped: true,

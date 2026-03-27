@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { CurrentUser } from "@/lib/currentUser";
+import {
+  mapRecordProductImages,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
 import PublicProductCard from "@/components/product/PublicProductCard";
 import { redirect } from "next/navigation";
 
@@ -29,34 +33,38 @@ export default async function RecommendedPage() {
 
   const recommendedProducts =
     viewedCategoryIds.length > 0
-      ? await prisma.product.findMany({
+      ? (await prisma.product.findMany({
           where: {
             isPublished: true,
             categoryId: { in: viewedCategoryIds },
             id: { notIn: viewedProductIds },
           },
           include: {
-            images: true,
+            images: {
+              include: productImageWithAssetInclude,
+            },
             variants: true,
             store: true,
           },
           orderBy: [{ sold: "desc" }, { createdAt: "desc" }],
           take: 40,
-        })
+        })).map(mapRecordProductImages)
       : [];
 
   const fallbackProducts =
     recommendedProducts.length === 0
-      ? await prisma.product.findMany({
+      ? (await prisma.product.findMany({
           where: { isPublished: true },
           include: {
-            images: true,
+            images: {
+              include: productImageWithAssetInclude,
+            },
             variants: true,
             store: true,
           },
           orderBy: { sold: "desc" },
           take: 40,
-        })
+        })).map(mapRecordProductImages)
       : [];
 
   const products =

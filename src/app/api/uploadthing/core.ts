@@ -155,6 +155,30 @@ export const ourFileRouter = {
 
       return { uploadedBy: metadata.user.id };
     }),
+
+  evidenceFiles: f({
+    image: {
+      maxFileSize: "8MB",
+      maxFileCount: 6,
+    },
+    video: {
+      maxFileSize: "16MB",
+      maxFileCount: 2,
+    },
+    pdf: {
+      maxFileSize: "8MB",
+      maxFileCount: 4,
+    },
+  })
+    .middleware(() => handleAuth())
+
+    .onUploadComplete(async ({ metadata, file }) => {
+      console.log("Upload complete for userId:", metadata.user.id);
+
+      console.log("file url", file.ufsUrl);
+
+      return { uploadedBy: metadata.user.id };
+    }),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;

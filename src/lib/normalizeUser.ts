@@ -1,3 +1,4 @@
+import { mapUserProfileAvatar, userProfileAvatarInclude } from "@/lib/media-views";
 import { prisma } from "@/lib/prisma";
 import { SessionUser, UserDTO } from "@/lib/types";
 
@@ -9,6 +10,7 @@ export async function normalizeUser(
   const db = await prisma.user.findUnique({
     where: { email: sessionUser.email },
     include: {
+      ...userProfileAvatarInclude,
       store: true,
       riderProfile: true,
       staffProfile: true,
@@ -17,27 +19,29 @@ export async function normalizeUser(
 
   if (!db) return null;
 
+  const normalizedDb = mapUserProfileAvatar(db);
+
   const isVerified =
-    db.role === "SELLER"
-      ? Boolean(db.store?.isVerified)
-      : db.role === "RIDER"
-        ? Boolean(db.riderProfile?.isVerified)
-        : db.role === "ADMIN" || db.role === "MODERATOR"
-          ? Boolean(db.staffProfile?.isVerified)
+    normalizedDb.role === "SELLER"
+      ? Boolean(normalizedDb.store?.isVerified)
+      : normalizedDb.role === "RIDER"
+        ? Boolean(normalizedDb.riderProfile?.isVerified)
+        : normalizedDb.role === "ADMIN" || normalizedDb.role === "MODERATOR"
+          ? Boolean(normalizedDb.staffProfile?.isVerified)
           : false;
 
   return {
-    id: db.id,
-    email: db.email,
-    role: db.role,
-    emailVerifiedAt: db.emailVerified?.toISOString() ?? null,
-    isEmailVerified: Boolean(db.emailVerified),
-    hasPassword: Boolean(db.password),
-    name: db.name ?? "",
-    username: db.username ?? "",
-    image: db.image ?? null,
-    profileAvatar: (db.profileAvatar as UserDTO["profileAvatar"]) ?? null,
-    isBanned: db.isBanned,
+    id: normalizedDb.id,
+    email: normalizedDb.email,
+    role: normalizedDb.role,
+    emailVerifiedAt: normalizedDb.emailVerified?.toISOString() ?? null,
+    isEmailVerified: Boolean(normalizedDb.emailVerified),
+    hasPassword: Boolean(normalizedDb.password),
+    name: normalizedDb.name ?? "",
+    username: normalizedDb.username ?? "",
+    image: normalizedDb.image ?? null,
+    profileAvatar: normalizedDb.profileAvatar as UserDTO["profileAvatar"],
+    isBanned: normalizedDb.isBanned,
     isVerified,
   };
 }

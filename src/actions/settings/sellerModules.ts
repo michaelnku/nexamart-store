@@ -2,6 +2,7 @@
 
 import { deleteStoreAction, UpdateStoreAction } from "@/actions/auth/store";
 import { CurrentUser } from "@/lib/currentUser";
+import { mapStoreMedia, storeMediaInclude } from "@/lib/media-views";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
@@ -13,13 +14,14 @@ async function getCurrentSellerStoreForUpdate() {
 
   const store = await prisma.store.findUnique({
     where: { userId: user.id },
+    include: storeMediaInclude,
   });
 
   if (!store) {
     throw new Error("Store not found");
   }
 
-  return store;
+  return mapStoreMedia(store);
 }
 
 async function updateSellerStoreInternal(

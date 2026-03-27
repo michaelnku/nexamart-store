@@ -19,7 +19,13 @@ export default async function TrackAllActiveOrdersPage() {
     include: {
       items: {
         include: {
-          product: { include: { images: true } },
+          product: {
+            include: {
+              images: {
+                include: productImageWithAssetInclude,
+              },
+            },
+          },
         },
       },
       orderTimelines: {
@@ -53,7 +59,7 @@ export default async function TrackAllActiveOrdersPage() {
       product: {
         name: item.product.name,
         images: item.product.images.map((img) => ({
-          imageUrl: img.imageUrl,
+          imageUrl: img.fileAsset.url,
         })),
       },
     })),
@@ -68,3 +74,4 @@ export default async function TrackAllActiveOrdersPage() {
 
   return <TrackAllOrdersClient orders={orderDTOs} />;
 }
+import { productImageWithAssetInclude } from "@/lib/product-images";

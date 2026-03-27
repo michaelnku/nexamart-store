@@ -1,4 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import {
+  mapRecordProductImagesWithStoreMedia,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
+import { storeMediaInclude } from "@/lib/media-views";
 
 type GetRecommendedProductsOptions = {
   recentIds?: string[];
@@ -55,16 +60,20 @@ export async function getRecommendedProducts(
         id: { notIn: purchasedProductIds },
       },
       include: {
-        images: true,
+        images: {
+          include: productImageWithAssetInclude,
+        },
         variants: true,
-        store: true,
+        store: { include: storeMediaInclude },
       },
       orderBy: [{ sold: "desc" }, { createdAt: "desc" }],
       take: LIMIT,
     });
 
     if (productsFromPurchasedCategories.length > 0) {
-      return productsFromPurchasedCategories;
+      return productsFromPurchasedCategories.map((product) =>
+        mapRecordProductImagesWithStoreMedia(product),
+      );
     }
   }
 
@@ -86,16 +95,20 @@ export async function getRecommendedProducts(
           id: { notIn: purchasedProductIds },
         },
         include: {
-          images: true,
+          images: {
+            include: productImageWithAssetInclude,
+          },
           variants: true,
-          store: true,
+          store: { include: storeMediaInclude },
         },
         orderBy: [{ sold: "desc" }, { createdAt: "desc" }],
         take: LIMIT,
       });
 
       if (productsFromViewedCategories.length > 0) {
-        return productsFromViewedCategories;
+        return productsFromViewedCategories.map((product) =>
+          mapRecordProductImagesWithStoreMedia(product),
+        );
       }
     }
   }
@@ -106,9 +119,11 @@ export async function getRecommendedProducts(
       id: { notIn: purchasedProductIds },
     },
     include: {
-      images: true,
+      images: {
+        include: productImageWithAssetInclude,
+      },
       variants: true,
-      store: true,
+      store: { include: storeMediaInclude },
     },
     orderBy: { sold: "desc" },
     take: Math.ceil(LIMIT / 2),
@@ -122,13 +137,17 @@ export async function getRecommendedProducts(
       id: { notIn: [...purchasedProductIds, ...topSellerIds] },
     },
     include: {
-      images: true,
+      images: {
+        include: productImageWithAssetInclude,
+      },
       variants: true,
-      store: true,
+      store: { include: storeMediaInclude },
     },
     orderBy: [{ createdAt: "desc" }, { sold: "desc" }],
     take: LIMIT - topSellers.length,
   });
 
-  return [...topSellers, ...trendingProducts];
+  return [...topSellers, ...trendingProducts].map((product) =>
+    mapRecordProductImagesWithStoreMedia(product),
+  );
 }

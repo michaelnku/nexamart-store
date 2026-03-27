@@ -135,73 +135,132 @@ async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
   const referenced = new Set<string>();
 
   const [
+    fileAssets,
     productImages,
     users,
     stores,
     heroBanners,
     verificationDocuments,
     categories,
-    disputeEvidences,
     siteConfigurations,
   ] = await Promise.all([
+    prisma.fileAsset.findMany({
+      select: {
+        storageKey: true,
+        url: true,
+      },
+    }),
     prisma.productImage.findMany({
       select: {
-        imageKey: true,
-        imageUrl: true,
+        fileAsset: {
+          select: {
+            storageKey: true,
+            url: true,
+          },
+        },
       },
     }),
     prisma.user.findMany({
       select: {
         image: true,
-        profileAvatar: true,
+        profileAvatarFileAsset: {
+          select: {
+            storageKey: true,
+            url: true,
+          },
+        },
       },
     }),
     prisma.store.findMany({
       select: {
-        logo: true,
-        logoKey: true,
-        bannerImage: true,
-        bannerKey: true,
+        logoFileAsset: {
+          select: {
+            storageKey: true,
+            url: true,
+          },
+        },
+        bannerImageFileAsset: {
+          select: {
+            storageKey: true,
+            url: true,
+          },
+        },
       },
     }),
     prisma.heroBanner.findMany({
       select: {
-        backgroundImage: true,
-        productImage: true,
+        backgroundImageFileAsset: {
+          select: {
+            storageKey: true,
+            url: true,
+          },
+        },
+        productImageFileAsset: {
+          select: {
+            storageKey: true,
+            url: true,
+          },
+        },
         lottieUrl: true,
       },
     }),
     prisma.verificationDocument.findMany({
       select: {
-        file: true,
+        fileAsset: {
+          select: {
+            storageKey: true,
+            url: true,
+          },
+        },
       },
     }),
     prisma.category.findMany({
       select: {
-        iconImage: true,
-        bannerImage: true,
-      },
-    }),
-    prisma.disputeEvidence.findMany({
-      select: {
-        fileUrl: true,
+        iconImageFileAsset: {
+          select: {
+            storageKey: true,
+            url: true,
+          },
+        },
+        bannerImageFileAsset: {
+          select: {
+            storageKey: true,
+            url: true,
+          },
+        },
       },
     }),
     prisma.siteConfiguration.findMany({
       select: {
-        siteLogo: true,
+        siteLogoFileAsset: {
+          select: {
+            storageKey: true,
+            url: true,
+          },
+        },
       },
     }),
   ]);
 
+  for (const fileAsset of fileAssets) {
+    const key = normalizeKey(fileAsset.storageKey);
+    if (key) {
+      referenced.add(key);
+    }
+
+    for (const extractedKey of extractUploadThingKeys({ url: fileAsset.url })) {
+      referenced.add(extractedKey);
+    }
+  }
+
   for (const productImage of productImages) {
-    const key = normalizeKey(productImage.imageKey);
+    const key = normalizeKey(productImage.fileAsset.storageKey);
     if (key) {
       referenced.add(key);
     }
 
     for (const extractedKey of extractUploadThingKeys({
-      url: productImage.imageUrl,
+      url: productImage.fileAsset.url,
     })) {
       referenced.add(extractedKey);
     }
@@ -212,39 +271,50 @@ async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
       referenced.add(key);
     }
 
-    for (const key of extractUploadThingKeys(user.profileAvatar)) {
-      referenced.add(key);
+    const avatarKey = normalizeKey(user.profileAvatarFileAsset?.storageKey);
+    if (avatarKey) {
+      referenced.add(avatarKey);
+    }
+
+    if (user.profileAvatarFileAsset?.url) {
+      for (const key of extractUploadThingKeys({
+        url: user.profileAvatarFileAsset.url,
+      })) {
+        referenced.add(key);
+      }
     }
   }
 
   for (const store of stores) {
-    for (const key of [store.logoKey, store.bannerKey]) {
-      const normalized = normalizeKey(key);
-      if (normalized) {
-        referenced.add(normalized);
+    for (const asset of [store.logoFileAsset, store.bannerImageFileAsset]) {
+      const key = normalizeKey(asset?.storageKey);
+      if (key) {
+        referenced.add(key);
       }
-    }
 
-    for (const key of extractUploadThingKeys({
-      url: store.logo,
-    })) {
-      referenced.add(key);
-    }
-
-    for (const key of extractUploadThingKeys({
-      url: store.bannerImage,
-    })) {
-      referenced.add(key);
+      if (asset?.url) {
+        for (const extractedKey of extractUploadThingKeys({ url: asset.url })) {
+          referenced.add(extractedKey);
+        }
+      }
     }
   }
 
   for (const heroBanner of heroBanners) {
-    for (const key of extractUploadThingKeys(heroBanner.backgroundImage)) {
-      referenced.add(key);
-    }
+    for (const asset of [
+      heroBanner.backgroundImageFileAsset,
+      heroBanner.productImageFileAsset,
+    ]) {
+      const key = normalizeKey(asset?.storageKey);
+      if (key) {
+        referenced.add(key);
+      }
 
-    for (const key of extractUploadThingKeys(heroBanner.productImage)) {
-      referenced.add(key);
+      if (asset?.url) {
+        for (const extractedKey of extractUploadThingKeys({ url: asset.url })) {
+          referenced.add(extractedKey);
+        }
+      }
     }
 
     for (const key of extractUploadThingKeys({ url: heroBanner.lottieUrl })) {
@@ -253,32 +323,48 @@ async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
   }
 
   for (const verificationDocument of verificationDocuments) {
-    for (const key of extractUploadThingKeys(verificationDocument.file)) {
+    const key = normalizeKey(verificationDocument.fileAsset.storageKey);
+    if (key) {
       referenced.add(key);
+    }
+
+    for (const extractedKey of extractUploadThingKeys({
+      url: verificationDocument.fileAsset.url,
+    })) {
+      referenced.add(extractedKey);
     }
   }
 
   for (const category of categories) {
-    for (const key of extractUploadThingKeys({ url: category.iconImage })) {
-      referenced.add(key);
-    }
+    for (const asset of [
+      category.iconImageFileAsset,
+      category.bannerImageFileAsset,
+    ]) {
+      const key = normalizeKey(asset?.storageKey);
+      if (key) {
+        referenced.add(key);
+      }
 
-    for (const key of extractUploadThingKeys({ url: category.bannerImage })) {
-      referenced.add(key);
-    }
-  }
-
-  for (const disputeEvidence of disputeEvidences) {
-    for (const key of extractUploadThingKeys({ url: disputeEvidence.fileUrl })) {
-      referenced.add(key);
+      if (asset?.url) {
+        for (const extractedKey of extractUploadThingKeys({ url: asset.url })) {
+          referenced.add(extractedKey);
+        }
+      }
     }
   }
 
   for (const siteConfiguration of siteConfigurations) {
-    for (const key of extractUploadThingKeys({
-      url: siteConfiguration.siteLogo,
-    })) {
+    const key = normalizeKey(siteConfiguration.siteLogoFileAsset?.storageKey);
+    if (key) {
       referenced.add(key);
+    }
+
+    if (siteConfiguration.siteLogoFileAsset?.url) {
+      for (const extractedKey of extractUploadThingKeys({
+        url: siteConfiguration.siteLogoFileAsset.url,
+      })) {
+        referenced.add(extractedKey);
+      }
     }
   }
 

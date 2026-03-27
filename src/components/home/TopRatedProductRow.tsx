@@ -1,12 +1,21 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import {
+  mapRecordProductImagesWithStoreMedia,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
+import { storeMediaInclude } from "@/lib/media-views";
 import TopRatedPaginationSwiper from "./TopRatedPaginationSwiper";
 
 export default async function TopRatedProductRow() {
   const products = await prisma.product.findMany({
     where: { isPublished: true },
-    include: { images: true, variants: true, store: true },
+    include: {
+      images: { include: productImageWithAssetInclude },
+      variants: true,
+      store: { include: storeMediaInclude },
+    },
     orderBy: [
       { averageRating: "desc" },
       { reviewCount: "desc" },
@@ -16,6 +25,10 @@ export default async function TopRatedProductRow() {
   });
 
   if (products.length === 0) return null;
+
+  const normalizedProducts = products.map((product) =>
+    mapRecordProductImagesWithStoreMedia(product),
+  );
 
   return (
     <section className="py-6">
@@ -31,7 +44,7 @@ export default async function TopRatedProductRow() {
           </Link>
         </div>
 
-        <TopRatedPaginationSwiper products={products} />
+        <TopRatedPaginationSwiper products={normalizedProducts} />
       </div>
     </section>
   );

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { mapStoreMedia, storeMediaInclude } from "@/lib/media-views";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
@@ -20,6 +21,7 @@ export async function GET(
         userId,
         isDeleted: false,
       },
+      include: storeMediaInclude,
     });
 
     if (!store) {
@@ -28,7 +30,7 @@ export async function GET(
 
     console.log("🟢 Prisma store result:", store);
 
-    return NextResponse.json(store);
+    return NextResponse.json(mapStoreMedia(store));
   } catch (error) {
     console.error("🔥 Prisma error:", error);
     return NextResponse.json(

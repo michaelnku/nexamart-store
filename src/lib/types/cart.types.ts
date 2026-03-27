@@ -1,4 +1,4 @@
-import { ProductImage } from "@/generated/prisma/client";
+import type { ProductImageView } from "@/lib/product-images";
 
 export type CheckoutCartItem = {
   productId: string;
@@ -52,7 +52,7 @@ export type FullCart = {
       name: string;
       basePriceUSD: number;
       isFoodProduct?: boolean;
-      images: ProductImage[];
+      images: ProductImageView[];
       store?: {
         type?: "GENERAL" | "FOOD";
       };

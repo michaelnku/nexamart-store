@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
+import {
+  mapProductImagesToView,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
 import CheckoutSummary from "@/components/checkout/CheckoutSummary";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -30,7 +34,9 @@ export default async function CheckoutPage() {
           },
           product: {
             include: {
-              images: true,
+              images: {
+                include: productImageWithAssetInclude,
+              },
               foodProductConfig: true,
               foodOptionGroups: {
                 where: { isActive: true },
@@ -68,5 +74,16 @@ export default async function CheckoutPage() {
       </div>
     );
 
-  return <CheckoutSummary cart={cart} address={address} />;
+  const normalizedCart = {
+    ...cart,
+    items: cart.items.map((item) => ({
+      ...item,
+      product: {
+        ...item.product,
+        images: mapProductImagesToView(item.product.images),
+      },
+    })),
+  };
+
+  return <CheckoutSummary cart={normalizedCart} address={address} />;
 }

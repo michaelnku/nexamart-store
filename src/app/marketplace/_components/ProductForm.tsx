@@ -34,6 +34,11 @@ import {
   getProductFormDefaults,
 } from "./productFormHelpers";
 import {
+  getProductFormSectionErrors,
+  getProductFormValidationToastMessage,
+  validateProductFormBeforeSubmit,
+} from "./productFormValidation";
+import {
   clampNonNegativeUSD,
   normalizeDiscountPercent,
 } from "./productPricingFormUtils";
@@ -124,18 +129,8 @@ export default function ProductForm({
   } = form;
   const watchedImages = watch("images");
   const foodInventoryMode = watch("foodConfig.inventoryMode");
-  const categoryError =
-    typeof form.formState.errors.categoryId?.message === "string"
-      ? form.formState.errors.categoryId.message
-      : undefined;
-  const imagesError =
-    typeof form.formState.errors.images?.message === "string"
-      ? form.formState.errors.images.message
-      : undefined;
-  const variantsError =
-    typeof form.formState.errors.variants?.message === "string"
-      ? form.formState.errors.variants.message
-      : undefined;
+  const { categoryError, imagesError, variantsError } =
+    getProductFormSectionErrors(form.formState.errors);
 
   const { fields, append, remove, replace } = useFieldArray({
     control,
@@ -163,129 +158,6 @@ export default function ProductForm({
     const colorToken = (color || "NA").slice(0, 2).toUpperCase();
     const sizeToken = (size || "NA").slice(0, 2).toUpperCase();
     return `${colorToken}-${sizeToken}-${rand}`;
-  };
-
-  const getFirstErrorDetail = (
-    value: unknown,
-    path: string[] = [],
-  ): { message: string; path: string[] } | undefined => {
-    if (!value || typeof value !== "object") return undefined;
-
-    if (
-      "message" in (value as Record<string, unknown>) &&
-      typeof (value as Record<string, unknown>).message === "string"
-    ) {
-      return {
-        message: (value as { message: string }).message,
-        path,
-      };
-    }
-
-    for (const [key, nestedValue] of Object.entries(
-      value as Record<string, unknown>,
-    )) {
-      const detail = getFirstErrorDetail(nestedValue, [...path, key]);
-      if (detail) return detail;
-    }
-
-    return undefined;
-  };
-
-  const normalizeErrorMessage = (message: string) => {
-    if (message === "Too small: expected string to have >= 1 characters") {
-      return "This field is required.";
-    }
-
-    return message;
-  };
-
-  const formatErrorPath = (path: string[]) => {
-    const [root, second, third] = path;
-
-    if (root === "categoryId") return "Category";
-    if (root === "images") return "Product Images";
-    if (root === "variants") {
-      if (typeof second === "undefined") return "Variants";
-      const variantLabel = `Variant ${Number(second) + 1}`;
-      if (third === "priceUSD") return `${variantLabel} Price`;
-      if (third === "stock") return `${variantLabel} Stock`;
-      if (third === "color") return `${variantLabel} Color`;
-      if (third === "size") return `${variantLabel} Size`;
-      if (third === "sku") return `${variantLabel} SKU`;
-      if (third === "oldPriceUSD") return `${variantLabel} Old Price`;
-      if (third === "discount") return `${variantLabel} Discount`;
-      return variantLabel;
-    }
-
-    if (root === "foodDetails") {
-      if (second === "ingredients") {
-        return `Food Details > Ingredient ${Number(third) + 1}`;
-      }
-      if (second === "preparationTimeMinutes") {
-        return "Food Details > Preparation Time";
-      }
-      if (second === "portionSize") return "Food Details > Portion Size";
-      if (second === "spiceLevel") return "Food Details > Spice Level";
-      if (second === "dietaryTags") return "Food Details > Dietary Tags";
-      if (second === "expiresAt") return "Food Details > Expiry Date";
-      return "Food Details";
-    }
-
-    if (root === "foodConfig") {
-      if (second === "itemType") return "Food Configuration > Item Type";
-      if (second === "inventoryMode")
-        return "Food Configuration > Inventory Mode";
-      if (second === "isAvailable") return "Availability > Accepting Orders";
-      if (second === "isSoldOut") return "Availability > Sold Out";
-      if (second === "preparationTimeMinutes")
-        return "Food Configuration > Preparation Time";
-      if (second === "dailyOrderLimit")
-        return "Food Configuration > Daily Order Limit";
-      if (second === "availableFrom") return "Availability > Available From";
-      if (second === "availableUntil") return "Availability > Available Until";
-      if (second === "availableDays") return "Availability > Available Days";
-      if (second === "allowScheduledOrder") return "Schedule > Scheduled Orders";
-      if (second === "allowSameDayPreorder")
-        return "Schedule > Same-Day Preorder";
-      return "Food Configuration";
-    }
-
-    if (root === "foodOptionGroups") {
-      const groupLabel =
-        typeof second === "undefined"
-          ? "Food Option Groups"
-          : `Food Option Group ${Number(second) + 1}`;
-
-      if (third === "name") return `${groupLabel} Name`;
-      if (third === "type") return `${groupLabel} Type`;
-      if (third === "minSelections") return `${groupLabel} Min Selections`;
-      if (third === "maxSelections") return `${groupLabel} Max Selections`;
-      if (third === "options") return `${groupLabel} Options`;
-      return groupLabel;
-    }
-
-    if (root === "technicalDetails") {
-      const detailLabel =
-        typeof second === "undefined"
-          ? "Technical Details"
-          : `Technical Detail ${Number(second) + 1}`;
-      if (third === "key") return `${detailLabel} Label`;
-      if (third === "value") return `${detailLabel} Value`;
-      return detailLabel;
-    }
-
-    if (root === "name") return "Product Name";
-    if (root === "brand") return "Brand";
-    if (root === "description") return "Description";
-    if (root === "specifications") return "Specifications";
-
-    return path
-      .map((segment) =>
-        segment
-          .replace(/([A-Z])/g, " $1")
-          .replace(/^\w/, (char) => char.toUpperCase()),
-      )
-      .join(" > ");
   };
 
   const hasDuplicateSkus = (variants: { sku: string }[]) => {
@@ -354,31 +226,6 @@ export default function ProductForm({
   }, [getValues, isFoodStore, setValue]);
 
   const onSubmit = (values: productSchemaType) => {
-    if (!values.categoryId) {
-      setFieldError("categoryId", {
-        type: "manual",
-        message: "Please select a category.",
-      });
-      toast.error("Please select a category");
-      return;
-    }
-    clearErrors("categoryId");
-
-    if (!values.images.length) {
-      setFieldError("images", {
-        type: "manual",
-        message: "Upload at least one product image.",
-      });
-      toast.error("Upload at least one product image");
-      return;
-    }
-    clearErrors("images");
-
-    if (isUploadingImages) {
-      toast.error("Wait for images to finish uploading");
-      return;
-    }
-
     const normalizedValues: productSchemaType = {
       ...values,
       isFoodProduct: isFoodStore,
@@ -402,37 +249,22 @@ export default function ProductForm({
           (isFoodStore
             ? generateSimpleSku(values.name)
             : generateVariantSku(variant.color, variant.size)),
-      })),
+        })),
     };
 
-    if (!normalizedValues.variants.length) {
-      setFieldError("variants", {
-        type: "manual",
-        message: "At least one variant is required.",
-      });
-      toast.error("At least one variant is required");
-      return;
-    }
-    clearErrors("variants");
+    const validationResult = validateProductFormBeforeSubmit({
+      values: normalizedValues,
+      isFoodStore,
+      isUploadingImages,
+      hasDuplicateSkus,
+      setError: setFieldError,
+      clearErrors,
+    });
 
-    if (isFoodStore && normalizedValues.variants.length !== 1) {
-      setFieldError("variants", {
-        type: "manual",
-        message: "Food products can only have one pricing option.",
-      });
-      toast.error("Food products can only have one pricing option.");
+    if (validationResult.error) {
+      toast.error(validationResult.error);
       return;
     }
-
-    if (hasDuplicateSkus(normalizedValues.variants)) {
-      setFieldError("variants", {
-        type: "manual",
-        message: "Each variant must have a unique SKU.",
-      });
-      toast.error("Each variant must have a unique SKU.");
-      return;
-    }
-    clearErrors("variants");
 
     startTransition(async () => {
       try {
@@ -459,7 +291,9 @@ export default function ProductForm({
       await deleteFileAction(key);
       setValue(
         "images",
-        getValues("images").filter((image: any) => image.key !== key),
+        getValues("images").filter(
+          (image: { key: string }) => image.key !== key,
+        ),
       );
       toast.success("Image deleted");
     } catch {
@@ -508,12 +342,7 @@ export default function ProductForm({
         <Form {...form}>
           <form
             onSubmit={handleSubmit(onSubmit, (errors) => {
-              const errorDetail = getFirstErrorDetail(errors);
-              toast.error(
-                errorDetail
-                  ? `${formatErrorPath(errorDetail.path)}: ${normalizeErrorMessage(errorDetail.message)}`
-                  : "Please fix the highlighted fields",
-              );
+              toast.error(getProductFormValidationToastMessage(errors));
             })}
             className="mt-4 space-y-8"
           >

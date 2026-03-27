@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import {
+  mapRecordProductImages,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
 import PublicProductCard from "@/components/product/PublicProductCard";
 import { Prisma } from "@/generated/prisma/client";
 
@@ -47,7 +51,7 @@ export default async function ProductsPage({
           ? normalizedSort.replaceAll("-", " ")
           : "Shop";
 
-  const products = await prisma.product.findMany({
+  const products = (await prisma.product.findMany({
     where: {
       isPublished: true,
 
@@ -71,13 +75,15 @@ export default async function ProductsPage({
         : {}),
     },
     include: {
-      images: true,
+      images: {
+        include: productImageWithAssetInclude,
+      },
       variants: true,
       store: true,
     },
     orderBy,
     take: 40,
-  });
+  })).map(mapRecordProductImages);
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">

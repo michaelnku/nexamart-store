@@ -1,10 +1,14 @@
 "use server";
 
-import { Prisma, UserRole } from "@/generated/prisma";
+import { UserRole } from "@/generated/prisma";
 import { CurrentUser } from "@/lib/currentUser";
 import { createAuditLog } from "@/lib/audit/service";
+import { ensureFileAsset } from "@/lib/file-assets";
+import {
+  heroBannerMediaInclude,
+} from "@/lib/media-views";
 import { prisma } from "@/lib/prisma";
-import { JsonFile } from "@/lib/types";
+import { touchOrMarkFileAssetOrphaned } from "@/lib/product-images";
 import { heroBannerSchema, HeroBannerInput } from "@/lib/zodValidation";
 import { revalidatePath } from "next/cache";
 import { UTApi } from "uploadthing/server";
@@ -24,25 +28,44 @@ export const createHeroBannerAction = async (values: HeroBannerInput) => {
 
   const data = parsed.data;
 
-  const banner = await prisma.heroBanner.create({
-    data: {
-      title: data.title,
-      subtitle: data.subtitle || null,
-      ctaText: data.ctaText || null,
-      ctaLink: data.ctaLink || null,
+  const banner = await prisma.$transaction(async (tx) => {
+    const backgroundAsset = data.backgroundImage
+      ? await ensureFileAsset(tx, {
+          uploadedById: user.id,
+          file: data.backgroundImage,
+          category: "OTHER",
+          kind: "IMAGE",
+          isPublic: true,
+        })
+      : null;
 
-      backgroundImage: data.backgroundImage as Prisma.JsonObject,
-      productImage: data.productImage
-        ? (data.productImage as Prisma.JsonObject)
-        : Prisma.JsonNull,
+    const productAsset = data.productImage
+      ? await ensureFileAsset(tx, {
+          uploadedById: user.id,
+          file: data.productImage,
+          category: "OTHER",
+          kind: "IMAGE",
+          isPublic: true,
+        })
+      : null;
 
-      lottieUrl: data.lottieUrl || null,
-      position: data.position,
-      placement: data.placement,
-      isActive: data.isActive,
-      startsAt: data.startsAt ?? null,
-      endsAt: data.endsAt ?? null,
-    },
+    return tx.heroBanner.create({
+      data: {
+        title: data.title,
+        subtitle: data.subtitle || null,
+        ctaText: data.ctaText || null,
+        ctaLink: data.ctaLink || null,
+        backgroundImageFileAssetId: backgroundAsset?.id ?? null,
+        productImageFileAssetId: productAsset?.id ?? null,
+        lottieUrl: data.lottieUrl || null,
+        position: data.position,
+        placement: data.placement,
+        isActive: data.isActive,
+        startsAt: data.startsAt ?? null,
+        endsAt: data.endsAt ?? null,
+      },
+      include: heroBannerMediaInclude,
+    });
   });
 
   await createAuditLog({
@@ -88,6 +111,7 @@ export const updateHeroBannerAction = async (
 
   const existing = await prisma.heroBanner.findUnique({
     where: { id },
+    include: heroBannerMediaInclude,
   });
 
   if (!existing) return { error: "Banner not found" };
@@ -97,30 +121,71 @@ export const updateHeroBannerAction = async (
 
   const data = parsed.data;
 
-  const existingBg = existing.backgroundImage as JsonFile | null;
+  await prisma.$transaction(async (tx) => {
+    const nextBackgroundAsset =
+      data.backgroundImage === undefined
+        ? undefined
+        : data.backgroundImage
+          ? await ensureFileAsset(tx, {
+              uploadedById: user.id,
+              file: data.backgroundImage,
+              category: "OTHER",
+              kind: "IMAGE",
+              isPublic: true,
+            })
+          : null;
 
-  if (existingBg?.key && existingBg.key !== data.backgroundImage?.key) {
-    await utapi.deleteFiles(existingBg.key);
-  }
+    const nextProductAsset =
+      data.productImage === undefined
+        ? undefined
+        : data.productImage
+          ? await ensureFileAsset(tx, {
+              uploadedById: user.id,
+              file: data.productImage,
+              category: "OTHER",
+              kind: "IMAGE",
+              isPublic: true,
+            })
+          : null;
 
-  await prisma.heroBanner.update({
-    where: { id },
-    data: {
-      title: data.title,
-      subtitle: data.subtitle || null,
-      ctaText: data.ctaText || null,
-      ctaLink: data.ctaLink || null,
-      backgroundImage: data.backgroundImage as Prisma.JsonObject,
-      productImage: data.productImage
-        ? (data.productImage as Prisma.JsonObject)
-        : Prisma.JsonNull,
-      lottieUrl: data.lottieUrl || null,
-      position: data.position,
-      placement: data.placement,
-      isActive: data.isActive,
-      startsAt: data.startsAt ?? null,
-      endsAt: data.endsAt ?? null,
-    },
+    await tx.heroBanner.update({
+      where: { id },
+      data: {
+        title: data.title,
+        subtitle: data.subtitle || null,
+        ctaText: data.ctaText || null,
+        ctaLink: data.ctaLink || null,
+        backgroundImageFileAssetId:
+          nextBackgroundAsset === undefined
+            ? undefined
+            : nextBackgroundAsset?.id ?? null,
+        productImageFileAssetId:
+          nextProductAsset === undefined ? undefined : nextProductAsset?.id ?? null,
+        lottieUrl: data.lottieUrl || null,
+        position: data.position,
+        placement: data.placement,
+        isActive: data.isActive,
+        startsAt: data.startsAt ?? null,
+        endsAt: data.endsAt ?? null,
+      },
+    });
+
+    if (
+      existing.backgroundImageFileAssetId &&
+      existing.backgroundImageFileAssetId !== nextBackgroundAsset?.id
+    ) {
+      await touchOrMarkFileAssetOrphaned(
+        tx,
+        existing.backgroundImageFileAssetId,
+      );
+    }
+
+    if (
+      existing.productImageFileAssetId &&
+      existing.productImageFileAssetId !== nextProductAsset?.id
+    ) {
+      await touchOrMarkFileAssetOrphaned(tx, existing.productImageFileAssetId);
+    }
   });
 
   await createAuditLog({
@@ -152,23 +217,34 @@ export const deleteHeroBannerAction = async (id: string) => {
 
   const banner = await prisma.heroBanner.findUnique({
     where: { id },
+    include: heroBannerMediaInclude,
   });
 
   if (!banner) return { error: "Banner not found" };
 
-  const bg = banner.backgroundImage as Partial<JsonFile> | null;
-  const product = banner.productImage as Partial<JsonFile> | null;
+  const bgKey = banner.backgroundImageFileAsset?.storageKey;
+  const productKey = banner.productImageFileAsset?.storageKey;
 
-  if (bg?.key) {
-    await utapi.deleteFiles(bg.key);
+  if (bgKey) {
+    await utapi.deleteFiles(bgKey);
   }
 
-  if (product?.key) {
-    await utapi.deleteFiles(product.key);
+  if (productKey) {
+    await utapi.deleteFiles(productKey);
   }
 
-  await prisma.heroBanner.delete({
-    where: { id },
+  await prisma.$transaction(async (tx) => {
+    await tx.heroBanner.delete({
+      where: { id },
+    });
+
+    if (banner.backgroundImageFileAssetId) {
+      await touchOrMarkFileAssetOrphaned(tx, banner.backgroundImageFileAssetId);
+    }
+
+    if (banner.productImageFileAssetId) {
+      await touchOrMarkFileAssetOrphaned(tx, banner.productImageFileAssetId);
+    }
   });
 
   await createAuditLog({

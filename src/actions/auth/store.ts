@@ -13,6 +13,9 @@ import { UTApi } from "uploadthing/server";
 import { geocodeAddress } from "@/lib/shipping/mapboxGeocode";
 import { requireVerifiedEmail } from "@/lib/email-verification/guard";
 import { isEmailNotVerifiedError } from "@/lib/email-verification/errors";
+import { productImageWithAssetInclude } from "@/lib/product-images";
+import { ensureFileAsset } from "@/lib/file-assets";
+import { touchOrMarkFileAssetOrphaned } from "@/lib/product-images";
 
 const utapi = new UTApi();
 const INVALID_ADDRESS_ERROR = "Please select a valid address from suggestions.";
@@ -106,21 +109,33 @@ export const createStoreAction = async (values: storeFormType) => {
       longitude = geocoded.longitude;
     }
 
-    await prisma.store.create({
-      data: {
-        name,
-        description,
-        location: location.trim(),
-        address: requiresAddress ? normalizedAddress : null,
-        latitude,
-        longitude,
-        logo,
-        type,
-        fulfillmentType,
-        userId: user.id,
-        slug,
-        isActive: true,
-      },
+    await prisma.$transaction(async (tx) => {
+      const logoAsset = logo
+        ? await ensureFileAsset(tx, {
+            uploadedById: user.id,
+            url: logo,
+            category: "STORE_ASSET",
+            kind: "IMAGE",
+            isPublic: true,
+          })
+        : null;
+
+      await tx.store.create({
+        data: {
+          name,
+          description,
+          location: location.trim(),
+          address: requiresAddress ? normalizedAddress : null,
+          latitude,
+          longitude,
+          logoFileAssetId: logoAsset?.id ?? null,
+          type,
+          fulfillmentType,
+          userId: user.id,
+          slug,
+          isActive: true,
+        },
+      });
     });
 
     revalidatePath("/marketplace/dashboard/seller/store");
@@ -166,27 +181,6 @@ export const UpdateStoreAction = async (values: updateStoreFormType) => {
       return { error: "Address is required for physical fulfillment." };
     }
 
-    const newLogoUrl = values.logo;
-    const isLogoChanged = newLogoUrl && newLogoUrl !== store.logo;
-
-    if (isLogoChanged && store.logoKey) {
-      try {
-        await utapi.deleteFiles([store.logoKey]);
-      } catch {
-        console.error("Failed to delete previous logo from UploadThing");
-      }
-    }
-
-    const newBannerUrl = values.bannerImage;
-    const bannerChanged = newBannerUrl && newBannerUrl !== store.bannerImage;
-    if (bannerChanged && store.bannerKey) {
-      try {
-        await utapi.deleteFiles([store.bannerKey]);
-      } catch {
-        console.warn("Failed to delete previous banner");
-      }
-    }
-
     const addressChanged = (store.address ?? "").trim() !== nextAddress;
     const fulfillmentChanged = store.fulfillmentType !== values.fulfillmentType;
     const missingCoordinates =
@@ -214,25 +208,72 @@ export const UpdateStoreAction = async (values: updateStoreFormType) => {
       }
     }
 
-    await prisma.store.update({
-      where: { id: values.id },
-      data: {
-        name: values.name,
-        description: values.description,
-        location: nextLocation,
-        address: requiresAddress ? nextAddress : null,
-        latitude,
-        longitude,
-        type: values.type,
-        fulfillmentType: values.fulfillmentType,
-        tagline: values.tagline ?? null,
-        logo: newLogoUrl ?? null,
-        logoKey: values.logoKey ?? null,
-        bannerImage: values.bannerImage ?? null,
-        bannerKey: values.bannerKey ?? null,
-        isActive: values.isActive,
-        emailNotificationsEnabled: values.emailNotificationsEnabled,
-      },
+    await prisma.$transaction(async (tx) => {
+      const existingStore = await tx.store.findUnique({
+        where: { id: values.id },
+        select: {
+          logoFileAssetId: true,
+          bannerImageFileAssetId: true,
+        },
+      });
+
+      const nextLogoAsset = values.logo
+        ? await ensureFileAsset(tx, {
+            uploadedById: user.id,
+            url: values.logo,
+            storageKey: values.logoKey ?? null,
+            category: "STORE_ASSET",
+            kind: "IMAGE",
+            isPublic: true,
+          })
+        : null;
+
+      const nextBannerAsset = values.bannerImage
+        ? await ensureFileAsset(tx, {
+            uploadedById: user.id,
+            url: values.bannerImage,
+            storageKey: values.bannerKey ?? null,
+            category: "STORE_ASSET",
+            kind: "IMAGE",
+            isPublic: true,
+          })
+        : null;
+
+      await tx.store.update({
+        where: { id: values.id },
+        data: {
+          name: values.name,
+          description: values.description,
+          location: nextLocation,
+          address: requiresAddress ? nextAddress : null,
+          latitude,
+          longitude,
+          type: values.type,
+          fulfillmentType: values.fulfillmentType,
+          tagline: values.tagline ?? null,
+          logoFileAssetId: nextLogoAsset?.id ?? null,
+          bannerImageFileAssetId: nextBannerAsset?.id ?? null,
+          isActive: values.isActive,
+          emailNotificationsEnabled: values.emailNotificationsEnabled,
+        },
+      });
+
+      if (
+        existingStore?.logoFileAssetId &&
+        existingStore.logoFileAssetId !== nextLogoAsset?.id
+      ) {
+        await touchOrMarkFileAssetOrphaned(tx, existingStore.logoFileAssetId);
+      }
+
+      if (
+        existingStore?.bannerImageFileAssetId &&
+        existingStore.bannerImageFileAssetId !== nextBannerAsset?.id
+      ) {
+        await touchOrMarkFileAssetOrphaned(
+          tx,
+          existingStore.bannerImageFileAssetId,
+        );
+      }
     });
 
     revalidatePath("/marketplace/dashboard/seller/store");
@@ -253,13 +294,21 @@ export const deleteStoreAction = async (storeId: string) => {
     const store = await prisma.store.findUnique({
       where: { id: storeId },
       include: {
+        logoFileAsset: {
+          select: {
+            storageKey: true,
+          },
+        },
+        bannerImageFileAsset: {
+          select: {
+            storageKey: true,
+          },
+        },
         products: {
           select: {
             id: true,
             images: {
-              select: {
-                imageKey: true,
-              },
+              include: productImageWithAssetInclude,
             },
           },
         },
@@ -299,12 +348,16 @@ export const deleteStoreAction = async (storeId: string) => {
 
     const filesToDelete: string[] = [];
 
-    if (store.logoKey) filesToDelete.push(store.logoKey);
-    if (store.bannerKey) filesToDelete.push(store.bannerKey);
+    if (store.logoFileAsset?.storageKey) {
+      filesToDelete.push(store.logoFileAsset.storageKey);
+    }
+    if (store.bannerImageFileAsset?.storageKey) {
+      filesToDelete.push(store.bannerImageFileAsset.storageKey);
+    }
 
     store.products.forEach((product) => {
       product.images.forEach((img) => {
-        if (img.imageKey) filesToDelete.push(img.imageKey);
+        if (img.fileAsset.storageKey) filesToDelete.push(img.fileAsset.storageKey);
       });
     });
 

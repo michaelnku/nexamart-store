@@ -15,6 +15,11 @@ import {
   serializeFoodDetails,
   syncFoodProductRelationsInTx,
 } from "@/lib/food/productWrite";
+import {
+  ensureProductImageFileAsset,
+  productImageWithAssetInclude,
+  touchOrMarkFileAssetOrphaned,
+} from "@/lib/product-images";
 
 const utapi = new UTApi();
 
@@ -113,12 +118,7 @@ export const createProductAction = async (values: productSchemaType) => {
         oldPriceUSD,
         discount,
         images: {
-          createMany: {
-            data: images.map((i) => ({
-              imageUrl: i.url,
-              imageKey: i.key,
-            })),
-          },
+          create: [],
         },
         variants: {
           createMany: {
@@ -136,6 +136,24 @@ export const createProductAction = async (values: productSchemaType) => {
       },
       select: { id: true },
     });
+
+    if (images.length) {
+      const assets = await Promise.all(
+        images.map((image) =>
+          ensureProductImageFileAsset(tx, {
+            uploadedById: user.id,
+            image,
+          }),
+        ),
+      );
+
+      await tx.productImage.createMany({
+        data: assets.map((asset) => ({
+          productId: createdProduct.id,
+          fileAssetId: asset.id,
+        })),
+      });
+    }
 
     if (isFoodStore) {
       await syncFoodProductRelationsInTx(tx, createdProduct.id, {
@@ -164,7 +182,9 @@ export const updateProductAction = async (
   const existing = await prisma.product.findFirst({
     where: { id: productId, store: { userId: user.id } },
     include: {
-      images: true,
+      images: {
+        include: productImageWithAssetInclude,
+      },
       variants: true,
       foodProductConfig: true,
       foodOptionGroups: {
@@ -271,24 +291,34 @@ export const updateProductAction = async (
     });
 
     const deleted = existing.images.filter(
-      (img) => !images.some((p) => p.url === img.imageUrl),
+      (img) => !images.some((p) => p.url === img.fileAsset.url),
     );
     if (deleted.length) {
       await tx.productImage.deleteMany({
         where: { id: { in: deleted.map((d) => d.id) } },
       });
-      await utapi.deleteFiles(deleted.map((d) => d.imageKey).filter(Boolean));
+      await Promise.all(
+        deleted.map((image) => touchOrMarkFileAssetOrphaned(tx, image.fileAssetId)),
+      );
     }
 
     const newImages = images.filter(
-      (p) => !existing.images.some((d) => d.imageUrl === p.url),
+      (p) => !existing.images.some((d) => d.fileAsset.url === p.url),
     );
     if (newImages.length) {
+      const assets = await Promise.all(
+        newImages.map((image) =>
+          ensureProductImageFileAsset(tx, {
+            uploadedById: user.id,
+            image,
+          }),
+        ),
+      );
+
       await tx.productImage.createMany({
-        data: newImages.map((img) => ({
+        data: assets.map((asset) => ({
           productId,
-          imageUrl: img.url,
-          imageKey: img.key,
+          fileAssetId: asset.id,
         })),
       });
     }
@@ -349,12 +379,16 @@ export const deleteProductAction = async (productId: string) => {
         id: productId,
         store: { userId: user.id },
       },
-      include: { images: true },
+      include: {
+        images: {
+          include: productImageWithAssetInclude,
+        },
+      },
     });
 
     if (!product) return { error: "Product not found or unauthorized" };
 
-    const keys = product.images.map((img) => img.imageUrl.split("/").pop()!);
+    const keys = product.images.map((img) => img.fileAsset.storageKey).filter(Boolean);
 
     try {
       await utapi.deleteFiles(keys);

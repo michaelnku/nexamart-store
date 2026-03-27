@@ -3,6 +3,7 @@ import { getStructuredCategories } from "@/components/helper/getCategories";
 import CategoryMiniList from "@/components/home/CategoryMiniList";
 import HeroBanner from "@/components/home/HeroBanner";
 import { mapHeroBanners } from "@/lib/mappers/heroBanners";
+import { heroBannerMediaInclude } from "@/lib/media-views";
 import { prisma } from "@/lib/prisma";
 
 export default async function Hero() {
@@ -24,6 +25,7 @@ export default async function Hero() {
         },
       ],
     },
+    include: heroBannerMediaInclude,
     orderBy: { position: "asc" },
   });
 

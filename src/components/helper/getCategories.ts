@@ -1,13 +1,16 @@
 import { prisma } from "@/lib/prisma";
+import { categoryMediaInclude, mapCategoryMedia } from "@/lib/media-views";
 
 export const getStructuredCategories = async () => {
   const categories = await prisma.category.findMany({
+    include: categoryMediaInclude,
     orderBy: { name: "asc" },
   });
+  const normalizedCategories = categories.map(mapCategoryMedia);
 
-  const parents = categories.filter((c) => !c.parentId);
+  const parents = normalizedCategories.filter((c) => !c.parentId);
   return parents.map((parent) => ({
     ...parent,
-    children: categories.filter((c) => c.parentId === parent.id),
+    children: normalizedCategories.filter((c) => c.parentId === parent.id),
   }));
 };

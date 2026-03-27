@@ -1,6 +1,11 @@
 import ProductGrid from "@/components/product/ProductGrid";
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
+import {
+  mapRecordProductImagesWithStoreMedia,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
+import { storeMediaInclude } from "@/lib/media-views";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -27,12 +32,19 @@ const page = async () => {
       },
     },
     include: {
-      images: true,
+      images: {
+        include: productImageWithAssetInclude,
+      },
       variants: true,
-      store: true,
+      store: {
+        include: storeMediaInclude,
+      },
     },
     orderBy: { createdAt: "desc" },
   });
+  const normalizedProducts = products.map((product) =>
+    mapRecordProductImagesWithStoreMedia(product),
+  );
 
   return (
     <main className="px-4 py-6">
@@ -47,7 +59,7 @@ const page = async () => {
             <p className="hidden md:block"> New Product</p>
           </Link>
         </div>
-        <ProductGrid products={products} />
+        <ProductGrid products={normalizedProducts} />
       </div>
     </main>
   );

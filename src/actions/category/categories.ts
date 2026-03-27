@@ -2,7 +2,10 @@
 
 import { CurrentUser } from "@/lib/currentUser";
 import { createAuditLog } from "@/lib/audit/service";
+import { ensureFileAsset } from "@/lib/file-assets";
+import { mapCategoryMedia, categoryMediaInclude } from "@/lib/media-views";
 import { prisma } from "@/lib/prisma";
+import { touchOrMarkFileAssetOrphaned } from "@/lib/product-images";
 import { CategorySchemaType, categorySchema } from "@/lib/zodValidation";
 import { revalidatePath } from "next/cache";
 
@@ -36,15 +39,36 @@ export const adminAddProductCategoriesAction = async (
     });
     if (exists) return { error: "A category with this name already exists" };
 
-    const category = await prisma.category.create({
-      data: {
-        name,
-        slug,
-        parentId: parentId || null,
-        iconImage: iconImage || null,
-        bannerImage: bannerImage || null,
-        color,
-      },
+    const category = await prisma.$transaction(async (tx) => {
+      const iconAsset = iconImage
+        ? await ensureFileAsset(tx, {
+            url: iconImage,
+            category: "OTHER",
+            kind: "IMAGE",
+            isPublic: true,
+          })
+        : null;
+
+      const bannerAsset = bannerImage
+        ? await ensureFileAsset(tx, {
+            url: bannerImage,
+            category: "OTHER",
+            kind: "IMAGE",
+            isPublic: true,
+          })
+        : null;
+
+      return tx.category.create({
+        data: {
+          name,
+          slug,
+          parentId: parentId || null,
+          iconImageFileAssetId: iconAsset?.id ?? null,
+          bannerImageFileAssetId: bannerAsset?.id ?? null,
+          color,
+        },
+        include: categoryMediaInclude,
+      });
     });
 
     await createAuditLog({
@@ -61,7 +85,10 @@ export const adminAddProductCategoriesAction = async (
     });
 
     revalidatePath("/marketplace/dashboard/admin/products");
-    return { success: "Category created successfully", category };
+    return {
+      success: "Category created successfully",
+      category: mapCategoryMedia(category),
+    };
   } catch (err) {
     console.error(err);
     return { error: "Something went wrong while creating category" };
@@ -89,16 +116,74 @@ export const adminUpdateCategoryAction = async (
 
     if (exists) return { error: "A category with this name already exists" };
 
-    const updatedCategory = await prisma.category.update({
-      where: { id: categoryId },
-      data: {
-        name,
-        slug,
-        parentId: parentId || null,
-        iconImage: iconImage ?? undefined,
-        bannerImage: bannerImage ?? undefined,
-        color,
-      },
+    const updatedCategory = await prisma.$transaction(async (tx) => {
+      const existingCategory = await tx.category.findUnique({
+        where: { id: categoryId },
+        select: {
+          iconImageFileAssetId: true,
+          bannerImageFileAssetId: true,
+        },
+      });
+
+      const nextIconAsset =
+        iconImage === undefined
+          ? undefined
+          : iconImage
+            ? await ensureFileAsset(tx, {
+                url: iconImage,
+                category: "OTHER",
+                kind: "IMAGE",
+                isPublic: true,
+              })
+            : null;
+
+      const nextBannerAsset =
+        bannerImage === undefined
+          ? undefined
+          : bannerImage
+            ? await ensureFileAsset(tx, {
+                url: bannerImage,
+                category: "OTHER",
+                kind: "IMAGE",
+                isPublic: true,
+              })
+            : null;
+
+      const category = await tx.category.update({
+        where: { id: categoryId },
+        data: {
+          name,
+          slug,
+          parentId: parentId || null,
+          iconImageFileAssetId:
+            nextIconAsset === undefined ? undefined : nextIconAsset?.id ?? null,
+          bannerImageFileAssetId:
+            nextBannerAsset === undefined
+              ? undefined
+              : nextBannerAsset?.id ?? null,
+          color,
+        },
+        include: categoryMediaInclude,
+      });
+
+      if (
+        existingCategory?.iconImageFileAssetId &&
+        existingCategory.iconImageFileAssetId !== nextIconAsset?.id
+      ) {
+        await touchOrMarkFileAssetOrphaned(tx, existingCategory.iconImageFileAssetId);
+      }
+
+      if (
+        existingCategory?.bannerImageFileAssetId &&
+        existingCategory.bannerImageFileAssetId !== nextBannerAsset?.id
+      ) {
+        await touchOrMarkFileAssetOrphaned(
+          tx,
+          existingCategory.bannerImageFileAssetId,
+        );
+      }
+
+      return category;
     });
 
     await createAuditLog({
@@ -115,7 +200,10 @@ export const adminUpdateCategoryAction = async (
     });
 
     revalidatePath("/dashboard/admin/categories");
-    return { success: "Category updated successfully", updatedCategory };
+    return {
+      success: "Category updated successfully",
+      updatedCategory: mapCategoryMedia(updatedCategory),
+    };
   } catch (err) {
     console.error(err);
     return { error: "Something went wrong while updating category" };
@@ -125,10 +213,11 @@ export const adminUpdateCategoryAction = async (
 export const getCategoriesAction = async () => {
   try {
     const categories = await prisma.category.findMany({
+      include: categoryMediaInclude,
       orderBy: { name: "asc" },
     });
 
-    return { categories };
+    return { categories: categories.map(mapCategoryMedia) };
   } catch (error) {
     console.error("Error fetching categories", error);
     return { error: "Failed to load categories" };
@@ -171,8 +260,26 @@ export const adminDeleteCategoryAction = async (categoryId: string) => {
 export const getHierarchicalCategories = async () => {
   return prisma.category.findMany({
     where: { parentId: null },
-    include: { children: { include: { children: true } } },
+    include: {
+      ...categoryMediaInclude,
+      children: {
+        include: {
+          ...categoryMediaInclude,
+          children: {
+            include: categoryMediaInclude,
+          },
+        },
+      },
+    },
     orderBy: { name: "asc" },
-  });
+  }).then((categories) =>
+    categories.map((category) => ({
+      ...mapCategoryMedia(category),
+      children: category.children.map((child) => ({
+        ...mapCategoryMedia(child),
+        children: child.children.map(mapCategoryMedia),
+      })),
+    })),
+  );
 };
 

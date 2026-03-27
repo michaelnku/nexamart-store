@@ -1,31 +1,31 @@
 import { prisma } from "@/lib/prisma";
 import StoresCard from "@/components/store/StoresCard";
 import { calculateStoresPrepPerformance } from "@/lib/store/calculateStorePrepPerformance";
+import { mapStoreMedia, storeMediaInclude } from "@/lib/media-views";
 
 export default async function StoreDirectoryPage() {
   const stores = await prisma.store.findMany({
     where: { isActive: true },
     orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      logo: true,
-      location: true,
-      tagline: true,
+    include: {
+      ...storeMediaInclude,
       _count: { select: { StoreFollower: true } },
     },
   });
 
-  const mapped = stores.map((s) => ({
-    id: s.id,
-    name: s.name,
-    slug: s.slug,
-    logo: s.logo,
-    location: s.location,
-    tagline: s.tagline,
-    followers: s._count.StoreFollower,
-  }));
+  const mapped = stores.map((storeRecord) => {
+    const store = mapStoreMedia(storeRecord);
+
+    return {
+      id: store.id,
+      name: store.name,
+      slug: store.slug,
+      logo: store.logo,
+      location: store.location,
+      tagline: store.tagline,
+      followers: storeRecord._count.StoreFollower,
+    };
+  });
 
   const performanceByStore = await calculateStoresPrepPerformance(
     mapped.map((store) => store.id),

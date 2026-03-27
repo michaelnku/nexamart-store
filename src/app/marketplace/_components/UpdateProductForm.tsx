@@ -44,6 +44,11 @@ import {
   getProductFormDefaults,
 } from "./productFormHelpers";
 import {
+  getProductFormSectionErrors,
+  getProductFormValidationToastMessage,
+  validateProductFormBeforeSubmit,
+} from "./productFormValidation";
+import {
   clampNonNegativeUSD,
   normalizeDiscountPercent,
 } from "./productPricingFormUtils";
@@ -124,7 +129,15 @@ export default function UpdateProductForm({
     }),
   });
 
-  const { control, handleSubmit, setValue, getValues, watch } = form;
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    getValues,
+    watch,
+    setError: setFieldError,
+    clearErrors,
+  } = form;
   const childrenLevel1 = categories.filter(
     (category) => category.parentId === level1,
   );
@@ -133,6 +146,8 @@ export default function UpdateProductForm({
   );
   const watchedImages = watch("images");
   const foodInventoryMode = watch("foodConfig.inventoryMode");
+  const { categoryError, imagesError, variantsError } =
+    getProductFormSectionErrors(form.formState.errors);
 
   const { fields, append, remove, replace } = useFieldArray({
     control,
@@ -199,21 +214,6 @@ export default function UpdateProductForm({
   };
 
   const onSubmit = (values: updateProductSchemaType) => {
-    if (!values.categoryId) {
-      toast.error("Please select a category");
-      return;
-    }
-
-    if (!values.images.length) {
-      toast.error("Upload at least one product image");
-      return;
-    }
-
-    if (isUploadingImages) {
-      toast.error("Wait for image uploads to finish");
-      return;
-    }
-
     const normalizedValues: updateProductSchemaType = {
       ...values,
       isFoodProduct: isFoodStore,
@@ -237,21 +237,20 @@ export default function UpdateProductForm({
           (isFoodStore
             ? generateSimpleSku(values.name)
             : generateVariantSku(variant.color, variant.size)),
-      })),
+        })),
     };
 
-    if (!normalizedValues.variants.length) {
-      toast.error("At least one variant is required");
-      return;
-    }
+    const validationResult = validateProductFormBeforeSubmit({
+      values: normalizedValues,
+      isFoodStore,
+      isUploadingImages,
+      hasDuplicateSkus,
+      setError: setFieldError,
+      clearErrors,
+    });
 
-    if (isFoodStore && normalizedValues.variants.length !== 1) {
-      toast.error("Food products can only have one pricing option.");
-      return;
-    }
-
-    if (hasDuplicateSkus(normalizedValues.variants)) {
-      toast.error("Each variant must have a unique SKU.");
+    if (validationResult.error) {
+      toast.error(validationResult.error);
       return;
     }
 
@@ -283,7 +282,9 @@ export default function UpdateProductForm({
       await deleteProductImageAction(key);
       setValue(
         "images",
-        getValues("images").filter((image: any) => image.key !== key),
+        getValues("images").filter(
+          (image: { key: string }) => image.key !== key,
+        ),
       );
       toast.success("Image deleted");
     } catch {
@@ -333,7 +334,9 @@ export default function UpdateProductForm({
 
         <Form {...form}>
           <form
-            onSubmit={handleSubmit(onSubmit)}
+            onSubmit={handleSubmit(onSubmit, (errors) => {
+              toast.error(getProductFormValidationToastMessage(errors));
+            })}
             className="mt-4 min-h-0 flex-1 space-y-8 overflow-y-auto pr-1"
           >
             <FormSection
@@ -399,23 +402,31 @@ export default function UpdateProductForm({
               />
 
               <div className="space-y-4">
-                <select
-                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-                  value={level1 ?? ""}
-                  onChange={(event) => {
-                    const value = event.target.value || null;
-                    setLevel1(value);
-                    setLevel2(null);
-                    setLevel3(null);
-                  }}
-                >
-                  <option value="">Select category</option>
-                  {topLevelCategories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-2">
+                  <FormLabel>Category</FormLabel>
+                  <select
+                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                    value={level1 ?? ""}
+                    onChange={(event) => {
+                      const value = event.target.value || null;
+                      setLevel1(value);
+                      setLevel2(null);
+                      setLevel3(null);
+                    }}
+                  >
+                    <option value="">Select category</option>
+                    {topLevelCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  {categoryError ? (
+                    <p className="text-sm font-medium text-destructive">
+                      {categoryError}
+                    </p>
+                  ) : null}
+                </div>
 
                 {childrenLevel1.length > 0 ? (
                   <select
@@ -559,6 +570,11 @@ export default function UpdateProductForm({
                   : "Keep your variant options, pricing, discounts, and stock aligned."
               }
             >
+              {variantsError ? (
+                <p className="text-sm font-medium text-destructive">
+                  {variantsError}
+                </p>
+              ) : null}
               {fields.map((field, index) => (
                 <div
                   key={field.id}
@@ -827,6 +843,11 @@ export default function UpdateProductForm({
               title="Product Images"
               description="Review and refine each image before upload so your listing stays consistent across cards, search, and detail pages."
             >
+              {imagesError ? (
+                <p className="text-sm font-medium text-destructive">
+                  {imagesError}
+                </p>
+              ) : null}
               <ProductImageUploader
                 value={watchedImages ?? []}
                 maxImages={10}

@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { productImageWithAssetInclude } from "@/lib/product-images";
 
 export async function findOrderByTrackingNumberAction(trackingNumber: string) {
   if (!trackingNumber || trackingNumber.length < 6) {
@@ -12,7 +13,13 @@ export async function findOrderByTrackingNumberAction(trackingNumber: string) {
     include: {
       items: {
         include: {
-          product: { include: { images: true } },
+          product: {
+            include: {
+              images: {
+                include: productImageWithAssetInclude,
+              },
+            },
+          },
         },
       },
       delivery: {
@@ -60,7 +67,7 @@ export async function findOrderByTrackingNumberAction(trackingNumber: string) {
         product: {
           name: item.product.name,
           images: item.product.images.map((img) => ({
-            imageUrl: img.imageUrl,
+            imageUrl: img.fileAsset.url,
           })),
         },
       })),

@@ -15,6 +15,11 @@ import {
   toSeoDescription,
 } from "@/lib/seo";
 import { calculateStorePrepPerformance } from "@/lib/store/calculateStorePrepPerformance";
+import {
+  mapProductImagesToView,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
+import { mapStoreMedia, storeMediaInclude } from "@/lib/media-views";
 import StoreFrontClient from "./_components/StoreFrontClient";
 
 interface StoreFrontProps {
@@ -25,9 +30,12 @@ const getStoreBySlug = cache(async (slug: string) => {
   return prisma.store.findUnique({
     where: { slug },
     include: {
+      ...storeMediaInclude,
       products: {
         include: {
-          images: true,
+          images: {
+            include: productImageWithAssetInclude,
+          },
         },
       },
       owner: true,
@@ -43,7 +51,8 @@ export async function generateMetadata({
 }: StoreFrontProps): Promise<Metadata> {
   const { slug } = await params;
 
-  const store = await getStoreBySlug(slug);
+  const storeRecord = await getStoreBySlug(slug);
+  const store = storeRecord ? mapStoreMedia(storeRecord) : null;
 
   if (!store || store.isDeleted) {
     return {
@@ -94,7 +103,8 @@ export default async function Page({ params }: StoreFrontProps) {
 
   if (!slug) return notFound();
 
-  const store = await getStoreBySlug(slug);
+  const storeRecord = await getStoreBySlug(slug);
+  const store = storeRecord ? mapStoreMedia(storeRecord) : null;
 
   if (!store || store.isDeleted) return notFound();
 
@@ -127,7 +137,9 @@ export default async function Page({ params }: StoreFrontProps) {
           id: product.id,
           name: product.name,
           basePriceUSD: product.basePriceUSD,
-          imageUrl: product.images?.[0]?.imageUrl ?? "/placeholder.png",
+          imageUrl:
+            mapProductImagesToView(product.images)[0]?.imageUrl ??
+            "/placeholder.png",
         })),
       }}
       isOwner={isOwner}

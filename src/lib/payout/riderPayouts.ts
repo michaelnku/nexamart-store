@@ -70,7 +70,9 @@ export async function releaseRiderDeliveryPayoutInTx(
       order: {
         select: {
           isPaid: true,
-          disputeId: true,
+          dispute: {
+            select: { id: true },
+          },
         },
       },
     },
@@ -109,7 +111,7 @@ export async function releaseRiderDeliveryPayoutInTx(
     };
   }
 
-  if (delivery.order.disputeId) {
+  if (delivery.order.dispute) {
     await tx.delivery.update({
       where: { id: delivery.id },
       data: { payoutLocked: false },

@@ -343,8 +343,8 @@ function getProductFormDefaults(params: {
     technicalDetails: normalizeTechnicalDetails(initialData.technicalDetails),
     categoryId: initialData.categoryId,
     images: initialData.images.map((image) => ({
-      url: image.imageUrl,
-      key: image.imageKey,
+      url: image.fileAsset.url,
+      key: image.fileAsset.storageKey,
     })),
     isFoodProduct: isFoodStore,
     foodDetails: isFoodStore

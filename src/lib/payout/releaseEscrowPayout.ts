@@ -32,7 +32,9 @@ async function releaseEscrowPayoutWithTx(
       id: true,
       isPaid: true,
       status: true,
-      disputeId: true,
+      dispute: {
+        select: { id: true },
+      },
       payoutReleased: true,
       sellerGroups: {
         select: {
@@ -59,7 +61,7 @@ async function releaseEscrowPayoutWithTx(
   }
 
   /** NEW DISPUTE SAFETY */
-  if (order.disputeId && !options.allowDisputedOrder) {
+  if (order.dispute && !options.allowDisputedOrder) {
     return { skipped: true, reason: "ACTIVE_DISPUTE_LOCKED" };
   }
 

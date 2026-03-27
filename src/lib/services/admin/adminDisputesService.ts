@@ -84,8 +84,18 @@ const adminDisputeInclude = Prisma.validator<Prisma.DisputeInclude>()({
   },
   evidence: {
     include: {
+      fileAsset: true,
       uploadedBy: {
         select: { name: true },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  },
+  linkedDeliveryEvidence: {
+    include: {
+      fileAsset: true,
+      uploadedBy: {
+        select: { name: true, role: true },
       },
     },
     orderBy: { createdAt: "asc" },
@@ -213,6 +223,56 @@ function mapDisputeToAdminDetail(dispute: AdminDisputeRecord): AdminDisputeDetai
     dispute.createdAt,
   );
 
+  const disputeEvidence = dispute.evidence.map((item) => ({
+    id: item.id,
+    type: item.type,
+    fileUrl: item.fileAsset.url,
+    fileKey: item.fileAsset.storageKey,
+    fileName: item.fileAsset.originalFileName,
+    mimeType: item.fileAsset.mimeType,
+    fileSize: item.fileAsset.fileSize,
+    caption: item.caption,
+    recordType: "DISPUTE_EVIDENCE" as const,
+    visibility: item.visibility,
+    isInternal: item.isInternal,
+    deliveryEvidenceId: item.deliveryEvidenceId,
+    uploadedById: item.uploadedById,
+    uploadedByName: item.uploadedBy.name ?? null,
+    createdAt: item.createdAt.toISOString(),
+  }));
+  const linkedDeliveryEvidence = dispute.linkedDeliveryEvidence
+    .filter(
+      (item) =>
+        !disputeEvidence.some(
+          (evidence) => evidence.deliveryEvidenceId === item.id,
+        ),
+    )
+    .map((item) => ({
+      id: item.id,
+      type:
+        item.fileAsset.mimeType?.startsWith("image/")
+          ? "PHOTO"
+          : item.fileAsset.mimeType?.startsWith("video/")
+            ? "VIDEO"
+            : "DOCUMENT",
+      fileUrl: item.fileAsset.url,
+      fileKey: item.fileAsset.storageKey,
+      fileName: item.fileAsset.originalFileName,
+      mimeType: item.fileAsset.mimeType,
+      fileSize: item.fileAsset.fileSize,
+      caption: item.caption,
+      recordType: "DELIVERY_EVIDENCE" as const,
+      deliveryKind: item.kind,
+      visibility: item.visibility,
+      isInternal: item.isInternal,
+      uploadedById: item.uploadedById,
+      uploadedByName: item.uploadedBy.name ?? null,
+      uploadedByRole: item.uploadedBy.role,
+      linkedDisputeId: item.linkedDisputeId,
+      createdAt: item.createdAt.toISOString(),
+      capturedAt: item.capturedAt?.toISOString() ?? null,
+    }));
+
   return {
     id: dispute.id,
     orderId: dispute.orderId,
@@ -259,13 +319,10 @@ function mapDisputeToAdminDetail(dispute: AdminDisputeRecord): AdminDisputeDetai
             dispute.order.delivery.payoutReleasedAt?.toISOString() ?? null,
         }
       : null,
-    evidence: dispute.evidence.map((item) => ({
-      id: item.id,
-      type: item.type,
-      fileUrl: item.fileUrl,
-      uploadedByName: item.uploadedBy.name ?? null,
-      createdAt: item.createdAt.toISOString(),
-    })),
+    evidence: [...disputeEvidence, ...linkedDeliveryEvidence].sort(
+      (left, right) =>
+        new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+    ),
     messages: dispute.messages.map((item) => ({
       id: item.id,
       senderId: item.senderId,
@@ -297,6 +354,7 @@ function mapDisputeToAdminDetail(dispute: AdminDisputeRecord): AdminDisputeDetai
       createdAt: item.createdAt.toISOString(),
     })),
     totalAmount: dispute.order.totalAmount,
+    linkedDeliveryEvidence,
   };
 }
 

@@ -2,6 +2,10 @@ import ProductPublicDetail from "@/components/product/PublicProductDetail";
 import ReviewList from "@/components/reviews/ReviewList";
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
+import {
+  mapRecordProductImages,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
 import { createProductSlug } from "@/lib/search/productSlug";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -14,6 +18,7 @@ import {
   toSeoDescription,
 } from "@/lib/seo";
 import { FoodDetails } from "@/lib/types";
+import { mapStoreMedia, storeMediaInclude } from "@/lib/media-views";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -23,7 +28,9 @@ const getProductById = cache(async (productId: string) => {
   return prisma.product.findUnique({
     where: { id: productId },
     include: {
-      images: true,
+      images: {
+        include: productImageWithAssetInclude,
+      },
       variants: {
         orderBy: { priceUSD: "asc" },
       },
@@ -38,14 +45,7 @@ const getProductById = cache(async (productId: string) => {
         },
       },
       store: {
-        select: {
-          id: true,
-          userId: true,
-          name: true,
-          slug: true,
-          logo: true,
-          type: true,
-        },
+        include: storeMediaInclude,
       },
 
       reviews: {
@@ -71,7 +71,13 @@ export async function generateMetadata({
     };
   }
 
-  const product = await getProductById(productId);
+  const productRecord = await getProductById(productId);
+  const product = productRecord
+    ? {
+        ...mapRecordProductImages(productRecord),
+        store: mapStoreMedia(productRecord.store),
+      }
+    : null;
 
   if (!product || product.variants.length === 0) {
     return {
@@ -122,7 +128,13 @@ export default async function Page({ params }: PageProps) {
 
   const productId = rawSlug.split("-").at(-1)!;
 
-  const product = await getProductById(productId);
+  const productRecord = await getProductById(productId);
+  const product = productRecord
+    ? {
+        ...mapRecordProductImages(productRecord),
+        store: mapStoreMedia(productRecord.store),
+      }
+    : null;
   if (!product || product.variants.length === 0) {
     return (
       <div className="px-4 py-16 text-center text-slate-600 dark:text-zinc-400">

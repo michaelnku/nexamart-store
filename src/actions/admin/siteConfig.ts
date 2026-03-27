@@ -1,7 +1,10 @@
 "use server";
 
 import { CurrentRole } from "@/lib/currentUser";
+import { ensureFileAsset } from "@/lib/file-assets";
+import { mapSiteConfigurationMedia, siteConfigurationMediaInclude } from "@/lib/media-views";
 import { prisma } from "@/lib/prisma";
+import { touchOrMarkFileAssetOrphaned } from "@/lib/product-images";
 import { revalidatePath, revalidateTag } from "next/cache";
 import {
   siteConfigurationSchema,
@@ -22,7 +25,7 @@ const DEFAULT_SITE_CONFIGURATION: Omit<
   siteName: "",
   siteEmail: "",
   sitePhone: null,
-  siteLogo: null,
+  siteLogoFileAssetId: null,
 
   platformCommissionRate: 0.1,
 
@@ -40,9 +43,12 @@ const DEFAULT_SITE_CONFIGURATION: Omit<
 };
 
 export async function getSiteConfiguration() {
-  return prisma.siteConfiguration.findUnique({
+  const config = await prisma.siteConfiguration.findUnique({
     where: { singleton: true },
+    include: siteConfigurationMediaInclude,
   });
+
+  return config ? mapSiteConfigurationMedia(config) : null;
 }
 
 export async function getOrCreateSiteConfiguration() {
@@ -51,7 +57,8 @@ export async function getOrCreateSiteConfiguration() {
 
   return prisma.siteConfiguration.create({
     data: DEFAULT_SITE_CONFIGURATION,
-  });
+    include: siteConfigurationMediaInclude,
+  }).then(mapSiteConfigurationMedia);
 }
 
 type SiteConfigurationMutableFields = Partial<
@@ -60,7 +67,7 @@ type SiteConfigurationMutableFields = Partial<
     | "siteName"
     | "siteEmail"
     | "sitePhone"
-    | "siteLogo"
+    | "siteLogoFileAssetId"
     | "foodMinimumDeliveryFee"
     | "generalMinimumDeliveryFee"
     | "platformCommissionRate"
@@ -74,17 +81,55 @@ type SiteConfigurationMutableFields = Partial<
 >;
 
 export async function updateSiteConfigurationFields(
-  data: SiteConfigurationMutableFields,
+  data: SiteConfigurationMutableFields & {
+    siteLogo?: string | null;
+    siteLogoKey?: string | null;
+  },
 ) {
-  return prisma.siteConfiguration.upsert({
-    where: { singleton: true },
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.siteConfiguration.findUnique({
+      where: { singleton: true },
+      include: siteConfigurationMediaInclude,
+    });
 
-    update: data,
+    const nextSiteLogoAsset =
+      data.siteLogo === undefined
+        ? undefined
+        : data.siteLogo
+          ? await ensureFileAsset(tx, {
+              url: data.siteLogo,
+              storageKey: data.siteLogoKey ?? null,
+              category: "OTHER",
+              kind: "IMAGE",
+              isPublic: true,
+            })
+          : null;
 
-    create: {
-      ...DEFAULT_SITE_CONFIGURATION,
-      ...data,
-    },
+    const { siteLogo, siteLogoKey, ...rest } = data;
+
+    const updated = await tx.siteConfiguration.upsert({
+      where: { singleton: true },
+      update: {
+        ...rest,
+        siteLogoFileAssetId:
+          nextSiteLogoAsset === undefined ? undefined : nextSiteLogoAsset?.id ?? null,
+      },
+      create: {
+        ...DEFAULT_SITE_CONFIGURATION,
+        ...rest,
+        siteLogoFileAssetId: nextSiteLogoAsset?.id ?? null,
+      },
+      include: siteConfigurationMediaInclude,
+    });
+
+    if (
+      existing?.siteLogoFileAssetId &&
+      existing.siteLogoFileAssetId !== nextSiteLogoAsset?.id
+    ) {
+      await touchOrMarkFileAssetOrphaned(tx, existing.siteLogoFileAssetId);
+    }
+
+    return mapSiteConfigurationMedia(updated);
   });
 }
 

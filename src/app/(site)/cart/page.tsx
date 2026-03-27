@@ -1,6 +1,10 @@
-﻿import { prisma } from "@/lib/prisma";
-import { CurrentUserId } from "@/lib/currentUser";
 import CartPage from "@/components/product/CartPage";
+import { CurrentUserId } from "@/lib/currentUser";
+import {
+  mapProductImagesToView,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
+import { prisma } from "@/lib/prisma";
 
 export default async function page() {
   const userId = await CurrentUserId();
@@ -30,7 +34,9 @@ export default async function page() {
               name: true,
               basePriceUSD: true,
               isFoodProduct: true,
-              images: true,
+              images: {
+                include: productImageWithAssetInclude,
+              },
               store: {
                 select: {
                   type: true,
@@ -67,9 +73,24 @@ export default async function page() {
     );
   }
 
-  const hasFood = cart.items.some((i) => i.product.store?.type === "FOOD");
-  const hasNonFood = cart.items.some((i) => i.product.store?.type !== "FOOD");
+  const normalizedCart = {
+    ...cart,
+    items: cart.items.map((item) => ({
+      ...item,
+      product: {
+        ...item.product,
+        images: mapProductImagesToView(item.product.images),
+      },
+    })),
+  };
+
+  const hasFood = normalizedCart.items.some(
+    (item) => item.product.store?.type === "FOOD",
+  );
+  const hasNonFood = normalizedCart.items.some(
+    (item) => item.product.store?.type !== "FOOD",
+  );
   const mixedCart = hasFood && hasNonFood;
 
-  return <CartPage cart={cart} mixedCart={mixedCart} />;
+  return <CartPage cart={normalizedCart} mixedCart={mixedCart} />;
 }

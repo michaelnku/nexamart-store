@@ -79,7 +79,6 @@ export type SiteConfig = Pick<
   | "siteName"
   | "siteEmail"
   | "sitePhone"
-  | "siteLogo"
   | "platformCommissionRate"
   | "foodMinimumDeliveryFee"
   | "generalMinimumDeliveryFee"
@@ -91,7 +90,10 @@ export type SiteConfig = Pick<
   | "pickupFee"
   | "createdAt"
   | "updatedAt"
->;
+> & {
+  siteLogo: string | null;
+  siteLogoKey?: string | null;
+};
 
 export type NotificationType =
   | "ORDER"

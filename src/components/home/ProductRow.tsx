@@ -1,30 +1,52 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma";
+import {
+  mapRecordProductImagesWithStoreMedia,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
 import { FullProduct } from "@/lib/types";
+import { storeMediaInclude } from "@/lib/media-views";
 import ProductRowUI from "./ProductRowUI";
 
 type ProductRowProps = {
   title: string;
-  type: "New" | "Discounts" | "Trending" | "Top_Rated";
+  type: "new" | "discounts" | "trending" | "top_Rated";
   autoplay?: boolean;
 };
+
+type ProductRowRecord = Prisma.ProductGetPayload<{
+  include: {
+    images: {
+      include: typeof productImageWithAssetInclude;
+    };
+    variants: true;
+    store: {
+      include: typeof storeMediaInclude;
+    };
+  };
+}>;
 
 export default async function ProductRow({
   title,
   type,
   autoplay,
 }: ProductRowProps) {
-  let products: FullProduct[] = [];
+  let products: ProductRowRecord[] = [];
 
-  if (type === "New") {
+  if (type === "new") {
     products = await prisma.product.findMany({
       where: { isPublished: true },
-      include: { images: true, variants: true, store: true },
+      include: {
+        images: { include: productImageWithAssetInclude },
+        variants: true,
+        store: { include: storeMediaInclude },
+      },
       orderBy: { createdAt: "desc" },
       take: 12,
     });
   }
 
-  if (type === "Discounts") {
+  if (type === "discounts") {
     products = await prisma.product.findMany({
       where: {
         isPublished: true,
@@ -32,25 +54,37 @@ export default async function ProductRow({
           some: { discount: { gt: 0 } },
         },
       },
-      include: { images: true, variants: true, store: true },
+      include: {
+        images: { include: productImageWithAssetInclude },
+        variants: true,
+        store: { include: storeMediaInclude },
+      },
       orderBy: { createdAt: "desc" },
       take: 12,
     });
   }
 
-  if (type === "Trending") {
+  if (type === "trending") {
     products = await prisma.product.findMany({
       where: { isPublished: true },
-      include: { images: true, variants: true, store: true },
+      include: {
+        images: { include: productImageWithAssetInclude },
+        variants: true,
+        store: { include: storeMediaInclude },
+      },
       orderBy: { sold: "desc" },
       take: 12,
     });
   }
 
-  if (type === "Top_Rated") {
+  if (type === "top_Rated") {
     products = await prisma.product.findMany({
       where: { isPublished: true },
-      include: { images: true, variants: true, store: true },
+      include: {
+        images: { include: productImageWithAssetInclude },
+        variants: true,
+        store: { include: storeMediaInclude },
+      },
       orderBy: [
         { averageRating: "desc" },
         { reviewCount: "desc" },
@@ -62,17 +96,21 @@ export default async function ProductRow({
 
   if (products.length === 0) return null;
 
+  const normalizedProducts = products.map((product) =>
+    mapRecordProductImagesWithStoreMedia(product),
+  ) as FullProduct[];
+
   const sortMap: Record<typeof type, string> = {
-    New: "New",
-    Discounts: "Discount",
-    Trending: "Trending",
-    Top_Rated: "Top_Rated",
+    new: "new",
+    discounts: "discount",
+    trending: "trending",
+    top_Rated: "top_Rated",
   };
 
   return (
     <ProductRowUI
       title={title}
-      products={products}
+      products={normalizedProducts}
       autoplay={autoplay}
       seeAllLink={`/products?sort=${sortMap[type]}`}
     />

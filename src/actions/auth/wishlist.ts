@@ -3,6 +3,11 @@
 import { CurrentUserId } from "@/lib/currentUser";
 import { getCartAvailabilityError } from "@/lib/inventory/cartAvailability";
 import { prisma } from "@/lib/prisma";
+import {
+  mapRecordProductImages,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
+import { mapStoreMedia, storeMediaInclude } from "@/lib/media-views";
 import { FullProduct } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
@@ -53,17 +58,12 @@ export async function getWishlistAction(): Promise<FullProduct[]> {
         include: {
           product: {
             include: {
-              images: true,
+              images: {
+                include: productImageWithAssetInclude,
+              },
               variants: true,
               store: {
-                select: {
-                  id: true,
-                  userId: true,
-                  name: true,
-                  slug: true,
-                  logo: true,
-                  type: true,
-                },
+                include: storeMediaInclude,
               },
               category: { select: { id: true, name: true } },
               reviews: {
@@ -81,7 +81,10 @@ export async function getWishlistAction(): Promise<FullProduct[]> {
   if (!wishlist) return [];
 
   // Return only the products
-  return wishlist.items.map((item) => item.product);
+  return wishlist.items.map((item) => ({
+    ...mapRecordProductImages(item.product),
+    store: mapStoreMedia(item.product.store),
+  }));
 }
 
 export const moveAllWishlistToCartAction = async () => {

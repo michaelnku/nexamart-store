@@ -1,7 +1,6 @@
-import { Prisma } from "@/generated/prisma";
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { JsonFile } from "@/lib/types";
+import { touchOrMarkFileAssetOrphaned } from "@/lib/product-images";
 import { revalidatePath } from "next/cache";
 import { UTApi } from "uploadthing/server";
 
@@ -15,21 +14,33 @@ export const removeHeroBannerBackgroundImageAction = async (id: string) => {
 
   const banner = await prisma.heroBanner.findUnique({
     where: { id },
+    select: {
+      backgroundImageFileAssetId: true,
+      backgroundImageFileAsset: {
+        select: {
+          storageKey: true,
+        },
+      },
+    },
   });
 
   if (!banner) return { error: "Banner not found" };
 
-  const bg = banner.backgroundImage as JsonFile | null;
-
-  if (bg?.key) {
-    await utapi.deleteFiles(bg.key);
+  if (banner.backgroundImageFileAsset?.storageKey) {
+    await utapi.deleteFiles(banner.backgroundImageFileAsset.storageKey);
   }
 
-  await prisma.heroBanner.update({
-    where: { id },
-    data: {
-      backgroundImage: Prisma.JsonNull,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.heroBanner.update({
+      where: { id },
+      data: {
+        backgroundImageFileAssetId: null,
+      },
+    });
+
+    if (banner.backgroundImageFileAssetId) {
+      await touchOrMarkFileAssetOrphaned(tx, banner.backgroundImageFileAssetId);
+    }
   });
 
   revalidatePath("/");

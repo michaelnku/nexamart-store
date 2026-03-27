@@ -26,7 +26,6 @@ export type OrderDisputeContext = {
   totalAmount: number;
   shippingFee: number;
   status: string;
-  disputeId: string | null;
   delivery: {
     id: string;
     riderId: string | null;
@@ -87,7 +86,6 @@ export async function getOrderDisputeContext(
       totalAmount: true,
       shippingFee: true,
       status: true,
-      disputeId: true,
       delivery: {
         select: {
           id: true,
@@ -156,7 +154,7 @@ export function ensureDisputeCanBeOpened(
     throw new Error("Missing delivery confirmation timestamp");
   }
 
-  if (order.disputeId || order.dispute) {
+  if (order.dispute) {
     throw new Error("A dispute already exists for this order");
   }
 
@@ -173,12 +171,7 @@ export function ensureDisputeCanBeOpened(
 export function ensureActiveDispute(
   order: OrderDisputeContext,
 ): NonNullable<OrderDisputeContext["dispute"]> {
-  if (
-    !order.dispute ||
-    !order.disputeId ||
-    order.dispute.id !== order.disputeId ||
-    isTerminalDisputeStatus(order.dispute.status)
-  ) {
+  if (!order.dispute || isTerminalDisputeStatus(order.dispute.status)) {
     throw new Error("No active dispute found");
   }
 

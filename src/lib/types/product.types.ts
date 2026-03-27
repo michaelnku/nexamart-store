@@ -3,21 +3,28 @@ import {
   FoodOptionGroup,
   FoodProductConfig,
   Product,
-  ProductImage,
   ProductVariant,
   Review,
   Store,
 } from "@/generated/prisma/client";
+import type { ProductImageView } from "@/lib/product-images";
 import type { JsonFile } from "./shared.types";
 
 export type FullProductVariant = ProductVariant & {
   stock: number;
 };
 
+export type ProductStoreView = Pick<
+  Store,
+  "id" | "userId" | "name" | "slug" | "type"
+> & {
+  logo: string | null;
+};
+
 export type FullProduct = Product & {
-  images: ProductImage[];
+  images: ProductImageView[];
   variants: FullProductVariant[];
-  store: Pick<Store, "id" | "userId" | "name" | "slug" | "logo" | "type">;
+  store: ProductStoreView;
   foodProductConfig?: FoodProductConfig | null;
   foodOptionGroups?: (FoodOptionGroup & {
     options: FoodOption[];
@@ -52,7 +59,7 @@ export type WishlistProduct = {
   name: string;
   basePriceUSD: number;
   discount?: number;
-  images: ProductImage[];
+  images: ProductImageView[];
   store: { name: string; slug: string };
 };
 

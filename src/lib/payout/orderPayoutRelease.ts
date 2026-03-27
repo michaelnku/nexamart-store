@@ -45,11 +45,7 @@ function nextPayoutRecheckAt(now: Date): Date {
   return new Date(now.getTime() + PAYOUT_RELEASE_RECHECK_MS);
 }
 
-function isPayoutBlockedByDispute(
-  disputeId: string | null,
-  disputeStatus?: DisputeStatus | null,
-) {
-  if (!disputeId) return false;
+function isPayoutBlockedByDispute(disputeStatus?: DisputeStatus | null) {
   if (!disputeStatus) return true;
   return !isTerminalDisputeStatus(disputeStatus);
 }
@@ -111,7 +107,6 @@ export async function releaseOrderPayoutsInTx(
       isPaid: true,
       payoutReleased: true,
       isFoodOrder: true,
-      disputeId: true,
       dispute: {
         select: {
           status: true,
@@ -160,7 +155,8 @@ export async function releaseOrderPayoutsInTx(
   }
 
   if (
-    isPayoutBlockedByDispute(order.disputeId, order.dispute?.status ?? null)
+    order.dispute &&
+    isPayoutBlockedByDispute(order.dispute?.status ?? null)
   ) {
     return {
       status: "DEFERRED",

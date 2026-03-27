@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 import DisputeEvidenceGallery from "@/components/disputes/DisputeEvidenceGallery";
+import DisputeEvidenceUploadCard from "@/components/evidence/DisputeEvidenceUploadCard";
+import LinkedDeliveryEvidenceCard from "@/components/evidence/LinkedDeliveryEvidenceCard";
 import DisputeStatusBadge from "@/components/disputes/DisputeStatusBadge";
 import DisputeSummaryCard from "@/components/disputes/DisputeSummaryCard";
 import DisputeTimeline from "@/components/disputes/DisputeTimeline";
@@ -10,7 +12,13 @@ import { Button } from "@/components/ui/button";
 import { CurrentUser } from "@/lib/currentUser";
 import { getServerFormatMoneyFromUSD } from "@/lib/currency/getServerFormatMoneyFromUSD";
 import { buildDisputeTimeline } from "@/lib/disputes/ui";
+import {
+  getDeliveryEvidenceForViewer,
+  getDisputeEvidenceTimelineForViewer,
+  getDisputeMessagesForViewer,
+} from "@/lib/evidence/queries";
 import { prisma } from "@/lib/prisma";
+import { productImageWithAssetInclude } from "@/lib/product-images";
 
 const styles = {
   section: "mx-auto max-w-6xl space-y-8 px-4 py-6",
@@ -103,7 +111,13 @@ export default async function SellerOrderDetails({
           seller: true,
           items: {
             include: {
-              product: { include: { images: true } },
+              product: {
+                include: {
+                  images: {
+                    include: productImageWithAssetInclude,
+                  },
+                },
+              },
               variant: true,
             },
           },
@@ -120,6 +134,26 @@ export default async function SellerOrderDetails({
   if (!group) {
     return "Seller group not found";
   }
+
+  const disputeEvidence = order.dispute
+    ? await getDisputeEvidenceTimelineForViewer({
+        disputeId: order.dispute.id,
+        viewerKind: "SELLER",
+      })
+    : [];
+  const disputeMessages = order.dispute
+    ? await getDisputeMessagesForViewer({
+        disputeId: order.dispute.id,
+        viewerKind: "SELLER",
+      })
+    : [];
+  const deliveryEvidence = order.dispute
+    ? await getDeliveryEvidenceForViewer({
+        orderId: order.id,
+        sellerGroupId: group.id,
+        viewerKind: "SELLER",
+      })
+    : [];
 
   const deliveryAddress = [
     order.deliveryStreet,
@@ -144,20 +178,8 @@ export default async function SellerOrderDetails({
         updatedAt: order.dispute.updatedAt.toISOString(),
         openedByName: order.dispute.openedBy.name,
         resolvedByName: order.dispute.resolvedBy?.name ?? null,
-        evidence: order.dispute.evidence.map((item) => ({
-          id: item.id,
-          type: item.type,
-          fileUrl: item.fileUrl,
-          uploadedByName: item.uploadedBy.name,
-          createdAt: item.createdAt.toISOString(),
-        })),
-        messages: order.dispute.messages.map((item) => ({
-          id: item.id,
-          senderId: item.senderId,
-          senderName: item.sender.name,
-          message: item.message,
-          createdAt: item.createdAt.toISOString(),
-        })),
+        evidence: disputeEvidence,
+        messages: disputeMessages,
         sellerImpacts: order.dispute.disputeSellerGroupImpacts.map(
           (impact) => ({
             id: impact.id,
@@ -179,6 +201,7 @@ export default async function SellerOrderDetails({
                 order.dispute.returnRequest.receivedAt?.toISOString() ?? null,
             }
           : null,
+        linkedDeliveryEvidence: deliveryEvidence,
       }
     : null;
 
@@ -303,7 +326,10 @@ export default async function SellerOrderDetails({
                 <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-800">
                   <Image
                     fill
-                    src={item.product.images[0]?.imageUrl ?? "/placeholder.png"}
+                    src={
+                      item.product.images[0]?.fileAsset.url ??
+                      "/placeholder.png"
+                    }
                     alt={item.product.name}
                     className="object-cover"
                   />
@@ -354,13 +380,15 @@ export default async function SellerOrderDetails({
 
             <div className="space-y-6">
               <DisputeEvidenceGallery evidence={dispute.evidence} />
-              <div
-                className={`${styles.premiumSurface} p-5 text-sm text-muted-foreground`}
-              >
-                Seller response and evidence submission are not enabled from
-                this dashboard yet. Please review the dispute details and
-                contact support if additional documentation is required.
-              </div>
+              <DisputeEvidenceUploadCard
+                disputeId={dispute.id}
+                sellerGroupId={group.id}
+                visibilityOptions={["PARTIES_AND_ADMIN", "SELLER_AND_ADMIN"]}
+              />
+              <LinkedDeliveryEvidenceCard
+                disputeId={dispute.id}
+                deliveryEvidence={deliveryEvidence}
+              />
             </div>
           </div>
         </div>
@@ -378,4 +406,3 @@ export default async function SellerOrderDetails({
     </div>
   );
 }
-

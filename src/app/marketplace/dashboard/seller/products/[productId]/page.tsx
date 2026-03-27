@@ -1,6 +1,11 @@
 import SellerProductDetail from "@/components/product/SellerProductDetail";
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
+import {
+  mapRecordProductImagesWithStoreMedia,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
+import { storeMediaInclude } from "@/lib/media-views";
 import { redirect } from "next/navigation";
 
 export default async function Page({
@@ -27,9 +32,13 @@ export default async function Page({
       },
     },
     include: {
-      images: true,
+      images: {
+        include: productImageWithAssetInclude,
+      },
       variants: true,
-      store: true,
+      store: {
+        include: storeMediaInclude,
+      },
       category: true,
     },
   });
@@ -38,9 +47,11 @@ export default async function Page({
     return redirect("/marketplace/dashboard/seller/products");
   }
 
+  const normalizedProduct = mapRecordProductImagesWithStoreMedia(product);
+
   return (
     <div className="">
-      <SellerProductDetail data={product} />
+      <SellerProductDetail data={normalizedProduct} />
     </div>
   );
 }

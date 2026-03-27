@@ -1,6 +1,7 @@
-﻿import { prisma } from "@/lib/prisma";
-import { CurrentUserId } from "@/lib/currentUser";
 import ReviewsRatingsContent from "@/components/reviews/ReviewsRatingsContent";
+import { CurrentUserId } from "@/lib/currentUser";
+import { productImageWithAssetInclude } from "@/lib/product-images";
+import { prisma } from "@/lib/prisma";
 
 export default async function ReviewsRatingsPage() {
   const userId = await CurrentUserId();
@@ -38,9 +39,7 @@ export default async function ReviewsRatingsPage() {
                 id: true,
                 name: true,
                 images: {
-                  select: {
-                    imageUrl: true,
-                  },
+                  include: productImageWithAssetInclude,
                   take: 1,
                 },
               },
@@ -92,7 +91,7 @@ export default async function ReviewsRatingsPage() {
       pendingProductsMap.set(item.productId, {
         productId: item.product.id,
         productName: item.product.name,
-        imageUrl: item.product.images[0]?.imageUrl ?? "/placeholder.png",
+        imageUrl: item.product.images[0]?.fileAsset.url ?? "/placeholder.png",
         orderId: order.id,
         orderedAt: order.createdAt.toISOString(),
       });

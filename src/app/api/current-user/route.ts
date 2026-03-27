@@ -1,4 +1,5 @@
 import { auth } from "@/auth/auth";
+import { mapUserProfileAvatar, userProfileAvatarInclude } from "@/lib/media-views";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -8,6 +9,7 @@ export async function GET() {
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
+      ...userProfileAvatarInclude,
       store: true,
       riderProfile: true,
       staffProfile: true,
@@ -16,28 +18,30 @@ export async function GET() {
 
   if (!user) return Response.json(null);
 
+  const normalizedUser = mapUserProfileAvatar(user);
+
   return Response.json({
-    id: user.id,
-    email: user.email,
-    role: user.role,
-    name: user.name ?? "",
-    username: user.username ?? "",
-    image: user.image ?? null,
-    profileAvatar: user.profileAvatar ?? null,
-    isBanned: user.isBanned,
-    emailVerifiedAt: user.emailVerified?.toISOString() ?? null,
-    isEmailVerified: Boolean(user.emailVerified),
-    hasPassword: Boolean(user.password),
-    store: user.store,
-    riderProfile: user.riderProfile,
-    staffProfile: user.staffProfile,
+    id: normalizedUser.id,
+    email: normalizedUser.email,
+    role: normalizedUser.role,
+    name: normalizedUser.name ?? "",
+    username: normalizedUser.username ?? "",
+    image: normalizedUser.image ?? null,
+    profileAvatar: normalizedUser.profileAvatar ?? null,
+    isBanned: normalizedUser.isBanned,
+    emailVerifiedAt: normalizedUser.emailVerified?.toISOString() ?? null,
+    isEmailVerified: Boolean(normalizedUser.emailVerified),
+    hasPassword: Boolean(normalizedUser.password),
+    store: normalizedUser.store,
+    riderProfile: normalizedUser.riderProfile,
+    staffProfile: normalizedUser.staffProfile,
     isVerified:
-      user.role === "SELLER"
-        ? user.store?.isVerified
-        : user.role === "RIDER"
-          ? user.riderProfile?.isVerified
-          : user.role === "ADMIN" || user.role === "MODERATOR"
-            ? user.staffProfile?.isVerified
+      normalizedUser.role === "SELLER"
+        ? normalizedUser.store?.isVerified
+        : normalizedUser.role === "RIDER"
+          ? normalizedUser.riderProfile?.isVerified
+          : normalizedUser.role === "ADMIN" || normalizedUser.role === "MODERATOR"
+            ? normalizedUser.staffProfile?.isVerified
             : false,
   });
 }

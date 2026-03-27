@@ -6,6 +6,7 @@ import {
   riderCancelAssignedDeliveryAction,
   riderVerifyDeliveryOtpAction,
 } from "@/actions/rider/riderActions";
+import DeliveryEvidenceUploadCard from "@/components/evidence/DeliveryEvidenceUploadCard";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -417,6 +418,41 @@ export default function RiderDeliveriesClient() {
                           )}
                         </div>
                       )}
+
+                      {delivery.clientStatus === "ONGOING" ? (
+                        <DeliveryEvidenceUploadCard
+                          deliveryId={delivery.id}
+                          title="Delivery proof"
+                          description="Upload drop-off, failed-attempt, or recipient proof for this active trip."
+                          kindOptions={[
+                            {
+                              value: "DROP_OFF_PROOF",
+                              label: "Drop-off proof",
+                            },
+                            {
+                              value: "FAILED_ATTEMPT_PROOF",
+                              label: "Failed attempt proof",
+                            },
+                            {
+                              value: "OTP_CONFIRMATION_PROOF",
+                              label: "OTP confirmation proof",
+                            },
+                            {
+                              value: "RECIPIENT_CONFIRMATION_PROOF",
+                              label: "Recipient confirmation proof",
+                            },
+                          ]}
+                          visibilityOptions={[
+                            "PARTIES_AND_ADMIN",
+                            "RIDER_AND_ADMIN",
+                          ]}
+                          onUploaded={async () => {
+                            await queryClient.invalidateQueries({
+                              queryKey: ["rider-deliveries"],
+                            });
+                          }}
+                        />
+                      ) : null}
                     </div>
                   </div>
                 </div>

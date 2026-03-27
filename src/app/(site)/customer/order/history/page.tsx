@@ -27,7 +27,13 @@ export default async function OrdersPage() {
       },
       items: {
         include: {
-          product: { include: { images: true } },
+          product: {
+            include: {
+              images: {
+                include: productImageWithAssetInclude,
+              },
+            },
+          },
           variant: true,
         },
       },
@@ -84,7 +90,7 @@ export default async function OrdersPage() {
       product: {
         name: item.product.name,
         images: item.product.images.map((img) => ({
-          imageUrl: img.imageUrl,
+          imageUrl: img.fileAsset.url,
         })),
       },
     })),
@@ -92,3 +98,4 @@ export default async function OrdersPage() {
 
   return <OrderHistoryCard orders={ordersDTO} />;
 }
+import { productImageWithAssetInclude } from "@/lib/product-images";

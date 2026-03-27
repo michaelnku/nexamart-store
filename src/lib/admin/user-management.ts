@@ -10,6 +10,7 @@ import {
   type AdminUsersSort,
   isProtectedAdminRole,
 } from "@/lib/admin/user-management.shared";
+import { mapUserProfileAvatar, userProfileAvatarInclude } from "@/lib/media-views";
 import { prisma } from "@/lib/prisma";
 
 type GetAdminUsersInput = {
@@ -61,7 +62,7 @@ function mapAdminManageableUser(
       createdAt: true;
       emailVerified: true;
       isBanned: true;
-      profileAvatar: true;
+      profileAvatarFileAsset: true;
       store: {
         select: {
           id: true;
@@ -92,13 +93,10 @@ function mapAdminManageableUser(
     };
   }>,
 ): AdminManageableUser {
-  const avatar =
-    user.profileAvatar &&
-    typeof user.profileAvatar === "object" &&
-    "url" in user.profileAvatar &&
-    typeof user.profileAvatar.url === "string"
-      ? { url: user.profileAvatar.url }
-      : null;
+  const normalizedUser = mapUserProfileAvatar(user);
+  const avatar = normalizedUser.profileAvatar?.url
+    ? { url: normalizedUser.profileAvatar.url }
+    : null;
 
   return {
     id: user.id,
@@ -191,7 +189,7 @@ export async function getAdminUsers({
       createdAt: true,
       emailVerified: true,
       isBanned: true,
-      profileAvatar: true,
+      ...userProfileAvatarInclude,
       store: {
         select: {
           id: true,

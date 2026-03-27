@@ -1,14 +1,31 @@
 import { HeroBanner } from "@/generated/prisma";
+import { mapOptionalFileAssetToJsonFile } from "@/lib/file-assets";
 import { BannerFile, HeroBannerWithFiles } from "@/lib/types";
 
-export function mapHeroBanner(banner: HeroBanner): HeroBannerWithFiles {
+export function mapHeroBanner(
+  banner: HeroBanner & {
+    backgroundImageFileAsset?: { storageKey: string; url: string } | null;
+    productImageFileAsset?: { storageKey: string; url: string } | null;
+  },
+): HeroBannerWithFiles {
+  const { backgroundImageFileAsset, productImageFileAsset, ...rest } = banner;
+
   return {
-    ...banner,
-    backgroundImage: banner.backgroundImage as BannerFile,
-    productImage: banner.productImage as BannerFile | null,
+    ...rest,
+    backgroundImage:
+      mapOptionalFileAssetToJsonFile(backgroundImageFileAsset) as BannerFile,
+    productImage:
+      mapOptionalFileAssetToJsonFile(productImageFileAsset) as BannerFile | null,
   };
 }
 
-export function mapHeroBanners(banners: HeroBanner[]): HeroBannerWithFiles[] {
+export function mapHeroBanners(
+  banners: Array<
+    HeroBanner & {
+      backgroundImageFileAsset?: { storageKey: string; url: string } | null;
+      productImageFileAsset?: { storageKey: string; url: string } | null;
+    }
+  >,
+): HeroBannerWithFiles[] {
   return banners.map(mapHeroBanner);
 }

@@ -2,9 +2,9 @@ import HeroBannerCreateForm from "@/app/marketplace/_components/HeroBannerCreate
 import { Button } from "@/components/ui/button";
 import { UserRole } from "@/generated/prisma";
 import { CurrentUser } from "@/lib/currentUser";
+import { heroBannerMediaInclude } from "@/lib/media-views";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { HeroBannerWithFiles } from "@/lib/types";
 import { mapHeroBanners } from "@/lib/mappers/heroBanners";
 
 export default async function Page() {
@@ -15,6 +15,7 @@ export default async function Page() {
 
   const bannersRaw = await prisma.heroBanner.findMany({
     where: { isDeleted: false },
+    include: heroBannerMediaInclude,
     orderBy: { position: "asc" },
   });
 

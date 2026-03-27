@@ -1,9 +1,12 @@
 import type {
   DeliveryType,
+  DisputeMessageType,
+  EvidenceVisibility,
   DisputeReason,
   DisputeResolution,
   DisputeStatus,
   ReturnStatus,
+  DeliveryEvidenceType,
 } from "@/generated/prisma/client";
 import type { OrderTrackTimelineDTO } from "./order-dto.types";
 
@@ -11,6 +14,22 @@ export type DisputeEvidenceDTO = {
   id: string;
   type: string;
   fileUrl: string;
+  fileKey?: string | null;
+  fileName?: string | null;
+  mimeType?: string | null;
+  fileSize?: number | null;
+  caption?: string | null;
+  recordType?: "DISPUTE_EVIDENCE" | "DELIVERY_EVIDENCE";
+  deliveryKind?: DeliveryEvidenceType | null;
+  visibility?: EvidenceVisibility;
+  isInternal?: boolean;
+  uploadedById?: string;
+  uploadedByRole?: string | null;
+  sellerGroupId?: string | null;
+  messageId?: string | null;
+  deliveryEvidenceId?: string | null;
+  linkedDisputeId?: string | null;
+  capturedAt?: string | null;
   uploadedByName?: string | null;
   createdAt: string;
 };
@@ -19,8 +38,12 @@ export type DisputeMessageDTO = {
   id: string;
   senderName?: string | null;
   senderId: string;
+  senderRole?: string | null;
   message: string;
+  isInternal?: boolean;
+  messageType?: DisputeMessageType;
   createdAt: string;
+  attachments?: DisputeEvidenceDTO[];
 };
 
 export type DisputeSellerImpactDTO = {
@@ -56,6 +79,7 @@ export type OrderDisputeSummaryDTO = {
   messages: DisputeMessageDTO[];
   sellerImpacts: DisputeSellerImpactDTO[];
   returnRequest?: ReturnRequestDTO | null;
+  linkedDeliveryEvidence?: DisputeEvidenceDTO[];
 };
 
 export type SellerDisputeListItemDTO = {
@@ -87,6 +111,7 @@ export type SellerDisputeDetailDTO = SellerDisputeListItemDTO & {
     riderEmail?: string | null;
     deliveredAt?: string | null;
   } | null;
+  linkedDeliveryEvidence?: DisputeEvidenceDTO[];
 };
 
 export type AdminDisputeDetailDTO = {
@@ -138,4 +163,5 @@ export type AdminDisputeDetailDTO = {
   returnRequest?: ReturnRequestDTO | null;
   orderTimelines: OrderTrackTimelineDTO[];
   totalAmount: number;
+  linkedDeliveryEvidence?: DisputeEvidenceDTO[];
 };

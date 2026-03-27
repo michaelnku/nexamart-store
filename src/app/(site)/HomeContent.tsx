@@ -25,7 +25,7 @@ export default async function HomeContent() {
       <ScrollReveal delay={0.03}>
         <section id="new-arrivals" className="scroll-mt-24">
           <Suspense fallback={<ProductRowSkeleton title="New Arrivals" />}>
-            <ProductRow title="New Arrivals" type="New" autoplay />
+            <ProductRow title="New Arrivals" type="new" autoplay />
           </Suspense>
         </section>
       </ScrollReveal>
@@ -37,7 +37,7 @@ export default async function HomeContent() {
           <Suspense fallback={<ProductRowSkeleton title="Deals & Discounts" />}>
             <ProductRow
               title="Deals & Discounts"
-              type="Discounts"
+              type="discounts"
               autoplay={false}
             />
           </Suspense>
@@ -64,7 +64,7 @@ export default async function HomeContent() {
       <ScrollReveal delay={0.08}>
         <section id="trending-now" className="scroll-mt-24">
           <Suspense fallback={<ProductRowSkeleton title="Trending Now" />}>
-            <ProductRow title="Trending Now" type="Trending" autoplay={false} />
+            <ProductRow title="Trending Now" type="trending" autoplay={false} />
           </Suspense>
         </section>
       </ScrollReveal>

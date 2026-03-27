@@ -49,7 +49,7 @@ export async function releaseEligibleRiderPayouts() {
         riderId: { not: null },
         order: {
           isPaid: true,
-          disputeId: null,
+          dispute: null,
         },
       },
       orderBy: { payoutEligibleAt: "asc" },
@@ -98,7 +98,7 @@ export async function releaseEligibleRiderPayoutForOrder(orderId: string) {
         riderId: { not: null },
         order: {
           isPaid: true,
-          disputeId: null,
+          dispute: null,
         },
       },
       select: { id: true },

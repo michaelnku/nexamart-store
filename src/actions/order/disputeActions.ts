@@ -22,6 +22,7 @@ import {
   type OrderDisputeContext,
   type SellerGroupImpactInput,
 } from "@/lib/disputes/disputeService";
+import { snapshotExistingDeliveryEvidenceForDisputeInTx } from "@/lib/evidence/service";
 import {
   getDisputePolicy,
   isResolutionAllowed,
@@ -82,6 +83,12 @@ export async function raiseOrderDisputeAction(
       },
     });
 
+    await snapshotExistingDeliveryEvidenceForDisputeInTx(
+      tx,
+      { userId, role: "USER" },
+      dispute.id,
+    );
+
     await replaceDisputeSellerGroupImpacts(tx, dispute.id, impactedGroupIds);
 
     await setDisputePayoutLocks(tx, {
@@ -95,7 +102,6 @@ export async function raiseOrderDisputeAction(
       where: { id: orderId },
       data: {
         status: "DISPUTED",
-        disputeId: dispute.id,
       },
     });
 
@@ -236,7 +242,6 @@ export async function resolveOrderDisputeAction(
         where: { id: orderId },
         data: {
           status: "COMPLETED",
-          disputeId: null,
         },
       });
 
@@ -303,7 +308,6 @@ export async function resolveOrderDisputeAction(
         where: { id: orderId },
         data: {
           status: wholeOrder ? "REFUNDED" : "COMPLETED",
-          disputeId: null,
         },
       });
 
@@ -421,7 +425,6 @@ export async function resolveOrderDisputeAction(
         where: { id: orderId },
         data: {
           status: "COMPLETED",
-          disputeId: null,
         },
       });
 
@@ -587,7 +590,6 @@ export async function confirmReturnReceivedAction(orderId: string) {
       where: { id: orderId },
       data: {
         status: wholeOrder ? "REFUNDED" : "COMPLETED",
-        disputeId: null,
       },
     });
 

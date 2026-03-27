@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import HeroBannerEditForm from "@/app/marketplace/_components/HeroBannerEditForm";
 import { prisma } from "@/lib/prisma";
-import { HeroBannerWithFiles } from "@/lib/types";
 import { CurrentUser } from "@/lib/currentUser";
 import { mapHeroBanner } from "@/lib/mappers/heroBanners";
+import { heroBannerMediaInclude } from "@/lib/media-views";
 
 type Props = {
   params: Promise<{
@@ -25,6 +25,7 @@ export default async function Page({ params }: Props) {
 
   const bannerRaw = await prisma.heroBanner.findUnique({
     where: { id },
+    include: heroBannerMediaInclude,
   });
 
   if (!bannerRaw || bannerRaw.isDeleted) {

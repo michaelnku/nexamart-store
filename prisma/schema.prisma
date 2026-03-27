@@ -33,11 +33,12 @@ model User {
 
   isSystemUser Boolean @default(false)
 
-  isBanned      Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  emailVerified DateTime?
-  profileAvatar Json?
+  isBanned                 Boolean    @default(false)
+  createdAt                DateTime   @default(now())
+  updatedAt                DateTime   @updatedAt
+  emailVerified            DateTime?
+  profileAvatarFileAssetId String?
+  profileAvatarFileAsset   FileAsset? @relation("UserProfileAvatarAsset", fields: [profileAvatarFileAssetId], references: [id], onDelete: SetNull)
 
   verificationFailedAttempts Int @default(0)
 
@@ -55,6 +56,8 @@ model User {
 
   disputesOpened   Dispute[] @relation("DisputeOpenedBy")
   disputesResolved Dispute[] @relation("DisputeResolvedBy")
+
+  deliveryEvidencesUploaded DeliveryEvidence[] @relation("DeliveryEvidenceUploadedBy")
 
   Account                 Account[]
   addresses               Address[]
@@ -91,6 +94,7 @@ model User {
   disputeEvidences        DisputeEvidence[]
   disputeMessages         DisputeMessage[]
   auditLogsAsActor        AuditLog[]             @relation("AuditLogActor")
+  uploadedFileAssets      FileAsset[]            @relation("UploadedFileAssets")
 
   moderatorIdentity   ModeratorIdentity?
   moderationIncidents ModerationIncident[] @relation("ModerationSubjectUser")
@@ -102,6 +106,8 @@ model User {
   reportsAgainst          UserReport[]             @relation("UserReportsAgainst")
   reportsReviewed         UserReport[]             @relation("UserReportsReviewedBy")
   emailVerificationTokens EmailVerificationToken[]
+
+  @@index([profileAvatarFileAssetId])
 }
 
 model AuditLog {
@@ -198,6 +204,69 @@ model EmailVerificationToken {
 
 /// *
 /// * ===========================
+/// * STORAGE
+/// * ===========================
+model FileAsset {
+  id String @id @default(cuid())
+
+  storageProvider FileStorageProvider
+  bucket          String?
+  storageKey      String              @unique
+  url             String
+  cdnUrl          String?
+
+  originalFileName String?
+  extension        String?
+  mimeType         String?
+  fileSize         Int?
+  checksumSha256   String?
+
+  category FileAssetCategory
+  kind     FileAssetKind
+
+  width       Int?
+  height      Int?
+  durationMs  Int?
+  blurDataUrl String?
+  altText     String?
+  metadata    Json?
+
+  status     FileAssetStatus @default(ACTIVE)
+  isPublic   Boolean         @default(false)
+  deletedAt  DateTime?
+  orphanedAt DateTime?
+  lastUsedAt DateTime?
+
+  uploadedById String?
+  uploadedBy   User?   @relation("UploadedFileAssets", fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  disputeEvidences         DisputeEvidence[]
+  deliveryEvidences        DeliveryEvidence[]
+  productImages            ProductImage[]
+  verificationDocuments    VerificationDocument[] @relation("VerificationDocumentAsset")
+  userProfileAvatarUsers   User[]                 @relation("UserProfileAvatarAsset")
+  storeLogoStores          Store[]                @relation("StoreLogoAsset")
+  storeBannerStores        Store[]                @relation("StoreBannerAsset")
+  categoryIconCategories   Category[]             @relation("CategoryIconAsset")
+  categoryBannerCategories Category[]             @relation("CategoryBannerAsset")
+  heroBannerBackgrounds    HeroBanner[]           @relation("HeroBannerBackgroundAsset")
+  heroBannerProducts       HeroBanner[]           @relation("HeroBannerProductAsset")
+  siteConfigurationLogos   SiteConfiguration[]    @relation("SiteConfigurationLogoAsset")
+
+  @@index([status])
+  @@index([category])
+  @@index([kind])
+  @@index([uploadedById])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@index([orphanedAt])
+}
+
+/// *
+/// * ===========================
 /// * PRODUCTS & CATEGORIES
 /// * ===========================
 model Product {
@@ -272,28 +341,36 @@ model ProductVariant {
 
 model ProductImage {
   id        String  @id @default(cuid())
-  imageUrl  String
-  imageKey  String
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  fileAssetId String
+  fileAsset   FileAsset @relation(fields: [fileAssetId], references: [id], onDelete: Restrict)
+
+  @@index([productId])
+  @@index([fileAssetId])
 }
 
 model Category {
-  id          String     @id @default(cuid())
-  name        String     @unique
-  slug        String     @unique
-  parentId    String?
-  iconImage   String?
-  bannerImage String?
-  color       String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  path        String?
-  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children    Category[] @relation("CategoryHierarchy")
-  products    Product[]
+  id                     String     @id @default(cuid())
+  name                   String     @unique
+  slug                   String     @unique
+  parentId               String?
+  iconImageFileAssetId   String?
+  bannerImageFileAssetId String?
+  color                  String?
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+  path                   String?
+  parent                 Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children               Category[] @relation("CategoryHierarchy")
+  products               Product[]
+  iconImageFileAsset     FileAsset? @relation("CategoryIconAsset", fields: [iconImageFileAssetId], references: [id], onDelete: SetNull)
+  bannerImageFileAsset   FileAsset? @relation("CategoryBannerAsset", fields: [bannerImageFileAssetId], references: [id], onDelete: SetNull)
 
   @@index([path])
+  @@index([iconImageFileAssetId])
+  @@index([bannerImageFileAssetId])
 }
 
 model FoodProductConfig {
@@ -501,8 +578,6 @@ model Order {
 
   stockDecrementedAt DateTime?
 
-  disputeId String?
-
   postPaymentFinalized    Boolean                @default(false)
   arrivedAtHubConfirmedAt DateTime?
   arrivedAtHubConfirmedBy String?
@@ -519,6 +594,7 @@ model Order {
   referrals               Referral[]
   transactions            Transaction[]
   dispute                 Dispute?
+  deliveryEvidences       DeliveryEvidence[]
 
   @@index([userId])
   @@index([status])
@@ -576,6 +652,8 @@ model OrderSellerGroup {
   seller                    User                       @relation("SellerGroupBySeller", fields: [sellerId], references: [id], onDelete: Cascade)
   store                     Store                      @relation(fields: [storeId], references: [id])
   disputeSellerGroupImpacts DisputeSellerGroupImpact[]
+  deliveryEvidences         DeliveryEvidence[]
+  disputeEvidences          DisputeEvidence[]
 
   @@index([sellerId])
   @@index([payoutReleasedAt])
@@ -849,10 +927,62 @@ model Delivery {
   payoutEligibleAt  DateTime?
   payoutLocked      Boolean        @default(false)
   payoutReleasedAt  DateTime?
-  order             Order          @relation("OrderDelivery", fields: [orderId], references: [id], onDelete: Cascade)
-  rider             User?          @relation("RiderDeliveries", fields: [riderId], references: [id])
+
+  evidenceRequiredAtCompletion Boolean   @default(false)
+  hasDeliveryEvidence          Boolean   @default(false)
+  lastEvidenceAt               DateTime?
+  failedAttemptCount           Int       @default(0)
+  handoffConfirmedAt           DateTime?
+
+  order    Order              @relation("OrderDelivery", fields: [orderId], references: [id], onDelete: Cascade)
+  rider    User?              @relation("RiderDeliveries", fields: [riderId], references: [id])
+  evidence DeliveryEvidence[]
 
   @@index([orderId])
+  @@index([riderId])
+  @@index([status])
+}
+
+model DeliveryEvidence {
+  id String @id @default(cuid())
+
+  deliveryId String
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  sellerGroupId String?
+  sellerGroup   OrderSellerGroup? @relation(fields: [sellerGroupId], references: [id])
+
+  uploadedById String
+  uploadedBy   User   @relation("DeliveryEvidenceUploadedBy", fields: [uploadedById], references: [id])
+
+  kind        DeliveryEvidenceType
+  fileAssetId String
+  fileAsset   FileAsset            @relation(fields: [fileAssetId], references: [id], onDelete: Restrict)
+  caption     String?
+  metadata    Json?
+
+  capturedAt DateTime?
+  isInternal Boolean            @default(false)
+  visibility EvidenceVisibility @default(ADMIN_ONLY)
+
+  linkedDisputeId String?
+  linkedDispute   Dispute? @relation("DisputeLinkedDeliveryEvidence", fields: [linkedDisputeId], references: [id])
+
+  createdAt        DateTime          @default(now())
+  disputeEvidences DisputeEvidence[]
+
+  @@index([deliveryId])
+  @@index([orderId])
+  @@index([sellerGroupId])
+  @@index([uploadedById])
+  @@index([fileAssetId])
+  @@index([linkedDisputeId])
+  @@index([deliveryId, createdAt])
+  @@index([orderId, createdAt])
+  @@index([visibility, isInternal])
 }
 
 /// *
@@ -873,11 +1003,19 @@ model Dispute {
   description String?
 
   refundAmount Float?
-
-  resolution DisputeResolution?
+  resolution   DisputeResolution?
 
   resolvedById String?
   resolvedBy   User?   @relation("DisputeResolvedBy", fields: [resolvedById], references: [id])
+
+  resolutionSummary             String?
+  internalNotes                 String?
+  openedAt                      DateTime  @default(now())
+  resolvedAt                    DateTime?
+  closedAt                      DateTime?
+  lastMessageAt                 DateTime?
+  evidenceRequired              Boolean   @default(false)
+  deliveryEvidenceSnapshotTaken Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -886,8 +1024,11 @@ model Dispute {
   messages                  DisputeMessage[]
   returnRequest             ReturnRequest?
   disputeSellerGroupImpacts DisputeSellerGroupImpact[]
+  linkedDeliveryEvidence    DeliveryEvidence[]         @relation("DisputeLinkedDeliveryEvidence")
 
   @@index([status])
+  @@index([openedById])
+  @@index([resolvedById])
 }
 
 model DisputeEvidence {
@@ -899,12 +1040,34 @@ model DisputeEvidence {
   uploadedById String
   uploadedBy   User   @relation(fields: [uploadedById], references: [id])
 
-  type    EvidenceType
-  fileUrl String
+  type        EvidenceType
+  fileAssetId String
+  fileAsset   FileAsset    @relation(fields: [fileAssetId], references: [id], onDelete: Restrict)
+  caption     String?
+  metadata    Json?
+
+  isInternal Boolean            @default(false)
+  visibility EvidenceVisibility @default(PARTIES_AND_ADMIN)
+
+  sellerGroupId String?
+  sellerGroup   OrderSellerGroup? @relation(fields: [sellerGroupId], references: [id])
+
+  messageId String?
+  message   DisputeMessage? @relation(fields: [messageId], references: [id])
+
+  deliveryEvidenceId String?
+  deliveryEvidence   DeliveryEvidence? @relation(fields: [deliveryEvidenceId], references: [id])
 
   createdAt DateTime @default(now())
 
   @@index([disputeId])
+  @@index([uploadedById])
+  @@index([fileAssetId])
+  @@index([sellerGroupId])
+  @@index([deliveryEvidenceId])
+  @@index([messageId])
+  @@index([visibility, isInternal])
+  @@index([disputeId, createdAt])
 }
 
 model DisputeMessage {
@@ -918,9 +1081,17 @@ model DisputeMessage {
 
   message String
 
+  isInternal  Boolean            @default(false)
+  messageType DisputeMessageType @default(TEXT)
+
   createdAt DateTime @default(now())
 
+  attachments DisputeEvidence[]
+
   @@index([disputeId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@index([isInternal, messageType])
 }
 
 model ReturnRequest {
@@ -936,8 +1107,17 @@ model ReturnRequest {
 
   shippedAt  DateTime?
   receivedAt DateTime?
+  approvedAt DateTime?
+  rejectedAt DateTime?
+
+  returnLabelUrl     String?
+  returnEvidenceNote String?
+  inspectedAt        DateTime?
+  inspectionSummary  String?
+  receivedCondition  String?
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model DisputeSellerGroupImpact {
@@ -965,11 +1145,10 @@ model Store {
   userId                    String                   @unique
   name                      String
   slug                      String                   @unique
-  logo                      String?
+  logoFileAssetId           String?
   description               String?
   location                  String?
   address                   String?
-  logoKey                   String?
   shippingRatePerMile       Float                    @default(0.8)
   latitude                  Float?
   longitude                 Float?
@@ -980,8 +1159,7 @@ model Store {
   isVerified                Boolean                  @default(false)
   verifiedAt                DateTime?
   verificationMethod        String?
-  bannerImage               String?
-  bannerKey                 String?
+  bannerImageFileAssetId    String?
   tagline                   String?
   emailNotificationsEnabled Boolean                  @default(true)
   createdAt                 DateTime                 @default(now())
@@ -995,6 +1173,8 @@ model Store {
   storeGroups               OrderSellerGroup[]
   products                  Product[]
   owner                     User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logoFileAsset             FileAsset?               @relation("StoreLogoAsset", fields: [logoFileAssetId], references: [id], onDelete: SetNull)
+  bannerImageFileAsset      FileAsset?               @relation("StoreBannerAsset", fields: [bannerImageFileAssetId], references: [id], onDelete: SetNull)
   StoreFollower             StoreFollower[]
   StoreReview               StoreReview[]
   conversations             Conversation[]
@@ -1003,6 +1183,8 @@ model Store {
   @@index([userId])
   @@index([slug])
   @@index([isActive])
+  @@index([logoFileAssetId])
+  @@index([bannerImageFileAssetId])
 }
 
 model StoreFollower {
@@ -1284,8 +1466,9 @@ model VerificationDocument {
   userId         String
   verificationId String?
 
-  type DocumentType
-  file Json
+  type        DocumentType
+  fileAssetId String
+  fileAsset   FileAsset    @relation("VerificationDocumentAsset", fields: [fileAssetId], references: [id], onDelete: Restrict)
 
   fingerprint String? @unique
 
@@ -1299,6 +1482,7 @@ model VerificationDocument {
 
   @@index([userId])
   @@index([verificationId])
+  @@index([fileAssetId])
 }
 
 /// *
@@ -1333,7 +1517,7 @@ model SiteConfiguration {
   siteEmail String
   sitePhone String?
 
-  siteLogo String?
+  siteLogoFileAssetId String?
 
   platformCommissionRate    Float @default(0.10)
   foodMinimumDeliveryFee    Float @default(2)
@@ -1350,6 +1534,10 @@ model SiteConfiguration {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  siteLogoFileAsset FileAsset? @relation("SiteConfigurationLogoAsset", fields: [siteLogoFileAssetId], references: [id], onDelete: SetNull)
+
+  @@index([siteLogoFileAssetId])
 }
 
 model UserPreference {
@@ -1397,9 +1585,8 @@ model HeroBanner {
   ctaText  String?
   ctaLink  String?
 
-  backgroundImage Json?
-
-  productImage Json?
+  backgroundImageFileAssetId String?
+  productImageFileAssetId    String?
 
   lottieUrl String?
 
@@ -1416,17 +1603,21 @@ model HeroBanner {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  deletedAt          DateTime?
-  isDeleted          Boolean                @default(false)
-  placement          BannerPlacement        @default(HOMEPAGE)
-  dailyStats         HeroBannerDailyStats[]
-  marketingCampaigns MarketingCampaign[]
+  deletedAt                DateTime?
+  isDeleted                Boolean                @default(false)
+  placement                BannerPlacement        @default(HOMEPAGE)
+  backgroundImageFileAsset FileAsset?             @relation("HeroBannerBackgroundAsset", fields: [backgroundImageFileAssetId], references: [id], onDelete: SetNull)
+  productImageFileAsset    FileAsset?             @relation("HeroBannerProductAsset", fields: [productImageFileAssetId], references: [id], onDelete: SetNull)
+  dailyStats               HeroBannerDailyStats[]
+  marketingCampaigns       MarketingCampaign[]
 
   @@index([placement])
   @@index([isActive])
   @@index([position])
   @@index([startsAt])
   @@index([endsAt])
+  @@index([backgroundImageFileAssetId])
+  @@index([productImageFileAssetId])
 }
 
 model HeroBannerDailyStats {
@@ -1652,10 +1843,49 @@ model UserReport {
   @@index([createdAt])
 }
 
-/// *
 /// * ===========================
 /// * ENUMS AND CONSTANTS
 /// * ===========================
+enum ProductImageRole {
+  GALLERY
+  THUMBNAIL
+  DETAIL
+}
+
+enum FileStorageProvider {
+  UPLOADTHING
+  S3
+  CLOUDINARY
+  R2
+  LOCAL
+}
+
+enum FileAssetCategory {
+  PRODUCT_MEDIA
+  DISPUTE_EVIDENCE
+  DELIVERY_EVIDENCE
+  VERIFICATION_DOCUMENT
+  STORE_ASSET
+  PROFILE_IMAGE
+  MODERATION_ATTACHMENT
+  OTHER
+}
+
+enum FileAssetKind {
+  IMAGE
+  VIDEO
+  DOCUMENT
+  AUDIO
+  OTHER
+}
+
+enum FileAssetStatus {
+  ACTIVE
+  PENDING_DELETE
+  DELETED
+  QUARANTINED
+}
+
 enum FoodInventoryMode {
   STOCK_TRACKED
   AVAILABILITY_ONLY
@@ -1779,11 +2009,36 @@ enum DisputeReason {
   OTHER
 }
 
+enum EvidenceVisibility {
+  ADMIN_ONLY
+  PARTIES_AND_ADMIN
+  BUYER_AND_ADMIN
+  SELLER_AND_ADMIN
+  RIDER_AND_ADMIN
+}
+
+enum DeliveryEvidenceType {
+  PICKUP_PROOF
+  DROP_OFF_PROOF
+  FAILED_ATTEMPT_PROOF
+  PACKAGE_CONDITION_PROOF
+  HUB_HANDOFF_PROOF
+  STORE_HANDOFF_PROOF
+  STATION_PICKUP_PROOF
+  OTP_CONFIRMATION_PROOF
+  RECIPIENT_CONFIRMATION_PROOF
+}
+
+enum DisputeMessageType {
+  TEXT
+  SYSTEM_EVENT
+  INTERNAL_NOTE
+}
+
 enum EvidenceType {
   PHOTO
   VIDEO
   DOCUMENT
-  DELIVERY_PROOF
 }
 
 enum DisputeResolution {

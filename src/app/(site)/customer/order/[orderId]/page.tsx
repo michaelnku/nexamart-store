@@ -1,7 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import OrderCard from "@/components/order/OrderCard";
+import DisputeEvidenceUploadCard from "@/components/evidence/DisputeEvidenceUploadCard";
+import LinkedDeliveryEvidenceCard from "@/components/evidence/LinkedDeliveryEvidenceCard";
 import { OrderDetailDTO } from "@/lib/types";
 import { CurrentUserId } from "@/lib/currentUser";
+import {
+  getDeliveryEvidenceForViewer,
+  getDisputeEvidenceTimelineForViewer,
+  getDisputeMessagesForViewer,
+} from "@/lib/evidence/queries";
 import {
   getSellerCancellationReasonLabel,
   type SellerCancellationReason,
@@ -49,7 +56,13 @@ export default async function OrderDetailsPage({
       },
       items: {
         include: {
-          product: { include: { images: true } },
+          product: {
+            include: {
+              images: {
+                include: productImageWithAssetInclude,
+              },
+            },
+          },
           variant: true,
         },
       },
@@ -74,7 +87,13 @@ export default async function OrderDetailsPage({
           seller: true,
           items: {
             include: {
-              product: { include: { images: true } },
+              product: {
+                include: {
+                  images: {
+                    include: productImageWithAssetInclude,
+                  },
+                },
+              },
               variant: true,
             },
           },
@@ -92,6 +111,25 @@ export default async function OrderDetailsPage({
   if (order.userId !== userId) {
     return <p className="text-slate-600 dark:text-zinc-400">Unauthorized</p>;
   }
+
+  const disputeEvidence = order.dispute
+    ? await getDisputeEvidenceTimelineForViewer({
+        disputeId: order.dispute.id,
+        viewerKind: "BUYER",
+      })
+    : [];
+  const disputeMessages = order.dispute
+    ? await getDisputeMessagesForViewer({
+        disputeId: order.dispute.id,
+        viewerKind: "BUYER",
+      })
+    : [];
+  const deliveryEvidence = order.dispute
+    ? await getDeliveryEvidenceForViewer({
+        orderId: order.id,
+        viewerKind: "BUYER",
+      })
+    : [];
 
   const deliveryAddress = [
     order.deliveryStreet,
@@ -163,7 +201,7 @@ export default async function OrderDetailsPage({
         product: {
           name: item.product.name,
           images: item.product.images.map((img) => ({
-            imageUrl: img.imageUrl,
+            imageUrl: img.fileAsset.url,
           })),
         },
         variant: item.variant
@@ -187,20 +225,8 @@ export default async function OrderDetailsPage({
           updatedAt: order.dispute.updatedAt.toISOString(),
           openedByName: order.dispute.openedBy.name,
           resolvedByName: order.dispute.resolvedBy?.name ?? null,
-          evidence: order.dispute.evidence.map((item) => ({
-            id: item.id,
-            type: item.type,
-            fileUrl: item.fileUrl,
-            uploadedByName: item.uploadedBy.name,
-            createdAt: item.createdAt.toISOString(),
-          })),
-          messages: order.dispute.messages.map((item) => ({
-            id: item.id,
-            senderId: item.senderId,
-            senderName: item.sender.name,
-            message: item.message,
-            createdAt: item.createdAt.toISOString(),
-          })),
+          evidence: disputeEvidence,
+          messages: disputeMessages,
           sellerImpacts: order.dispute.disputeSellerGroupImpacts.map((impact) => ({
             id: impact.id,
             sellerGroupId: impact.sellerGroupId,
@@ -208,6 +234,7 @@ export default async function OrderDetailsPage({
             sellerName: impact.sellerGroup.seller.name,
             storeName: impact.sellerGroup.store.name,
           })),
+          linkedDeliveryEvidence: deliveryEvidence,
           returnRequest: order.dispute.returnRequest
             ? {
                 id: order.dispute.returnRequest.id,
@@ -240,6 +267,20 @@ export default async function OrderDetailsPage({
         <span className="font-semibold">{trackingNumber}</span>.
       </div>
       <OrderCard order={orderDTO} />
+
+      {order.dispute ? (
+        <div className="mx-auto mt-6 max-w-6xl space-y-6 px-4">
+          <DisputeEvidenceUploadCard
+            disputeId={order.dispute.id}
+            visibilityOptions={["PARTIES_AND_ADMIN", "BUYER_AND_ADMIN"]}
+          />
+          <LinkedDeliveryEvidenceCard
+            disputeId={order.dispute.id}
+            deliveryEvidence={deliveryEvidence}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
+import { productImageWithAssetInclude } from "@/lib/product-images";

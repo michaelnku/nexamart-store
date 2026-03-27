@@ -2,6 +2,10 @@ import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import {
+  mapProductImagesToView,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
+import {
   buildSqlWhere,
   createIlikePattern,
   normalizeSearchText,
@@ -218,10 +222,7 @@ export async function getModeratorProducts(filters: ModeratorProductsFilters) {
         },
       },
       images: {
-        select: {
-          id: true,
-          imageUrl: true,
-        },
+        include: productImageWithAssetInclude,
         take: 1,
       },
       _count: {
@@ -248,6 +249,7 @@ export async function getModeratorProducts(filters: ModeratorProductsFilters) {
   return {
     items: products.map((product) => ({
       ...product,
+      images: mapProductImagesToView(product.images),
       ...(incidentSummaryByProductId.get(product.id) ?? {
         linkedIncidentCount: 0,
         hasOpenIncident: false,
@@ -311,11 +313,7 @@ export async function getModeratorProductById(productId: string) {
         },
       },
       images: {
-        select: {
-          id: true,
-          imageUrl: true,
-          imageKey: true,
-        },
+        include: productImageWithAssetInclude,
       },
       category: {
         select: {
@@ -425,6 +423,7 @@ export async function getModeratorProductById(productId: string) {
 
   return {
     ...product,
+    images: mapProductImagesToView(product.images),
     incidents,
   };
 }

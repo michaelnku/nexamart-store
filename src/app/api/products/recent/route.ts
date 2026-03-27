@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import {
+  mapRecordProductImages,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
@@ -10,12 +14,16 @@ export async function GET(req: Request) {
   const products = await prisma.product.findMany({
     where: { id: { in: ids } },
     include: {
-      images: true,
+      images: {
+        include: productImageWithAssetInclude,
+      },
       variants: true,
       store: true,
     },
     take: 10,
   });
 
-  return NextResponse.json(products);
+  return NextResponse.json(
+    products.map((product) => mapRecordProductImages(product)),
+  );
 }

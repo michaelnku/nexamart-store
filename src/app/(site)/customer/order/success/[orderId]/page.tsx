@@ -16,7 +16,13 @@ export default async function OrderSuccessPage({
     include: {
       items: {
         include: {
-          product: { include: { images: true } },
+          product: {
+            include: {
+              images: {
+                include: productImageWithAssetInclude,
+              },
+            },
+          },
           variant: true,
         },
       },
@@ -67,7 +73,7 @@ export default async function OrderSuccessPage({
         id: item.product.id,
         name: item.product.name,
         images: item.product.images.map((img) => ({
-          imageUrl: img.imageUrl,
+          imageUrl: img.fileAsset.url,
         })),
       },
 
@@ -94,3 +100,4 @@ export default async function OrderSuccessPage({
     </div>
   );
 }
+import { productImageWithAssetInclude } from "@/lib/product-images";

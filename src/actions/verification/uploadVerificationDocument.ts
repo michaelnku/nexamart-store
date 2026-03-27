@@ -13,6 +13,7 @@ import { fetchImageBuffer } from "@/lib/verification/fetchImageBuffer";
 import { validateDocumentAI } from "@/lib/verification/validateDocumentAI";
 import { handleVerificationFraud } from "@/lib/verification/handleVerificationFraud";
 import { pusherServer } from "@/lib/pusher";
+import { ensureFileAsset } from "@/lib/file-assets";
 
 export async function uploadVerificationDocument(
   data: VerificationDocumentInput,
@@ -105,18 +106,26 @@ export async function uploadVerificationDocument(
     /**
      * STEP 5 — Save documents
      */
-    await prisma.$transaction(
-      files.map((file, index) =>
-        prisma.verificationDocument.create({
+    await prisma.$transaction(async (tx) => {
+      for (const [index, file] of files.entries()) {
+        const asset = await ensureFileAsset(tx, {
+          uploadedById: userId,
+          file,
+          category: "VERIFICATION_DOCUMENT",
+          kind: "DOCUMENT",
+          isPublic: false,
+        });
+
+        await tx.verificationDocument.create({
           data: {
             userId,
             type,
-            file,
+            fileAssetId: asset.id,
             fingerprint: fingerprints[index],
           },
-        }),
-      ),
-    );
+        });
+      }
+    });
 
     await pusherServer.trigger(
       `user-${userId}`,

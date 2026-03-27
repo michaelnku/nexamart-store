@@ -27,7 +27,7 @@ export async function releaseEligibleSellerGroups() {
         order: {
           isPaid: true,
           status: "DELIVERED",
-          disputeId: null,
+          dispute: null,
         },
       },
       orderBy: { payoutEligibleAt: "asc" },

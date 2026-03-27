@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
 import SellersCard from "@/components/store/SellersCard";
+import { mapStoreMedia, storeMediaInclude } from "@/lib/media-views";
 
 export default async function FollowedSellersPage() {
   const userId = await CurrentUserId();
@@ -12,13 +13,8 @@ export default async function FollowedSellersPage() {
     orderBy: { createdAt: "desc" },
     select: {
       store: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          logo: true,
-          location: true,
-          tagline: true,
+        include: {
+          ...storeMediaInclude,
           _count: {
             select: { StoreFollower: true },
           },
@@ -27,15 +23,19 @@ export default async function FollowedSellersPage() {
     },
   });
 
-  const stores = followed.map((f) => ({
-    id: f.store.id,
-    name: f.store.name,
-    slug: f.store.slug,
-    logo: f.store.logo,
-    location: f.store.location,
-    tagline: f.store.tagline,
-    followers: f.store._count.StoreFollower,
-  }));
+  const stores = followed.map((f) => {
+    const store = mapStoreMedia(f.store);
+
+    return {
+      id: store.id,
+      name: store.name,
+      slug: store.slug,
+      logo: store.logo,
+      location: store.location,
+      tagline: store.tagline,
+      followers: f.store._count.StoreFollower,
+    };
+  });
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">

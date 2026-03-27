@@ -1,12 +1,19 @@
 import Link from "next/link";
 
 import DisputeEvidenceGallery from "@/components/disputes/DisputeEvidenceGallery";
+import DisputeEvidenceUploadCard from "@/components/evidence/DisputeEvidenceUploadCard";
+import LinkedDeliveryEvidenceCard from "@/components/evidence/LinkedDeliveryEvidenceCard";
 import DisputeStatusBadge from "@/components/disputes/DisputeStatusBadge";
 import DisputeSummaryCard from "@/components/disputes/DisputeSummaryCard";
 import DisputeTimeline from "@/components/disputes/DisputeTimeline";
 import { Button } from "@/components/ui/button";
 import { CurrentUser } from "@/lib/currentUser";
 import { buildDisputeTimeline, humanizeDisputeValue } from "@/lib/disputes/ui";
+import {
+  getDeliveryEvidenceForViewer,
+  getDisputeEvidenceTimelineForViewer,
+  getDisputeMessagesForViewer,
+} from "@/lib/evidence/queries";
 import { prisma } from "@/lib/prisma";
 
 export default async function SellerDisputeDetailPage({
@@ -83,6 +90,21 @@ export default async function SellerDisputeDetailPage({
     return <p className="p-6">Dispute not found.</p>;
   }
 
+  const disputeEvidence = await getDisputeEvidenceTimelineForViewer({
+    disputeId: dispute.id,
+    viewerKind: "SELLER",
+  });
+  const disputeMessages = await getDisputeMessagesForViewer({
+    disputeId: dispute.id,
+    viewerKind: "SELLER",
+  });
+  const sellerGroupId = dispute.disputeSellerGroupImpacts[0]?.sellerGroupId ?? null;
+  const deliveryEvidence = await getDeliveryEvidenceForViewer({
+    orderId: dispute.orderId,
+    sellerGroupId: sellerGroupId ?? undefined,
+    viewerKind: "SELLER",
+  });
+
   const disputeSummary = {
     id: dispute.id,
     orderId: dispute.orderId,
@@ -95,20 +117,8 @@ export default async function SellerDisputeDetailPage({
     updatedAt: dispute.updatedAt.toISOString(),
     openedByName: dispute.openedBy.name,
     resolvedByName: dispute.resolvedBy?.name ?? null,
-    evidence: dispute.evidence.map((item) => ({
-      id: item.id,
-      type: item.type,
-      fileUrl: item.fileUrl,
-      uploadedByName: item.uploadedBy.name,
-      createdAt: item.createdAt.toISOString(),
-    })),
-    messages: dispute.messages.map((item) => ({
-      id: item.id,
-      senderId: item.senderId,
-      senderName: item.sender.name,
-      message: item.message,
-      createdAt: item.createdAt.toISOString(),
-    })),
+    evidence: disputeEvidence,
+    messages: disputeMessages,
     sellerImpacts: dispute.disputeSellerGroupImpacts.map((impact) => ({
       id: impact.id,
       sellerGroupId: impact.sellerGroupId,
@@ -116,6 +126,7 @@ export default async function SellerDisputeDetailPage({
       sellerName: impact.sellerGroup.seller.name,
       storeName: impact.sellerGroup.store.name,
     })),
+    linkedDeliveryEvidence: deliveryEvidence,
     returnRequest: dispute.returnRequest
       ? {
           id: dispute.returnRequest.id,
@@ -194,11 +205,15 @@ export default async function SellerDisputeDetailPage({
 
         <div className="space-y-6">
           <DisputeEvidenceGallery evidence={disputeSummary.evidence} />
-
-          <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-muted-foreground shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-            Seller response and evidence submission are currently read-only in this
-            dashboard. If more context is required, please contact platform support.
-          </div>
+          <DisputeEvidenceUploadCard
+            disputeId={dispute.id}
+            sellerGroupId={sellerGroupId}
+            visibilityOptions={["PARTIES_AND_ADMIN", "SELLER_AND_ADMIN"]}
+          />
+          <LinkedDeliveryEvidenceCard
+            disputeId={dispute.id}
+            deliveryEvidence={deliveryEvidence}
+          />
         </div>
       </div>
     </main>

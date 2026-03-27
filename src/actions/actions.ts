@@ -1,6 +1,8 @@
 "use server";
+
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
+import { touchOrMarkFileAssetOrphaned } from "@/lib/product-images";
 import { revalidatePath } from "next/cache";
 import { UTApi } from "uploadthing/server";
 
@@ -17,7 +19,7 @@ export const deleteFileAction = async (keyToDelete: string) => {
   } catch (error) {}
 };
 
-// delete image from DB + UploadThing
+// delete image from DB and mark the file asset orphaned if nothing else uses it
 export const deleteProductImageAction = async (imageId: string) => {
   const user = await CurrentUser();
   if (!user) return { error: "Unauthorized" };
@@ -25,16 +27,20 @@ export const deleteProductImageAction = async (imageId: string) => {
   try {
     const image = await prisma.productImage.findUnique({
       where: { id: imageId },
+      select: {
+        id: true,
+        fileAssetId: true,
+      },
     });
 
     if (!image) return { error: "Image not found" };
 
-    // key comes directly from DB — safest and always correct
-    await utapi.deleteFiles([image.imageKey]);
+    await prisma.$transaction(async (tx) => {
+      await tx.productImage.delete({
+        where: { id: imageId },
+      });
 
-    // 🔥 delete record from DB
-    await prisma.productImage.delete({
-      where: { id: imageId },
+      await touchOrMarkFileAssetOrphaned(tx, image.fileAssetId);
     });
 
     return { success: true };
@@ -68,14 +74,28 @@ export const deleteLogoAction = async (fileKey: string) => {
   if (!fileKey) return { error: "Missing file key" };
 
   try {
-    // 1️⃣ Delete from UploadThing
     await utapi.deleteFiles([fileKey]);
 
-    // 2️⃣ Clear logo + logoKey in DB
-    await prisma.store.update({
+    const store = await prisma.store.findUnique({
       where: { userId: user.id },
-      data: { logo: null, logoKey: null },
+      select: {
+        id: true,
+        logoFileAssetId: true,
+      },
     });
+
+    if (store?.id) {
+      await prisma.$transaction(async (tx) => {
+        await tx.store.update({
+          where: { id: store.id },
+          data: { logoFileAssetId: null },
+        });
+
+        if (store.logoFileAssetId) {
+          await touchOrMarkFileAssetOrphaned(tx, store.logoFileAssetId);
+        }
+      });
+    }
 
     revalidatePath("/marketplace/dashboard/seller/store");
 
@@ -88,12 +108,36 @@ export const deleteLogoAction = async (fileKey: string) => {
 
 //delete store banner
 export const deleteBannerAction = async (key: string) => {
+  const user = await CurrentUser();
+  if (!user) return { error: "Unauthorized access" };
+
   try {
     await utapi.deleteFiles([key]);
+
+    const store = await prisma.store.findUnique({
+      where: { userId: user.id },
+      select: {
+        id: true,
+        bannerImageFileAssetId: true,
+      },
+    });
+
+    if (store?.id) {
+      await prisma.$transaction(async (tx) => {
+        await tx.store.update({
+          where: { id: store.id },
+          data: { bannerImageFileAssetId: null },
+        });
+
+        if (store.bannerImageFileAssetId) {
+          await touchOrMarkFileAssetOrphaned(tx, store.bannerImageFileAssetId);
+        }
+      });
+    }
+
     return { success: true };
   } catch (error) {
     console.error("Failed to delete banner", error);
     return { error: "Unable to delete banner" };
   }
 };
-

@@ -32,7 +32,13 @@ export default async function TrackOrderPage({
     include: {
       items: {
         include: {
-          product: { include: { images: true } },
+          product: {
+            include: {
+              images: {
+                include: productImageWithAssetInclude,
+              },
+            },
+          },
           variant: true,
         },
       },
@@ -85,7 +91,7 @@ export default async function TrackOrderPage({
       product: {
         name: item.product.name,
         images: item.product.images.map((img) => ({
-          imageUrl: img.imageUrl,
+          imageUrl: img.fileAsset.url,
         })),
       },
     })),
@@ -115,3 +121,4 @@ export default async function TrackOrderPage({
 
   return <OrderTrackCard order={orderDTO} />;
 }
+import { productImageWithAssetInclude } from "@/lib/product-images";

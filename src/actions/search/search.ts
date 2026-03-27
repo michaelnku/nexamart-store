@@ -3,6 +3,8 @@
 import { CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { GlobalSearchResult } from "@/lib/types";
+import { mapStoreMedia, storeMediaInclude } from "@/lib/media-views";
+import { productImageWithAssetInclude } from "@/lib/product-images";
 import { calculateStoresPrepPerformance } from "@/lib/store/calculateStorePrepPerformance";
 
 export type SearchParams = {
@@ -39,7 +41,10 @@ export async function globalSearchAction({
     cursor: cursor ? { id: cursor } : undefined,
     skip: cursor ? 1 : 0,
     include: {
-      images: { take: 1 },
+      images: {
+        include: productImageWithAssetInclude,
+        take: 1,
+      },
       store: { select: { id: true, name: true, slug: true } },
       category: { select: { id: true, name: true, slug: true } },
     },
@@ -57,12 +62,7 @@ export async function globalSearchAction({
       name: { contains: q, mode: "insensitive" },
     },
     take: 6,
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      logo: true,
-    },
+    include: storeMediaInclude,
   });
 
   const storePerformance = await calculateStoresPrepPerformance(
@@ -100,7 +100,7 @@ export async function globalSearchAction({
       name: p.name,
       priceUSD: p.basePriceUSD,
       images: p.images.map((img) => ({
-        imageUrl: img.imageUrl,
+        imageUrl: img.fileAsset.url,
       })),
       store: {
         id: p.store.id,
@@ -116,14 +116,18 @@ export async function globalSearchAction({
         : null,
     })),
 
-    stores: boostedStores.map((s) => ({
+    stores: boostedStores.map((s) => {
+      const store = mapStoreMedia(s);
+
+      return {
       id: s.id,
       name: s.name,
       slug: s.slug,
-      logo: s.logo ?? null,
+      logo: store.logo ?? null,
       badge: storePerformance[s.id]?.badge ?? "LOW_PERFORMANCE",
       onTimeRate: storePerformance[s.id]?.onTimeRate ?? 0,
-    })),
+      };
+    }),
 
     categories: categories.map((c) => ({
       id: c.id,

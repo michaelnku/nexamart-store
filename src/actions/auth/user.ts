@@ -16,16 +16,17 @@ import { getUserByEmail } from "@/components/helper/data";
 import { signIn } from "@/auth/auth";
 import { AuthError } from "next-auth";
 import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
-import { Prisma } from "@/generated/prisma";
 import { CurrentUser } from "@/lib/currentUser";
 import { revalidatePath } from "next/cache";
-import { JsonFile } from "@/lib/types";
 import { UTApi } from "uploadthing/server";
 import { createWelcomeCouponForUser } from "@/lib/coupons/createWelcomeCoupon";
 import { createReferralCodeForUser } from "@/lib/referrals/createReferralCode";
 import { processReferralSignup } from "@/lib/referrals/processReferralSignup";
 import { cookies } from "next/headers";
 import { sendEmailVerificationEmail } from "@/lib/email-verification/service";
+import { ensureFileAsset } from "@/lib/file-assets";
+import { touchOrMarkFileAssetOrphaned } from "@/lib/product-images";
+import { userProfileAvatarInclude } from "@/lib/media-views";
 
 const utapi = new UTApi();
 
@@ -36,31 +37,42 @@ export const deleteProfileAvatarAction = async () => {
   try {
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { profileAvatar: true },
+      select: {
+        profileAvatarFileAssetId: true,
+        profileAvatarFileAsset: {
+          select: {
+            storageKey: true,
+          },
+        },
+      },
     });
 
-    if (!dbUser?.profileAvatar) return { error: "No profile avatar to delete" };
+    if (!dbUser?.profileAvatarFileAssetId) {
+      return { error: "No profile avatar to delete" };
+    }
 
-    const avatar = dbUser.profileAvatar as Partial<JsonFile>;
+    const avatarKey = dbUser.profileAvatarFileAsset?.storageKey;
 
-    if (!avatar.key) {
-      await prisma.user.update({
+    if (avatarKey) {
+      await utapi.deleteFiles([avatarKey]);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const previousProfileAvatarFileAssetId = dbUser.profileAvatarFileAssetId;
+
+      await tx.user.update({
         where: { id: user.id },
         data: {
-          profileAvatar: Prisma.JsonNull,
+          profileAvatarFileAssetId: null,
         },
       });
 
-      return { success: true };
-    }
-
-    await utapi.deleteFiles([avatar.key]);
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        profileAvatar: Prisma.JsonNull,
-      },
+      if (previousProfileAvatarFileAssetId) {
+        await touchOrMarkFileAssetOrphaned(
+          tx,
+          previousProfileAvatarFileAssetId,
+        );
+      }
     });
 
     return { success: true };
@@ -197,18 +209,48 @@ export async function updateUserProfile(values: updateUserSchemaType) {
     }
   }
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      name,
-      username,
-      profileAvatar:
-        profileAvatar === undefined
-          ? undefined
-          : profileAvatar === null
-            ? Prisma.JsonNull
-            : profileAvatar,
-    },
+  await prisma.$transaction(async (tx) => {
+    const currentUser = await tx.user.findUnique({
+      where: { id: user.id },
+      include: userProfileAvatarInclude,
+    });
+
+    let nextProfileAvatarFileAssetId: string | null | undefined = undefined;
+    let previousProfileAvatarFileAssetId: string | null = null;
+
+    if (profileAvatar !== undefined) {
+      previousProfileAvatarFileAssetId =
+        currentUser?.profileAvatarFileAssetId ?? null;
+
+      if (profileAvatar === null) {
+        nextProfileAvatarFileAssetId = null;
+      } else {
+        const asset = await ensureFileAsset(tx, {
+          uploadedById: user.id,
+          file: profileAvatar,
+          category: "PROFILE_IMAGE",
+          kind: "IMAGE",
+          isPublic: true,
+        });
+        nextProfileAvatarFileAssetId = asset.id;
+      }
+    }
+
+    await tx.user.update({
+      where: { id: user.id },
+      data: {
+        name,
+        username,
+        profileAvatarFileAssetId: nextProfileAvatarFileAssetId,
+      },
+    });
+
+    if (
+      previousProfileAvatarFileAssetId &&
+      previousProfileAvatarFileAssetId !== nextProfileAvatarFileAssetId
+    ) {
+      await touchOrMarkFileAssetOrphaned(tx, previousProfileAvatarFileAssetId);
+    }
   });
 
   revalidatePath("/profile");
