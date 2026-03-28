@@ -526,6 +526,50 @@ export default function FoodProductSection({ control }: Props) {
         <div className="grid gap-4 md:grid-cols-2">
           <FormField
             control={control}
+            name="foodConfig.isAvailable"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/60">
+                <div>
+                  <FormLabel>Accepting Orders</FormLabel>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                    Turn this off to pause ordering without changing the menu item.
+                  </p>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={Boolean(field.value)}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="foodConfig.isSoldOut"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/60">
+                <div>
+                  <FormLabel>Mark as Sold Out</FormLabel>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                    Keep the item visible but temporarily non-orderable.
+                  </p>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={Boolean(field.value)}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={control}
             name="foodConfig.preparationTimeMinutes"
             render={({ field }) => (
               <FormItem>
