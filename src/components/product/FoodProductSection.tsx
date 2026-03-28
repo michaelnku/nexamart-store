@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useFieldArray, useWatch } from "react-hook-form";
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { Plus, Trash } from "lucide-react";
 
 import {
   createEmptyFoodOption,
   createEmptyFoodOptionGroup,
+  createFoodSizeOptionGroup,
+  isSizeOptionGroupName,
 } from "@/app/marketplace/_components/productFormHelpers";
+import { PriceConverter } from "@/components/currency/PriceConverter";
 import { Button } from "@/components/ui/button";
 import {
   FormControl,
@@ -28,6 +31,10 @@ import { Switch } from "@/components/ui/switch";
 
 type Props = {
   control: any;
+};
+
+type WatchedFoodOptionGroup = {
+  name?: string | null;
 };
 
 const dayOptions = [
@@ -56,6 +63,7 @@ function FoodOptionGroupEditor({
   index: number;
   onRemove: () => void;
 }) {
+  const { setValue } = useFormContext();
   const {
     fields: optionFields,
     append: appendOption,
@@ -96,6 +104,26 @@ function FoodOptionGroupEditor({
           )}
         />
 
+        <FormField
+          control={control}
+          name={`foodOptionGroups.${index}.description`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Group Description</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="Optional guidance for buyers"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
         <FormField
           control={control}
           name={`foodOptionGroups.${index}.type`}
@@ -357,6 +385,20 @@ function FoodOptionGroupEditor({
                 )}
               />
             </div>
+
+            <PriceConverter
+              onUSDChange={(usd) =>
+                setValue(
+                  `foodOptionGroups.${index}.options.${optionIndex}.priceDeltaUSD`,
+                  usd,
+                  {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                    shouldValidate: true,
+                  },
+                )
+              }
+            />
           </div>
         ))}
       </div>
@@ -382,6 +424,10 @@ export default function FoodProductSection({ control }: Props) {
     control,
     name: "foodDetails.dietaryTags",
   });
+  const foodOptionGroups = useWatch({
+    control,
+    name: "foodOptionGroups",
+  });
   const availableDays = useWatch({
     control,
     name: "foodConfig.availableDays",
@@ -390,6 +436,9 @@ export default function FoodProductSection({ control }: Props) {
     control,
     name: "foodConfig.inventoryMode",
   });
+  const hasSizeGroup = ((foodOptionGroups ?? []) as WatchedFoodOptionGroup[]).some((group) =>
+    isSizeOptionGroupName(group?.name),
+  );
 
   useEffect(() => {
     setDietaryTagsInput((dietaryTags ?? []).join(", "));
@@ -710,25 +759,41 @@ export default function FoodProductSection({ control }: Props) {
               base item price.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() =>
-              appendGroup({
-                ...createEmptyFoodOptionGroup(),
-                displayOrder: groupFields.length,
-              })
-            }
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Group
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={hasSizeGroup}
+              onClick={() =>
+                appendGroup({
+                  ...createFoodSizeOptionGroup(),
+                  displayOrder: groupFields.length,
+                })
+              }
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {hasSizeGroup ? "Size Variant Added" : "Add Size Variant"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                appendGroup({
+                  ...createEmptyFoodOptionGroup(),
+                  displayOrder: groupFields.length,
+                })
+              }
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Group
+            </Button>
+          </div>
         </div>
 
         {groupFields.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-6 text-sm text-slate-500 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400">
-            No food add-on groups yet. Add a drink chooser, extras, or protein
-            upsell when needed.
+            No food add-on groups yet. Add a size chooser, drink selector,
+            extras, or protein upsell when needed.
           </div>
         ) : null}
 

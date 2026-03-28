@@ -42,6 +42,7 @@ export type FoodOptionInput = {
 export type FoodOptionGroupInput = {
   id?: string;
   name: string;
+  description?: string | null;
   type: FoodOptionGroupType;
   isRequired: boolean;
   minSelections: number;

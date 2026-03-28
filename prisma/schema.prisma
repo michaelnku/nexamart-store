@@ -405,6 +405,7 @@ model FoodOptionGroup {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   name          String
+  description   String?
   type          FoodOptionGroupType
   isRequired    Boolean             @default(false)
   minSelections Int                 @default(0)

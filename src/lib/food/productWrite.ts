@@ -7,6 +7,39 @@ import {
 type Tx = Prisma.TransactionClient;
 type ProductInput = productSchemaType | updateProductSchemaType;
 
+function buildFoodOptionGroupData(
+  group: NonNullable<ProductInput["foodOptionGroups"]>[number],
+  groupIndex: number,
+) {
+  return {
+    name: group.name.trim(),
+    description: group.description?.trim() || null,
+    type: group.type,
+    isRequired: group.isRequired,
+    minSelections: group.minSelections,
+    maxSelections: group.maxSelections ?? null,
+    displayOrder: group.displayOrder ?? groupIndex,
+    isActive: group.isActive,
+  };
+}
+
+function buildFoodOptionData(
+  option: NonNullable<
+    NonNullable<ProductInput["foodOptionGroups"]>[number]["options"]
+  >[number],
+  optionIndex: number,
+) {
+  return {
+    name: option.name.trim(),
+    description: option.description?.trim() || null,
+    priceDeltaUSD: option.priceDeltaUSD,
+    isDefault: option.isDefault,
+    isAvailable: option.isAvailable,
+    stock: option.stock ?? null,
+    displayOrder: option.displayOrder ?? optionIndex,
+  };
+}
+
 export function serializeFoodDetails(
   foodDetails: ProductInput["foodDetails"],
 ) {
@@ -104,15 +137,7 @@ export async function syncFoodProductRelationsInTx(
 
   for (let groupIndex = 0; groupIndex < foodOptionGroups.length; groupIndex += 1) {
     const group = foodOptionGroups[groupIndex];
-    const groupData = {
-      name: group.name.trim(),
-      type: group.type,
-      isRequired: group.isRequired,
-      minSelections: group.minSelections,
-      maxSelections: group.maxSelections ?? null,
-      displayOrder: group.displayOrder ?? groupIndex,
-      isActive: group.isActive,
-    };
+    const groupData = buildFoodOptionGroupData(group, groupIndex);
 
     const groupId =
       group.id && existingGroupIds.has(group.id)
@@ -157,15 +182,7 @@ export async function syncFoodProductRelationsInTx(
 
     for (let optionIndex = 0; optionIndex < group.options.length; optionIndex += 1) {
       const option = group.options[optionIndex];
-      const optionData = {
-        name: option.name.trim(),
-        description: option.description?.trim() || null,
-        priceDeltaUSD: option.priceDeltaUSD,
-        isDefault: option.isDefault,
-        isAvailable: option.isAvailable,
-        stock: option.stock ?? null,
-        displayOrder: option.displayOrder ?? optionIndex,
-      };
+      const optionData = buildFoodOptionData(option, optionIndex);
 
       const optionExists = Boolean(
         option.id &&
@@ -187,4 +204,52 @@ export async function syncFoodProductRelationsInTx(
       }
     }
   }
+}
+
+export async function createFoodProductRelationsInTx(
+  tx: Tx,
+  productId: string,
+  values: Pick<ProductInput, "foodConfig" | "foodOptionGroups">,
+) {
+  const foodConfig = values.foodConfig;
+  const foodOptionGroups = values.foodOptionGroups ?? [];
+
+  if (!foodConfig) {
+    return;
+  }
+
+  await tx.foodProductConfig.create({
+    data: {
+      productId,
+      itemType: foodConfig.itemType,
+      inventoryMode: foodConfig.inventoryMode,
+      isAvailable: foodConfig.isAvailable,
+      isSoldOut: foodConfig.isSoldOut,
+      preparationTimeMinutes: foodConfig.preparationTimeMinutes ?? null,
+      dailyOrderLimit: foodConfig.dailyOrderLimit ?? null,
+      availableFrom: foodConfig.availableFrom ?? null,
+      availableUntil: foodConfig.availableUntil ?? null,
+      availableDays: foodConfig.availableDays ?? [],
+      allowScheduledOrder: foodConfig.allowScheduledOrder,
+      allowSameDayPreorder: foodConfig.allowSameDayPreorder,
+    },
+  });
+
+  await Promise.all(
+    foodOptionGroups.map((group, groupIndex) =>
+      tx.foodOptionGroup.create({
+        data: {
+          productId,
+          ...buildFoodOptionGroupData(group, groupIndex),
+          options: {
+            createMany: {
+              data: group.options.map((option, optionIndex) =>
+                buildFoodOptionData(option, optionIndex),
+              ),
+            },
+          },
+        },
+      }),
+    ),
+  );
 }

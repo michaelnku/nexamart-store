@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import type { Prisma as PrismaNamespace } from "@/generated/prisma";
+import { prisma } from "@/lib/prisma";
 import { mapStoreMedia } from "@/lib/media-views";
 import type { JsonFile } from "@/lib/types";
 
@@ -84,8 +85,10 @@ function inferExtension(urlOrKey: string) {
   return urlOrKey.split(".").pop()?.trim().toLowerCase() || null;
 }
 
+type FileAssetWriteClient = Pick<PrismaNamespace.TransactionClient, "fileAsset">;
+
 export async function ensureProductImageFileAsset(
-  tx: PrismaNamespace.TransactionClient,
+  db: FileAssetWriteClient,
   input: {
     uploadedById: string | null;
     image: JsonFile;
@@ -99,7 +102,7 @@ export async function ensureProductImageFileAsset(
 
   const now = new Date();
 
-  return tx.fileAsset.upsert({
+  return db.fileAsset.upsert({
     where: { storageKey },
     create: {
       storageProvider: "UPLOADTHING",
@@ -133,6 +136,22 @@ export async function ensureProductImageFileAsset(
       storageKey: true,
     },
   });
+}
+
+export async function ensureProductImageFileAssets(
+  input: {
+    uploadedById: string | null;
+    images: JsonFile[];
+  },
+) {
+  return Promise.all(
+    input.images.map((image) =>
+      ensureProductImageFileAsset(prisma, {
+        uploadedById: input.uploadedById,
+        image,
+      }),
+    ),
+  );
 }
 
 export async function touchOrMarkFileAssetOrphaned(

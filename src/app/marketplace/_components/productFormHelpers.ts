@@ -45,9 +45,14 @@ function createEmptyFoodOption() {
   };
 }
 
+function isSizeOptionGroupName(name: string | null | undefined) {
+  return name?.trim().toLowerCase() === "size";
+}
+
 function createEmptyFoodOptionGroup() {
   return {
     name: "",
+    description: "",
     type: "SINGLE_SELECT" as const,
     isRequired: false,
     minSelections: 0,
@@ -55,6 +60,36 @@ function createEmptyFoodOptionGroup() {
     displayOrder: 0,
     isActive: true,
     options: [createEmptyFoodOption()],
+  };
+}
+
+function createFoodSizeOptionGroup() {
+  return {
+    name: "Size",
+    description: "",
+    type: "SINGLE_SELECT" as const,
+    isRequired: true,
+    minSelections: 1,
+    maxSelections: 1,
+    displayOrder: 0,
+    isActive: true,
+    options: [
+      {
+        ...createEmptyFoodOption(),
+        name: "Small",
+        displayOrder: 0,
+      },
+      {
+        ...createEmptyFoodOption(),
+        name: "Medium",
+        displayOrder: 1,
+      },
+      {
+        ...createEmptyFoodOption(),
+        name: "Large",
+        displayOrder: 2,
+      },
+    ],
   };
 }
 
@@ -226,6 +261,8 @@ function normalizeFoodOptionGroups(
     .map((group, groupIndex) => ({
       id: typeof group.id === "string" ? group.id : undefined,
       name: typeof group.name === "string" ? group.name : "",
+      description:
+        typeof group.description === "string" ? group.description : "",
       type:
         group.type === "SINGLE_SELECT" || group.type === "MULTI_SELECT"
           ? group.type
@@ -383,8 +420,10 @@ export {
   createEmptyVariant,
   createEmptyFoodOption,
   createEmptyFoodOptionGroup,
+  createFoodSizeOptionGroup,
   getCategoryLevels,
   getProductFormDefaults,
+  isSizeOptionGroupName,
   normalizeFoodConfig,
   normalizeFoodDetails,
   normalizeFoodOptionGroups,

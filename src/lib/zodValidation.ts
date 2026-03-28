@@ -176,6 +176,7 @@ export const foodOptionGroupSchema = z
   .object({
     id: z.string().optional(),
     name: z.string().trim().min(1, "Group name is required"),
+    description: z.string().trim().optional().nullable(),
     type: z.enum(foodOptionGroupTypes),
     isRequired: z.boolean(),
     minSelections: z.number().int().min(0),

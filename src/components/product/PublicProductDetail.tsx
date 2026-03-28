@@ -519,6 +519,11 @@ export default function ProductPublicDetail({
                           <p className="text-sm font-semibold text-slate-900 dark:text-white">
                             {group.name}
                           </p>
+                          {group.description ? (
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                              {group.description}
+                            </p>
+                          ) : null}
                           <p className="text-xs text-slate-500 dark:text-slate-400">
                             {group.isRequired ? "Required" : "Optional"} •{" "}
                             {group.type === "SINGLE_SELECT"
