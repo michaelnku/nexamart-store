@@ -25,6 +25,7 @@ import { normalizeFoodDetails } from "@/app/marketplace/_components/productFormH
 import AskStoreQuestionDialog from "./AskStoreQuestionDialog";
 import { MarketplaceImagePreview } from "@/components/media/MarketplaceImagePreview";
 import { buildFoodSelectionFingerprint } from "@/lib/food/ordering";
+import { getProductAvailabilityState } from "@/lib/product/availability";
 
 type ProductVariant = FullProduct["variants"][number];
 
@@ -161,14 +162,25 @@ export default function ProductPublicDetail({
         )
       : null;
 
-  const inventoryMode = data.foodProductConfig?.inventoryMode;
-  const totalStock =
-    inventoryMode === "AVAILABILITY_ONLY" ? null : selectedVariant.stock;
-  const inStock =
-    inventoryMode === "AVAILABILITY_ONLY"
-      ? (data.foodProductConfig?.isAvailable ?? true) &&
-        !(data.foodProductConfig?.isSoldOut ?? false)
-      : (totalStock ?? 0) > 0;
+  const availabilityState = getProductAvailabilityState({
+    product: {
+      isFoodProduct: data.isFoodProduct,
+      foodProductConfig: data.foodProductConfig
+        ? {
+            inventoryMode: data.foodProductConfig.inventoryMode,
+            isAvailable: data.foodProductConfig.isAvailable,
+            isSoldOut: data.foodProductConfig.isSoldOut,
+            dailyOrderLimit: data.foodProductConfig.dailyOrderLimit,
+            availableFrom: data.foodProductConfig.availableFrom,
+            availableUntil: data.foodProductConfig.availableUntil,
+            availableDays: data.foodProductConfig.availableDays,
+          }
+        : null,
+      store: {
+      },
+    },
+    variant: selectedVariant,
+  });
 
   useEffect(() => {
     setSelectedColor(defaultVariant.color ?? null);
@@ -338,14 +350,12 @@ export default function ProductPublicDetail({
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  {inStock ? (
+                  {availabilityState.isInStock ? (
                     <InfoPill variant="success">
-                      {totalStock == null
-                        ? "Available to order"
-                        : `In stock · ${totalStock} available`}
+                      {availabilityState.label}
                     </InfoPill>
                   ) : (
-                    <InfoPill variant="danger">Out of stock</InfoPill>
+                    <InfoPill variant="danger">{availabilityState.label}</InfoPill>
                   )}
 
                   {discount ? <InfoPill>{discount}% OFF</InfoPill> : null}
@@ -579,8 +589,8 @@ export default function ProductPublicDetail({
                 <AddToCartControl
                   productId={data.id}
                   variantId={selectedVariant?.id ?? null}
-                  availableStock={totalStock}
-                  isOrderable={inStock}
+                  availableStock={availabilityState.availableStock}
+                  isOrderable={availabilityState.isOrderable}
                   selectionFingerprint={selectionFingerprint}
                   selectedOptions={selectedFoodOptions}
                 />

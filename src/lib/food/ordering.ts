@@ -53,6 +53,16 @@ export type FoodProductWithOptions = {
 
 export type OrderDb = Pick<Prisma.TransactionClient, "orderItem">;
 
+export type AvailabilityOnlyFoodOrderability = {
+  isOrderable: boolean;
+  reason:
+    | "NOT_APPLICABLE"
+    | "DISABLED"
+    | "SOLD_OUT"
+    | "DAY_RESTRICTED"
+    | "WINDOW_CLOSED";
+};
+
 function getStoreLocalNow(
   product: Pick<FoodProductWithOptions, "store">,
   now = new Date(),
@@ -136,6 +146,64 @@ function isWithinConfiguredWindow(
   return currentTime >= from || currentTime <= until;
 }
 
+export function getAvailabilityOnlyFoodOrderability(
+  product: Pick<FoodProductWithOptions, "foodProductConfig" | "store">,
+  now = new Date(),
+): AvailabilityOnlyFoodOrderability {
+  const config = product.foodProductConfig;
+
+  if (!config || config.inventoryMode !== "AVAILABILITY_ONLY") {
+    return {
+      isOrderable: true,
+      reason: "NOT_APPLICABLE",
+    };
+  }
+
+  if (!config.isAvailable) {
+    return {
+      isOrderable: false,
+      reason: "DISABLED",
+    };
+  }
+
+  if (config.isSoldOut) {
+    return {
+      isOrderable: false,
+      reason: "SOLD_OUT",
+    };
+  }
+
+  const nowInfo = getStoreLocalNow(product, now);
+
+  if (
+    config.availableDays.length > 0 &&
+    !config.availableDays.includes(nowInfo.weekday)
+  ) {
+    return {
+      isOrderable: false,
+      reason: "DAY_RESTRICTED",
+    };
+  }
+
+  if (
+    !isWithinConfiguredWindow(
+      nowInfo.currentTime,
+      config.availableFrom,
+      config.availableUntil,
+    )
+  ) {
+    return {
+      isOrderable: false,
+      reason: "WINDOW_CLOSED",
+    };
+  }
+
+  return {
+    isOrderable: true,
+    reason: "NOT_APPLICABLE",
+  };
+}
+
 export function buildFoodSelectionFingerprint(
   selections: FoodSelectionInput[] | FoodSelectionSnapshot[],
 ) {
@@ -155,32 +223,24 @@ export async function assertAvailabilityOnlyFoodCanBeOrdered(
     return;
   }
 
-  if (!config.isAvailable) {
-    throw new Error(`${product.name} is not accepting orders right now.`);
-  }
+  const orderability = getAvailabilityOnlyFoodOrderability(product);
 
-  if (config.isSoldOut) {
-    throw new Error(`${product.name} is currently sold out.`);
+  if (!orderability.isOrderable) {
+    switch (orderability.reason) {
+      case "DISABLED":
+        throw new Error(`${product.name} is not accepting orders right now.`);
+      case "SOLD_OUT":
+        throw new Error(`${product.name} is currently sold out.`);
+      case "DAY_RESTRICTED":
+        throw new Error(`${product.name} is not available today.`);
+      case "WINDOW_CLOSED":
+        throw new Error(`${product.name} is outside its ordering window.`);
+      default:
+        throw new Error(`${product.name} is not available right now.`);
+    }
   }
 
   const nowInfo = getStoreLocalNow(product);
-
-  if (
-    config.availableDays.length > 0 &&
-    !config.availableDays.includes(nowInfo.weekday)
-  ) {
-    throw new Error(`${product.name} is not available today.`);
-  }
-
-  if (
-    !isWithinConfiguredWindow(
-      nowInfo.currentTime,
-      config.availableFrom,
-      config.availableUntil,
-    )
-  ) {
-    throw new Error(`${product.name} is outside its ordering window.`);
-  }
 
   if (config.dailyOrderLimit != null) {
     const orderedToday = await db.orderItem.aggregate({
