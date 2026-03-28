@@ -86,7 +86,7 @@ const adminDisputeInclude = Prisma.validator<Prisma.DisputeInclude>()({
     include: {
       fileAsset: true,
       uploadedBy: {
-        select: { name: true },
+        select: { name: true, role: true },
       },
     },
     orderBy: { createdAt: "asc" },
@@ -238,6 +238,7 @@ function mapDisputeToAdminDetail(dispute: AdminDisputeRecord): AdminDisputeDetai
     deliveryEvidenceId: item.deliveryEvidenceId,
     uploadedById: item.uploadedById,
     uploadedByName: item.uploadedBy.name ?? null,
+    uploadedByRole: item.uploadedBy.role,
     createdAt: item.createdAt.toISOString(),
   }));
   const linkedDeliveryEvidence = dispute.linkedDeliveryEvidence

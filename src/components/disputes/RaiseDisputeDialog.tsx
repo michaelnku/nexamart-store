@@ -2,10 +2,11 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 
 import { raiseOrderDisputeAction } from "@/actions/order/disputeActions";
+import { deleteFileAction } from "@/actions/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,6 +26,15 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { getDisputeWindowText } from "@/lib/disputes/ui";
+import { UploadButton } from "@/utils/uploadthing";
+
+type UploadedEvidenceFile = {
+  url: string;
+  key: string;
+  name?: string;
+  type?: string;
+  size?: number;
+};
 
 type Props = {
   open: boolean;
@@ -53,6 +63,8 @@ export default function RaiseDisputeDialog({
   const [description, setDescription] = useState("");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [files, setFiles] = useState<UploadedEvidenceFile[]>([]);
+  const [removingKeys, setRemovingKeys] = useState<Set<string>>(new Set());
 
   const helperText = useMemo(
     () =>
@@ -72,11 +84,24 @@ export default function RaiseDisputeDialog({
 
     startTransition(async () => {
       try {
-        await raiseOrderDisputeAction(orderId, reason, description);
+        await raiseOrderDisputeAction(
+          orderId,
+          reason,
+          description,
+          undefined,
+          files.map((file) => ({
+            fileUrl: file.url,
+            fileKey: file.key,
+            fileName: file.name,
+            mimeType: file.type,
+            fileSize: file.size,
+          })),
+        );
         toast.success("Dispute raised successfully.");
         onOpenChange(false);
         setDescription("");
         setReason("ITEM_NOT_RECEIVED");
+        setFiles([]);
         router.refresh();
       } catch (submitError) {
         toast.error(
@@ -86,6 +111,28 @@ export default function RaiseDisputeDialog({
         );
       }
     });
+  };
+
+  const handleRemoveFile = async (key: string) => {
+    if (removingKeys.has(key)) {
+      return;
+    }
+
+    setRemovingKeys((current) => new Set(current).add(key));
+
+    try {
+      await deleteFileAction(key);
+      setFiles((current) => current.filter((file) => file.key !== key));
+      toast.success("Evidence removed");
+    } catch {
+      toast.error("Failed to remove evidence");
+    } finally {
+      setRemovingKeys((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
+    }
   };
 
   return (
@@ -135,10 +182,127 @@ export default function RaiseDisputeDialog({
           <div className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
             <p className="font-medium text-foreground">Current policy</p>
             <p className="mt-1">{helperText}</p>
-            <p className="mt-2">
-              Evidence upload is not yet available from this screen. Existing evidence
-              will appear in the dispute details once supported by your account flow.
-            </p>
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-slate-200/80 bg-slate-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <div className="flex items-start gap-2">
+              <div className="rounded-xl bg-sky-100 p-2 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300">
+                <UploadCloud className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Add opening evidence
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Upload optional image or video proof now. These files will be
+                  attached when the dispute is opened.
+                </p>
+              </div>
+            </div>
+
+            <UploadButton
+              endpoint="evidenceFiles"
+              appearance={{
+                button:
+                  "ut-ready:bg-[#3c9ee0] ut-ready:hover:bg-[#318bc4] ut-uploading:bg-[#318bc4] ut-button:rounded-xl ut-button:h-10 ut-button:px-4 ut-button:text-sm ut-button:font-semibold",
+              }}
+              onClientUploadComplete={(uploadedFiles) => {
+                const accepted = uploadedFiles.filter(
+                  (file) =>
+                    file.type?.startsWith("image/") ||
+                    file.type?.startsWith("video/"),
+                );
+
+                const rejected = uploadedFiles.filter(
+                  (file) =>
+                    !file.type?.startsWith("image/") &&
+                    !file.type?.startsWith("video/"),
+                );
+
+                if (rejected.length > 0) {
+                  toast.error(
+                    "Only image and video evidence can be attached when opening a dispute.",
+                  );
+
+                  void Promise.all(
+                    rejected.map((file) =>
+                      deleteFileAction(file.key).catch(() => null),
+                    ),
+                  );
+                }
+
+                setFiles((current) => {
+                  const next = [...current];
+                  const overflowKeys: string[] = [];
+
+                  for (const file of accepted) {
+                    if (next.length >= 6) {
+                      overflowKeys.push(file.key);
+                      continue;
+                    }
+
+                    if (!next.some((item) => item.key === file.key)) {
+                      next.push({
+                        url: file.url,
+                        key: file.key,
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                      });
+                    }
+                  }
+
+                  if (overflowKeys.length > 0) {
+                    toast.error("Only up to 6 opening evidence files can be attached.");
+
+                    void Promise.all(
+                      overflowKeys.map((key) =>
+                        deleteFileAction(key).catch(() => null),
+                      ),
+                    );
+                  }
+
+                  return next;
+                });
+              }}
+              onUploadError={(uploadError) => {
+                toast.error(uploadError.message);
+              }}
+            />
+
+            {files.length > 0 ? (
+              <div className="space-y-2">
+                {files.map((file) => (
+                  <div
+                    key={file.key}
+                    className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-slate-900 dark:text-zinc-100">
+                        {file.name ?? file.key}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-zinc-400">
+                        {file.type?.startsWith("video/") ? "Video" : "Image"}
+                      </p>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveFile(file.key)}
+                      disabled={removingKeys.has(file.key) || isPending}
+                    >
+                      {removingKeys.has(file.key) ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}

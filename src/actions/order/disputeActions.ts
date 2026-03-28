@@ -22,13 +22,17 @@ import {
   type OrderDisputeContext,
   type SellerGroupImpactInput,
 } from "@/lib/disputes/disputeService";
-import { snapshotExistingDeliveryEvidenceForDisputeInTx } from "@/lib/evidence/service";
+import {
+  createDisputeEvidenceInTx,
+  snapshotExistingDeliveryEvidenceForDisputeInTx,
+} from "@/lib/evidence/service";
 import {
   getDisputePolicy,
   isResolutionAllowed,
   normalizeDisputeResolution,
   parseDisputeReason,
 } from "@/lib/disputes/policy";
+import { parseDisputeOpenEvidenceFiles } from "@/lib/evidence/validation";
 import { releaseEscrowPayoutInTx } from "@/lib/payout/releaseEscrowPayout";
 
 function buildFullRefundImpactMap(
@@ -50,6 +54,15 @@ export async function raiseOrderDisputeAction(
   reasonInput: string,
   description?: string,
   sellerGroupIds?: string[],
+  evidenceFiles?: Array<{
+    fileUrl: string;
+    fileKey?: string | null;
+    fileName?: string | null;
+    mimeType?: string | null;
+    fileSize?: number | null;
+    caption?: string | null;
+    metadata?: Record<string, unknown> | null;
+  }>,
 ) {
   const userId = await CurrentUserId();
   if (!userId) {
@@ -60,6 +73,7 @@ export async function raiseOrderDisputeAction(
   const reason = parsedReason ?? "OTHER";
   const cleanDescription =
     (description ?? (parsedReason ? "" : reasonInput)).trim() || null;
+  const parsedEvidenceFiles = parseDisputeOpenEvidenceFiles(evidenceFiles);
 
   return prisma.$transaction(async (tx) => {
     const order = await getOrderDisputeContext(tx, orderId);
@@ -88,6 +102,15 @@ export async function raiseOrderDisputeAction(
       { userId, role: "USER" },
       dispute.id,
     );
+
+    for (const file of parsedEvidenceFiles) {
+      await createDisputeEvidenceInTx(tx, { userId, role: "USER" }, {
+        disputeId: dispute.id,
+        visibility: "PARTIES_AND_ADMIN",
+        isInternal: false,
+        file,
+      });
+    }
 
     await replaceDisputeSellerGroupImpacts(tx, dispute.id, impactedGroupIds);
 

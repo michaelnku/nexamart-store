@@ -6,6 +6,7 @@ import {
   riderCancelAssignedDeliveryAction,
   riderVerifyDeliveryOtpAction,
 } from "@/actions/rider/riderActions";
+import { createRiderDeliveryEvidenceAction } from "@/actions/rider/riderEvidenceActions";
 import DeliveryEvidenceUploadCard from "@/components/evidence/DeliveryEvidenceUploadCard";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
@@ -424,6 +425,7 @@ export default function RiderDeliveriesClient() {
                           deliveryId={delivery.id}
                           title="Delivery proof"
                           description="Upload drop-off, failed-attempt, or recipient proof for this active trip."
+                          createEvidenceAction={createRiderDeliveryEvidenceAction}
                           kindOptions={[
                             {
                               value: "DROP_OFF_PROOF",

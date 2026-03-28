@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma";
 import {
   DeliveryEvidenceType,
+  type DeliveryStatus,
   DisputeMessageType,
   EvidenceVisibility,
   FileAssetCategory,
@@ -68,6 +69,41 @@ function applyDeliveryEvidenceSideEffects(
       ...(handoffConfirmedAt ? { handoffConfirmedAt } : {}),
     },
   });
+}
+
+function assertRiderDeliveryEvidenceState(
+  deliveryStatus: DeliveryStatus,
+  kind: DeliveryEvidenceType,
+) {
+  const allowedStatusesByKind: Partial<
+    Record<DeliveryEvidenceType, DeliveryStatus[]>
+  > = {
+    DROP_OFF_PROOF: ["PICKED_UP", "DELIVERED"],
+    FAILED_ATTEMPT_PROOF: ["PICKED_UP"],
+    RECIPIENT_CONFIRMATION_PROOF: ["PICKED_UP", "DELIVERED"],
+    OTP_CONFIRMATION_PROOF: ["PICKED_UP", "DELIVERED"],
+  };
+
+  const allowedStatuses = allowedStatusesByKind[kind];
+
+  if (!allowedStatuses?.includes(deliveryStatus)) {
+    throw new Error(
+      `Delivery status ${deliveryStatus} does not allow ${kind} uploads.`,
+    );
+  }
+}
+
+function sanitizeDeliveryEvidenceMetadata(
+  kind: DeliveryEvidenceType,
+  metadata: Record<string, unknown> | null | undefined,
+) {
+  if (kind !== "OTP_CONFIRMATION_PROOF") {
+    return metadata;
+  }
+
+  return {
+    proofType: "OTP_CONFIRMATION_PROOF",
+  };
 }
 
 function normalizeEvidenceFile(input: EvidenceFileInput) {
@@ -260,6 +296,10 @@ export async function createDeliveryEvidenceInTx(
     throw new Error("Seller group does not belong to this delivery.");
   }
 
+  if (access.viewerKind === "RIDER") {
+    assertRiderDeliveryEvidenceState(access.deliveryStatus, input.kind);
+  }
+
   const { asset, file } = await ensureEvidenceFileAsset(tx, {
     uploadedById: actor.userId,
     category: "DELIVERY_EVIDENCE",
@@ -275,7 +315,9 @@ export async function createDeliveryEvidenceInTx(
       kind: input.kind,
       fileAssetId: asset.id,
       caption: file.caption,
-      metadata: toNullableJsonInput(file.metadata),
+      metadata: toNullableJsonInput(
+        sanitizeDeliveryEvidenceMetadata(input.kind, file.metadata),
+      ),
       capturedAt: input.capturedAt,
       isInternal: input.isInternal,
       visibility: input.visibility,
@@ -290,6 +332,35 @@ export async function createDeliveryEvidenceInTx(
   });
 
   return created;
+}
+
+export async function createRiderDeliveryEvidenceInTx(
+  tx: Tx,
+  actor: EvidenceUploadActor,
+  input: {
+    deliveryId: string;
+    kind: DeliveryEvidenceType;
+    visibility: EvidenceVisibility;
+    capturedAt?: Date | null;
+    caption?: string | null;
+    file: EvidenceFileInput;
+  },
+) {
+  if (actor.role !== "RIDER") {
+    throw new Error("Forbidden");
+  }
+
+  return createDeliveryEvidenceInTx(tx, actor, {
+    deliveryId: input.deliveryId,
+    kind: input.kind,
+    visibility: input.visibility,
+    isInternal: false,
+    capturedAt: input.capturedAt,
+    file: {
+      ...input.file,
+      caption: input.caption ?? input.file.caption,
+    },
+  });
 }
 
 export async function linkExistingDeliveryEvidenceToDisputeInTx(

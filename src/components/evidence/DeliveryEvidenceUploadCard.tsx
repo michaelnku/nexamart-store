@@ -26,10 +26,14 @@ type Props = {
   title?: string;
   description?: string;
   onUploaded?: () => Promise<void> | void;
+  createEvidenceAction?: typeof createDeliveryEvidenceAction;
 };
 
 function labelize(value: string) {
-  return value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (part) => part.toUpperCase());
+  return value
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (part) => part.toUpperCase());
 }
 
 export default function DeliveryEvidenceUploadCard({
@@ -38,11 +42,15 @@ export default function DeliveryEvidenceUploadCard({
   kindOptions,
   visibilityOptions,
   title = "Upload Delivery Proof",
-  description = "Attach fulfillment proof using the existing UploadThing flow. Records are validated and stored server-side.",
+  description =
+    "Attach fulfillment proof using the existing UploadThing flow. Records are validated and stored server-side.",
   onUploaded,
+  createEvidenceAction = createDeliveryEvidenceAction,
 }: Props) {
   const router = useRouter();
-  const [kind, setKind] = useState<DeliveryEvidenceType>(kindOptions[0]?.value ?? "DROP_OFF_PROOF");
+  const [kind, setKind] = useState<DeliveryEvidenceType>(
+    kindOptions[0]?.value ?? "DROP_OFF_PROOF",
+  );
   const [visibility, setVisibility] = useState<EvidenceVisibility>(
     visibilityOptions[0] ?? "PARTIES_AND_ADMIN",
   );
@@ -70,7 +78,9 @@ export default function DeliveryEvidenceUploadCard({
           <Label>Proof Type</Label>
           <select
             value={kind}
-            onChange={(event) => setKind(event.target.value as DeliveryEvidenceType)}
+            onChange={(event) =>
+              setKind(event.target.value as DeliveryEvidenceType)
+            }
             className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
           >
             {kindOptions.map((option) => (
@@ -111,7 +121,10 @@ export default function DeliveryEvidenceUploadCard({
       <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
         <div className="mb-3 flex items-start gap-2 text-xs text-slate-500 dark:text-zinc-400">
           <ShieldCheck className="mt-0.5 h-4 w-4" />
-          <p>Allowed files: images, PDF, and short video clips. Final record creation happens on the server after upload completes.</p>
+          <p>
+            Allowed files: images, PDF, and short video clips. Final record
+            creation happens on the server after upload completes.
+          </p>
         </div>
 
         <UploadButton
@@ -123,7 +136,7 @@ export default function DeliveryEvidenceUploadCard({
           onClientUploadComplete={(files) => {
             startTransition(async () => {
               for (const file of files) {
-                const result = await createDeliveryEvidenceAction({
+                const result = await createEvidenceAction({
                   deliveryId,
                   sellerGroupId,
                   kind,

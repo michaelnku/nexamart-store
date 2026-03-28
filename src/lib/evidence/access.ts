@@ -2,6 +2,7 @@ import type { Prisma } from "@/generated/prisma";
 import {
   DeliveryEvidenceType,
   DisputeMessageType,
+  type DeliveryStatus,
   type UserRole,
 } from "@/generated/prisma/client";
 
@@ -54,6 +55,7 @@ export type DeliveryEvidenceAccessContext = {
   orderId: string;
   sellerGroupIds: string[];
   riderId: string | null;
+  deliveryStatus: DeliveryStatus;
 };
 
 export type DisputeActorContext = {
@@ -84,6 +86,7 @@ export async function getDeliveryEvidenceAccessContextOrThrow(
     select: {
       id: true,
       riderId: true,
+      status: true,
       orderId: true,
       order: {
         select: {
@@ -126,6 +129,7 @@ export async function getDeliveryEvidenceAccessContextOrThrow(
       orderId: delivery.orderId,
       sellerGroupIds,
       riderId: delivery.riderId,
+      deliveryStatus: delivery.status,
     };
   }
 
@@ -140,6 +144,7 @@ export async function getDeliveryEvidenceAccessContextOrThrow(
       orderId: delivery.orderId,
       sellerGroupIds,
       riderId: delivery.riderId,
+      deliveryStatus: delivery.status,
     };
   }
 
@@ -155,6 +160,7 @@ export async function getDeliveryEvidenceAccessContextOrThrow(
       orderId: delivery.orderId,
       sellerGroupIds,
       riderId: delivery.riderId,
+      deliveryStatus: delivery.status,
     };
   }
 

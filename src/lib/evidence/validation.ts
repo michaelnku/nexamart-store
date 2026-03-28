@@ -33,6 +33,21 @@ const evidenceFileSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).nullish(),
 });
 
+const disputeOpenEvidenceFileSchema = evidenceFileSchema.superRefine(
+  (file, context) => {
+    if (
+      file.mimeType &&
+      !file.mimeType.startsWith("image/") &&
+      !file.mimeType.startsWith("video/")
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Dispute opening evidence must be an image or video.",
+      });
+    }
+  },
+);
+
 export const createDeliveryEvidenceSchema = z.object({
   deliveryId: z.string().min(1),
   sellerGroupId: z.string().min(1).nullish(),
@@ -66,6 +81,31 @@ export const createDisputeMessageSchema = z.object({
   attachments: z.array(evidenceFileSchema).max(6).default([]),
 });
 
+export const createRiderDeliveryEvidenceSchema = z.object({
+  deliveryId: z.string().min(1),
+  kind: z
+    .nativeEnum(DeliveryEvidenceType)
+    .refine(
+      (kind) =>
+        kind === "DROP_OFF_PROOF" ||
+        kind === "FAILED_ATTEMPT_PROOF" ||
+        kind === "RECIPIENT_CONFIRMATION_PROOF" ||
+        kind === "OTP_CONFIRMATION_PROOF",
+      "Unsupported rider delivery evidence type.",
+    ),
+  visibility: z
+    .nativeEnum(EvidenceVisibility)
+    .refine(
+      (visibility) =>
+        visibility === "PARTIES_AND_ADMIN" || visibility === "RIDER_AND_ADMIN",
+      "Rider evidence visibility must be parties/admin or rider/admin.",
+    )
+    .default("PARTIES_AND_ADMIN"),
+  capturedAt: z.coerce.date().nullish(),
+  caption: z.string().trim().max(280).nullish(),
+  file: evidenceFileSchema,
+});
+
 export function parseEvidenceFileInput(input: EvidenceFileInput): EvidenceFileInput {
   const parsed = evidenceFileSchema.parse(input);
 
@@ -74,6 +114,12 @@ export function parseEvidenceFileInput(input: EvidenceFileInput): EvidenceFileIn
   }
 
   return parsed;
+}
+
+export function parseDisputeOpenEvidenceFiles(
+  files: EvidenceFileInput[] | null | undefined,
+) {
+  return z.array(disputeOpenEvidenceFileSchema).max(6).parse(files ?? []);
 }
 
 export function resolveEvidenceType(
