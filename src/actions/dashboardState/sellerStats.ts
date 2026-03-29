@@ -14,6 +14,10 @@ export async function getSellerStats() {
     where: { userId: user.id },
     select: {
       id: true,
+      name: true,
+      slug: true,
+      averageRating: true,
+      reviewCount: true,
       isVerified: true,
       isSuspended: true,
     },
@@ -27,6 +31,18 @@ export async function getSellerStats() {
       lowStockCount: 0,
       pendingPayouts: 0,
       isStoreVerified: false,
+      storeReviewSummary: {
+        storeName: null,
+        storeSlug: null,
+        averageRating: 0,
+        reviewCount: 0,
+        ratingBreakdown: [5, 4, 3, 2, 1].map((rating) => ({
+          rating,
+          count: 0,
+          percentage: 0,
+        })),
+        recentReviews: [],
+      },
       latestEvents: [],
     };
   }
@@ -39,6 +55,8 @@ export async function getSellerStats() {
     pendingPayouts,
     recentOrderEvents,
     reviewEvents,
+    storeRatingBreakdown,
+    recentStoreReviews,
     payoutEvents,
   ] = await Promise.all([
     //total product
@@ -147,6 +165,37 @@ export async function getSellerStats() {
         },
       },
     }),
+    prisma.storeReview.groupBy({
+      by: ["rating"],
+      where: {
+        storeId: store.id,
+      },
+      _count: {
+        rating: true,
+      },
+    }),
+    prisma.storeReview.findMany({
+      where: {
+        storeId: store.id,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 5,
+      select: {
+        id: true,
+        rating: true,
+        title: true,
+        comment: true,
+        createdAt: true,
+        user: {
+          select: {
+            name: true,
+            username: true,
+          },
+        },
+      },
+    }),
     prisma.transaction.findMany({
       where: {
         userId: user.id,
@@ -204,6 +253,19 @@ export async function getSellerStats() {
       createdAt: event.createdAt.toISOString(),
     }));
 
+  const ratingBreakdownMap = new Map(
+    storeRatingBreakdown.map((entry) => [entry.rating, entry._count.rating]),
+  );
+  const normalizedRatingBreakdown = [5, 4, 3, 2, 1].map((rating) => {
+    const count = ratingBreakdownMap.get(rating) ?? 0;
+
+    return {
+      rating,
+      count,
+      percentage: store.reviewCount > 0 ? (count / store.reviewCount) * 100 : 0,
+    };
+  });
+
   return {
     totalProducts,
     totalOrders,
@@ -212,6 +274,21 @@ export async function getSellerStats() {
     pendingPayouts,
     isStoreVerified: store.isVerified,
     isStoreSuspended: store.isSuspended,
+    storeReviewSummary: {
+      storeName: store.name,
+      storeSlug: store.slug,
+      averageRating: store.averageRating,
+      reviewCount: store.reviewCount,
+      ratingBreakdown: normalizedRatingBreakdown,
+      recentReviews: recentStoreReviews.map((review) => ({
+        id: review.id,
+        rating: review.rating,
+        title: review.title,
+        comment: review.comment,
+        createdAt: review.createdAt.toISOString(),
+        customerName: review.user.name ?? review.user.username ?? "Customer",
+      })),
+    },
     latestEvents,
   };
 }

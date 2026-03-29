@@ -28,6 +28,7 @@ type StoreFrontClientProps = {
   isOwner: boolean;
   performanceBadge: string | null;
   ratingSummary: ReactNode;
+  reviewsSection: ReactNode;
   followAction: ReactNode;
   ownerBanner: ReactNode;
 };
@@ -57,6 +58,7 @@ export default function StoreFrontClient({
   isOwner,
   performanceBadge,
   ratingSummary,
+  reviewsSection,
   followAction,
   ownerBanner,
 }: StoreFrontClientProps) {
@@ -168,6 +170,8 @@ export default function StoreFrontClient({
               </div>
             )}
           </section>
+
+          {reviewsSection}
         </section>
       </main>
     </section>

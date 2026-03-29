@@ -140,6 +140,14 @@ export function buildStoreStructuredData(store: SeoStore): JsonLd {
       store.tagline ?? store.description,
       `Discover ${store.name} on ${SEO_SITE_NAME}.`,
     ),
+    aggregateRating:
+      (store.reviewCount ?? 0) > 0 && (store.averageRating ?? 0) > 0
+        ? {
+            "@type": "AggregateRating",
+            ratingValue: Number((store.averageRating ?? 0).toFixed(1)),
+            reviewCount: store.reviewCount,
+          }
+        : undefined,
   };
 }
 

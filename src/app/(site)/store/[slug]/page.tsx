@@ -17,6 +17,7 @@ import FollowStoreButton from "./_components/FollowStoreButton";
 import StoreFrontClient from "./_components/StoreFrontClient";
 import StoreMaintenancePage from "./_components/StoreMaintenancePage";
 import StoreRatingSummary from "./_components/StoreRatingSummary";
+import StoreReviewsSection from "./_components/StoreReviewsSection";
 
 interface StoreFrontProps {
   params: Promise<{ slug: string }>;
@@ -99,7 +100,21 @@ export default async function StorePage({ params }: StoreFrontProps) {
         }}
         isOwner={isOwner}
         performanceBadge={performance?.badge ?? null}
-        ratingSummary={<StoreRatingSummary storeId={store.id} />}
+        ratingSummary={
+          <StoreRatingSummary
+            averageRating={store.averageRating ?? 0}
+            reviewCount={store.reviewCount ?? 0}
+          />
+        }
+        reviewsSection={
+          <StoreReviewsSection
+            store={{
+              id: store.id,
+              slug: store.slug,
+              name: store.name,
+            }}
+          />
+        }
         followAction={
           user?.role !== "SELLER" ? (
             <FollowStoreButton storeId={store.id} />

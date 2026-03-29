@@ -1,29 +1,29 @@
-"use server";
-
-import { prisma } from "@/lib/prisma";
 import { Star } from "lucide-react";
 
-const StoreRatingSummary = async ({ storeId }: { storeId: string }) => {
-  const reviews = await prisma.storeReview.findMany({
-    where: { storeId },
-    select: { rating: true },
-  });
-
-  if (reviews.length === 0)
-    return <p className="text-gray-500 text-sm">No ratings yet</p>;
-
-  const avg = reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length;
+const StoreRatingSummary = ({
+  averageRating,
+  reviewCount,
+}: {
+  averageRating: number;
+  reviewCount: number;
+}) => {
+  if (reviewCount === 0) {
+    return <p className="text-sm text-gray-500">No ratings yet</p>;
+  }
 
   return (
-    <div className="flex items-center gap-1 text-yellow-500 font-medium">
-      {[1, 2, 3, 4, 5].map((i) => (
+    <div className="flex items-center gap-1 font-medium text-yellow-500">
+      {[1, 2, 3, 4, 5].map((index) => (
         <Star
-          key={i}
-          className={`w-4 h-4 ${i <= avg ? "fill-yellow-500" : ""}`}
+          key={index}
+          className={`h-4 w-4 ${
+            index <= Math.round(averageRating) ? "fill-yellow-500" : ""
+          }`}
         />
       ))}
-      <span className="text-gray-600 text-sm ml-1">
-        {avg.toFixed(1)} • {reviews.length} reviews
+      <span className="ml-1 text-sm text-gray-600">
+        {averageRating.toFixed(1)} • {reviewCount} review
+        {reviewCount === 1 ? "" : "s"}
       </span>
     </div>
   );

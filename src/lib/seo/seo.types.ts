@@ -94,6 +94,8 @@ export type SeoStore = {
   tagline?: string | null;
   logo?: string | null;
   bannerImage?: string | null;
+  averageRating?: number;
+  reviewCount?: number;
   isActive?: boolean;
   isDeleted?: boolean;
   isSuspended?: boolean;

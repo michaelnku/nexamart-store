@@ -596,6 +596,7 @@ model Order {
   transactions            Transaction[]
   dispute                 Dispute?
   deliveryEvidences       DeliveryEvidence[]
+  storeReviews            StoreReview[]
 
   @@index([userId])
   @@index([status])
@@ -655,6 +656,7 @@ model OrderSellerGroup {
   disputeSellerGroupImpacts DisputeSellerGroupImpact[]
   deliveryEvidences         DeliveryEvidence[]
   disputeEvidences          DisputeEvidence[]
+  storeReviews              StoreReview[]
 
   @@index([sellerId])
   @@index([payoutReleasedAt])
@@ -1162,6 +1164,8 @@ model Store {
   verificationMethod        String?
   bannerImageFileAssetId    String?
   tagline                   String?
+  averageRating             Float                    @default(0)
+  reviewCount               Int                      @default(0)
   emailNotificationsEnabled Boolean                  @default(true)
   createdAt                 DateTime                 @default(now())
   updatedAt                 DateTime                 @updatedAt
@@ -1203,16 +1207,27 @@ model StoreFollower {
 }
 
 model StoreReview {
-  id        String   @id @default(cuid())
-  storeId   String
-  userId    String
-  rating    Int
-  comment   String?
-  createdAt DateTime @default(now())
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  storeId       String
+  userId        String
+  orderId       String
+  sellerGroupId String
+  rating        Int
+  title         String?
+  comment       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  @@unique([storeId, userId])
+  store       Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order       Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sellerGroup OrderSellerGroup @relation(fields: [sellerGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([sellerGroupId, userId])
+  @@index([storeId, createdAt])
+  @@index([userId, createdAt])
+  @@index([orderId])
+  @@index([sellerGroupId])
 }
 
 model Brand {

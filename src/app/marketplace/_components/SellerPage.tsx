@@ -8,6 +8,7 @@ import {
   DollarSign,
   Package,
   ShoppingBag,
+  Star,
 } from "lucide-react";
 
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
@@ -26,6 +27,25 @@ type SellerStats = {
   pendingPayouts: number;
   isStoreVerified: boolean;
   isStoreSuspended?: boolean;
+  storeReviewSummary: {
+    storeName: string | null;
+    storeSlug: string | null;
+    averageRating: number;
+    reviewCount: number;
+    ratingBreakdown: {
+      rating: number;
+      count: number;
+      percentage: number;
+    }[];
+    recentReviews: {
+      id: string;
+      rating: number;
+      title: string | null;
+      comment: string | null;
+      createdAt: string;
+      customerName: string;
+    }[];
+  };
   latestEvents: {
     id: string;
     type: "ORDER" | "REVIEW" | "PAYOUT";
@@ -55,6 +75,7 @@ export default function SellerPage({ stats }: { stats: SellerStats }) {
       second: "2-digit",
       hour12: true,
     }).format(new Date(value));
+  const storeReviewSummary = stats.storeReviewSummary;
 
   const dashboardStats = [
     {
@@ -141,6 +162,141 @@ export default function SellerPage({ stats }: { stats: SellerStats }) {
           />
         ))}
       </section>
+
+      <PremiumPanel
+        title="Store Reviews"
+        description="Track your store reputation with verified feedback from completed purchases."
+      >
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-[22px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.35)] dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-zinc-300">
+                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                Average rating
+              </div>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                {storeReviewSummary.averageRating.toFixed(1)}
+              </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+                From {storeReviewSummary.reviewCount} verified review
+                {storeReviewSummary.reviewCount === 1 ? "" : "s"}
+              </p>
+            </div>
+
+            <div className="rounded-[22px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.35)] dark:border-zinc-800 dark:bg-zinc-950">
+              <p className="text-sm font-medium text-slate-600 dark:text-zinc-300">
+                Review volume
+              </p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                {storeReviewSummary.reviewCount}
+              </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+                Completed-purchase store reviews
+              </p>
+            </div>
+
+            <div className="rounded-[22px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.35)] dark:border-zinc-800 dark:bg-zinc-950 sm:col-span-2">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-950 dark:text-white">
+                    Rating breakdown
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                    Distribution across all verified store reviews
+                  </p>
+                </div>
+                {storeReviewSummary.storeSlug ? (
+                  <Link
+                    href={`/store/${storeReviewSummary.storeSlug}`}
+                    className="text-sm font-medium text-sky-700 transition hover:text-sky-800 dark:text-sky-300 dark:hover:text-sky-200"
+                  >
+                    View storefront
+                  </Link>
+                ) : null}
+              </div>
+              <div className="space-y-3">
+                {storeReviewSummary.ratingBreakdown.map((row) => (
+                  <div
+                    key={row.rating}
+                    className="grid grid-cols-[44px_minmax(0,1fr)_32px] items-center gap-3"
+                  >
+                    <div className="flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-zinc-300">
+                      <span>{row.rating}</span>
+                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-200/80 dark:bg-zinc-800">
+                      <div
+                        className="h-full rounded-full bg-[linear-gradient(90deg,#0ea5e9_0%,#06b6d4_45%,#14b8a6_100%)]"
+                        style={{ width: `${row.percentage}%` }}
+                      />
+                    </div>
+                    <span className="text-right text-xs font-medium text-slate-500 dark:text-zinc-400">
+                      {row.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[22px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.35)] dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-semibold text-slate-950 dark:text-white">
+                  Recent store reviews
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-zinc-400">
+                  Latest public feedback shoppers see on your storefront.
+                </p>
+              </div>
+            </div>
+
+            {!storeReviewSummary.recentReviews.length ? (
+              <p className="text-sm text-slate-500 dark:text-zinc-400">
+                No store reviews yet.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {storeReviewSummary.recentReviews.map((review, index) => (
+                  <div
+                    key={review.id}
+                    className={`space-y-2 pb-4 ${
+                      index !== storeReviewSummary.recentReviews.length - 1
+                        ? "border-b border-slate-200/80 dark:border-zinc-800"
+                        : ""
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-950 dark:text-white">
+                          {review.customerName}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-zinc-400">
+                          {formatDateTime(review.createdAt)} UTC
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 text-amber-500">
+                        <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                        <span className="text-sm font-medium text-slate-700 dark:text-zinc-200">
+                          {review.rating.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+                    {review.title ? (
+                      <p className="text-sm font-medium text-slate-800 dark:text-zinc-200">
+                        {review.title}
+                      </p>
+                    ) : null}
+                    <p className="text-sm leading-6 text-slate-600 dark:text-zinc-400">
+                      {review.comment || "Customer left a rating without written feedback."}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </PremiumPanel>
 
       <PremiumPanel
         title="Latest Events"
