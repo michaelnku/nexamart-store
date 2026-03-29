@@ -1,10 +1,4 @@
-import type {
-  Metadata,
-  OpenGraph,
-  ResolvedMetadata,
-  Robots,
-  Twitter,
-} from "next";
+import type { Metadata, ResolvedMetadata } from "next";
 
 export type SeoImageInput = {
   url: string;
@@ -28,12 +22,21 @@ export type SeoMetadataInput = {
   description?: string | null;
   path?: string;
   canonicalUrl?: string;
-  index?: boolean;
   keywords?: readonly string[] | string[] | null;
-  openGraphType?: OpenGraph["type"];
+  openGraphType?:
+    | "article"
+    | "book"
+    | "music.song"
+    | "music.album"
+    | "music.playlist"
+    | "music.radio_station"
+    | "profile"
+    | "website"
+    | "video.tv_show"
+    | "video.other";
   images?: SeoImageInput[];
   fallbackImage?: SeoImageInput | null;
-  twitterCard?: Twitter["card"];
+  twitterCard?: "summary" | "summary_large_image" | "player" | "app";
 };
 
 export type ResolvedSeoSiteConfig = {
@@ -128,5 +131,3 @@ export type StaticSeoPageDefinition = {
 };
 
 export type RootMetadataParent = Promise<ResolvedMetadata>;
-
-export type SeoRobots = NonNullable<Metadata["robots"]> | Robots;

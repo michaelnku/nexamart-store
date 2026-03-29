@@ -27,25 +27,6 @@ import {
   sanitizeTitle,
 } from "./seo.utils";
 
-const DEFAULT_ROBOTS = {
-  index: true,
-  follow: true,
-  googleBot: {
-    index: true,
-    follow: true,
-  },
-} satisfies NonNullable<Metadata["robots"]>;
-
-const NO_INDEX_ROBOTS = {
-  index: false,
-  follow: false,
-  googleBot: {
-    index: false,
-    follow: false,
-    noimageindex: true,
-  },
-} satisfies NonNullable<Metadata["robots"]>;
-
 function createMetadataImage(input: SeoImageInput) {
   return {
     url: input.url,
@@ -81,7 +62,6 @@ export async function buildRootMetadata(): Promise<Metadata> {
     alternates: {
       canonical: buildCanonicalUrl("/"),
     },
-    robots: DEFAULT_ROBOTS,
     icons: {
       icon: "/favicon.ico",
       shortcut: "/favicon.ico",
@@ -119,7 +99,6 @@ export function buildSeoMetadata(input: SeoMetadataInput): Metadata {
   };
   const images = mergeOpenGraphImages(input.images, fallbackImage);
   const keywords = sanitizeKeywords(input.keywords);
-  const robots = input.index === false ? NO_INDEX_ROBOTS : DEFAULT_ROBOTS;
 
   return {
     ...(input.title ? { title } : {}),
@@ -132,7 +111,6 @@ export function buildSeoMetadata(input: SeoMetadataInput): Metadata {
         }
       : {}),
     ...(keywords ? { keywords } : {}),
-    robots,
     openGraph: {
       title,
       description,
@@ -171,23 +149,13 @@ export function buildStaticPageMetadata(key: StaticSeoPageKey): Metadata {
 export function buildNoIndexMetadata(
   input: Pick<SeoMetadataInput, "title" | "description" | "path"> = {},
 ): Metadata {
-  return buildSeoMetadata({
-    ...input,
-    index: false,
-  });
+  return buildSeoMetadata(input);
 }
 
 export function buildProductMetadata(
   product: SeoProduct,
   canonicalPath: string,
 ): Metadata {
-  const isIndexable =
-    product.isPublished &&
-    Boolean(product.store) &&
-    !product.store?.isDeleted &&
-    !product.store?.isSuspended &&
-    product.store?.isActive !== false &&
-    product.variants.length > 0;
   const lowestPrice =
     product.variants.length > 0
       ? Math.min(...product.variants.map((variant) => variant.priceUSD))
@@ -197,7 +165,6 @@ export function buildProductMetadata(
     title: product.name,
     description: sanitizeDescription(product.description, product.name),
     path: canonicalPath,
-    index: isIndexable,
     keywords: [
       product.name,
       product.brand ?? "",
@@ -217,9 +184,6 @@ export function buildProductMetadata(
 }
 
 export function buildStoreMetadata(store: SeoStore): Metadata {
-  const isIndexable =
-    !store.isDeleted && !store.isSuspended && store.isActive !== false;
-
   return buildSeoMetadata({
     title: store.name,
     description: sanitizeDescription(
@@ -227,7 +191,6 @@ export function buildStoreMetadata(store: SeoStore): Metadata {
       `Discover ${store.name} on NexaMart.`,
     ),
     path: `/store/${store.slug}`,
-    index: isIndexable,
     keywords: [store.name, "storefront", "seller store"],
     images: [
       {
