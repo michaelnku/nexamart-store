@@ -115,6 +115,7 @@ export const getPublicProductById = cache(async (productId: string) => {
       },
       category: {
         select: {
+          id: true,
           name: true,
           slug: true,
         },
