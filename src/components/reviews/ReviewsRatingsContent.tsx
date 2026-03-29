@@ -32,7 +32,7 @@ export default function ReviewsRatingsContent({
       <section className="space-y-2">
         <h1 className="text-2xl font-bold">Reviews and Ratings</h1>
         <p className="text-sm text-gray-600">
-          Review products from completed deliveries to help other buyers.
+          Review products after delivery to help other buyers.
         </p>
       </section>
 
