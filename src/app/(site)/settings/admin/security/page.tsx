@@ -1,8 +1,5 @@
-import { updatePlatformSettings } from "@/actions/admin/updatePlatformSettings";
-import { Button } from "@/components/ui/button";
+import { AdminSecuritySettingsForm } from "@/components/site/AdminSecuritySettingsForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getSiteConfig } from "@/lib/getSiteConfig";
 
 export default async function SecuritySettingsPage() {
@@ -22,27 +19,10 @@ export default async function SecuritySettingsPage() {
           <CardTitle>Security Contacts</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={updatePlatformSettings} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="siteEmail">Security Contact Email</Label>
-              <Input
-                id="siteEmail"
-                name="siteEmail"
-                type="email"
-                defaultValue={config?.siteEmail ?? "support@nexamart.com"}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sitePhone">Security Contact Phone</Label>
-              <Input
-                id="sitePhone"
-                name="sitePhone"
-                defaultValue={config?.sitePhone ?? ""}
-              />
-            </div>
-            <Button type="submit">Save Security Settings</Button>
-          </form>
+          <AdminSecuritySettingsForm
+            defaultSiteEmail={config?.siteEmail ?? "support@nexamart.com"}
+            defaultSitePhone={config?.sitePhone ?? ""}
+          />
         </CardContent>
       </Card>
     </main>

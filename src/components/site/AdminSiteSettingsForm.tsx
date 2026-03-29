@@ -193,35 +193,35 @@ export function AdminSiteSettingsForm({ config }: AdminSiteSettingsFormProps) {
 
   const onSubmit = form.handleSubmit((values) => {
     startTransition(async () => {
-      try {
-        const formData = new FormData();
+      const formData = new FormData();
 
-        formData.set("siteName", values.siteName);
-        formData.set("siteEmail", values.siteEmail);
-        formData.set("sitePhone", values.sitePhone);
-        formData.set("siteLogoUrl", values.siteLogoUrl);
-        formData.set("siteLogoKey", values.siteLogoKey);
-        formData.set("supportEmail", values.supportEmail);
-        formData.set("supportPhone", values.supportPhone);
-        formData.set("whatsappPhone", values.whatsappPhone);
-        formData.set("facebookUrl", normalizeUrlWithHttps(values.facebookUrl));
-        formData.set(
-          "instagramUrl",
-          normalizeUrlWithHttps(values.instagramUrl),
-        );
-        formData.set("twitterUrl", normalizeUrlWithHttps(values.twitterUrl));
-        formData.set("youtubeUrl", normalizeUrlWithHttps(values.youtubeUrl));
-        formData.set("tiktokUrl", normalizeUrlWithHttps(values.tiktokUrl));
-        formData.set("seoTitle", values.seoTitle);
-        formData.set("seoDescription", values.seoDescription);
+      formData.set("siteName", values.siteName);
+      formData.set("siteEmail", values.siteEmail);
+      formData.set("sitePhone", values.sitePhone);
+      formData.set("siteLogoUrl", values.siteLogoUrl);
+      formData.set("siteLogoKey", values.siteLogoKey);
+      formData.set("supportEmail", values.supportEmail);
+      formData.set("supportPhone", values.supportPhone);
+      formData.set("whatsappPhone", values.whatsappPhone);
+      formData.set("facebookUrl", normalizeUrlWithHttps(values.facebookUrl));
+      formData.set("instagramUrl", normalizeUrlWithHttps(values.instagramUrl));
+      formData.set("twitterUrl", normalizeUrlWithHttps(values.twitterUrl));
+      formData.set("youtubeUrl", normalizeUrlWithHttps(values.youtubeUrl));
+      formData.set("tiktokUrl", normalizeUrlWithHttps(values.tiktokUrl));
+      formData.set("seoTitle", values.seoTitle);
+      formData.set("seoDescription", values.seoDescription);
 
-        await updatePlatformSettings(formData);
+      const result = await updatePlatformSettings(formData);
+
+      if (result.success) {
         toast.success("Site settings updated.");
-      } catch {
-        toast.error(
-          "We couldn't save your site settings. Please review the form and try again.",
-        );
+        return;
       }
+
+      toast.error(
+        result.error ??
+          "We couldn't save your site settings. Please review the form and try again.",
+      );
     });
   });
 

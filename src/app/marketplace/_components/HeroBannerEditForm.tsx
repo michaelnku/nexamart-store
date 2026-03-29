@@ -247,6 +247,8 @@ export default function HeroBannerEditForm({ banner }: Props) {
                     disabled={deletingKeys.size > 0}
                     previewClassName="rounded-xl"
                     cropDialogDescription="Replace the featured product art with a cropped square image so the subject remains centered."
+                    allowTransparentBackground
+                    transparentBackgroundLabel="Keep product background transparent"
                   />
                 </FormControl>
               </FormItem>

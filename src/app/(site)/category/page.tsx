@@ -1,6 +1,10 @@
 import { getHierarchicalCategories } from "@/actions/category/categories";
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
+import { buildStaticPageMetadata } from "@/lib/seo/seo.metadata";
+
+export const metadata: Metadata = buildStaticPageMetadata("categories");
 
 export default async function CategoryPage() {
   const cats = await getHierarchicalCategories();

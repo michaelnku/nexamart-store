@@ -8,6 +8,14 @@ import { SearchChip } from "@/components/search/SearchChip";
 import SearchEmptyState from "@/components/search/SearchEmptyState";
 import SearchResultsGrid from "@/components/search/SearchResultsGrid";
 import StoreResultCard from "@/components/search/StoreResultCard";
+import type { Metadata } from "next";
+import { buildNoIndexMetadata } from "@/lib/seo/seo.metadata";
+
+export const metadata: Metadata = buildNoIndexMetadata({
+  title: "Search",
+  description: "Search products, stores, and categories across NexaMart.",
+  path: "/search",
+});
 
 type SearchPageProps = {
   searchParams: Promise<{

@@ -46,8 +46,9 @@ export async function updateSiteConfiguration(
 
   try {
     const normalized = parsed.data;
+    const { siteLogo, ...legacyCompatibleUpdates } = normalized;
 
-    if (normalized.siteLogo) {
+    if (siteLogo) {
       return {
         success: false,
         error:
@@ -55,9 +56,9 @@ export async function updateSiteConfiguration(
       };
     }
 
-    const updated = await updateSiteConfigurationFromService({
-      ...normalized,
-    });
+    const updated = await updateSiteConfigurationFromService(
+      legacyCompatibleUpdates,
+    );
 
     return {
       success: true,

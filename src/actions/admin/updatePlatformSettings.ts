@@ -6,10 +6,13 @@ import { updateSiteConfiguration } from "@/lib/site-config/siteConfig.service";
 
 export async function updatePlatformSettings(
   formData: FormData,
-): Promise<void> {
+): Promise<{ success: boolean; error?: string }> {
   const currentUser = await CurrentUser();
   if (!currentUser || currentUser.role !== "ADMIN") {
-    throw new Error("Unauthorized");
+    return {
+      success: false,
+      error: "You are not authorized to update site settings.",
+    };
   }
 
   const parsed = platformSettingsFormSchema.safeParse({
@@ -34,17 +37,22 @@ export async function updatePlatformSettings(
   });
 
   if (!parsed.success) {
-    throw new Error(
-      parsed.error.issues[0]?.message ?? "Invalid platform settings",
-    );
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid platform settings",
+    };
   }
 
   try {
     await updateSiteConfiguration(parsed.data);
+
+    return { success: true };
   } catch (error) {
     console.error("Failed to update site settings", error);
-    throw new Error(
-      "We couldn't save your site settings right now. Please try again.",
-    );
+
+    return {
+      success: false,
+      error: "We couldn't save your site settings right now. Please try again.",
+    };
   }
 }

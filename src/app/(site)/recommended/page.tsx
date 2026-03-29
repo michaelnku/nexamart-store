@@ -1,15 +1,20 @@
-import { prisma } from "@/lib/prisma";
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+
+import PublicProductCard from "@/components/product/PublicProductCard";
 import { CurrentUser } from "@/lib/currentUser";
 import {
   mapRecordProductImages,
   productImageWithAssetInclude,
 } from "@/lib/product-images";
-import PublicProductCard from "@/components/product/PublicProductCard";
-import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { buildNoIndexMetadata } from "@/lib/seo/seo.metadata";
 
-export const metadata = {
-  title: "Recommended For You – NexaMart",
-};
+export const metadata: Metadata = buildNoIndexMetadata({
+  title: "Recommended For You",
+  description: "Personalized NexaMart recommendations for signed-in shoppers.",
+  path: "/recommended",
+});
 
 export default async function RecommendedPage() {
   const user = await CurrentUser();
@@ -26,47 +31,51 @@ export default async function RecommendedPage() {
     take: 20,
   });
 
-  const viewedProductIds = viewedProducts.map((p) => p.id);
+  const viewedProductIds = viewedProducts.map((product) => product.id);
   const viewedCategoryIds = Array.from(
-    new Set(viewedProducts.map((p) => p.categoryId)),
+    new Set(viewedProducts.map((product) => product.categoryId)),
   );
 
   const recommendedProducts =
     viewedCategoryIds.length > 0
-      ? (await prisma.product.findMany({
-          where: {
-            isPublished: true,
-            categoryId: { in: viewedCategoryIds },
-            id: { notIn: viewedProductIds },
-          },
-          include: {
-            images: {
-              include: productImageWithAssetInclude,
+      ? (
+          await prisma.product.findMany({
+            where: {
+              isPublished: true,
+              categoryId: { in: viewedCategoryIds },
+              id: { notIn: viewedProductIds },
             },
-            foodProductConfig: true,
-            variants: true,
-            store: true,
-          },
-          orderBy: [{ sold: "desc" }, { createdAt: "desc" }],
-          take: 40,
-        })).map(mapRecordProductImages)
+            include: {
+              images: {
+                include: productImageWithAssetInclude,
+              },
+              foodProductConfig: true,
+              variants: true,
+              store: true,
+            },
+            orderBy: [{ sold: "desc" }, { createdAt: "desc" }],
+            take: 40,
+          })
+        ).map(mapRecordProductImages)
       : [];
 
   const fallbackProducts =
     recommendedProducts.length === 0
-      ? (await prisma.product.findMany({
-          where: { isPublished: true },
-          include: {
-            images: {
-              include: productImageWithAssetInclude,
+      ? (
+          await prisma.product.findMany({
+            where: { isPublished: true },
+            include: {
+              images: {
+                include: productImageWithAssetInclude,
+              },
+              foodProductConfig: true,
+              variants: true,
+              store: true,
             },
-            foodProductConfig: true,
-            variants: true,
-            store: true,
-          },
-          orderBy: { sold: "desc" },
-          take: 40,
-        })).map(mapRecordProductImages)
+            orderBy: { sold: "desc" },
+            take: 40,
+          })
+        ).map(mapRecordProductImages)
       : [];
 
   const products =
@@ -79,13 +88,13 @@ export default async function RecommendedPage() {
 
         {recommendedProducts.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            We’re still learning your preferences. Showing popular products for
-            now.
+            We&apos;re still learning your preferences. Showing popular products
+            for now.
           </p>
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {products.map((product) => (
           <PublicProductCard key={product.id} product={product} />
         ))}

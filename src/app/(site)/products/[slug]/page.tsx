@@ -1,61 +1,26 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+
 import ProductPublicDetail from "@/components/product/PublicProductDetail";
 import ReviewList from "@/components/reviews/ReviewList";
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import {
-  mapRecordProductImages,
-  productImageWithAssetInclude,
-} from "@/lib/product-images";
-import { createProductSlug } from "@/lib/search/productSlug";
-import { redirect } from "next/navigation";
-import type { Metadata } from "next";
-import { cache } from "react";
+  buildNoIndexMetadata,
+  buildProductMetadata,
+} from "@/lib/seo/seo.metadata";
+import { getPublicProductById } from "@/lib/seo/seo.public";
 import {
-  APP_DESCRIPTION,
-  APP_LOGO,
-  APP_NAME,
-  absoluteUrl,
-  toSeoDescription,
-} from "@/lib/seo";
-import { FoodDetails } from "@/lib/types";
-import { mapStoreMedia, storeMediaInclude } from "@/lib/media-views";
+  buildBreadcrumbStructuredData,
+  buildProductStructuredData,
+  serializeJsonLd,
+} from "@/lib/seo/seo.structured-data";
+import { createProductSlug } from "@/lib/search/productSlug";
+import type { FoodDetails } from "@/lib/types";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
-
-const getProductById = cache(async (productId: string) => {
-  return prisma.product.findUnique({
-    where: { id: productId },
-    include: {
-      images: {
-        include: productImageWithAssetInclude,
-      },
-      variants: {
-        orderBy: { priceUSD: "asc" },
-      },
-      foodProductConfig: true,
-      foodOptionGroups: {
-        where: { isActive: true },
-        orderBy: { displayOrder: "asc" },
-        include: {
-          options: {
-            orderBy: { displayOrder: "asc" },
-          },
-        },
-      },
-      store: {
-        include: storeMediaInclude,
-      },
-
-      reviews: {
-        include: {
-          user: { select: { id: true, name: true, image: true } },
-        },
-      },
-    },
-  });
-});
 
 export async function generateMetadata({
   params,
@@ -64,77 +29,45 @@ export async function generateMetadata({
   const productId = rawSlug.split("-").at(-1);
 
   if (!productId) {
-    return {
-      title: `Product Not Found | ${APP_NAME}`,
-      description: APP_DESCRIPTION,
-      alternates: { canonical: absoluteUrl(`/products/${rawSlug}`) },
-    };
+    return buildNoIndexMetadata({
+      title: "Product Not Found",
+      description: "The requested product could not be found.",
+      path: `/products/${rawSlug}`,
+    });
   }
 
-  const productRecord = await getProductById(productId);
-  const product = productRecord
-    ? {
-        ...mapRecordProductImages(productRecord),
-        store: mapStoreMedia(productRecord.store),
-      }
-    : null;
+  const product = await getPublicProductById(productId);
 
   if (!product || product.variants.length === 0) {
-    return {
-      title: `Product Not Found | ${APP_NAME}`,
-      description: APP_DESCRIPTION,
-      alternates: { canonical: absoluteUrl(`/products/${rawSlug}`) },
-    };
+    return buildNoIndexMetadata({
+      title: "Product Not Found",
+      description: "The requested product could not be found.",
+      path: `/products/${rawSlug}`,
+    });
   }
 
   const canonicalSlug = createProductSlug(product.name, product.id);
-  const url = absoluteUrl(`/products/${canonicalSlug}`);
-  const title = `${product.name}`;
-  const description = toSeoDescription(product.description, APP_DESCRIPTION);
-  const image = product.images[0]?.imageUrl ?? APP_LOGO;
 
-  return {
-    title,
-    description,
-    alternates: { canonical: url },
-    openGraph: {
-      title,
-      description,
-      url,
-      type: "website",
-      images: [
-        {
-          url: image,
-          width: 1200,
-          height: 630,
-          alt: product.name,
-        },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [image],
-    },
-  };
+  return buildProductMetadata(product, `/products/${canonicalSlug}`);
 }
 
-export default async function Page({ params }: PageProps) {
+export default async function ProductPage({ params }: PageProps) {
   const userId = await CurrentUserId();
   const userRole = await CurrentRole();
 
   const rawSlug = (await params).slug;
+  const productId = rawSlug.split("-").at(-1);
 
-  const productId = rawSlug.split("-").at(-1)!;
+  if (!productId) {
+    return (
+      <div className="px-4 py-16 text-center text-slate-600 dark:text-zinc-400">
+        Product not found
+      </div>
+    );
+  }
 
-  const productRecord = await getProductById(productId);
-  const product = productRecord
-    ? {
-        ...mapRecordProductImages(productRecord),
-        store: mapStoreMedia(productRecord.store),
-      }
-    : null;
+  const product = await getPublicProductById(productId);
+
   if (!product || product.variants.length === 0) {
     return (
       <div className="px-4 py-16 text-center text-slate-600 dark:text-zinc-400">
@@ -144,15 +77,18 @@ export default async function Page({ params }: PageProps) {
   }
 
   const canonicalSlug = createProductSlug(product.name, product.id);
+  const canonicalPath = `/products/${canonicalSlug}`;
 
   if (rawSlug === product.id) {
-    redirect(`/products/${canonicalSlug}`);
+    redirect(canonicalPath);
   }
 
   const isWishlisted = userId
-    ? !!(await prisma.wishlistItem.findFirst({
-        where: { productId, wishlist: { userId } },
-      }))
+    ? Boolean(
+        await prisma.wishlistItem.findFirst({
+          where: { productId, wishlist: { userId } },
+        }),
+      )
     : false;
 
   const cart = userId
@@ -169,15 +105,41 @@ export default async function Page({ params }: PageProps) {
     : null;
 
   const defaultVariant = product.variants[0];
-
   const isFoodProduct = product.store?.type === "FOOD";
-
   const foodDetails = isFoodProduct
     ? (product.foodDetails as FoodDetails | null)
     : null;
+  const productImage = product.images[0]?.imageUrl ?? null;
+  const breadcrumbItems = [
+    { name: "Home", path: "/" },
+    { name: "Products", path: "/products" },
+    ...(product.category
+      ? [
+          {
+            name: product.category.name,
+            path: `/category/${product.category.slug}`,
+          },
+        ]
+      : []),
+    { name: product.name, path: canonicalPath },
+  ];
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: serializeJsonLd(
+            buildBreadcrumbStructuredData(breadcrumbItems),
+            buildProductStructuredData({
+              product,
+              canonicalPath,
+              image: productImage,
+            }),
+          ),
+        }}
+      />
+
       <ProductPublicDetail
         data={product}
         defaultVariant={defaultVariant}

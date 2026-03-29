@@ -31,14 +31,16 @@ import { getUserInitials } from "@/lib/user";
 import CurrencySelector from "@/components/currency/CurrencySelector";
 import NotificationMenu from "../notifications/NotificationMenu";
 import type { PublicSiteConfiguration } from "@/lib/site-config/siteConfig.types";
+import { DEFAULT_PUBLIC_SITE_CONFIGURATION } from "@/lib/site-config/siteConfig.defaults";
 
 export default function MarketPlaceNavbar({
   initialUser,
   siteConfig,
 }: {
   initialUser: UserDTO | null;
-  siteConfig: PublicSiteConfiguration;
+  siteConfig?: PublicSiteConfiguration;
 }) {
+  const resolvedSiteConfig = siteConfig ?? DEFAULT_PUBLIC_SITE_CONFIGURATION;
   const pathname = usePathname() ?? "";
   const { data: user, isLoading, isError } = useCurrentUserQuery(initialUser);
   const currentUser = user ?? initialUser;
@@ -196,8 +198,8 @@ export default function MarketPlaceNavbar({
             className="flex shrink-0 items-center gap-2"
           >
             <Image
-              src={siteConfig.siteLogoUrl ?? "/favicon.ico"}
-              alt={`${siteConfig.siteName} logo`}
+              src={resolvedSiteConfig.siteLogoUrl ?? "/site-logo.svg"}
+              alt={`${resolvedSiteConfig.siteName} logo`}
               width={42}
               height={42}
               className="object-contain"

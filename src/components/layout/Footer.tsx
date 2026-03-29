@@ -18,6 +18,47 @@ import {
 import type { PublicSiteConfiguration } from "@/lib/site-config/siteConfig.types";
 import CurrencySelector from "../currency/CurrencySelector";
 
+function renderBrandName(siteName: string) {
+  const trimmedName = siteName.trim();
+
+  if (!trimmedName) {
+    return "NexaMart";
+  }
+
+  const whitespaceMatch = trimmedName.match(/^(.*\S)\s+(\S+)$/);
+
+  if (whitespaceMatch) {
+    return (
+      <>
+        {whitespaceMatch[1]}{" "}
+        <span className="text-[#3c9ee0]">{whitespaceMatch[2]}</span>
+      </>
+    );
+  }
+
+  const camelCaseMatch = trimmedName.match(/^(.*?)([A-Z][^A-Z]*)$/);
+
+  if (camelCaseMatch && camelCaseMatch[1]) {
+    return (
+      <>
+        {camelCaseMatch[1]}
+        <span className="text-[#3c9ee0]">{camelCaseMatch[2]}</span>
+      </>
+    );
+  }
+
+  if (trimmedName.length > 4) {
+    return (
+      <>
+        {trimmedName.slice(0, -4)}
+        <span className="text-[#3c9ee0]">{trimmedName.slice(-4)}</span>
+      </>
+    );
+  }
+
+  return trimmedName;
+}
+
 const Footer = ({ siteConfig }: { siteConfig: PublicSiteConfiguration }) => {
   const year = new Date().getFullYear();
   const socialLinks = [
@@ -86,7 +127,9 @@ const Footer = ({ siteConfig }: { siteConfig: PublicSiteConfiguration }) => {
 
       <div className="mx-auto grid max-w-7xl grid-cols-2 gap-10 px-6 py-14 md:grid-cols-3 lg:grid-cols-6">
         <div className="col-span-2 space-y-4 lg:col-span-2">
-          <h2 className="text-2xl font-bold tracking-tight">{siteConfig.siteName}</h2>
+          <h2 className="text-2xl font-bold tracking-tight">
+            {renderBrandName(siteConfig.siteName)}
+          </h2>
 
           <p className="max-w-sm text-sm leading-relaxed text-gray-400">
             {siteConfig.siteName} is building an intelligent digital marketplace
@@ -218,7 +261,9 @@ const Footer = ({ siteConfig }: { siteConfig: PublicSiteConfiguration }) => {
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-6 text-center text-xs text-gray-500 md:flex-row md:items-center md:justify-between md:text-left">
           <p>
             (c) {year}{" "}
-            <span className="font-semibold text-white">{siteConfig.siteName}</span>
+            <span className="font-semibold text-white">
+              {renderBrandName(siteConfig.siteName)}
+            </span>
             . Empowering digital commerce.
           </p>
 

@@ -13,6 +13,7 @@ type ProcessImageOptions = {
   outputType?: string;
   quality?: number;
   fileName?: string;
+  transparentBackground?: boolean;
 };
 
 function createImageBitmapFromUrl(src: string): Promise<HTMLImageElement> {
@@ -86,6 +87,7 @@ export async function getCroppedImageFile(
     outputType = DEFAULT_OUTPUT_TYPE,
     quality = DEFAULT_QUALITY,
     fileName,
+    transparentBackground = false,
   } = options;
 
   const image = await createImageBitmapFromUrl(sourceUrl);
@@ -139,17 +141,27 @@ export async function getCroppedImageFile(
 
   outputContext.imageSmoothingEnabled = true;
   outputContext.imageSmoothingQuality = "high";
-  outputContext.fillStyle = "#ffffff";
-  outputContext.fillRect(0, 0, targetWidth, targetHeight);
+
+  if (!transparentBackground) {
+    outputContext.fillStyle = "#ffffff";
+    outputContext.fillRect(0, 0, targetWidth, targetHeight);
+  } else {
+    outputContext.clearRect(0, 0, targetWidth, targetHeight);
+  }
+
   outputContext.drawImage(cropCanvas, 0, 0, targetWidth, targetHeight);
 
   let blob = await canvasToBlob(outputCanvas, outputType, quality);
 
-  if (blob.size > 4 * 1024 * 1024 && outputType !== "image/jpeg") {
+  if (
+    blob.size > 4 * 1024 * 1024 &&
+    outputType !== "image/jpeg" &&
+    !transparentBackground
+  ) {
     blob = await canvasToBlob(outputCanvas, "image/jpeg", 0.78);
   }
 
-  if (blob.size > 4 * 1024 * 1024) {
+  if (blob.size > 4 * 1024 * 1024 && !transparentBackground) {
     blob = await canvasToBlob(outputCanvas, "image/jpeg", 0.68);
   }
 

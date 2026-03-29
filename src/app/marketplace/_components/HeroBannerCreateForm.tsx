@@ -234,6 +234,8 @@ export default function HeroBannerCreateForm() {
                       uploadLabel="Choose Product Image"
                       previewClassName="rounded-xl"
                       cropDialogDescription="Crop the featured product image before upload so the focal subject stays centered in the hero."
+                      allowTransparentBackground
+                      transparentBackgroundLabel="Keep product background transparent"
                     />
                   </FormControl>
                 </FormItem>

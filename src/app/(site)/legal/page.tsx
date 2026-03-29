@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { buildStaticPageMetadata } from "@/lib/seo/seo.metadata";
 
 const legalPages = [
   {
@@ -40,6 +42,8 @@ const legalPages = [
       "Expected user behavior across messaging, listings, and platform interactions.",
   },
 ];
+
+export const metadata: Metadata = buildStaticPageMetadata("legalCenter");
 
 export default function LegalCenterPage() {
   return (

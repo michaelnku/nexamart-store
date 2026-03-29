@@ -1,5 +1,8 @@
 import type { SiteConfiguration } from "@/generated/prisma/client";
-import { APP_LOGO, APP_NAME } from "@/lib/seo";
+import {
+  SEO_DEFAULT_LOGO_PATH,
+  SEO_SITE_NAME,
+} from "@/lib/seo/seo.constants";
 
 import type {
   PublicSiteConfiguration,
@@ -13,7 +16,7 @@ export const DEFAULT_SITE_CONFIGURATION_VALUES: Omit<
   "id" | "createdAt" | "updatedAt"
 > = {
   singleton: true,
-  siteName: APP_NAME,
+  siteName: SEO_SITE_NAME,
   siteEmail: "support@nexamart.com",
   sitePhone: null,
   facebookUrl: null,
@@ -24,7 +27,7 @@ export const DEFAULT_SITE_CONFIGURATION_VALUES: Omit<
   whatsappPhone: null,
   supportEmail: "support@nexamart.com",
   supportPhone: null,
-  seoTitle: APP_NAME,
+  seoTitle: SEO_SITE_NAME,
   seoDescription: null,
   siteLogoFileAssetId: null,
   platformCommissionRate: 0.1,
@@ -39,10 +42,10 @@ export const DEFAULT_SITE_CONFIGURATION_VALUES: Omit<
 };
 
 export const DEFAULT_PUBLIC_SITE_CONFIGURATION: PublicSiteConfiguration = {
-  siteName: APP_NAME,
+  siteName: SEO_SITE_NAME,
   siteEmail: "support@nexamart.com",
   sitePhone: null,
-  siteLogoUrl: APP_LOGO,
+  siteLogoUrl: SEO_DEFAULT_LOGO_PATH,
   supportEmail: "support@nexamart.com",
   supportPhone: null,
   whatsappPhone: null,
@@ -54,7 +57,7 @@ export const DEFAULT_PUBLIC_SITE_CONFIGURATION: PublicSiteConfiguration = {
     tiktok: null,
   },
   seo: {
-    title: APP_NAME,
+    title: SEO_SITE_NAME,
     description: null,
   },
 };

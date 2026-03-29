@@ -1,7 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ogImage from "./opengraph-image.webp";
 
 import { auth } from "@/auth/auth";
 import QueryProvider from "@/providers/queryProvider";
@@ -10,12 +9,7 @@ import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
 import { ourFileRouter } from "./api/uploadthing/core";
 import { CartHydrator } from "@/components/marketplace/CartHydrator";
-import {
-  APP_DESCRIPTION,
-  APP_NAME,
-  APP_TWITTER,
-  APP_URL,
-} from "@/lib/seo";
+import { buildRootMetadata } from "@/lib/seo/seo.metadata";
 import Providers from "./providers";
 
 /* ===========================
@@ -34,91 +28,14 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-/* ===========================
-   App Constants
-=========================== */
+export async function generateMetadata(): Promise<Metadata> {
+  return buildRootMetadata();
+}
 
-/* ===========================
-   Metadata (SEO + Social)
-=========================== */
-
-export const metadata: Metadata = {
-  metadataBase: new URL(APP_URL),
-
-  title: {
-    default: `${APP_NAME} | Smart Online Marketplace`,
-    template: `%s | ${APP_NAME}`,
-  },
-
-  description: APP_DESCRIPTION,
-
-  applicationName: APP_NAME,
-  generator: "Next.js",
-  category: "shopping",
-
-  keywords: [
-    "NexaMart",
-    "online shopping",
-    "ecommerce platform",
-    "marketplace",
-    "buy and sell online",
-    "multi vendor store",
-    "shop online",
-  ],
-
-  authors: [{ name: "NexaMart Team" }],
-  creator: "NexaMart",
-  publisher: "NexaMart",
-
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-    },
-  },
-
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: APP_URL,
-    siteName: APP_NAME,
-    title: `${APP_NAME} | Smart Online Marketplace`,
-    description: APP_DESCRIPTION,
-    images: [
-      {
-        url: ogImage.src,
-        width: 1200,
-        height: 630,
-        alt: "NexaMart Online Marketplace",
-      },
-    ],
-  },
-
-  twitter: {
-    card: "summary_large_image",
-    title: `${APP_NAME} | Smart Online Marketplace`,
-    description: APP_DESCRIPTION,
-    images: [ogImage.src],
-    creator: APP_TWITTER,
-    site: APP_TWITTER,
-  },
-
-  icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
-  },
-
-  manifest: "/site.webmanifest",
-
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-  },
-
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#000000" },

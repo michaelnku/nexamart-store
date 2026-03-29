@@ -6,10 +6,13 @@ import { updateSiteConfiguration } from "@/lib/site-config/siteConfig.service";
 
 export async function updateShippingSettings(
   formData: FormData,
-): Promise<void> {
+): Promise<{ success: boolean; error?: string }> {
   const currentUser = await CurrentUser();
   if (!currentUser || currentUser.role !== "ADMIN") {
-    throw new Error("Unauthorized");
+    return {
+      success: false,
+      error: "You are not authorized to update shipping settings.",
+    };
   }
 
   const parsed = shippingSettingsFormSchema.safeParse({
@@ -28,10 +31,22 @@ export async function updateShippingSettings(
   });
 
   if (!parsed.success) {
-    throw new Error(
-      parsed.error.issues[0]?.message ?? "Invalid shipping settings",
-    );
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid shipping settings",
+    };
   }
 
-  await updateSiteConfiguration(parsed.data);
+  try {
+    await updateSiteConfiguration(parsed.data);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update shipping settings", error);
+
+    return {
+      success: false,
+      error: "We couldn't save your shipping settings right now. Please try again.",
+    };
+  }
 }

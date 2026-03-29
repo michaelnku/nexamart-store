@@ -2,10 +2,14 @@ import { prisma } from "@/lib/prisma";
 import StoresCard from "@/components/store/StoresCard";
 import { calculateStoresPrepPerformance } from "@/lib/store/calculateStorePrepPerformance";
 import { mapStoreMedia, storeMediaInclude } from "@/lib/media-views";
+import type { Metadata } from "next";
+import { buildStaticPageMetadata } from "@/lib/seo/seo.metadata";
+
+export const metadata: Metadata = buildStaticPageMetadata("stores");
 
 export default async function StoreDirectoryPage() {
   const stores = await prisma.store.findMany({
-    where: { isActive: true },
+    where: { isActive: true, isDeleted: false, isSuspended: false },
     orderBy: { createdAt: "desc" },
     include: {
       ...storeMediaInclude,

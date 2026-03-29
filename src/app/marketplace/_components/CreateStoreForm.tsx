@@ -457,6 +457,8 @@ export default function CreateStoreForm() {
                 emptyIcon={<Camera className="h-6 w-6" />}
                 emptyStateClassName="mx-auto max-w-sm"
                 cropDialogDescription="Adjust the logo crop before upload so your storefront branding stays sharp and centered."
+                allowTransparentBackground
+                transparentBackgroundLabel="Keep logo background transparent"
               />
 
               <FormMessage>{form.formState.errors.logo?.message}</FormMessage>

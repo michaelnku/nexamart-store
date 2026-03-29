@@ -2,9 +2,28 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 
+import {
+  LEGACY_APP_LOGO_URLS,
+  SEO_DEFAULT_LOGO_PATH,
+} from "@/lib/seo/seo.constants";
+
 import { DEFAULT_PUBLIC_SITE_CONFIGURATION, SITE_CONFIG_CACHE_TAG } from "./siteConfig.defaults";
 import { getAdminSiteConfiguration } from "./siteConfig.service";
 import type { AdminSiteConfiguration, PublicSiteConfiguration } from "./siteConfig.types";
+
+function resolvePublicLogoUrl(siteLogoUrl: string | null | undefined) {
+  const normalized = siteLogoUrl?.trim();
+
+  if (!normalized) {
+    return DEFAULT_PUBLIC_SITE_CONFIGURATION.siteLogoUrl;
+  }
+
+  if (LEGACY_APP_LOGO_URLS.includes(normalized)) {
+    return SEO_DEFAULT_LOGO_PATH;
+  }
+
+  return normalized;
+}
 
 export function serializePublicSiteConfiguration(
   config: AdminSiteConfiguration | null,
@@ -18,7 +37,7 @@ export function serializePublicSiteConfiguration(
     siteEmail:
       config.siteEmail?.trim() || DEFAULT_PUBLIC_SITE_CONFIGURATION.siteEmail,
     sitePhone: config.sitePhone?.trim() || null,
-    siteLogoUrl: config.siteLogo || DEFAULT_PUBLIC_SITE_CONFIGURATION.siteLogoUrl,
+    siteLogoUrl: resolvePublicLogoUrl(config.siteLogo),
     supportEmail:
       config.supportEmail?.trim() || DEFAULT_PUBLIC_SITE_CONFIGURATION.supportEmail,
     supportPhone: config.supportPhone?.trim() || null,

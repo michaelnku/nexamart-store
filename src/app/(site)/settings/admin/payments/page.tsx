@@ -1,8 +1,5 @@
-import { updatePlatformSettings } from "@/actions/admin/updatePlatformSettings";
-import { Button } from "@/components/ui/button";
+import { AdminPaymentSettingsForm } from "@/components/site/AdminPaymentSettingsForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getSiteConfig } from "@/lib/getSiteConfig";
 
 export default async function PaymentSettingsPage() {
@@ -22,23 +19,11 @@ export default async function PaymentSettingsPage() {
           <CardTitle>Platform Commission</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={updatePlatformSettings} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="platformCommissionPercent">
-                Platform Commission (%)
-              </Label>
-              <Input
-                id="platformCommissionPercent"
-                name="platformCommissionPercent"
-                type="number"
-                step="0.01"
-                min="0"
-                defaultValue={config?.platformCommissionRate ?? 10}
-                required
-              />
-            </div>
-            <Button type="submit">Save Payment Settings</Button>
-          </form>
+          <AdminPaymentSettingsForm
+            defaultPlatformCommissionPercent={
+              config?.platformCommissionRate ?? 10
+            }
+          />
         </CardContent>
       </Card>
     </main>

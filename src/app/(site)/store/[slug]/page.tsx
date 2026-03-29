@@ -1,110 +1,51 @@
-import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import { CurrentUser } from "@/lib/currentUser";
-import StoreMaintenancePage from "./_components/StoreMaintenancePage";
-import FollowStoreButton from "./_components/FollowStoreButton";
-import StoreRatingSummary from "./_components/StoreRatingSummary";
 import type { Metadata } from "next";
-import { cache } from "react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { CurrentUser } from "@/lib/currentUser";
+import { mapProductImagesToView } from "@/lib/product-images";
+import { buildNoIndexMetadata, buildStoreMetadata } from "@/lib/seo/seo.metadata";
+import { getPublicStoreBySlug } from "@/lib/seo/seo.public";
 import {
-  APP_DESCRIPTION,
-  APP_LOGO,
-  APP_NAME,
-  absoluteUrl,
-  toSeoDescription,
-} from "@/lib/seo";
+  buildBreadcrumbStructuredData,
+  buildStoreStructuredData,
+  serializeJsonLd,
+} from "@/lib/seo/seo.structured-data";
 import { calculateStorePrepPerformance } from "@/lib/store/calculateStorePrepPerformance";
-import {
-  mapProductImagesToView,
-  productImageWithAssetInclude,
-} from "@/lib/product-images";
-import { mapStoreMedia, storeMediaInclude } from "@/lib/media-views";
+
+import FollowStoreButton from "./_components/FollowStoreButton";
 import StoreFrontClient from "./_components/StoreFrontClient";
+import StoreMaintenancePage from "./_components/StoreMaintenancePage";
+import StoreRatingSummary from "./_components/StoreRatingSummary";
 
 interface StoreFrontProps {
   params: Promise<{ slug: string }>;
 }
 
-const getStoreBySlug = cache(async (slug: string) => {
-  return prisma.store.findUnique({
-    where: { slug },
-    include: {
-      ...storeMediaInclude,
-      products: {
-        include: {
-          images: {
-            include: productImageWithAssetInclude,
-          },
-        },
-      },
-      owner: true,
-      _count: {
-        select: { StoreFollower: true },
-      },
-    },
-  });
-});
-
 export async function generateMetadata({
   params,
 }: StoreFrontProps): Promise<Metadata> {
   const { slug } = await params;
-
-  const storeRecord = await getStoreBySlug(slug);
-  const store = storeRecord ? mapStoreMedia(storeRecord) : null;
+  const store = await getPublicStoreBySlug(slug);
 
   if (!store || store.isDeleted) {
-    return {
-      title: `Store Not Found | ${APP_NAME}`,
-      description: APP_DESCRIPTION,
-      alternates: { canonical: absoluteUrl(`/store/${slug}`) },
-    };
+    return buildNoIndexMetadata({
+      title: "Store Not Found",
+      description: "The requested store could not be found.",
+      path: `/store/${slug}`,
+    });
   }
 
-  const title = `${store.name} | ${APP_NAME}`;
-  const description = toSeoDescription(
-    store.tagline ?? store.description ?? undefined,
-    `Shop ${store.name} on ${APP_NAME}. Discover great products and deals from this seller.`,
-  );
-  const image = store.bannerImage || store.logo || APP_LOGO;
-  const url = absoluteUrl(`/store/${store.slug}`);
-
-  return {
-    title,
-    description,
-    alternates: { canonical: url },
-    openGraph: {
-      title,
-      description,
-      url,
-      type: "website",
-      images: [
-        {
-          url: image,
-          width: 1200,
-          height: 630,
-          alt: `${store.name} storefront`,
-        },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [image],
-    },
-  };
+  return buildStoreMetadata(store);
 }
 
-export default async function Page({ params }: StoreFrontProps) {
+export default async function StorePage({ params }: StoreFrontProps) {
   const { slug } = await params;
   const user = await CurrentUser();
 
   if (!slug) return notFound();
 
-  const storeRecord = await getStoreBySlug(slug);
-  const store = storeRecord ? mapStoreMedia(storeRecord) : null;
+  const store = await getPublicStoreBySlug(slug);
 
   if (!store || store.isDeleted) return notFound();
 
@@ -117,52 +58,67 @@ export default async function Page({ params }: StoreFrontProps) {
   }
 
   const isOwner = user?.id === store.userId;
-
   const performance =
     store.type === "FOOD"
       ? await calculateStorePrepPerformance(store.id)
       : null;
 
   return (
-    <StoreFrontClient
-      store={{
-        id: store.id,
-        slug: store.slug,
-        name: store.name,
-        logo: store.logo,
-        bannerImage: store.bannerImage,
-        description: store.description,
-        location: store.location,
-        products: store.products.map((product) => ({
-          id: product.id,
-          name: product.name,
-          basePriceUSD: product.basePriceUSD,
-          imageUrl:
-            mapProductImagesToView(product.images)[0]?.imageUrl ??
-            "/placeholder.png",
-        })),
-      }}
-      isOwner={isOwner}
-      performanceBadge={performance?.badge ?? null}
-      ratingSummary={<StoreRatingSummary storeId={store.id} />}
-      followAction={
-        user?.role !== "SELLER" ? (
-          <FollowStoreButton storeId={store.id} />
-        ) : null
-      }
-      ownerBanner={
-        isOwner ? (
-          <div className="border-t border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-900/60 dark:bg-yellow-950/30 dark:text-yellow-300">
-            You're viewing your public storefront.
-            <Link
-              href="/marketplace/dashboard"
-              className="ml-1 font-medium text-blue-500 underline"
-            >
-              Dashboard
-            </Link>
-          </div>
-        ) : null
-      }
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: serializeJsonLd(
+            buildBreadcrumbStructuredData([
+              { name: "Home", path: "/" },
+              { name: "Stores", path: "/store" },
+              { name: store.name, path: `/store/${store.slug}` },
+            ]),
+            buildStoreStructuredData(store),
+          ),
+        }}
+      />
+
+      <StoreFrontClient
+        store={{
+          id: store.id,
+          slug: store.slug,
+          name: store.name,
+          logo: store.logo,
+          bannerImage: store.bannerImage,
+          description: store.description,
+          location: store.location,
+          products: store.products.map((product) => ({
+            id: product.id,
+            name: product.name,
+            basePriceUSD: product.basePriceUSD,
+            imageUrl:
+              mapProductImagesToView(product.images)[0]?.imageUrl ??
+              "/placeholder.png",
+          })),
+        }}
+        isOwner={isOwner}
+        performanceBadge={performance?.badge ?? null}
+        ratingSummary={<StoreRatingSummary storeId={store.id} />}
+        followAction={
+          user?.role !== "SELLER" ? (
+            <FollowStoreButton storeId={store.id} />
+          ) : null
+        }
+        ownerBanner={
+          isOwner ? (
+            <div className="border-t border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-900/60 dark:bg-yellow-950/30 dark:text-yellow-300">
+              You&apos;re viewing your public storefront.
+              <Link
+                href="/marketplace/dashboard"
+                className="ml-1 font-medium text-blue-500 underline"
+              >
+                Dashboard
+              </Link>
+            </div>
+          ) : null
+        }
+      />
+    </>
   );
 }

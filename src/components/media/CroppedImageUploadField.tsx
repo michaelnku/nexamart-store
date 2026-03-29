@@ -30,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { getCroppedImageFile } from "@/lib/image/imageCrop";
 import type { JsonFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,8 @@ type CroppedImageUploadFieldProps = {
   emptyIcon?: ReactNode;
   emptyStateClassName?: string;
   cropDialogDescription?: string;
+  allowTransparentBackground?: boolean;
+  transparentBackgroundLabel?: string;
 };
 
 export function CroppedImageUploadField({
@@ -96,6 +99,8 @@ export function CroppedImageUploadField({
   emptyIcon,
   emptyStateClassName,
   cropDialogDescription = "Adjust the framing before upload so the saved image matches the intended placement.",
+  allowTransparentBackground = false,
+  transparentBackgroundLabel = "Use transparent background",
 }: CroppedImageUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
@@ -111,6 +116,7 @@ export function CroppedImageUploadField({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isApplyingCrop, setIsApplyingCrop] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [transparentBackground, setTransparentBackground] = useState(false);
 
   const busy = disabled || isUploading || isDeleting || isApplyingCrop;
 
@@ -132,6 +138,7 @@ export function CroppedImageUploadField({
     setRotation(0);
     setCroppedAreaPixels(null);
     setUploadProgress(0);
+    setTransparentBackground(false);
 
     if (inputRef.current) {
       inputRef.current.value = "";
@@ -211,6 +218,7 @@ export function CroppedImageUploadField({
           targetWidth,
           targetHeight,
           fileName: `${selectedFile.name.replace(/\.[^/.]+$/, "")}-cropped.webp`,
+          transparentBackground,
         },
       );
 
@@ -300,7 +308,7 @@ export function CroppedImageUploadField({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             <div className="relative min-h-[360px] bg-[radial-gradient(circle_at_top,#0f172a_0%,#020617_75%)]">
               {selectedImageUrl ? (
                 <Cropper
@@ -379,6 +387,26 @@ export function CroppedImageUploadField({
                 Cropping happens before upload, so the saved asset matches the
                 preview you approved.
               </div>
+
+              {allowTransparentBackground ? (
+                <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/70">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                      {transparentBackgroundLabel}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-zinc-400">
+                      Keep the crop canvas transparent instead of filling it
+                      with white.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={transparentBackground}
+                    disabled={busy}
+                    onCheckedChange={setTransparentBackground}
+                    aria-label={transparentBackgroundLabel}
+                  />
+                </div>
+              ) : null}
 
               {isUploading ? (
                 <div className="space-y-2 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 dark:border-sky-500/20 dark:bg-sky-500/10">

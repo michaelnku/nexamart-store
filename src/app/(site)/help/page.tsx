@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { buildStaticPageMetadata } from "@/lib/seo/seo.metadata";
 
 const helpArticles = [
   {
@@ -44,6 +46,8 @@ const helpArticles = [
     description: "Managing your account, security, and login protection.",
   },
 ];
+
+export const metadata: Metadata = buildStaticPageMetadata("helpCenter");
 
 export default function HelpCenterPage() {
   return (

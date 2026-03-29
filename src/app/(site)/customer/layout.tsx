@@ -1,6 +1,15 @@
+import type { Metadata } from "next";
 import { CurrentUser } from "@/lib/currentUser";
+import { buildNoIndexMetadata } from "@/lib/seo/seo.metadata";
 import Dashboard from "../../../components/layout/Dashboard";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = buildNoIndexMetadata({
+  title: "Customer Dashboard",
+  description:
+    "Private customer account area for orders, wallet activity, coupons, and referrals.",
+  path: "/customer",
+});
 
 export default async function CustomerLayout({
   children,

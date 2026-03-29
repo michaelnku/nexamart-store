@@ -55,6 +55,8 @@ export function SiteSettingsBrandingSection({
           emptyIcon={<Camera className="h-6 w-6" />}
           emptyStateClassName="max-w-xl"
           cropDialogDescription="Upload and crop a square logo image."
+          allowTransparentBackground
+          transparentBackgroundLabel="Keep logo background transparent"
         />
       </CardContent>
     </Card>

@@ -1,14 +1,15 @@
-import { prisma } from "@/lib/prisma";
+import type { Metadata } from "next";
+
+import PublicProductCard from "@/components/product/PublicProductCard";
+import { Prisma } from "@/generated/prisma/client";
 import {
   mapRecordProductImages,
   productImageWithAssetInclude,
 } from "@/lib/product-images";
-import PublicProductCard from "@/components/product/PublicProductCard";
-import { Prisma } from "@/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
+import { buildStaticPageMetadata } from "@/lib/seo/seo.metadata";
 
-export const metadata = {
-  title: "Products – NexaMart",
-};
+export const metadata: Metadata = buildStaticPageMetadata("products");
 
 export const viewport = {
   width: "device-width",
@@ -51,40 +52,42 @@ export default async function ProductsPage({
           ? normalizedSort.replaceAll("-", " ")
           : "Shop";
 
-  const products = (await prisma.product.findMany({
-    where: {
-      isPublished: true,
+  const products = (
+    await prisma.product.findMany({
+      where: {
+        isPublished: true,
 
-      ...(sort === "discount"
-        ? {
-            variants: {
-              some: {
-                discount: { gt: 0 },
+        ...(sort === "discount"
+          ? {
+              variants: {
+                some: {
+                  discount: { gt: 0 },
+                },
               },
-            },
-          }
-        : {}),
+            }
+          : {}),
 
-      ...(minPrice || maxPrice
-        ? {
-            basePriceUSD: {
-              ...(minPrice ? { gte: Number(minPrice) } : {}),
-              ...(maxPrice ? { lte: Number(maxPrice) } : {}),
-            },
-          }
-        : {}),
-    },
-    include: {
-      images: {
-        include: productImageWithAssetInclude,
+        ...(minPrice || maxPrice
+          ? {
+              basePriceUSD: {
+                ...(minPrice ? { gte: Number(minPrice) } : {}),
+                ...(maxPrice ? { lte: Number(maxPrice) } : {}),
+              },
+            }
+          : {}),
       },
-      foodProductConfig: true,
-      variants: true,
-      store: true,
-    },
-    orderBy,
-    take: 40,
-  })).map(mapRecordProductImages);
+      include: {
+        images: {
+          include: productImageWithAssetInclude,
+        },
+        foodProductConfig: true,
+        variants: true,
+        store: true,
+      },
+      orderBy,
+      take: 40,
+    })
+  ).map(mapRecordProductImages);
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">

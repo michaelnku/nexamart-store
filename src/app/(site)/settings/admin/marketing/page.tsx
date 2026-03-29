@@ -1,8 +1,5 @@
-import { updatePlatformSettings } from "@/actions/admin/updatePlatformSettings";
-import { Button } from "@/components/ui/button";
+import { AdminMarketingSettingsForm } from "@/components/site/AdminMarketingSettingsForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getSiteConfig } from "@/lib/getSiteConfig";
 
 export default async function MarketingSettingsPage() {
@@ -22,18 +19,9 @@ export default async function MarketingSettingsPage() {
           <CardTitle>Brand Identity</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={updatePlatformSettings} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="siteName">Public Brand Name</Label>
-              <Input
-                id="siteName"
-                name="siteName"
-                defaultValue={config?.siteName ?? "NexaMart"}
-                required
-              />
-            </div>
-            <Button type="submit">Save Marketing Settings</Button>
-          </form>
+          <AdminMarketingSettingsForm
+            defaultSiteName={config?.siteName ?? "NexaMart"}
+          />
         </CardContent>
       </Card>
     </main>

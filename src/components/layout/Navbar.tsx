@@ -39,6 +39,47 @@ import { CustomerSidebarContent } from "./CustomerSidebarContent";
 import NotificationMenu from "../notifications/NotificationMenu";
 import type { PublicSiteConfiguration } from "@/lib/site-config/siteConfig.types";
 
+function renderBrandName(siteName: string) {
+  const trimmedName = siteName.trim();
+
+  if (!trimmedName) {
+    return "NexaMart";
+  }
+
+  const whitespaceMatch = trimmedName.match(/^(.*\S)\s+(\S+)$/);
+
+  if (whitespaceMatch) {
+    return (
+      <>
+        {whitespaceMatch[1]}{" "}
+        <span className="text-[#3c9ee0]">{whitespaceMatch[2]}</span>
+      </>
+    );
+  }
+
+  const camelCaseMatch = trimmedName.match(/^(.*?)([A-Z][^A-Z]*)$/);
+
+  if (camelCaseMatch && camelCaseMatch[1]) {
+    return (
+      <>
+        {camelCaseMatch[1]}
+        <span className="text-[#3c9ee0]">{camelCaseMatch[2]}</span>
+      </>
+    );
+  }
+
+  if (trimmedName.length > 4) {
+    return (
+      <>
+        {trimmedName.slice(0, -4)}
+        <span className="text-[#3c9ee0]">{trimmedName.slice(-4)}</span>
+      </>
+    );
+  }
+
+  return trimmedName;
+}
+
 export default function SiteNavbar({
   initialUser,
   siteConfig,
@@ -70,17 +111,17 @@ export default function SiteNavbar({
   "
       >
         <div className="flex items-center justify-between gap-2 sm:gap-4 h-16 px-3 sm:px-4 lg:px-8 xl:px-12">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-1.5 sm:gap-2">
             <Image
-              src={siteConfig.siteLogoUrl ?? "/favicon.ico"}
-              alt={`${siteConfig.siteName} logo`}
+              src={siteConfig.siteLogoUrl ?? "/site-logo.svg"}
+              alt="logo"
               width={48}
               height={48}
-              className="object-contain"
+              className="shrink-0 object-contain"
             />
 
-            <span className="hidden sm:block font-extrabold text-2xl">
-              {siteConfig.siteName}
+            <span className="hidden sm:block font-extrabold text-2xl leading-none tracking-tight">
+              {renderBrandName(siteConfig.siteName)}
             </span>
           </Link>
 

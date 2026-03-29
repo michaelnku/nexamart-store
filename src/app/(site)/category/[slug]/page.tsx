@@ -1,12 +1,8 @@
-import PublicProductCard from "@/components/product/PublicProductCard";
-import { prisma } from "@/lib/prisma";
-import {
-  mapRecordProductImages,
-  productImageWithAssetInclude,
-} from "@/lib/product-images";
-import { categoryMediaInclude, mapCategoryMedia } from "@/lib/media-views";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+
+import PublicProductCard from "@/components/product/PublicProductCard";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -15,46 +11,51 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { prisma } from "@/lib/prisma";
+import {
+  mapRecordProductImages,
+  productImageWithAssetInclude,
+} from "@/lib/product-images";
+import {
+  buildCategoryMetadata,
+  buildNoIndexMetadata,
+} from "@/lib/seo/seo.metadata";
+import {
+  getCategoryAndDescendantIds,
+  getPublicCategoryBySlug,
+} from "@/lib/seo/seo.public";
+import {
+  buildBreadcrumbStructuredData,
+  buildCategoryCollectionStructuredData,
+  serializeJsonLd,
+} from "@/lib/seo/seo.structured-data";
 
 type Props = {
   params: Promise<{ slug: string }>;
 };
 
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const category = await getPublicCategoryBySlug(slug);
+
+  if (!category) {
+    return buildNoIndexMetadata({
+      title: "Category Not Found",
+      description: "The requested category could not be found.",
+      path: `/category/${slug}`,
+    });
+  }
+
+  return buildCategoryMetadata(category);
+}
+
 export default async function CategorySlugPage({ params }: Props) {
   const { slug } = await params;
+  const normalizedCategory = await getPublicCategoryBySlug(slug);
 
-  const category = await prisma.category.findUnique({
-    where: { slug },
-    include: {
-      ...categoryMediaInclude,
-      parent: {
-        include: {
-          parent: {
-            include: categoryMediaInclude,
-          },
-          ...categoryMediaInclude,
-        },
-      },
-      children: {
-        include: categoryMediaInclude,
-      },
-    },
-  });
-
-  if (!category) return <p>Category not found</p>;
-
-  const normalizedCategory = {
-    ...mapCategoryMedia(category),
-    parent: category.parent
-      ? {
-          ...mapCategoryMedia(category.parent),
-          parent: category.parent.parent
-            ? mapCategoryMedia(category.parent.parent)
-            : null,
-        }
-      : null,
-    children: category.children.map(mapCategoryMedia),
-  };
+  if (!normalizedCategory) {
+    return <p>Category not found</p>;
+  }
 
   const categoryIds = await getCategoryAndDescendantIds(normalizedCategory.id);
 
@@ -74,11 +75,12 @@ export default async function CategorySlugPage({ params }: Props) {
       store: true,
     },
   });
+
   const normalizedProducts = products.map((product) =>
     mapRecordProductImages(product),
   );
 
-  const path: { name: string; slug: string }[] = [];
+  const path: Array<{ name: string; slug: string }> = [];
 
   if (normalizedCategory.parent?.parent) {
     path.push({
@@ -94,8 +96,31 @@ export default async function CategorySlugPage({ params }: Props) {
     });
   }
 
+  const breadcrumbItems = [
+    { name: "Home", path: "/" },
+    { name: "Categories", path: "/category" },
+    ...path.map((item) => ({
+      name: item.name,
+      path: `/category/${item.slug}`,
+    })),
+    {
+      name: normalizedCategory.name,
+      path: `/category/${normalizedCategory.slug}`,
+    },
+  ];
+
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+    <main className="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: serializeJsonLd(
+            buildBreadcrumbStructuredData(breadcrumbItems),
+            buildCategoryCollectionStructuredData(normalizedCategory),
+          ),
+        }}
+      />
+
       <Breadcrumb>
         <BreadcrumbList className="flex-wrap text-sm">
           <BreadcrumbItem>
@@ -111,23 +136,23 @@ export default async function CategorySlugPage({ params }: Props) {
             </>
           )}
 
-          {path.map((p) => (
+          {path.map((item) => (
             <span
-              key={p.slug}
+              key={item.slug}
               className={
                 path.length > 1
-                  ? "hidden sm:flex items-center"
+                  ? "hidden items-center sm:flex"
                   : "flex items-center"
               }
             >
               <BreadcrumbSeparator />
               <BreadcrumbItem>
                 <BreadcrumbLink
-                  href={`/category/${p.slug}`}
-                  className="truncate max-w-[160px]"
-                  title={p.name}
+                  href={`/category/${item.slug}`}
+                  className="max-w-[160px] truncate"
+                  title={item.name}
                 >
-                  {p.name}
+                  {item.name}
                 </BreadcrumbLink>
               </BreadcrumbItem>
             </span>
@@ -136,7 +161,7 @@ export default async function CategorySlugPage({ params }: Props) {
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage
-              className="truncate max-w-[180px]"
+              className="max-w-[180px] truncate"
               title={normalizedCategory.name}
             >
               {normalizedCategory.name}
@@ -146,7 +171,7 @@ export default async function CategorySlugPage({ params }: Props) {
       </Breadcrumb>
 
       {normalizedCategory.bannerImage && (
-        <div className="relative h-56 rounded-xl overflow-hidden">
+        <div className="relative h-56 overflow-hidden rounded-xl">
           <Image
             src={normalizedCategory.bannerImage}
             alt={normalizedCategory.name}
@@ -166,7 +191,7 @@ export default async function CategorySlugPage({ params }: Props) {
               height={48}
             />
           )}
-          <h1 className="text-2xl sm:text-3xl font-bold">
+          <h1 className="text-2xl font-bold sm:text-3xl">
             {normalizedCategory.name}
           </h1>
         </div>
@@ -183,16 +208,13 @@ export default async function CategorySlugPage({ params }: Props) {
           </h2>
 
           <div className="flex flex-wrap gap-2">
-            {normalizedCategory.children.map((sub) => (
+            {normalizedCategory.children.map((subcategory) => (
               <Link
-                key={sub.id}
-                href={`/category/${sub.slug}`}
-                className="
-                  px-4 py-2 rounded-full border text-sm font-medium
-                  hover:bg-muted transition
-                "
+                key={subcategory.id}
+                href={`/category/${subcategory.slug}`}
+                className="rounded-full border px-4 py-2 text-sm font-medium transition hover:bg-muted"
               >
-                {sub.name}
+                {subcategory.name}
               </Link>
             ))}
           </div>
@@ -200,44 +222,22 @@ export default async function CategorySlugPage({ params }: Props) {
       )}
 
       <section className="space-y-6">
-          {normalizedProducts.length === 0 ? (
+        {normalizedProducts.length === 0 ? (
           <div className="py-20 text-center text-muted-foreground">
             No products found in this category.
           </div>
         ) : (
-          <div
-            className="
-            grid grid-cols-2 
-            sm:grid-cols-3 
-            md:grid-cols-4 
-            lg:grid-cols-5 
-            gap-4 sm:gap-6
-          "
-          >
-            {normalizedProducts.map((p) => (
-              <PublicProductCard key={p.id} product={p} isWishlisted={false} />
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 sm:gap-6">
+            {normalizedProducts.map((product) => (
+              <PublicProductCard
+                key={product.id}
+                product={product}
+                isWishlisted={false}
+              />
             ))}
           </div>
         )}
       </section>
     </main>
   );
-}
-async function getCategoryAndDescendantIds(categoryId: string) {
-  const categories = await prisma.category.findMany({
-    where: {
-      OR: [
-        { id: categoryId },
-        { parentId: categoryId },
-        {
-          parent: {
-            parentId: categoryId,
-          },
-        },
-      ],
-    },
-    select: { id: true },
-  });
-
-  return categories.map((c) => c.id);
 }
