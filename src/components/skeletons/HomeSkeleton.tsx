@@ -4,15 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HomeSkeleton() {
   return (
-    <main
-      className="
-        space-y-10
-        min-h-[160vh]
-        sm:min-h-[140vh]
-        md:min-h-[120vh]
-        lg:min-h-[110vh]
-      "
-    >
+    <div className="space-y-10">
       {/* Banner */}
       <Skeleton className="h-40 sm:h-48 md:h-56 w-full rounded-lg" />
 
@@ -43,6 +35,6 @@ export default function HomeSkeleton() {
           ))}
         </div>
       ))}
-    </main>
+    </div>
   );
 }

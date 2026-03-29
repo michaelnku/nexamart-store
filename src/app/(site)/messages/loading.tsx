@@ -1,8 +1,9 @@
+import SitePageShell from "../_components/SitePageShell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function InboxLoading() {
   return (
-    <main className="h-full min-h-0 w-full mx-auto max-w-5xl py-8 bg-background overflow-hidden">
+    <SitePageShell className="max-w-5xl overflow-hidden bg-background py-8">
       <div className="grid h-full min-h-0 grid-cols-[320px_1fr] overflow-hidden">
         <aside className="border-r h-full min-h-0 overflow-hidden">
           <div className="h-full min-h-0 flex flex-col">
@@ -46,6 +47,6 @@ export default function InboxLoading() {
           </div>
         </section>
       </div>
-    </main>
+    </SitePageShell>
   );
 }

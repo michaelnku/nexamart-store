@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function StorePageSkeleton() {
   return (
-    <section className="min-h-screen py-4">
+    <section className="min-h-full py-4">
       <main className="max-w-6xl mx-auto space-y-12 shadow-md rounded-md">
         {/* ░░░ Banner / Cover Photo ░░░ */}
         <div className="min-h-[220px] md:min-h-[300px]">

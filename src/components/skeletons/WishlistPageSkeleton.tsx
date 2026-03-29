@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WishlistPageSkeleton() {
   return (
-    <main className="min-h-screen max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6">
+    <main className="min-h-full max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6">
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-2">

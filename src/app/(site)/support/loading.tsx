@@ -1,8 +1,9 @@
+import SitePageShell from "../_components/SitePageShell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SupportLoading() {
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+    <SitePageShell className="max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
           <Skeleton className="h-8 w-48" />
@@ -38,6 +39,6 @@ export default function SupportLoading() {
           </div>
         </div>
       </div>
-    </div>
+    </SitePageShell>
   );
 }

@@ -1,8 +1,9 @@
+import SitePageShell from "../../_components/SitePageShell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CategorySlugLoading() {
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10 min-h-[120vh]">
+    <SitePageShell className="max-w-7xl space-y-10 px-4 py-8 sm:px-6">
       {/* Breadcrumb Skeleton */}
       <div className="flex gap-2">
         <Skeleton className="h-4 w-28" />
@@ -54,6 +55,6 @@ export default function CategorySlugLoading() {
           ))}
         </div>
       </section>
-    </main>
+    </SitePageShell>
   );
 }

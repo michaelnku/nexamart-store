@@ -1,10 +1,9 @@
-"use client";
-
+import SitePageShell from "@/app/(site)/_components/SitePageShell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function AuthPageLoading() {
   return (
-    <main className="flex min-h-full items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
+    <SitePageShell className="max-w-5xl items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-6 rounded-2xl border p-8 shadow-lg">
         <div className="space-y-2 text-center">
           <Skeleton className="mx-auto h-10 w-10 rounded-full" />
@@ -18,13 +17,13 @@ function AuthPageLoading() {
         </div>
         <Skeleton className="h-11 w-full rounded-lg" />
       </div>
-    </main>
+    </SitePageShell>
   );
 }
 
 function SitePageLoading() {
   return (
-    <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+    <SitePageShell className="max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="space-y-2">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-80" />
@@ -34,13 +33,13 @@ function SitePageLoading() {
         <Skeleton className="h-28 w-full rounded-2xl" />
         <Skeleton className="h-28 w-full rounded-2xl" />
       </div>
-    </main>
+    </SitePageShell>
   );
 }
 
 function SiteGridLoading() {
   return (
-    <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+    <SitePageShell className="max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="space-y-2">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-72" />
@@ -54,13 +53,13 @@ function SiteGridLoading() {
           </div>
         ))}
       </div>
-    </main>
+    </SitePageShell>
   );
 }
 
 function SiteTableLoading() {
   return (
-    <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+    <SitePageShell className="max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="space-y-2">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-72" />
@@ -80,13 +79,13 @@ function SiteTableLoading() {
           ))}
         </div>
       </div>
-    </main>
+    </SitePageShell>
   );
 }
 
 function SiteDetailLoading() {
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+    <SitePageShell className="max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="space-y-2">
         <Skeleton className="h-8 w-56" />
         <Skeleton className="h-4 w-72" />
@@ -106,26 +105,26 @@ function SiteDetailLoading() {
           <Skeleton className="h-10 w-full rounded-md" />
         </div>
       </div>
-    </main>
+    </SitePageShell>
   );
 }
 
 function CenteredPageLoading() {
   return (
-    <main className="flex min-h-[70vh] items-center justify-center px-4 py-10">
+    <SitePageShell className="max-w-5xl items-center justify-center px-4 py-10">
       <div className="w-full max-w-2xl space-y-4 rounded-2xl border p-8 text-center">
         <Skeleton className="mx-auto h-8 w-52" />
         <Skeleton className="mx-auto h-4 w-72" />
         <Skeleton className="mx-auto h-4 w-64" />
         <Skeleton className="mx-auto h-11 w-40 rounded-lg" />
       </div>
-    </main>
+    </SitePageShell>
   );
 }
 
 function SettingsPageLoading() {
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+    <SitePageShell className="max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
       <div className="space-y-2">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-72" />
@@ -138,13 +137,13 @@ function SettingsPageLoading() {
           <Skeleton className="h-11 w-full rounded-md sm:col-span-2" />
         </div>
       </div>
-    </main>
+    </SitePageShell>
   );
 }
 
 function DashboardPageLoading() {
   return (
-    <main className="space-y-6">
+    <SitePageShell className="space-y-6">
       <div className="space-y-2">
         <Skeleton className="h-8 w-44" />
         <Skeleton className="h-4 w-72" />
@@ -171,13 +170,13 @@ function DashboardPageLoading() {
           ))}
         </div>
       </div>
-    </main>
+    </SitePageShell>
   );
 }
 
 function ModeratorQueuePageLoading() {
   return (
-    <main className="space-y-6 text-slate-950 dark:text-zinc-100">
+    <SitePageShell className="space-y-6 text-slate-950 dark:text-zinc-100">
       <div className="space-y-2">
         <Skeleton className="h-6 w-32 rounded-full" />
         <div className="space-y-2">
@@ -272,13 +271,13 @@ function ModeratorQueuePageLoading() {
           </div>
         </div>
       </div>
-    </main>
+    </SitePageShell>
   );
 }
 
 function FormPageLoading() {
   return (
-    <main className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+    <SitePageShell className="max-w-4xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
       <div className="space-y-2">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-72" />
@@ -293,7 +292,7 @@ function FormPageLoading() {
         </div>
         <Skeleton className="h-11 w-40 rounded-lg" />
       </div>
-    </main>
+    </SitePageShell>
   );
 }
 

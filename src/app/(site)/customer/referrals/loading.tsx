@@ -1,8 +1,9 @@
+import SitePageShell from "../../_components/SitePageShell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CustomerReferralsLoading() {
   return (
-    <main className="mx-auto max-w-5xl space-y-6 px-6 py-6">
+    <SitePageShell className="max-w-5xl space-y-6 px-6 py-6">
       <div className="space-y-2">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-4 w-80" />
@@ -38,6 +39,6 @@ export default function CustomerReferralsLoading() {
           ))}
         </div>
       </div>
-    </main>
+    </SitePageShell>
   );
 }

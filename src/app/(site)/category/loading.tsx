@@ -1,8 +1,9 @@
+import SitePageShell from "../_components/SitePageShell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CategoryPageLoading() {
   return (
-    <main className="max-w-6xl mx-auto px-6 py-6 space-y-10 min-h-[100vh]">
+    <SitePageShell className="max-w-6xl space-y-10 px-6 py-6">
       {/* Page title */}
       <Skeleton className="h-7 w-56" />
 
@@ -18,6 +19,6 @@ export default function CategoryPageLoading() {
           </div>
         ))}
       </div>
-    </main>
+    </SitePageShell>
   );
 }
