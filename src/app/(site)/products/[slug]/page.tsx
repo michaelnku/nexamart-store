@@ -151,11 +151,21 @@ export default async function ProductPage({ params }: PageProps) {
         foodDetails={foodDetails}
       />
 
-      <section className="mx-auto max-w-[1200px] px-4 pb-10 sm:px-6 lg:px-8">
-        <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <h2 className="text-xl font-semibold text-slate-950 dark:text-zinc-100">
-            Verified Reviews
-          </h2>
+      <section className="mx-auto w-full max-w-7xl px-3 pb-10 sm:px-6 lg:px-8">
+        <div className="space-y-6 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-[0_10px_35px_-18px_rgba(15,23,42,0.18)] dark:border-zinc-800 dark:bg-zinc-950 sm:p-8">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-zinc-400">
+              Reviews
+            </p>
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-zinc-100">
+              Verified customer feedback
+            </h2>
+            <p className="max-w-2xl text-sm leading-6 text-slate-500 dark:text-zinc-400">
+              See what customers are saying about this product. Reviews are from
+              verified purchasers to help you make an informed decision.
+            </p>
+          </div>
+
           <ReviewList productId={product.id} />
         </div>
       </section>
