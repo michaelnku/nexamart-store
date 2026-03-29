@@ -25,7 +25,7 @@ function normalizeStorageKey(value: string | null | undefined) {
   return trimmed ? trimmed : null;
 }
 
-function extractUploadThingKeyFromUrl(rawUrl: string) {
+function extractStorageKeyFromUrl(rawUrl: string) {
   try {
     const url = new URL(rawUrl);
     const parts = url.pathname.split("/").filter(Boolean);
@@ -56,7 +56,7 @@ export function resolveFileAssetStorageKey(input: {
   }
 
   const url = input.file?.url ?? input.url;
-  return url ? extractUploadThingKeyFromUrl(url) : null;
+  return url ? extractStorageKeyFromUrl(url) : null;
 }
 
 export function mapFileAssetToJsonFile(asset: {

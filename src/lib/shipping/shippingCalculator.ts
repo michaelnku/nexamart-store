@@ -1,6 +1,7 @@
 import { DeliveryType, StoreType } from "@/generated/prisma/client";
+import { DEFAULT_SITE_CONFIGURATION_VALUES } from "@/lib/site-config/siteConfig.defaults";
 
-type DeliveryPricingConfig = {
+export type DeliveryPricingConfig = {
   foodMinimumDeliveryFee: number;
   generalMinimumDeliveryFee: number;
   foodBaseDeliveryRate: number;
@@ -19,13 +20,15 @@ type StoreDeliveryPricingInput = {
 };
 
 const DEFAULT_DELIVERY_PRICING: DeliveryPricingConfig = {
-  foodMinimumDeliveryFee: 2,
-  generalMinimumDeliveryFee: 5,
-  foodBaseDeliveryRate: 1.5,
-  foodRatePerMile: 0.7,
-  generalBaseDeliveryRate: 2,
-  generalRatePerMile: 1,
-  expressMultiplier: 1.5,
+  foodMinimumDeliveryFee: DEFAULT_SITE_CONFIGURATION_VALUES.foodMinimumDeliveryFee,
+  generalMinimumDeliveryFee:
+    DEFAULT_SITE_CONFIGURATION_VALUES.generalMinimumDeliveryFee,
+  foodBaseDeliveryRate: DEFAULT_SITE_CONFIGURATION_VALUES.foodBaseDeliveryRate,
+  foodRatePerMile: DEFAULT_SITE_CONFIGURATION_VALUES.foodRatePerMile,
+  generalBaseDeliveryRate:
+    DEFAULT_SITE_CONFIGURATION_VALUES.generalBaseDeliveryRate,
+  generalRatePerMile: DEFAULT_SITE_CONFIGURATION_VALUES.generalRatePerMile,
+  expressMultiplier: DEFAULT_SITE_CONFIGURATION_VALUES.expressMultiplier,
 };
 
 export function calculateShippingFee({

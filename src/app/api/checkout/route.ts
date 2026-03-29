@@ -5,6 +5,7 @@ import { CurrentUserId } from "@/lib/currentUser";
 import { getCheckoutPreviewAction } from "@/actions/checkout/getCheckoutPreview";
 import { stripe } from "@/lib/stripe";
 import { getAppBaseUrl } from "@/lib/config/appUrl";
+import { getMarketplaceBrandingSiteConfig } from "@/lib/site-config/siteConfig.order";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": getAppBaseUrl(),
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
     }
 
     const baseUrl = getAppBaseUrl();
+    const brandingConfig = await getMarketplaceBrandingSiteConfig();
 
     const session = await stripe.checkout.sessions.create(
       {
@@ -74,7 +76,7 @@ export async function POST(req: Request) {
             price_data: {
               currency: "usd",
               product_data: {
-                name: "NexaMart Checkout",
+                name: `${brandingConfig.siteName} Checkout`,
               },
               unit_amount: Math.round(preview.totalUSD * 100),
             },

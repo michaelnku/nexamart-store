@@ -22,6 +22,23 @@ body {
   background: var(--brand-blue);
 }
 
+.hero-banner-swiper .swiper-pagination {
+  bottom: 12px !important;
+}
+
+.hero-banner-swiper .swiper-pagination-bullet {
+  width: 8px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.55);
+  opacity: 1;
+}
+
+.hero-banner-swiper .swiper-pagination-bullet-active {
+  width: 22px;
+  border-radius: 9999px;
+  background: #ffffff;
+}
+
 @keyframes progress {
   0% {
     width: 0%;

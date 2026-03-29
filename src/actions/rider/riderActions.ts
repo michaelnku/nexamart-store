@@ -1,293 +1,53 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
-import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
-import { autoAssignRider } from "@/lib/rider/logistics";
-import { completeDeliveryAndPayRider } from "@/lib/rider/completeDeliveryPayout";
-import { DeliveryStatus, OrderStatus } from "@/generated/prisma/client";
-import { moveOrderEarningsToPending } from "@/lib/payout/moveToPendingOnDelivery";
-import { ensureOrderPayoutReleaseJobInTx } from "@/lib/payout/orderPayoutRelease";
-import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import {
-  assertValidTransition,
-  normalizeOrderStatus,
-} from "@/lib/order/orderLifecycle";
-import {
-  parseRiderDeliveryStatusKey,
-  RIDER_DELIVERY_STATUS_FILTERS,
-  RiderDeliveryCounts,
-  canAutoAssignForOrderStatus,
-  canVerifyDeliveryStatus,
-  toRiderClientDeliveryStatus,
-} from "@/lib/rider/types";
-import { ensureVerifiedRider } from "@/lib/verification/guards";
-import { getPayoutEligibleAtFrom } from "@/lib/payout/timing";
+  requireAdminUserId,
+  requireRiderUserId,
+  requireVerifiedRiderUserId,
+} from "@/lib/rider/actions/riderDeliveryAction.auth";
+import { runAutoAssignForPaidOrder } from "@/lib/rider/actions/runAutoAssignForPaidOrder";
+import { runRiderAcceptDelivery } from "@/lib/rider/actions/runRiderAcceptDelivery";
+import { runRiderCancelAssignedDelivery } from "@/lib/rider/actions/runRiderCancelAssignedDelivery";
+import { runVerifyDeliveryOtp } from "@/lib/rider/actions/runVerifyDeliveryOtp";
+import { runCompleteDeliveryAndPayRider } from "@/lib/rider/actions/runCompleteDeliveryAndPayRider";
+import { loadRiderDeliveriesView } from "@/lib/rider/actions/loadRiderDeliveriesView";
 
 export async function autoAssignRiderForPaidOrderAction(orderId: string) {
-  const userId = await CurrentUserId();
-  if (!userId) return { error: "Unauthorized" };
+  const auth = await requireAdminUserId();
+  if ("error" in auth) return auth;
 
-  const role = await CurrentRole();
-  if (role !== "ADMIN") return { error: "Forbidden" };
-
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-    select: {
-      id: true,
-      isPaid: true,
-      status: true,
-      delivery: { select: { id: true } },
-    },
-  });
-
-  if (!order) return { error: "Order not found" };
-  if (!order.isPaid) return { error: "Order is not paid" };
-  if (order.delivery) return { error: "Delivery already exists" };
-  if (!canAutoAssignForOrderStatus(order.status)) {
-    return { error: `Order status ${order.status} cannot be assigned` };
-  }
-
-  await autoAssignRider(orderId);
-
-  return { success: true };
+  return runAutoAssignForPaidOrder(orderId);
 }
 
 export async function riderAcceptDeliveryAction(deliveryId: string) {
-  const userId = await CurrentUserId();
-  if (!userId) return { error: "Unauthorized" };
+  const auth = await requireVerifiedRiderUserId();
+  if ("error" in auth) return auth;
 
-  await ensureVerifiedRider(userId);
-
-  const role = await CurrentRole();
-  if (role !== "RIDER") return { error: "Forbidden" };
-
-  const delivery = await prisma.delivery.findUnique({
-    where: { id: deliveryId },
-    select: {
-      id: true,
-      riderId: true,
-      status: true,
-      orderId: true,
-      order: { select: { status: true } },
-    },
+  return runRiderAcceptDelivery({
+    deliveryId,
+    userId: auth.userId,
   });
-
-  if (!delivery) return { error: "Delivery not found" };
-  if (delivery.riderId !== userId) return { error: "Not assigned to rider" };
-  if (delivery.status !== "ASSIGNED") {
-    return { error: `Delivery status ${delivery.status} cannot be accepted` };
-  }
-
-  await prisma.$transaction([
-    prisma.delivery.update({
-      where: { id: deliveryId },
-      data: { status: "PICKED_UP" },
-    }),
-    prisma.order.update({
-      where: { id: delivery.orderId },
-      data: {
-        status: (() => {
-          const nextStatus: OrderStatus = "IN_DELIVERY";
-          assertValidTransition(
-            normalizeOrderStatus(delivery.order.status),
-            nextStatus,
-          );
-          return nextStatus;
-        })(),
-      },
-    }),
-  ]);
-
-  await createOrderTimelineIfMissing({
-    orderId: delivery.orderId,
-    status: "IN_DELIVERY",
-    message: "Rider is currently delivering your order.",
-  });
-
-  return { success: true };
 }
 
 export async function riderCancelAssignedDeliveryAction(deliveryId: string) {
-  const userId = await CurrentUserId();
-  if (!userId) return { error: "Unauthorized" };
+  const auth = await requireRiderUserId();
+  if ("error" in auth) return auth;
 
-  const role = await CurrentRole();
-  if (role !== "RIDER") return { error: "Forbidden" };
-
-  const delivery = await prisma.delivery.findUnique({
-    where: { id: deliveryId },
-    select: {
-      id: true,
-      riderId: true,
-      status: true,
-      orderId: true,
-    },
+  return runRiderCancelAssignedDelivery({
+    deliveryId,
+    userId: auth.userId,
   });
-
-  if (!delivery) return { error: "Delivery not found" };
-  if (delivery.riderId !== userId) return { error: "Not assigned to rider" };
-  if (delivery.status !== "ASSIGNED") {
-    return { error: `Delivery status ${delivery.status} cannot be cancelled` };
-  }
-
-  await prisma.$transaction(async (tx) => {
-    const releasedDelivery = await tx.delivery.updateMany({
-      where: {
-        id: deliveryId,
-        riderId: userId,
-        status: "ASSIGNED",
-      },
-      data: {
-        riderId: null,
-        status: "PENDING_ASSIGNMENT",
-        assignedAt: null,
-        otpAttempts: 0,
-        otpExpiresAt: null,
-        otpHash: null,
-        isLocked: false,
-        lockedAt: null,
-      },
-    });
-
-    if (releasedDelivery.count !== 1) {
-      throw new Error("Failed to release assigned delivery.");
-    }
-
-    await tx.riderProfile.updateMany({
-      where: { userId, isAvailable: false },
-      data: { isAvailable: true },
-    });
-
-    await createOrderTimelineIfMissing(
-      {
-        orderId: delivery.orderId,
-        status: "READY",
-        message: "Rider cancelled assigned delivery. Reassignment pending.",
-      },
-      tx,
-    );
-  });
-
-  return { success: true };
 }
 
 export async function verifyDeliveryOTPAction(deliveryId: string, otp: string) {
-  void otp;
+  const auth = await requireRiderUserId();
+  if ("error" in auth) return auth;
 
-  const userId = await CurrentUserId();
-  if (!userId) return { error: "Unauthorized" };
-
-  const role = await CurrentRole();
-  if (role !== "RIDER") return { error: "Forbidden" };
-
-  const delivery = await prisma.delivery.findUnique({
-    where: { id: deliveryId },
-    include: { order: true },
-  });
-
-  if (!delivery) return { error: "Delivery not found" };
-  if (delivery.status === "DELIVERED") {
-    return { success: true };
-  }
-  if (delivery.riderId !== userId) return { error: "Not assigned to rider" };
-
-  if (!canVerifyDeliveryStatus(delivery.status)) {
-    return { error: `Delivery status ${delivery.status} cannot be verified` };
-  }
-
-  console.warn("[verifyDeliveryOTPAction] OTP verification temporarily bypassed", {
+  return runVerifyDeliveryOtp({
     deliveryId,
-    riderId: userId,
-    deliveryStatus: delivery.status,
+    userId: auth.userId,
+    otp,
   });
-
-  const confirmedAt = new Date();
-  const payoutEligibleAt = getPayoutEligibleAtFrom(
-    confirmedAt,
-    Boolean(delivery.order.isFoodOrder),
-  );
-
-  try {
-    await prisma.$transaction(async (tx) => {
-      await tx.delivery.update({
-        where: { id: deliveryId },
-        data: {
-          status: "DELIVERED",
-          deliveredAt: confirmedAt,
-          payoutEligibleAt,
-          payoutLocked: false,
-          otpAttempts: 0,
-          isLocked: false,
-          lockedAt: null,
-          otpHash: null,
-          otpExpiresAt: null,
-        },
-      });
-
-      await tx.order.update({
-        where: { id: delivery.orderId },
-        data: {
-          status: (() => {
-            const nextStatus: OrderStatus = "DELIVERED";
-            assertValidTransition(
-              normalizeOrderStatus(delivery.order.status),
-              nextStatus,
-            );
-            return nextStatus;
-          })(),
-          customerConfirmedAt: confirmedAt,
-        },
-      });
-
-      await createOrderTimelineIfMissing(
-        {
-          orderId: delivery.orderId,
-          status: "DELIVERED",
-          message: "Order delivered successfully.",
-        },
-        tx,
-      );
-
-      await ensureOrderPayoutReleaseJobInTx(tx, {
-        orderId: delivery.orderId,
-        releaseAt: payoutEligibleAt,
-      });
-    });
-
-    try {
-      const pendingMoveResult = await moveOrderEarningsToPending(delivery.orderId);
-
-      if ("skipped" in pendingMoveResult) {
-        console.warn(
-          "[verifyDeliveryOTPAction] moveOrderEarningsToPending skipped",
-          {
-            orderId: delivery.orderId,
-            deliveryId,
-            reason: pendingMoveResult.reason,
-          },
-        );
-      } else {
-        console.info(
-          "[verifyDeliveryOTPAction] moveOrderEarningsToPending completed",
-          {
-            orderId: delivery.orderId,
-            deliveryId,
-          },
-        );
-      }
-    } catch (err) {
-      console.error("[verifyDeliveryOTPAction] moveOrderEarningsToPending failed", {
-        orderId: delivery.orderId,
-        deliveryId,
-        error: err instanceof Error ? err.message : err,
-      });
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error("verifyDeliveryOTPAction failed:", error);
-    return { error: "Failed to verify OTP. Please try again." };
-  }
 }
 
 export async function riderVerifyDeliveryOtpAction(
@@ -298,219 +58,18 @@ export async function riderVerifyDeliveryOtpAction(
 }
 
 export async function completeDeliveryAndPayRiderAction(orderId: string) {
-  const userId = await CurrentUserId();
-  if (!userId) return { error: "Unauthorized" };
+  const auth = await requireAdminUserId();
+  if ("error" in auth) return auth;
 
-  const role = await CurrentRole();
-  if (role !== "ADMIN") return { error: "Forbidden" };
-
-  try {
-    const result = await completeDeliveryAndPayRider(orderId);
-    return result;
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to complete delivery payout";
-    return { error: message };
-  }
+  return runCompleteDeliveryAndPayRider(orderId);
 }
 
 export async function getRiderDeliveriesAction(statusKey?: string) {
-  const userId = await CurrentUserId();
-  if (!userId) return { error: "Unauthorized" };
+  const auth = await requireRiderUserId();
+  if ("error" in auth) return auth;
 
-  const role = await CurrentRole();
-  if (role !== "RIDER") return { error: "Forbidden" };
-
-  const activeKey = parseRiderDeliveryStatusKey(statusKey);
-
-  const countsRaw = await prisma.delivery.groupBy({
-    by: ["status"],
-    where: { riderId: userId },
-    _count: { _all: true },
+  return loadRiderDeliveriesView({
+    userId: auth.userId,
+    statusKey,
   });
-
-  const [pendingUnassignedDeliveriesCount, pendingReadyOrdersCount] =
-    await Promise.all([
-      prisma.delivery.count({
-        where: {
-          status: { in: ["PENDING_ASSIGNMENT"] as DeliveryStatus[] },
-          riderId: null,
-        },
-      }),
-      prisma.order.count({
-        where: {
-          isPaid: true,
-          status: { in: ["READY", "ACCEPTED"] },
-          delivery: null,
-          sellerGroups: {
-            some: {},
-            every: {
-              OR: [
-                { status: "VERIFIED_AT_HUB" },
-                { status: "ARRIVED_AT_HUB" },
-                { status: "READY" },
-                { status: "CANCELLED" },
-              ],
-            },
-          },
-        },
-      }),
-    ]);
-
-  const counts: RiderDeliveryCounts = {
-    pending:
-      (countsRaw.find((c) => c.status === "PENDING_ASSIGNMENT")?._count._all ??
-        0) +
-      pendingUnassignedDeliveriesCount +
-      pendingReadyOrdersCount,
-    assigned: countsRaw.find((c) => c.status === "ASSIGNED")?._count._all ?? 0,
-    ongoing: countsRaw.find((c) => c.status === "PICKED_UP")?._count._all ?? 0,
-    delivered:
-      countsRaw.find((c) => c.status === "DELIVERED")?._count._all ?? 0,
-    cancelled:
-      countsRaw.find((c) => c.status === "CANCELLED")?._count._all ?? 0,
-  };
-
-  const deliveries = await prisma.delivery.findMany({
-    where:
-      activeKey === "pending"
-        ? {
-            status: {
-              in: RIDER_DELIVERY_STATUS_FILTERS[activeKey],
-            },
-            OR: [{ riderId: userId }, { riderId: null }],
-          }
-        : {
-            riderId: userId,
-            status: {
-              in: RIDER_DELIVERY_STATUS_FILTERS[activeKey],
-            },
-          },
-    orderBy: { assignedAt: "desc" },
-    include: {
-      order: {
-        select: {
-          id: true,
-          trackingNumber: true,
-          deliveryStreet: true,
-          deliveryCity: true,
-          deliveryState: true,
-          deliveryCountry: true,
-          deliveryPostal: true,
-          totalAmount: true,
-          shippingFee: true,
-          status: true,
-          createdAt: true,
-          customer: { select: { name: true, email: true } },
-        },
-      },
-    },
-  });
-
-  const deliveriesWithAddress = deliveries.map((delivery) => {
-    const order = delivery.order;
-    const deliveryAddress = [
-      order.deliveryStreet,
-      order.deliveryCity,
-      order.deliveryState,
-      order.deliveryCountry,
-      order.deliveryPostal,
-    ]
-      .filter((part) => Boolean(part && part.trim()))
-      .join(", ");
-
-    return {
-      ...delivery,
-      clientStatus: toRiderClientDeliveryStatus(delivery.status),
-      order: {
-        ...order,
-        deliveryAddress,
-      },
-    };
-  });
-
-  const pendingOrdersWithoutDelivery =
-    activeKey === "pending"
-      ? await prisma.order.findMany({
-          where: {
-            isPaid: true,
-            status: { in: ["READY", "ACCEPTED"] },
-            delivery: null,
-            sellerGroups: {
-              some: {},
-              every: {
-                OR: [
-                  { status: "VERIFIED_AT_HUB" },
-                  { status: "ARRIVED_AT_HUB" },
-                  { status: "READY" },
-                  { status: "CANCELLED" },
-                ],
-              },
-            },
-          },
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            trackingNumber: true,
-            deliveryStreet: true,
-            deliveryCity: true,
-            deliveryState: true,
-            deliveryCountry: true,
-            deliveryPostal: true,
-            totalAmount: true,
-            shippingFee: true,
-            status: true,
-            createdAt: true,
-            customer: { select: { name: true, email: true } },
-          },
-        })
-      : [];
-
-  const pendingOrderRows = pendingOrdersWithoutDelivery.map((order) => {
-    const deliveryAddress = [
-      order.deliveryStreet,
-      order.deliveryCity,
-      order.deliveryState,
-      order.deliveryCountry,
-      order.deliveryPostal,
-    ]
-      .filter((part) => Boolean(part && part.trim()))
-      .join(", ");
-
-    return {
-      id: `pending-order-${order.id}`,
-      orderId: order.id,
-      riderId: null,
-      otpHash: null,
-      otpExpiresAt: null,
-      otpAttempts: 0,
-      isLocked: false,
-      lockedAt: null,
-      status: "PENDING_ASSIGNMENT" as DeliveryStatus,
-      clientStatus: toRiderClientDeliveryStatus("PENDING_ASSIGNMENT"),
-      deliveryAddress: null,
-      distance: null,
-      fee: order.shippingFee,
-      assignedAt: null,
-      deliveredAt: null,
-      order: {
-        ...order,
-        deliveryAddress,
-      },
-      isPendingAssignment: true,
-    };
-  });
-
-  const mergedDeliveries =
-    activeKey === "pending"
-      ? [...deliveriesWithAddress, ...pendingOrderRows].sort((a, b) => {
-          const aTime = new Date(a.assignedAt ?? a.order.createdAt).getTime();
-          const bTime = new Date(b.assignedAt ?? b.order.createdAt).getTime();
-          return bTime - aTime;
-        })
-      : deliveriesWithAddress;
-
-  return { deliveries: mergedDeliveries, counts, activeKey };
 }

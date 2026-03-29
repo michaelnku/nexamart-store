@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Autoplay, Pagination } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
+import type { Swiper as SwiperType } from "swiper";
+import "swiper/css";
+import "swiper/css/pagination";
+
 import { HeroBannerWithFiles } from "@/lib/types";
 
-const SWIPE_THRESHOLD = 80;
 const AUTO_PLAY_DELAY = 8000;
 
 export default function HeroBanner({
@@ -15,295 +19,163 @@ export default function HeroBanner({
 }: {
   banners: HeroBannerWithFiles[];
 }) {
-  const [[index, direction], setIndex] = useState<[number, number]>([0, 0]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const [showControls, setShowControls] = useState(false);
+  const swiperRef = useRef<SwiperType | null>(null);
 
-  const bannerCount = banners.length;
-
-  const paginate = useCallback(
-    (newDirection: number) => {
-      setIndex(([prev]) => [
-        (prev + newDirection + bannerCount) % bannerCount,
-        newDirection,
-      ]);
-    },
-    [bannerCount],
-  );
-
-  const goTo = useCallback(
-    (nextIndex: number) => {
-      if (nextIndex === index) return;
-      const nextDirection = nextIndex > index ? 1 : -1;
-      setIndex([nextIndex, nextDirection]);
-    },
-    [index],
-  );
-
-  // Smart autoplay (pause on hover or drag)
-  useEffect(() => {
-    if (bannerCount <= 1 || isHovered || isDragging) return;
-
-    const interval = setInterval(() => {
-      paginate(1);
-    }, AUTO_PLAY_DELAY);
-
-    return () => clearInterval(interval);
-  }, [bannerCount, isHovered, isDragging, paginate]);
-
-  if (!bannerCount) return null;
-
-  const banner = banners[index];
-  const backgroundUrl = banner.backgroundImage?.url || "/fallback-banner.jpg";
-  const productUrl = banner.productImage?.url ?? null;
+  if (banners.length === 0) return null;
 
   return (
-    <div
+    <section
       className="
-        relative w-full
+        group relative w-full overflow-hidden rounded-2xl
         h-[260px]
         sm:h-[360px]
         lg:h-[48vh]
         xl:h-[52vh]
         2xl:h-[58vh]
-        rounded-2xl overflow-hidden
-        group
-              "
-      style={{ touchAction: "pan-y" }}
+      "
       onMouseEnter={() => {
-        setIsHovered(true);
         setShowControls(true);
+        swiperRef.current?.autoplay?.stop();
       }}
       onMouseLeave={() => {
-        setIsHovered(false);
         setShowControls(false);
+        swiperRef.current?.autoplay?.start();
       }}
     >
-      <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+      <div className="absolute inset-0 animate-pulse bg-slate-200" />
 
-      {/* Slides */}
-      <AnimatePresence initial={false} custom={direction} mode="wait">
-        <motion.div
-          key={index}
-          custom={direction}
-          initial={{ x: direction > 0 ? 200 : -200, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: direction < 0 ? 200 : -200, opacity: 0 }}
-          transition={{
-            x: { type: "spring", stiffness: 260, damping: 30 },
-            opacity: { duration: 0.35 },
-          }}
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.25}
-          onDragStart={() => setIsDragging(true)}
-          onDragEnd={(_, info) => {
-            const offset = info.offset.x;
+      <Swiper
+        modules={[Autoplay, Pagination]}
+        onSwiper={(swiper) => {
+          swiperRef.current = swiper;
+        }}
+        autoplay={
+          banners.length > 1
+            ? { delay: AUTO_PLAY_DELAY, disableOnInteraction: false }
+            : false
+        }
+        loop={banners.length > 1}
+        speed={700}
+        grabCursor={banners.length > 1}
+        pagination={
+          banners.length > 1
+            ? {
+                clickable: true,
+              }
+            : false
+        }
+        className="hero-banner-swiper h-full"
+      >
+        {banners.map((banner, index) => {
+          const backgroundUrl =
+            banner.backgroundImage?.url || "/fallback-banner.jpg";
+          const productUrl = banner.productImage?.url ?? null;
 
-            if (offset < -SWIPE_THRESHOLD) paginate(1);
-            else if (offset > SWIPE_THRESHOLD) paginate(-1);
+          return (
+            <SwiperSlide key={banner.id}>
+              <div className="relative h-full w-full">
+                <Image
+                  src={backgroundUrl}
+                  alt={banner.title || "Banner"}
+                  fill
+                  priority={index === 0}
+                  quality={75}
+                  sizes="100vw"
+                  className="object-cover"
+                />
 
-            setTimeout(() => setIsDragging(false), 100);
-          }}
-          className="absolute inset-0"
-        >
-          <Image
-            src={backgroundUrl}
-            alt={banner.title || "Banner"}
-            fill
-            priority={index === 0}
-            quality={75}
-            sizes="100vw"
-            className="object-cover cursor-grab active:cursor-grabbing"
-          />
-        </motion.div>
-      </AnimatePresence>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent sm:from-black/45 lg:bg-gradient-to-r lg:from-black/60 lg:via-black/20 lg:to-transparent" />
 
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-black/10" />
+                <div className="relative z-10 flex h-full items-end px-4 pb-5 sm:px-6 sm:pb-6 lg:items-center lg:justify-between lg:px-16 lg:pb-0">
+                  <div
+                    className="
+                      max-w-[12rem] rounded-2xl bg-black/20 px-3 py-3 text-white
+                      backdrop-blur-[2px]
+                      sm:max-w-[15rem] sm:px-4 sm:py-4
+                      lg:max-w-xl lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-0
+                    "
+                  >
+                    {banner.title ? (
+                      <h1 className="text-base font-semibold leading-snug sm:text-lg lg:text-4xl lg:font-bold xl:text-5xl">
+                        {banner.title}
+                      </h1>
+                    ) : null}
 
-      {/* Content */}
-      <div className="relative z-20 h-full flex items-center justify-between px-6 sm:px-10 lg:px-16">
-        <div className="max-w-xl text-white space-y-5">
-          <motion.h1
-            key={`title-${index}`}
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold leading-tight"
-          >
-            {banner.title}
-          </motion.h1>
+                    {banner.subtitle ? (
+                      <p className="mt-4 hidden max-w-lg text-lg text-white/90 lg:block">
+                        {banner.subtitle}
+                      </p>
+                    ) : null}
 
-          {banner.subtitle && (
-            <motion.p
-              key={`subtitle-${index}`}
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-white/90 text-sm sm:text-base lg:text-lg"
-            >
-              {banner.subtitle}
-            </motion.p>
-          )}
+                    {banner.ctaText && banner.ctaLink ? (
+                      <Link
+                        href={banner.ctaLink}
+                        className="
+                          mt-3 inline-flex items-center rounded-full bg-white/95 px-3 py-1.5
+                          text-xs font-semibold text-slate-950 transition hover:bg-white
+                          sm:px-4 sm:py-2
+                          lg:mt-5 lg:text-sm
+                        "
+                      >
+                        {banner.ctaText}
+                      </Link>
+                    ) : null}
+                  </div>
 
-          {banner.ctaText &&
-            (banner.ctaLink ? (
-              <motion.div
-                key={`cta-${index}`}
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                <Link
-                  href={banner.ctaLink}
-                  className="
-                    inline-block
-                    bg-white
-                    text-[#3c9ee0]
-                    font-semibold
-                    px-6 py-2.5
-                    rounded-xl
-                    shadow-lg
-                    hover:scale-105
-                    transition-transform
-                  "
-                >
-                  {banner.ctaText}
-                </Link>
-              </motion.div>
-            ) : (
-              <motion.span
-                key={`cta-${index}`}
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="
-                  inline-block
-                  bg-white
-                  text-[#3c9ee0]
-                  font-semibold
-                  px-6 py-2.5
-                  rounded-xl
-                  shadow-lg
-                  hover:scale-105
-                  transition-transform
-                "
-              >
-                {banner.ctaText}
-              </motion.span>
-            ))}
-        </div>
+                  {productUrl ? (
+                    <div className="hidden lg:flex lg:flex-1 lg:justify-end">
+                      <Image
+                        src={productUrl}
+                        alt="Product"
+                        width={460}
+                        height={460}
+                        className="object-contain drop-shadow-2xl"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </SwiperSlide>
+          );
+        })}
+      </Swiper>
 
-        {productUrl && (
-          <motion.div
-            key={`product-${index}`}
-            initial={{ opacity: 0, x: 80 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.15 }}
-            className="hidden lg:flex items-center justify-center"
-          >
-            <Image
-              src={productUrl}
-              alt="Product"
-              width={460}
-              height={460}
-              className="object-contain drop-shadow-2xl"
-            />
-          </motion.div>
-        )}
-      </div>
-
-      {/* Desktop Navigation Arrows */}
-      {bannerCount > 1 && (
+      {banners.length > 1 ? (
         <>
           <button
             type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              paginate(-1);
-            }}
+            aria-label="Previous banner"
+            onClick={() => swiperRef.current?.slidePrev()}
             className="
-              hidden lg:flex
-              absolute left-6 top-1/2 -translate-y-1/2
-              bg-white/80 backdrop-blur-md
-              p-3 rounded-full
-              shadow-md
-              hover:bg-white
-              hover:scale-105
-              transition-all
-              z-30
-              pointer-events-none
+              absolute left-4 top-1/2 z-20 hidden -translate-y-1/2 rounded-full
+              bg-white/85 p-3 text-slate-900 shadow-md transition-all lg:flex
             "
             style={{
               opacity: showControls ? 1 : 0,
               pointerEvents: showControls ? "auto" : "none",
             }}
           >
-            <ChevronLeft size={22} />
+            <ChevronLeft size={20} />
           </button>
 
           <button
             type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              paginate(1);
-            }}
+            aria-label="Next banner"
+            onClick={() => swiperRef.current?.slideNext()}
             className="
-              hidden lg:flex
-              absolute right-6 top-1/2 -translate-y-1/2
-              bg-white/80 backdrop-blur-md
-              p-3 rounded-full
-              shadow-md
-              hover:bg-white
-              hover:scale-105
-              transition-all
-              z-30
-              pointer-events-none
+              absolute right-4 top-1/2 z-20 hidden -translate-y-1/2 rounded-full
+              bg-white/85 p-3 text-slate-900 shadow-md transition-all lg:flex
             "
             style={{
               opacity: showControls ? 1 : 0,
               pointerEvents: showControls ? "auto" : "none",
             }}
           >
-            <ChevronRight size={22} />
+            <ChevronRight size={20} />
           </button>
-
-          <div
-            className="
-              absolute bottom-4 left-1/2 -translate-x-1/2
-              flex items-center gap-2
-              z-30
-            "
-          >
-            {banners.map((_, dotIndex) => {
-              const isActive = dotIndex === index;
-
-              return (
-                <button
-                  key={dotIndex}
-                  type="button"
-                  aria-label={`Go to banner ${dotIndex + 1}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    goTo(dotIndex);
-                  }}
-                  className="h-2.5 rounded-full transition-all"
-                  style={{
-                    width: isActive ? "1.6rem" : "0.6rem",
-                    backgroundColor: isActive ? "var(--brand-blue)" : "#cbd5e1",
-                    opacity: isActive ? 1 : 0.9,
-                  }}
-                />
-              );
-            })}
-          </div>
         </>
-      )}
-    </div>
+      ) : null}
+    </section>
   );
 }

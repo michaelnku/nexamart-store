@@ -7,6 +7,7 @@ import { UTApi } from "uploadthing/server";
 
 import { UserRole } from "@/generated/prisma/client";
 import { CurrentUser } from "@/lib/currentUser";
+import { resolveFileAssetStorageKey } from "@/lib/file-assets";
 import { prisma } from "@/lib/prisma";
 
 const utapi = new UTApi();
@@ -47,14 +48,14 @@ type CleanupResult = {
   message: string;
 };
 
-type UploadThingJsonFile = {
+type StorageJsonFile = {
   key?: unknown;
   url?: unknown;
   appUrl?: unknown;
   ufsUrl?: unknown;
 };
 
-type UploadThingListFile = {
+type StorageListFile = {
   id: string;
   key: string;
   name: string;
@@ -75,23 +76,7 @@ function normalizeKey(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function extractUploadThingKeyFromUrl(rawUrl: string): string | null {
-  try {
-    const url = new URL(rawUrl);
-    const parts = url.pathname.split("/").filter(Boolean);
-    const fileSegmentIndex = parts.findIndex((part) => part === "f");
-
-    if (fileSegmentIndex === -1) {
-      return null;
-    }
-
-    return normalizeKey(parts[fileSegmentIndex + 1]);
-  } catch {
-    return null;
-  }
-}
-
-function extractUploadThingKeys(value: unknown): string[] {
+function extractStorageKeys(value: unknown): string[] {
   const keys = new Set<string>();
 
   const visit = (entry: unknown) => {
@@ -106,12 +91,7 @@ function extractUploadThingKeys(value: unknown): string[] {
       return;
     }
 
-    const file = entry as UploadThingJsonFile;
-
-    const directKey = normalizeKey(file.key);
-    if (directKey) {
-      keys.add(directKey);
-    }
+    const file = entry as StorageJsonFile;
 
     for (const candidate of [file.appUrl, file.ufsUrl, file.url]) {
       const normalized = normalizeKey(candidate);
@@ -119,10 +99,18 @@ function extractUploadThingKeys(value: unknown): string[] {
         continue;
       }
 
-      const extractedKey = extractUploadThingKeyFromUrl(normalized);
+      const extractedKey = resolveFileAssetStorageKey({
+        storageKey: normalizeKey(file.key),
+        url: normalized,
+      });
       if (extractedKey) {
         keys.add(extractedKey);
       }
+    }
+
+    const directKey = normalizeKey(file.key);
+    if (directKey) {
+      keys.add(directKey);
     }
   };
 
@@ -131,7 +119,7 @@ function extractUploadThingKeys(value: unknown): string[] {
   return [...keys];
 }
 
-async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
+async function collectReferencedStorageKeys(): Promise<Set<string>> {
   const referenced = new Set<string>();
 
   const [
@@ -248,7 +236,7 @@ async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
       referenced.add(key);
     }
 
-    for (const extractedKey of extractUploadThingKeys({ url: fileAsset.url })) {
+    for (const extractedKey of extractStorageKeys({ url: fileAsset.url })) {
       referenced.add(extractedKey);
     }
   }
@@ -259,7 +247,7 @@ async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
       referenced.add(key);
     }
 
-    for (const extractedKey of extractUploadThingKeys({
+    for (const extractedKey of extractStorageKeys({
       url: productImage.fileAsset.url,
     })) {
       referenced.add(extractedKey);
@@ -267,7 +255,7 @@ async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
   }
 
   for (const user of users) {
-    for (const key of extractUploadThingKeys({ url: user.image })) {
+    for (const key of extractStorageKeys({ url: user.image })) {
       referenced.add(key);
     }
 
@@ -277,7 +265,7 @@ async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
     }
 
     if (user.profileAvatarFileAsset?.url) {
-      for (const key of extractUploadThingKeys({
+      for (const key of extractStorageKeys({
         url: user.profileAvatarFileAsset.url,
       })) {
         referenced.add(key);
@@ -293,7 +281,7 @@ async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
       }
 
       if (asset?.url) {
-        for (const extractedKey of extractUploadThingKeys({ url: asset.url })) {
+        for (const extractedKey of extractStorageKeys({ url: asset.url })) {
           referenced.add(extractedKey);
         }
       }
@@ -311,13 +299,13 @@ async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
       }
 
       if (asset?.url) {
-        for (const extractedKey of extractUploadThingKeys({ url: asset.url })) {
+        for (const extractedKey of extractStorageKeys({ url: asset.url })) {
           referenced.add(extractedKey);
         }
       }
     }
 
-    for (const key of extractUploadThingKeys({ url: heroBanner.lottieUrl })) {
+    for (const key of extractStorageKeys({ url: heroBanner.lottieUrl })) {
       referenced.add(key);
     }
   }
@@ -328,7 +316,7 @@ async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
       referenced.add(key);
     }
 
-    for (const extractedKey of extractUploadThingKeys({
+    for (const extractedKey of extractStorageKeys({
       url: verificationDocument.fileAsset.url,
     })) {
       referenced.add(extractedKey);
@@ -346,7 +334,7 @@ async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
       }
 
       if (asset?.url) {
-        for (const extractedKey of extractUploadThingKeys({ url: asset.url })) {
+        for (const extractedKey of extractStorageKeys({ url: asset.url })) {
           referenced.add(extractedKey);
         }
       }
@@ -360,7 +348,7 @@ async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
     }
 
     if (siteConfiguration.siteLogoFileAsset?.url) {
-      for (const extractedKey of extractUploadThingKeys({
+      for (const extractedKey of extractStorageKeys({
         url: siteConfiguration.siteLogoFileAsset.url,
       })) {
         referenced.add(extractedKey);
@@ -371,8 +359,8 @@ async function collectReferencedUploadThingKeys(): Promise<Set<string>> {
   return referenced;
 }
 
-async function listAllUploadThingFiles(pageSize: number) {
-  const files: UploadThingListFile[] = [];
+async function listAllStorageFiles(pageSize: number) {
+  const files: StorageListFile[] = [];
   let offset = 0;
 
   while (true) {
@@ -405,7 +393,7 @@ async function listAllUploadThingFiles(pageSize: number) {
   return files;
 }
 
-function isImageFile(file: UploadThingListFile) {
+function isStorageImage(file: StorageListFile) {
   const fileName = file.name || file.key;
   const extension = fileName.split(".").pop()?.toLowerCase();
 
@@ -422,7 +410,7 @@ function chunkArray<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
-export async function cleanupOrphanedUploadThingImagesAction(
+export async function cleanupOrphanedStorageImagesAction(
   input: CleanupInput = {},
 ): Promise<CleanupResult> {
   const user = await CurrentUser();
@@ -471,16 +459,16 @@ export async function cleanupOrphanedUploadThingImagesAction(
       deleted: deletedKeys.length,
       deletedKeys,
       orphanedKeys: requestedKeysToDelete,
-      message: `Deleted ${deletedKeys.length} orphaned UploadThing image(s).`,
+      message: `Deleted ${deletedKeys.length} orphaned storage image(s).`,
     };
   }
 
-  const [referencedKeys, uploadThingFiles] = await Promise.all([
-    collectReferencedUploadThingKeys(),
-    listAllUploadThingFiles(pageSize),
+  const [referencedKeys, storageFiles] = await Promise.all([
+    collectReferencedStorageKeys(),
+    listAllStorageFiles(pageSize),
   ]);
 
-  const imageFiles = uploadThingFiles.filter(isImageFile);
+  const imageFiles = storageFiles.filter(isStorageImage);
   const orphanedKeys = imageFiles
     .map((file) => file.key)
     .filter((key) => !referencedKeys.has(key));
@@ -495,7 +483,7 @@ export async function cleanupOrphanedUploadThingImagesAction(
       deleted: 0,
       deletedKeys: [],
       orphanedKeys,
-      message: `Dry run complete. Found ${orphanedKeys.length} orphaned UploadThing image(s).`,
+      message: `Dry run complete. Found ${orphanedKeys.length} orphaned storage image(s).`,
     };
   }
 
@@ -521,6 +509,6 @@ export async function cleanupOrphanedUploadThingImagesAction(
     deleted: deletedKeys.length,
     deletedKeys,
     orphanedKeys,
-    message: `Deleted ${deletedKeys.length} orphaned UploadThing image(s).`,
+    message: `Deleted ${deletedKeys.length} orphaned storage image(s).`,
   };
 }

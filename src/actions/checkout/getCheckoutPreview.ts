@@ -3,27 +3,18 @@
 import { DeliveryType } from "@/generated/prisma/client";
 import { CurrentUserId } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
-import { resolveCouponForOrder } from "@/lib/coupons/resolveCouponForOrder";
-import { calculateDrivingDistance } from "@/lib/shipping/mapboxDistance";
-import { calculateStoreDeliveryFee } from "@/lib/shipping/shippingCalculator";
+import { buildDeliveryCheckoutPreview } from "@/lib/checkout/preview/buildDeliveryCheckoutPreview";
+import { buildPickupCheckoutPreview } from "@/lib/checkout/preview/buildPickupCheckoutPreview";
+import { loadCheckoutPreviewAddress } from "@/lib/checkout/preview/loadCheckoutPreviewAddress";
+import { loadCheckoutPreviewCart } from "@/lib/checkout/preview/loadCheckoutPreviewCart";
+export type {
+  CheckoutPreviewResult,
+  CheckoutPreviewSuccess,
+  StoreShippingBreakdown,
+} from "@/lib/checkout/preview/preview.types";
+import type { CheckoutPreviewResult } from "@/lib/checkout/preview/preview.types";
+import { getOrderPricingSiteConfig } from "@/lib/site-config/siteConfig.order";
 import { resolveAuthoritativeCartLines } from "@/lib/checkout/cartPricing";
-
-export type StoreShippingBreakdown = {
-  storeId: string;
-  distanceInMiles: number;
-  shippingFeeUSD: number;
-};
-
-export type CheckoutPreviewSuccess = {
-  subtotalUSD: number;
-  shippingFeeUSD: number;
-  discountUSD: number;
-  totalUSD: number;
-  totalDistanceInMiles: number;
-  storeBreakdown: StoreShippingBreakdown[];
-};
-
-export type CheckoutPreviewResult = CheckoutPreviewSuccess | { error: string };
 
 export async function getCheckoutPreviewAction({
   addressId,
@@ -37,69 +28,7 @@ export async function getCheckoutPreviewAction({
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
 
-  const cart = await prisma.cart.findUnique({
-    where: { userId },
-    include: {
-      items: {
-        include: {
-          cartItemSelectedOptions: {
-            select: {
-              optionGroupId: true,
-              optionId: true,
-            },
-          },
-          product: {
-            include: {
-              store: {
-                select: {
-                  id: true,
-                  shippingRatePerMile: true,
-                  latitude: true,
-                  longitude: true,
-                  type: true,
-                },
-              },
-              foodProductConfig: {
-                select: {
-                  inventoryMode: true,
-                  isAvailable: true,
-                  isSoldOut: true,
-                  dailyOrderLimit: true,
-                  availableFrom: true,
-                  availableUntil: true,
-                  availableDays: true,
-                },
-              },
-              foodOptionGroups: {
-                where: { isActive: true },
-                select: {
-                  id: true,
-                  name: true,
-                  type: true,
-                  isRequired: true,
-                  minSelections: true,
-                  maxSelections: true,
-                  isActive: true,
-                  options: {
-                    select: {
-                      id: true,
-                      name: true,
-                      priceDeltaUSD: true,
-                      isAvailable: true,
-                      stock: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-          variant: {
-            select: { id: true, priceUSD: true, stock: true },
-          },
-        },
-      },
-    },
-  });
+  const cart = await loadCheckoutPreviewCart(userId);
 
   if (!cart || cart.items.length === 0) {
     return { error: "Cart is empty" };
@@ -114,14 +43,7 @@ export async function getCheckoutPreviewAction({
     return { error: message };
   }
 
-  const address = await prisma.address.findFirst({
-    where: { id: addressId, userId },
-    select: {
-      id: true,
-      latitude: true,
-      longitude: true,
-    },
-  });
+  const address = await loadCheckoutPreviewAddress({ addressId, userId });
 
   if (!address) {
     return { error: "Invalid address" };
@@ -132,151 +54,24 @@ export async function getCheckoutPreviewAction({
     0,
   );
 
-  const siteConfig = await prisma.siteConfiguration.findFirst({
-    orderBy: { updatedAt: "desc" },
-    select: {
-      pickupFee: true,
-      foodMinimumDeliveryFee: true,
-      generalMinimumDeliveryFee: true,
-      foodBaseDeliveryRate: true,
-      foodRatePerMile: true,
-      generalBaseDeliveryRate: true,
-      generalRatePerMile: true,
-      expressMultiplier: true,
-    },
-  });
+  const pricingConfig = await getOrderPricingSiteConfig();
 
   if (deliveryType === "STORE_PICKUP" || deliveryType === "STATION_PICKUP") {
-    const pickupFee = siteConfig?.pickupFee ?? 0;
-
-    const couponResult = await resolveCouponForOrder({
+    return buildPickupCheckoutPreview({
       userId,
       couponId,
       subtotalUSD,
-      shippingUSD: pickupFee,
+      pricingConfig,
     });
-
-    if ("error" in couponResult) {
-      return { error: couponResult.error };
-    }
-
-    const discountUSD = couponResult.discountAmount ?? 0;
-    const totalUSD = Math.max(0, subtotalUSD + pickupFee - discountUSD);
-
-    return {
-      subtotalUSD,
-      shippingFeeUSD: pickupFee,
-      discountUSD,
-      totalUSD,
-      totalDistanceInMiles: 0,
-      storeBreakdown: [],
-    };
   }
 
-  if (address.latitude == null || address.longitude == null) {
-    return {
-      error: "Selected address is missing coordinates. Please update address.",
-    };
-  }
-
-  const addressLatitude = address.latitude;
-  const addressLongitude = address.longitude;
-
-  const itemsByStore = new Map<string, typeof pricedCartItems>();
-  for (const item of pricedCartItems) {
-    const storeId = item.product.store.id;
-    if (!itemsByStore.has(storeId)) itemsByStore.set(storeId, []);
-    itemsByStore.get(storeId)!.push(item);
-  }
-
-  let storeMetricsEntries: ReadonlyArray<
-    readonly [string, { shippingFee: number; distanceInMiles: number }]
-  >;
-
-  try {
-    storeMetricsEntries = await Promise.all(
-      Array.from(itemsByStore.entries()).map(async ([storeId, items]) => {
-        const store = items[0].product.store;
-        if (store.latitude == null || store.longitude == null) {
-          throw new Error(
-            `Store coordinates are missing for store ${storeId}.`,
-          );
-        }
-
-        const distance = await calculateDrivingDistance(
-          {
-            latitude: store.latitude,
-            longitude: store.longitude,
-          },
-          {
-            latitude: addressLatitude,
-            longitude: addressLongitude,
-          },
-        );
-
-        const finalShippingFee = calculateStoreDeliveryFee({
-          distanceInMiles: distance.distanceInMiles,
-          storeType: store.type,
-          storeRatePerMile: store.shippingRatePerMile,
-          deliveryType,
-          config: siteConfig,
-        });
-
-        return [
-          storeId,
-          {
-            shippingFee: finalShippingFee,
-            distanceInMiles: distance.distanceInMiles,
-          },
-        ] as const;
-      }),
-    );
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unable to calculate shipping.";
-    return { error: message };
-  }
-
-  const storeMetrics = new Map(storeMetricsEntries);
-
-  const storeBreakdown: StoreShippingBreakdown[] = Array.from(
-    storeMetrics.entries(),
-  ).map(([storeId, metrics]) => ({
-    storeId,
-    distanceInMiles: metrics.distanceInMiles,
-    shippingFeeUSD: metrics.shippingFee,
-  }));
-
-  const shippingFeeUSD = storeBreakdown.reduce(
-    (sum, item) => sum + item.shippingFeeUSD,
-    0,
-  );
-
-  const totalDistanceInMiles = storeBreakdown.reduce(
-    (sum, item) => sum + item.distanceInMiles,
-    0,
-  );
-
-  const couponResult = await resolveCouponForOrder({
+  return buildDeliveryCheckoutPreview({
     userId,
     couponId,
     subtotalUSD,
-    shippingUSD: shippingFeeUSD,
+    deliveryType,
+    address,
+    pricedCartItems,
+    pricingConfig,
   });
-
-  if ("error" in couponResult) {
-    return { error: couponResult.error };
-  }
-
-  const discountUSD = couponResult.discountAmount ?? 0;
-  const totalUSD = Math.max(0, subtotalUSD + shippingFeeUSD - discountUSD);
-
-  return {
-    subtotalUSD,
-    shippingFeeUSD,
-    discountUSD,
-    totalUSD,
-    totalDistanceInMiles,
-    storeBreakdown,
-  };
 }

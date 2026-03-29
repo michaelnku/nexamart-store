@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { HardDrive, Search, ShieldAlert, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { cleanupOrphanedUploadThingImagesAction } from "@/actions/admin/cleanupOrphanedUploadThingImages";
+import { cleanupOrphanedStorageImagesAction } from "@/actions/admin/cleanupOrphanedStorageImages";
 import {
   DashboardHero,
   PremiumPanel,
@@ -34,7 +34,7 @@ export default function AdminStorageCleanupClient() {
   const handleScan = () => {
     startScanTransition(async () => {
       try {
-        const result = await cleanupOrphanedUploadThingImagesAction({
+        const result = await cleanupOrphanedStorageImagesAction({
           dryRun: true,
         });
 
@@ -51,7 +51,7 @@ export default function AdminStorageCleanupClient() {
         const message =
           error instanceof Error
             ? error.message
-            : "Failed to scan UploadThing storage.";
+            : "Failed to scan marketplace storage.";
 
         setHasScanned(false);
         setScanState(null);
@@ -69,7 +69,7 @@ export default function AdminStorageCleanupClient() {
 
     startDeleteTransition(async () => {
       try {
-        const result = await cleanupOrphanedUploadThingImagesAction({
+        const result = await cleanupOrphanedStorageImagesAction({
           dryRun: false,
           maxDeletes: scanState.orphanedKeys.length,
           keysToDelete: scanState.orphanedKeys,
@@ -87,7 +87,7 @@ export default function AdminStorageCleanupClient() {
         const message =
           error instanceof Error
             ? error.message
-            : "Failed to delete orphaned UploadThing images.";
+            : "Failed to delete orphaned storage images.";
 
         setLastActionMessage(message);
         toast.error(message);
@@ -100,7 +100,7 @@ export default function AdminStorageCleanupClient() {
       <DashboardHero
         eyebrow="System Monitoring"
         title="Storage Cleanup"
-        description="Scan UploadThing storage for orphaned images across persisted admin, catalog, account, dispute, and marketing records before deleting the scanned set."
+        description="Scan marketplace storage for orphaned images across persisted admin, catalog, account, dispute, and marketing records before deleting the scanned set."
         accentClassName="bg-[linear-gradient(135deg,#111827_0%,#0f3d5e_44%,#0f766e_100%)]"
       />
 

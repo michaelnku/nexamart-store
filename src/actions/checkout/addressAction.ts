@@ -1,167 +1,115 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
 import { CurrentUserId } from "@/lib/currentUser";
-import { revalidatePath } from "next/cache";
-import { normalizePhoneToE164 } from "@/lib/otp/phone";
-import { addressSchema, addressSchemaType } from "@/lib/zodValidation";
-import { geocodeAddress } from "@/lib/shipping/mapboxGeocode";
+import { addressSchemaType } from "@/lib/zodValidation";
+import {
+  clearExistingDefaultAddress,
+  createUserAddress,
+  deleteUserAddress,
+  findNextDefaultAddress,
+  getUserAddresses,
+  markAddressAsDefault,
+  setUserDefaultAddress,
+  updateUserAddress,
+} from "@/lib/address/addressPersistence";
+import type {
+  AddressMutationResult as AddressMutationResultType,
+  AddressSimpleResult as AddressSimpleResultType,
+  UserAddressesResult as UserAddressesResultType,
+} from "@/lib/address/address.types";
+import { geocodeAddressInput } from "@/lib/address/geocodeAddressInput";
+import { mapAddressActionError } from "@/lib/address/mapAddressActionError";
+import { normalizeAddressInput } from "@/lib/address/normalizeAddressInput";
+import { revalidateAddressPaths } from "@/lib/address/revalidateAddressPaths";
+import { validateAddressInput } from "@/lib/address/validateAddressInput";
 
-export async function createAddressAction(values: addressSchemaType) {
+export async function createAddressAction(
+  values: addressSchemaType,
+): Promise<AddressMutationResultType> {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
 
-  const parsed = addressSchema.safeParse(values);
+  const parsed = validateAddressInput(values);
   if (!parsed.success) {
     return { error: "Invalid address data" };
   }
 
   try {
-    const normalizedPhone = normalizePhoneToE164(values.phone);
+    const normalizedValues = normalizeAddressInput(values);
+    const coordinates = await geocodeAddressInput(values);
 
-    const coordinates = await geocodeAddress({
-      street: values.street,
-      city: values.city,
-      state: values.state ?? undefined,
-      country: values.country ?? "",
-    });
-
-    if (values.isDefault) {
-      await prisma.address.updateMany({
-        where: { userId },
-        data: { isDefault: false },
-      });
+    if (normalizedValues.isDefault) {
+      await clearExistingDefaultAddress(userId);
     }
 
-    const address = await prisma.address.create({
-      data: {
-        userId,
-        label: values.label,
-
-        fullName: values.fullName,
-        phone: normalizedPhone,
-        street: values.street,
-        city: values.city,
-        state: values.state,
-        country: values.country ?? "",
-        postalCode: values.postalCode ?? "",
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude,
-        isDefault: values.isDefault ?? false,
-      },
+    const address = await createUserAddress({
+      userId,
+      values: normalizedValues,
+      coordinates,
     });
 
-    revalidatePath("/settings");
-    revalidatePath("/checkout");
+    revalidateAddressPaths();
 
     return { success: true, address };
   } catch (error) {
     console.error("CREATE ADDRESS ERROR:", error);
-    if (
-      error instanceof Error &&
-      (error.message.toLowerCase().includes("invalid") ||
-        error.message.toLowerCase().includes("geocode"))
-    ) {
-      return { error: "Please select a valid address from suggestions." };
-    }
-    return { error: "Failed to create address" };
+    return mapAddressActionError(error, "Failed to create address");
   }
 }
 
 export async function updateAddressAction(
   addressId: string,
   values: addressSchemaType,
-) {
+): Promise<AddressMutationResultType> {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
 
-  const parsed = addressSchema.safeParse(values);
+  const parsed = validateAddressInput(values);
   if (!parsed.success) {
     return { error: "Invalid address data" };
   }
 
   try {
-    const normalizedPhone = normalizePhoneToE164(values.phone);
+    const normalizedValues = normalizeAddressInput(values);
+    const coordinates = await geocodeAddressInput(values);
 
-    const coordinates = await geocodeAddress({
-      street: values.street,
-      city: values.city,
-      state: values.state ?? undefined,
-      country: values.country ?? "",
-    });
-
-    if (values.isDefault) {
-      await prisma.address.updateMany({
-        where: { userId },
-        data: { isDefault: false },
-      });
+    if (normalizedValues.isDefault) {
+      await clearExistingDefaultAddress(userId);
     }
 
-    const address = await prisma.address.update({
-      where: {
-        id: addressId,
-        userId,
-      },
-      data: {
-        label: values.label,
-
-        fullName: values.fullName,
-        phone: normalizedPhone,
-        street: values.street,
-        city: values.city,
-        state: values.state,
-        country: values.country ?? "",
-        postalCode: values.postalCode ?? "",
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude,
-        isDefault: values.isDefault ?? false,
-      },
+    const address = await updateUserAddress({
+      addressId,
+      userId,
+      values: normalizedValues,
+      coordinates,
     });
 
-    revalidatePath("/settings");
-    revalidatePath("/checkout");
+    revalidateAddressPaths();
 
     return { success: true, address };
   } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.toLowerCase().includes("invalid") ||
-        error.message.toLowerCase().includes("geocode"))
-    ) {
-      return { error: "Please select a valid address from suggestions." };
-    }
-    return { error: "Failed to update address" };
+    return mapAddressActionError(error, "Failed to update address");
   }
 }
 
-export async function deleteAddressAction(addressId: string) {
+export async function deleteAddressAction(
+  addressId: string,
+): Promise<AddressSimpleResultType> {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
 
   try {
-    const deleted = await prisma.address.delete({
-      where: {
-        id: addressId,
-        userId,
-      },
-    });
+    const deleted = await deleteUserAddress({ addressId, userId });
 
     if (deleted.isDefault) {
-      const next = await prisma.address.findFirst({
-        where: { userId },
-        orderBy: { createdAt: "asc" },
-      });
+      const next = await findNextDefaultAddress(userId);
 
       if (next) {
-        await prisma.address.update({
-          where: { id: next.id },
-          data: { isDefault: true },
-        });
+        await markAddressAsDefault({ addressId: next.id, userId });
       }
     }
 
-    revalidatePath("/settings");
-    revalidatePath("/checkout");
+    revalidateAddressPaths();
 
     return { success: true };
   } catch {
@@ -169,24 +117,16 @@ export async function deleteAddressAction(addressId: string) {
   }
 }
 
-export async function setDefaultAddressAction(addressId: string) {
+export async function setDefaultAddressAction(
+  addressId: string,
+): Promise<AddressSimpleResultType> {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized" };
 
   try {
-    await prisma.$transaction([
-      prisma.address.updateMany({
-        where: { userId },
-        data: { isDefault: false },
-      }),
-      prisma.address.update({
-        where: { id: addressId, userId },
-        data: { isDefault: true },
-      }),
-    ]);
+    await setUserDefaultAddress({ addressId, userId });
 
-    revalidatePath("/settings");
-    revalidatePath("/checkout");
+    revalidateAddressPaths();
 
     return { success: true };
   } catch {
@@ -194,25 +134,12 @@ export async function setDefaultAddressAction(addressId: string) {
   }
 }
 
-export async function getUserAddressesAction() {
+export async function getUserAddressesAction(): Promise<UserAddressesResultType> {
   const userId = await CurrentUserId();
   if (!userId) return { error: "Unauthorized", addresses: [] as const };
 
   try {
-    const addresses = await prisma.address.findMany({
-      where: { userId },
-      orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
-      select: {
-        id: true,
-        fullName: true,
-        phone: true,
-        street: true,
-        city: true,
-        state: true,
-        country: true,
-        isDefault: true,
-      },
-    });
+    const addresses = await getUserAddresses(userId);
 
     return { success: true, addresses };
   } catch {

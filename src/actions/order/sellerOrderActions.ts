@@ -1,68 +1,39 @@
 "use server";
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
-import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
+
 import { markSellerGroupReady } from "@/lib/order/markSellerGroupReady";
-import { cancelSellerOrder } from "@/lib/orders/cancelSellerOrder";
-import { sellerCancelOrderInputSchema } from "@/lib/orders/sellerCancellation";
+import { resolveSellerOrderActionAuth } from "@/lib/orders/seller-actions/sellerOrderAction.auth";
 import {
-  assertValidTransition,
-  normalizeOrderStatus,
-} from "@/lib/order/orderLifecycle";
+  actionError,
+  actionSuccess,
+} from "@/lib/orders/seller-actions/sellerOrderAction.responses";
+import type { SellerOrderActionResult } from "@/lib/orders/seller-actions/sellerOrderAction.types";
+import {
+  loadSellerGroupForAccept,
+  loadSellerGroupForDispatch,
+} from "@/lib/orders/seller-actions/sellerOrderAction.loaders";
+import {
+  revalidateCancellationPaths,
+  revalidateSellerOrderPaths,
+} from "@/lib/orders/seller-actions/sellerOrderAction.revalidate";
+import { runDispatchToHubFlow } from "@/lib/orders/seller-actions/runDispatchToHubFlow";
+import { runFoodAcceptFlow } from "@/lib/orders/seller-actions/runFoodAcceptFlow";
+import { runNonFoodAcceptFlow } from "@/lib/orders/seller-actions/runNonFoodAcceptFlow";
+import { runSellerCancellation } from "@/lib/orders/seller-actions/runSellerCancellation";
+import { validateSellerAcceptInput } from "@/lib/orders/seller-actions/validateSellerAcceptInput";
 
-const SELLER_ORDER_ACTION_ERROR_MESSAGE =
-  "We couldn't update this order right now. Please refresh and try again.";
-
-export type SellerOrderActionResult = {
-  success?: string;
-  error?: string;
-  alreadyDone?: boolean;
-  warning?: string;
-};
-
-function actionSuccess(
-  success: string,
-  alreadyDone = false,
-  warning?: string,
-): SellerOrderActionResult {
-  return { success, alreadyDone, warning };
-}
-
-function actionError(
-  error = SELLER_ORDER_ACTION_ERROR_MESSAGE,
-): SellerOrderActionResult {
-  return { error };
-}
+export type { SellerOrderActionResult };
 
 export const markSellerDispatchedToHubAction = async (
   sellerGroupId: string,
 ): Promise<SellerOrderActionResult> => {
-  const userId = await CurrentUserId();
-  if (!userId) return actionError();
-
-  const role = await CurrentRole();
-  if (role !== "SELLER") return actionError();
+  const auth = await resolveSellerOrderActionAuth();
+  if ("error" in auth) return actionError();
 
   try {
-    const sellerGroup = await prisma.orderSellerGroup.findUnique({
-      where: { id: sellerGroupId },
-      select: {
-        id: true,
-        orderId: true,
-        sellerId: true,
-        status: true,
-        store: {
-          select: { name: true },
-        },
-        order: {
-          select: { isFoodOrder: true, status: true },
-        },
-      },
-    });
+    const sellerGroup = await loadSellerGroupForDispatch(sellerGroupId);
 
     if (!sellerGroup) return actionError();
-    if (sellerGroup.sellerId !== userId) return actionError();
+    if (sellerGroup.sellerId !== auth.userId) return actionError();
     if (sellerGroup.status === "DISPATCHED_TO_HUB") {
       return actionSuccess("Seller group was already dispatched to the hub.", true);
     }
@@ -91,10 +62,7 @@ export const markSellerDispatchedToHubAction = async (
         return actionError();
       }
 
-      revalidatePath("/marketplace/dashboard/seller/orders");
-      revalidatePath(
-        `/marketplace/dashboard/seller/orders/${sellerGroup.orderId}`,
-      );
+      revalidateSellerOrderPaths(sellerGroup.orderId);
       return actionSuccess(
         "Food order marked ready for rider pickup",
         false,
@@ -102,41 +70,14 @@ export const markSellerDispatchedToHubAction = async (
       );
     }
 
-    await prisma.$transaction(async (tx) => {
-      const normalizedOrderStatus = normalizeOrderStatus(
-        sellerGroup.order.status,
-      );
-      if (normalizedOrderStatus !== "ACCEPTED") {
-        assertValidTransition(normalizedOrderStatus, "ACCEPTED");
-      }
-
-      await tx.order.update({
-        where: { id: sellerGroup.orderId },
-        data: { status: "ACCEPTED" },
-      });
-
-      await tx.orderSellerGroup.update({
-        where: { id: sellerGroupId },
-        data: {
-          status: "DISPATCHED_TO_HUB",
-          expectedAtHub: new Date(Date.now() + 2 * 60 * 60 * 1000),
-        },
-      });
-
-      await createOrderTimelineIfMissing(
-        {
-          orderId: sellerGroup.orderId,
-          status: "ACCEPTED",
-          message: `Seller ${sellerGroup.store.name} has dispatched items to our hub.`,
-        },
-        tx,
-      );
+    await runDispatchToHubFlow({
+      sellerGroupId,
+      orderId: sellerGroup.orderId,
+      orderStatus: sellerGroup.order.status,
+      storeName: sellerGroup.store.name,
     });
 
-    revalidatePath("/marketplace/dashboard/seller/orders");
-    revalidatePath(
-      `/marketplace/dashboard/seller/orders/${sellerGroup.orderId}`,
-    );
+    revalidateSellerOrderPaths(sellerGroup.orderId);
     return actionSuccess("Package dispatched to hub");
   } catch (error) {
     console.error("markSellerDispatchedToHubAction error:", error);
@@ -148,34 +89,14 @@ export const acceptOrderAction = async (
   sellerGroupId: string,
   prepTimeMinutes?: number,
 ): Promise<SellerOrderActionResult> => {
-  let userId: string | null = null;
-
-  userId = await CurrentUserId();
-  if (!userId) return actionError();
-
-  const role = await CurrentRole();
-  if (role !== "SELLER") return actionError();
+  const auth = await resolveSellerOrderActionAuth();
+  if ("error" in auth) return actionError();
 
   try {
-    const group = await prisma.orderSellerGroup.findUnique({
-      where: { id: sellerGroupId },
-      select: {
-        id: true,
-        sellerId: true,
-        store: { select: { name: true } },
-        status: true,
-        orderId: true,
-        order: {
-          select: {
-            isFoodOrder: true,
-            status: true,
-          },
-        },
-      },
-    });
+    const group = await loadSellerGroupForAccept(sellerGroupId);
 
     if (!group) return actionError();
-    if (group.sellerId !== userId) return actionError();
+    if (group.sellerId !== auth.userId) return actionError();
 
     if (group.order.status === "PENDING_PAYMENT") {
       return actionError();
@@ -193,96 +114,35 @@ export const acceptOrderAction = async (
     }
 
     if (group.order.isFoodOrder) {
-      if (
-        !Number.isInteger(prepTimeMinutes) ||
-        (prepTimeMinutes as number) < 1 ||
-        (prepTimeMinutes as number) > 180
-      ) {
+      const prepValidation = validateSellerAcceptInput(true, prepTimeMinutes);
+
+      if ("error" in prepValidation) {
         return actionError();
       }
+
+      await runFoodAcceptFlow({
+        sellerGroupId,
+        orderId: group.orderId,
+        orderStatus: group.order.status,
+        storeName: group.store.name,
+        prepTimeMinutes: prepValidation.prepTimeMinutes,
+      });
+    } else {
+      validateSellerAcceptInput(false, prepTimeMinutes);
+
+      await runNonFoodAcceptFlow({
+        sellerGroupId,
+        orderId: group.orderId,
+        orderStatus: group.order.status,
+        storeName: group.store.name,
+      });
     }
-
-    const prepReadyAt = group.order.isFoodOrder
-      ? new Date(Date.now() + (prepTimeMinutes as number) * 60 * 1000)
-      : null;
-
-    await prisma.$transaction(async (tx) => {
-      const normalizedOrderStatus = normalizeOrderStatus(group.order.status);
-      if (normalizedOrderStatus !== "ACCEPTED") {
-        assertValidTransition(normalizedOrderStatus, "ACCEPTED");
-      }
-
-      await tx.order.update({
-        where: { id: group.orderId },
-        data: { status: "ACCEPTED" },
-      });
-
-      await tx.orderSellerGroup.update({
-        where: { id: sellerGroupId },
-        data: {
-          status: group.order.isFoodOrder ? "PREPARING" : "DISPATCHED_TO_HUB",
-          prepTimeMinutes: group.order.isFoodOrder
-            ? (prepTimeMinutes as number)
-            : null,
-          readyAt: prepReadyAt,
-        },
-      });
-
-      await createOrderTimelineIfMissing(
-        {
-          orderId: group.orderId,
-          status: "ACCEPTED",
-          message: `Seller ${group.store.name} accepted and is preparing your items.`,
-        },
-        tx,
-      );
-
-      if (group.order.isFoodOrder && prepReadyAt) {
-        await createOrderTimelineIfMissing(
-          {
-            orderId: group.orderId,
-            status: "PREPARING",
-            message: `Seller ${group.store.name} started preparing your order. Estimated ready time is ${prepTimeMinutes} minute${prepTimeMinutes === 1 ? "" : "s"}.`,
-          },
-          tx,
-        );
-      }
-
-      if (group.order.isFoodOrder && prepReadyAt) {
-        await tx.job.upsert({
-          where: { id: `mark-ready-${sellerGroupId}` },
-          update: {
-            type: "MARK_READY",
-            status: "PENDING",
-            runAt: prepReadyAt,
-            attempts: 0,
-            lastError: null,
-            maxRetries: 5,
-            payload: {
-              sellerGroupId,
-            },
-          },
-          create: {
-            id: `mark-ready-${sellerGroupId}`,
-            type: "MARK_READY",
-            status: "PENDING",
-            runAt: prepReadyAt,
-            attempts: 0,
-            lastError: null,
-            maxRetries: 5,
-            payload: {
-              sellerGroupId,
-            },
-          },
-        });
-      }
-    });
 
     return actionSuccess("Order accepted");
   } catch (error) {
     console.error("acceptOrderAction failed", {
       sellerGroupId,
-      sellerId: userId,
+      sellerId: auth.userId,
       prepTimeMinutes,
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined,
@@ -304,42 +164,23 @@ export const cancelOrderAction = async (input: {
   let userId: string | null = null;
 
   try {
-    userId = await CurrentUserId();
-    if (!userId) return actionError();
+    const auth = await resolveSellerOrderActionAuth();
+    if ("error" in auth) return actionError();
+    userId = auth.userId;
 
-    const role = await CurrentRole();
-    if (role !== "SELLER") return actionError();
-
-    const parsedInput = sellerCancelOrderInputSchema.safeParse(input);
-
-    if (!parsedInput.success) {
-      return actionError();
-    }
-
-    const result = await cancelSellerOrder({
+    const cancellation = await runSellerCancellation({
       sellerId: userId,
-      input: parsedInput.data,
+      input,
     });
 
-    revalidatePath("/marketplace/dashboard/seller/orders");
-    revalidatePath(`/marketplace/dashboard/seller/orders/${result.orderId}`);
-    revalidatePath("/marketplace/dashboard/rider/deliveries");
-    revalidatePath("/customer/order/history");
-    revalidatePath(`/customer/order/${result.orderId}`);
-    revalidatePath(`/customer/order/track/${result.orderId}`);
-
-    if (result.trackingNumber) {
-      revalidatePath(`/customer/order/track/tn/${result.trackingNumber}`);
+    if ("revalidate" in cancellation && cancellation.revalidate) {
+      revalidateCancellationPaths(
+        cancellation.revalidate.orderId,
+        cancellation.revalidate.trackingNumber,
+      );
     }
 
-    revalidatePath("/");
-
-    return {
-      success: result.alreadyCancelled
-        ? "Order cancellation was already processed"
-        : "Seller cancellation completed successfully",
-      alreadyDone: result.alreadyCancelled,
-    };
+    return cancellation.result;
   } catch (error) {
     console.error("cancelOrderAction failed", {
       sellerGroupId: input.sellerGroupId,
