@@ -17,20 +17,26 @@ export const PUBLIC_SITEMAP_STATIC_ROUTES = [
 ] as const;
 
 export const ROBOTS_DISALLOW_PATHS = [
+  "/admin",
   "/api/",
   "/auth/",
   "/cart",
   "/checkout",
   "/customer/",
+  "/dashboard",
   "/history",
   "/marketplace/",
   "/messages",
+  "/moderation",
   "/notifications",
+  "/orders",
   "/profile",
   "/recommended",
   "/search/history",
   "/settings/",
   "/support",
+  "/verification",
+  "/wallet",
   "/wishlist",
 ] as const;
 

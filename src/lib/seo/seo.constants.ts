@@ -22,6 +22,6 @@ export const SEO_DEFAULT_CREATOR = "NexaMart";
 export const SEO_DEFAULT_PUBLISHER = "NexaMart";
 export const SEO_DEFAULT_AUTHOR = "NexaMart Team";
 
-export const LEGACY_APP_LOGO_URLS = [
+export const LEGACY_APP_LOGO_URLS: readonly string[] = [
   "https://ijucjait38.ufs.sh/f/rO7LkXAj4RVlnNw2KuOByscQRmqV3jX4rStz8G2Mv0IpxKJA",
-] as const;
+];
