@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { HeroBannerImageField } from "@/app/marketplace/_components/HeroBannerImageField";
 import { heroBannerSchema, HeroBannerInput } from "@/lib/zodValidation";
 import { HeroBannerWithFiles } from "@/lib/types";
 
@@ -34,10 +35,7 @@ import {
   deleteHeroBannerAction,
 } from "@/actions/banner/banners";
 
-import { UploadButton } from "@/utils/uploadthing";
 import { toast } from "sonner";
-import Image from "next/image";
-import { Loader2 } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 
 type Props = {
@@ -193,59 +191,26 @@ export default function HeroBannerEditForm({ banner }: Props) {
             name="backgroundImage"
             render={() => (
               <FormItem>
-                <FormLabel>Background Image</FormLabel>
                 <FormControl>
-                  <div className="space-y-4">
-                    {backgroundImage?.url && (
-                      <Image
-                        src={backgroundImage.url}
-                        alt="Preview"
-                        width={800}
-                        height={400}
-                        className="rounded-xl border"
-                      />
-                    )}
-
-                    <UploadButton
-                      endpoint="heroBanner"
-                      onClientUploadComplete={(res) => {
-                        const file = res?.[0];
-                        if (!file) return;
-
-                        form.setValue("backgroundImage", {
-                          url: file.url,
-                          key: file.key,
-                        });
-
-                        toast.success("Background replaced");
-                      }}
-                      className="
-    ut-button:bg-blue-500/10
-    ut-button:text-blue-600
-    ut-button:border
-    ut-button:border-blue-500/30
-    ut-button:rounded-full
-    ut-button:px-5
-    ut-button:py-2
-    ut-button:text-sm
-    hover:ut-button:bg-blue-500/20
-  "
-                    />
-
-                    {backgroundImage?.key && (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={() => deleteSingleImage("backgroundImage")}
-                      >
-                        {deletingKeys.has(backgroundImage.key) ? (
-                          <Loader2 className="animate-spin w-4 h-4" />
-                        ) : (
-                          "Remove Background"
-                        )}
-                      </Button>
-                    )}
-                  </div>
+                  <HeroBannerImageField
+                    label="Background Image"
+                    value={backgroundImage}
+                    onChange={(file) => form.setValue("backgroundImage", file)}
+                    onDelete={() => deleteSingleImage("backgroundImage")}
+                    aspect={2}
+                    targetWidth={1600}
+                    targetHeight={800}
+                    previewWidth={800}
+                    previewHeight={400}
+                    previewAlt="Background preview"
+                    helperText="Replace the hero background with a cropped wide image so the live banner framing stays consistent."
+                    emptyText="Upload a wide banner background. A crop step opens before the file is saved."
+                    successMessage="Background replaced"
+                    removeLabel="Remove Background"
+                    replaceLabel="Replace Background"
+                    uploadLabel="Choose Background"
+                    disabled={deletingKeys.size > 0}
+                  />
                 </FormControl>
               </FormItem>
             )}
@@ -257,58 +222,26 @@ export default function HeroBannerEditForm({ banner }: Props) {
             name="productImage"
             render={() => (
               <FormItem>
-                <FormLabel>Product Image</FormLabel>
                 <FormControl>
-                  <div className="space-y-4">
-                    {productImage?.url && (
-                      <Image
-                        src={productImage.url}
-                        alt="Product"
-                        width={300}
-                        height={300}
-                        className="rounded-xl border"
-                      />
-                    )}
-
-                    <UploadButton
-                      endpoint="heroBanner"
-                      onClientUploadComplete={(res) => {
-                        const file = res?.[0];
-                        if (!file) return;
-
-                        form.setValue("productImage", {
-                          url: file.url,
-                          key: file.key,
-                        });
-
-                        toast.success("Product image replaced");
-                      }}
-                      className="
-    ut-button:bg-black
-    ut-button:text-white
-    ut-button:rounded-lg
-    ut-button:px-6
-    ut-button:py-3
-    ut-button:text-sm
-    ut-button:font-medium
-    hover:ut-button:bg-black/90
-  "
-                    />
-
-                    {productImage?.key && (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={() => deleteSingleImage("productImage")}
-                      >
-                        {deletingKeys.has(productImage.key) ? (
-                          <Loader2 className="animate-spin w-4 h-4" />
-                        ) : (
-                          "Remove Product Image"
-                        )}
-                      </Button>
-                    )}
-                  </div>
+                  <HeroBannerImageField
+                    label="Product Image"
+                    value={productImage}
+                    onChange={(file) => form.setValue("productImage", file)}
+                    onDelete={() => deleteSingleImage("productImage")}
+                    aspect={1}
+                    targetWidth={1200}
+                    targetHeight={1200}
+                    previewWidth={320}
+                    previewHeight={320}
+                    previewAlt="Product preview"
+                    helperText="Replace the featured product art with a cropped square image so the subject remains centered."
+                    emptyText="Upload an optional foreground product image. You can crop it before it uploads."
+                    successMessage="Product image replaced"
+                    removeLabel="Remove Product Image"
+                    replaceLabel="Replace Product Image"
+                    uploadLabel="Choose Product Image"
+                    disabled={deletingKeys.size > 0}
+                  />
                 </FormControl>
               </FormItem>
             )}

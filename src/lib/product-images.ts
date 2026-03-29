@@ -155,10 +155,10 @@ export async function ensureProductImageFileAssets(
 }
 
 export async function touchOrMarkFileAssetOrphaned(
-  tx: PrismaNamespace.TransactionClient,
+  db: FileAssetWriteClient,
   fileAssetId: string,
 ) {
-  const usage = await tx.fileAsset.findUnique({
+  const usage = await db.fileAsset.findUnique({
     where: { id: fileAssetId },
     select: {
       id: true,
@@ -199,7 +199,7 @@ export async function touchOrMarkFileAssetOrphaned(
     usage._count.heroBannerProducts +
     usage._count.siteConfigurationLogos;
 
-  await tx.fileAsset.update({
+  await db.fileAsset.update({
     where: { id: fileAssetId },
     data:
       totalRefs === 0
@@ -211,4 +211,12 @@ export async function touchOrMarkFileAssetOrphaned(
             lastUsedAt: new Date(),
           },
   });
+}
+
+export async function touchOrMarkFileAssetsOrphaned(fileAssetIds: string[]) {
+  await Promise.all(
+    fileAssetIds.map((fileAssetId) =>
+      touchOrMarkFileAssetOrphaned(prisma, fileAssetId),
+    ),
+  );
 }

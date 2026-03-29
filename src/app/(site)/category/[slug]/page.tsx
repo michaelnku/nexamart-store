@@ -69,6 +69,7 @@ export default async function CategorySlugPage({ params }: Props) {
       images: {
         include: productImageWithAssetInclude,
       },
+      foodProductConfig: true,
       variants: true,
       store: true,
     },

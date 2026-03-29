@@ -43,6 +43,7 @@ export default async function RecommendedPage() {
             images: {
               include: productImageWithAssetInclude,
             },
+            foodProductConfig: true,
             variants: true,
             store: true,
           },
@@ -59,6 +60,7 @@ export default async function RecommendedPage() {
             images: {
               include: productImageWithAssetInclude,
             },
+            foodProductConfig: true,
             variants: true,
             store: true,
           },

@@ -19,6 +19,9 @@ export type ProductStoreView = Pick<
   "id" | "userId" | "name" | "slug" | "type"
 > & {
   logo: string | null;
+  timeZone?: string | null;
+  location?: string | null;
+  address?: string | null;
 };
 
 export type FullProduct = Product & {
@@ -76,7 +79,24 @@ export type ProductCardType = Product & {
   basePriceUSD: number;
   oldPriceUSD?: number | null;
   images: { imageUrl: string }[];
-  store: { name: string; slug: string };
+  store: {
+    name: string;
+    slug: string;
+    type?: "GENERAL" | "FOOD";
+    timeZone?: string | null;
+    location?: string | null;
+    address?: string | null;
+  };
+  foodProductConfig?: Pick<
+    FoodProductConfig,
+    | "inventoryMode"
+    | "isAvailable"
+    | "isSoldOut"
+    | "dailyOrderLimit"
+    | "availableFrom"
+    | "availableUntil"
+    | "availableDays"
+  > | null;
   variants: {
     id: string;
     color: string | null;

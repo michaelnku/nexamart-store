@@ -1,5 +1,6 @@
 import "server-only";
 
+import { unstable_noStore as noStore } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
 
@@ -12,6 +13,10 @@ import {
   type AuditLogListItem,
   type AuditMetadata,
 } from "@/lib/audit/types";
+import {
+  firstSearchParamValue,
+  parseSearchParam,
+} from "@/lib/moderation/searchParamHelpers";
 
 export const ADMIN_AUDIT_LOGS_PAGE_SIZE = 20;
 
@@ -24,11 +29,6 @@ const auditLogsSearchParamsSchema = z.object({
   from: z.string().trim().optional(),
   to: z.string().trim().optional(),
 });
-
-function firstValue(value: string | string[] | undefined) {
-  if (Array.isArray(value)) return value[0] ?? "";
-  return value ?? "";
-}
 
 function parseDateBoundary(value: string | undefined, endOfDay = false) {
   if (!value) return null;
@@ -87,29 +87,43 @@ function mapAuditLog(
 export function parseAdminAuditLogsSearchParams(
   searchParams: Record<string, string | string[] | undefined> | undefined,
 ) {
-  const parsed = auditLogsSearchParamsSchema.safeParse({
-    page: firstValue(searchParams?.page),
-    query: firstValue(searchParams?.query ?? searchParams?.q),
-    actor: firstValue(searchParams?.actor),
-    actionType: firstValue(searchParams?.actionType) || undefined,
-    entityType: firstValue(searchParams?.entityType) || undefined,
-    from: firstValue(searchParams?.from) || undefined,
-    to: firstValue(searchParams?.to) || undefined,
-  });
-
-  if (!parsed.success) {
-    return {
-      page: 1,
-      query: "",
-      actor: "",
-      actionType: undefined,
-      entityType: undefined,
-      from: undefined,
-      to: undefined,
-    };
-  }
-
-  return parsed.data;
+  return {
+    page: parseSearchParam(
+      z.coerce.number().int().min(1).default(1),
+      firstSearchParamValue(searchParams?.page),
+      1,
+    ),
+    query: parseSearchParam(
+      z.string().trim().max(120).default(""),
+      firstSearchParamValue(searchParams?.q),
+      "",
+    ),
+    actor: parseSearchParam(
+      z.string().trim().max(120).default(""),
+      firstSearchParamValue(searchParams?.actor),
+      "",
+    ),
+    actionType: parseSearchParam(
+      z.enum(AUDIT_ACTION_TYPES).optional(),
+      firstSearchParamValue(searchParams?.actionType),
+      undefined,
+    ),
+    entityType: parseSearchParam(
+      z.enum(AUDIT_ENTITY_TYPES).optional(),
+      firstSearchParamValue(searchParams?.entityType),
+      undefined,
+    ),
+    from: parseSearchParam(
+      z.string().trim().optional(),
+      firstSearchParamValue(searchParams?.from),
+      undefined,
+    ),
+    to: parseSearchParam(
+      z.string().trim().optional(),
+      firstSearchParamValue(searchParams?.to),
+      undefined,
+    ),
+  };
 }
 
 export async function getAdminAuditLogs(input: {
@@ -121,6 +135,8 @@ export async function getAdminAuditLogs(input: {
   from?: string;
   to?: string;
 }) {
+  noStore();
+
   const page = Math.max(1, input.page ?? 1);
   const query = input.query?.trim() ?? "";
   const actor = input.actor?.trim() ?? "";

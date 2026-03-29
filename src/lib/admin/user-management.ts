@@ -1,5 +1,6 @@
 import "server-only";
 
+import { unstable_noStore as noStore } from "next/cache";
 import { Prisma, UserRole } from "@/generated/prisma/client";
 
 import {
@@ -127,6 +128,8 @@ export async function getAdminUsers({
   sort = "newest",
   roleFilter = "ALL",
 }: GetAdminUsersInput = {}): Promise<AdminManageableUsersResult> {
+  noStore();
+
   const normalizedPage = Math.max(1, page);
   const normalizedPageSize = Math.max(1, Math.min(pageSize, 50));
   const normalizedQuery = query.trim();

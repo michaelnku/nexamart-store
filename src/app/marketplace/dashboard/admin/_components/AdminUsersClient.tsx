@@ -1,7 +1,13 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useMemo, useState, useTransition } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -240,7 +246,7 @@ function UserRoleMenu({
           variant="outline"
           size="sm"
           disabled={Boolean(disabledReason) || isPending}
-          className="min-w-[7rem] justify-between"
+          className="w-full justify-between sm:min-w-[7rem] sm:w-auto"
         >
           {disabledReason ? "Locked" : isPending ? "Saving..." : "Change role"}
           <MoreHorizontal className="h-4 w-4" />
@@ -413,11 +419,15 @@ export default function AdminUsersClient({
   const [isNavigating, startNavigation] = useTransition();
   const [query, setQuery] = useState(data.filters.query);
 
+  useEffect(() => {
+    setQuery(data.filters.query);
+  }, [data.filters.query]);
+
   const searchParams = useMemo(() => {
     const params = new URLSearchParams();
 
     if (data.filters.query) {
-      params.set("query", data.filters.query);
+      params.set("q", data.filters.query);
     }
 
     if (data.filters.sort !== "newest") {
@@ -441,7 +451,7 @@ export default function AdminUsersClient({
 
   const handleSearchSubmit = () => {
     navigateWith({
-      query: query.trim() || null,
+      q: query.trim() || null,
       page: null,
     });
   };
@@ -480,6 +490,22 @@ export default function AdminUsersClient({
           >
             Search
           </Button>
+          {data.filters.query ? (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setQuery("");
+                navigateWith({
+                  q: null,
+                  page: null,
+                });
+              }}
+              className="h-11 rounded-xl px-4"
+              disabled={isNavigating}
+            >
+              Reset
+            </Button>
+          ) : null}
         </div>
 
         <Select
@@ -606,9 +632,9 @@ export default function AdminUsersClient({
                 key={user.id}
                 className="gap-0 overflow-hidden rounded-[24px] border-slate-200/80 py-0 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] dark:border-zinc-800 dark:bg-zinc-950"
               >
-                <CardHeader className="grid gap-4 p-5 sm:p-6 @[28rem]/card-header:grid-cols-[minmax(0,1fr)_auto] @[28rem]/card-header:items-start">
+                <CardHeader className="grid gap-4 p-5 sm:p-6">
                   <UserIdentity user={user} />
-                  <CardAction className="col-auto row-auto justify-self-start self-auto @[28rem]/card-header:justify-self-end">
+                  <CardAction className="col-auto row-auto justify-self-stretch self-auto">
                     <UserRoleMenu currentAdminId={currentAdminId} user={user} />
                   </CardAction>
                 </CardHeader>

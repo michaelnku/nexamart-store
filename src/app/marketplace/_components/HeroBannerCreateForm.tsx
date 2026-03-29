@@ -4,7 +4,6 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Image from "next/image";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,7 +11,7 @@ import {
   createHeroBannerAction,
   deleteHeroBannerImageAction,
 } from "@/actions/banner/banners";
-import { UploadButton } from "@/utils/uploadthing";
+import { HeroBannerImageField } from "@/app/marketplace/_components/HeroBannerImageField";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -182,45 +181,25 @@ export default function HeroBannerCreateForm() {
               name="backgroundImage"
               render={() => (
                 <FormItem>
-                  <FormLabel>Background Image</FormLabel>
                   <FormControl>
-                    <div className="space-y-4">
-                      {backgroundImage?.url ? (
-                        <Image
-                          src={backgroundImage.url}
-                          alt="Background preview"
-                          width={800}
-                          height={400}
-                          className="rounded-xl border"
-                        />
-                      ) : null}
-
-                      <UploadButton
-                        endpoint="heroBanner"
-                        onClientUploadComplete={(result) => {
-                          const file = result?.[0];
-                          if (!file) {
-                            return;
-                          }
-
-                          form.setValue("backgroundImage", {
-                            url: file.url,
-                            key: file.key,
-                          });
-                          toast.success("Background image uploaded");
-                        }}
-                      />
-
-                      {backgroundImage?.key ? (
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          onClick={() => deleteSingleImage("backgroundImage")}
-                        >
-                          Remove Background
-                        </Button>
-                      ) : null}
-                    </div>
+                    <HeroBannerImageField
+                      label="Background Image"
+                      value={backgroundImage}
+                      onChange={(file) => form.setValue("backgroundImage", file)}
+                      onDelete={() => deleteSingleImage("backgroundImage")}
+                      aspect={2}
+                      targetWidth={1600}
+                      targetHeight={800}
+                      previewWidth={800}
+                      previewHeight={400}
+                      previewAlt="Background preview"
+                      helperText="Crop the hero background before upload so wide placements stay framed the way you expect."
+                      emptyText="Upload a wide banner background. A crop step opens before the file is saved."
+                      successMessage="Background image uploaded"
+                      removeLabel="Remove Background"
+                      replaceLabel="Replace Background"
+                      uploadLabel="Choose Background"
+                    />
                   </FormControl>
                 </FormItem>
               )}
@@ -231,45 +210,25 @@ export default function HeroBannerCreateForm() {
               name="productImage"
               render={() => (
                 <FormItem>
-                  <FormLabel>Product Image</FormLabel>
                   <FormControl>
-                    <div className="space-y-4">
-                      {productImage?.url ? (
-                        <Image
-                          src={productImage.url}
-                          alt="Product preview"
-                          width={320}
-                          height={320}
-                          className="rounded-xl border"
-                        />
-                      ) : null}
-
-                      <UploadButton
-                        endpoint="heroBanner"
-                        onClientUploadComplete={(result) => {
-                          const file = result?.[0];
-                          if (!file) {
-                            return;
-                          }
-
-                          form.setValue("productImage", {
-                            url: file.url,
-                            key: file.key,
-                          });
-                          toast.success("Product image uploaded");
-                        }}
-                      />
-
-                      {productImage?.key ? (
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          onClick={() => deleteSingleImage("productImage")}
-                        >
-                          Remove Product Image
-                        </Button>
-                      ) : null}
-                    </div>
+                    <HeroBannerImageField
+                      label="Product Image"
+                      value={productImage}
+                      onChange={(file) => form.setValue("productImage", file)}
+                      onDelete={() => deleteSingleImage("productImage")}
+                      aspect={1}
+                      targetWidth={1200}
+                      targetHeight={1200}
+                      previewWidth={320}
+                      previewHeight={320}
+                      previewAlt="Product preview"
+                      helperText="Crop the featured product art before upload so the focal subject stays centered in the hero."
+                      emptyText="Upload an optional foreground product image. You can crop it before it uploads."
+                      successMessage="Product image uploaded"
+                      removeLabel="Remove Product Image"
+                      replaceLabel="Replace Product Image"
+                      uploadLabel="Choose Product Image"
+                    />
                   </FormControl>
                 </FormItem>
               )}

@@ -19,6 +19,7 @@ type ProductRowRecord = Prisma.ProductGetPayload<{
     images: {
       include: typeof productImageWithAssetInclude;
     };
+    foodProductConfig: true;
     variants: true;
     store: {
       include: typeof storeMediaInclude;
@@ -38,6 +39,7 @@ export default async function ProductRow({
       where: { isPublished: true },
       include: {
         images: { include: productImageWithAssetInclude },
+        foodProductConfig: true,
         variants: true,
         store: { include: storeMediaInclude },
       },
@@ -56,6 +58,7 @@ export default async function ProductRow({
       },
       include: {
         images: { include: productImageWithAssetInclude },
+        foodProductConfig: true,
         variants: true,
         store: { include: storeMediaInclude },
       },
@@ -69,6 +72,7 @@ export default async function ProductRow({
       where: { isPublished: true },
       include: {
         images: { include: productImageWithAssetInclude },
+        foodProductConfig: true,
         variants: true,
         store: { include: storeMediaInclude },
       },
@@ -82,6 +86,7 @@ export default async function ProductRow({
       where: { isPublished: true },
       include: {
         images: { include: productImageWithAssetInclude },
+        foodProductConfig: true,
         variants: true,
         store: { include: storeMediaInclude },
       },

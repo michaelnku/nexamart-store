@@ -218,7 +218,7 @@ export default async function AdminAuditLogsPage({ searchParams }: Props) {
   const data = await getAdminAuditLogs(parsed);
 
   const baseFilters = {
-    query: data.filters.query || null,
+    q: data.filters.query || null,
     actor: data.filters.actor || null,
     actionType: data.filters.actionType || null,
     entityType: data.filters.entityType || null,
@@ -284,7 +284,7 @@ export default async function AdminAuditLogsPage({ searchParams }: Props) {
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  name="query"
+                  name="q"
                   defaultValue={data.filters.query}
                   placeholder="Summary or target ID"
                   className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm shadow-sm outline-none ring-0 transition focus:border-slate-300"

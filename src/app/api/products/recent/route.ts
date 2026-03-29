@@ -17,6 +17,7 @@ export async function GET(req: Request) {
       images: {
         include: productImageWithAssetInclude,
       },
+      foodProductConfig: true,
       variants: true,
       store: true,
     },

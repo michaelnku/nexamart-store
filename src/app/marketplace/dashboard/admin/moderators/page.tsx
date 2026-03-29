@@ -1,5 +1,7 @@
 import AdminUsersManagementPage from "@/app/marketplace/dashboard/admin/_components/AdminUsersManagementPage";
 
+export const dynamic = "force-dynamic";
+
 type Props = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };

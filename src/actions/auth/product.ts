@@ -20,6 +20,7 @@ import {
   ensureProductImageFileAsset,
   ensureProductImageFileAssets,
   productImageWithAssetInclude,
+  touchOrMarkFileAssetsOrphaned,
   touchOrMarkFileAssetOrphaned,
 } from "@/lib/product-images";
 
@@ -279,100 +280,100 @@ export const updateProductAction = async (
     const serializedFoodDetails = serializeFoodDetails(
       isFoodStore ? foodDetails : null,
     );
+    const deletedImages = existing.images.filter(
+      (img) => !images.some((p) => p.url === img.fileAsset.url),
+    );
+    const deletedFileAssetIds = deletedImages.map((image) => image.fileAssetId);
+    const newImages = images.filter(
+      (p) => !existing.images.some((d) => d.fileAsset.url === p.url),
+    );
+    const newImageAssets = newImages.length
+      ? await ensureProductImageFileAssets({
+          uploadedById: user.id,
+          images: newImages,
+        })
+      : [];
 
-    await prisma.$transaction(async (tx) => {
-      await tx.product.update({
-        where: { id: productId },
-        data: {
-          name,
-          description,
-          specifications: specsArray,
-          technicalDetails: parsed.data.technicalDetails ?? [],
-          brand,
-          categoryId,
-          oldPriceUSD,
-          discount,
-          basePriceUSD,
-          isFoodProduct: isFoodStore,
-          foodDetails: serializedFoodDetails,
-        },
-      });
-
-      await syncFoodProductRelationsInTx(tx, productId, {
-        foodConfig: isFoodStore ? foodConfig : null,
-        foodOptionGroups: isFoodStore ? foodOptionGroups : [],
-      });
-
-      const deleted = existing.images.filter(
-        (img) => !images.some((p) => p.url === img.fileAsset.url),
-      );
-      if (deleted.length) {
-        await tx.productImage.deleteMany({
-          where: { id: { in: deleted.map((d) => d.id) } },
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.product.update({
+          where: { id: productId },
+          data: {
+            name,
+            description,
+            specifications: specsArray,
+            technicalDetails: parsed.data.technicalDetails ?? [],
+            brand,
+            categoryId,
+            oldPriceUSD,
+            discount,
+            basePriceUSD,
+            isFoodProduct: isFoodStore,
+            foodDetails: serializedFoodDetails,
+          },
         });
-        await Promise.all(
-          deleted.map((image) =>
-            touchOrMarkFileAssetOrphaned(tx, image.fileAssetId),
-          ),
-        );
-      }
 
-      const newImages = images.filter(
-        (p) => !existing.images.some((d) => d.fileAsset.url === p.url),
-      );
-      if (newImages.length) {
-        const assets = await Promise.all(
-          newImages.map((image) =>
-            ensureProductImageFileAsset(tx, {
-              uploadedById: user.id,
-              image,
-            }),
-          ),
-        );
+        await syncFoodProductRelationsInTx(tx, productId, {
+          foodConfig: isFoodStore ? foodConfig : null,
+          foodOptionGroups: isFoodStore ? foodOptionGroups : [],
+        });
 
-        await tx.productImage.createMany({
-          data: assets.map((asset) => ({
+        if (deletedImages.length) {
+          await tx.productImage.deleteMany({
+            where: { id: { in: deletedImages.map((image) => image.id) } },
+          });
+        }
+
+        if (newImageAssets.length) {
+          await tx.productImage.createMany({
+            data: newImageAssets.map((asset) => ({
+              productId,
+              fileAssetId: asset.id,
+            })),
+          });
+        }
+
+        if (variants.length > 0) {
+          await Promise.all(
+            variants.map((variant) =>
+              tx.productVariant.upsert({
+                where: { productId_sku: { productId, sku: variant.sku } },
+                update: {
+                  priceUSD: variant.priceUSD,
+                  stock: variant.stock,
+                  color: isFoodStore ? null : variant.color,
+                  size: isFoodStore ? null : variant.size,
+                  oldPriceUSD: variant.oldPriceUSD,
+                  discount: variant.discount,
+                },
+                create: {
+                  productId,
+                  sku: variant.sku,
+                  priceUSD: variant.priceUSD,
+                  stock: variant.stock,
+                  color: isFoodStore ? null : variant.color,
+                  size: isFoodStore ? null : variant.size,
+                  oldPriceUSD: variant.oldPriceUSD,
+                  discount: variant.discount,
+                },
+              }),
+            ),
+          );
+        }
+
+        await tx.productVariant.deleteMany({
+          where: {
             productId,
-            fileAssetId: asset.id,
-          })),
+            sku: { notIn: variants.map((variant) => variant.sku) },
+          },
         });
-      }
+      },
+      { timeout: 15000 },
+    );
 
-      if (variants.length > 0) {
-        await Promise.all(
-          variants.map((v) => {
-            return tx.productVariant.upsert({
-              where: { productId_sku: { productId, sku: v.sku } },
-              update: {
-                priceUSD: v.priceUSD,
-                stock: v.stock,
-                color: isFoodStore ? null : v.color,
-                size: isFoodStore ? null : v.size,
-                oldPriceUSD: v.oldPriceUSD,
-                discount: v.discount,
-              },
-              create: {
-                productId,
-                sku: v.sku,
-                priceUSD: v.priceUSD,
-                stock: v.stock,
-                color: isFoodStore ? null : v.color,
-                size: isFoodStore ? null : v.size,
-                oldPriceUSD: v.oldPriceUSD,
-                discount: v.discount,
-              },
-            });
-          }),
-        );
-      }
-
-      await tx.productVariant.deleteMany({
-        where: {
-          productId,
-          sku: { notIn: variants.map((v) => v.sku) },
-        },
-      });
-    });
+    if (deletedFileAssetIds.length) {
+      await touchOrMarkFileAssetsOrphaned(deletedFileAssetIds);
+    }
 
     revalidatePath("/marketplace/dashboard/seller/products");
     return { success: "Product updated successfully" };

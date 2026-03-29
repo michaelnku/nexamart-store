@@ -8,6 +8,7 @@ import { ProductCardType } from "@/lib/types";
 import { useMemo } from "react";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
 import StarRating from "@/components/reviews/StarRating";
+import { getProductAvailabilityState } from "@/lib/product/availability";
 
 type Props = {
   product: ProductCardType;
@@ -29,6 +30,23 @@ export default function PublicProductCard({
     );
     return sortedVariants.find((variant) => variant.stock > 0) ?? sortedVariants[0];
   }, [product.variants]);
+
+  const availabilityState = useMemo(
+    () =>
+      getProductAvailabilityState({
+        product: {
+          isFoodProduct: product.isFoodProduct,
+          foodProductConfig: product.foodProductConfig ?? null,
+          store: {
+            timeZone: product.store.timeZone ?? null,
+            location: product.store.location ?? null,
+            address: product.store.address ?? null,
+          },
+        },
+        variant: preferredVariant,
+      }),
+    [preferredVariant, product],
+  );
 
   const displayPriceUSD = useMemo(() => {
     return preferredVariant ? preferredVariant.priceUSD : product.basePriceUSD;
@@ -107,7 +125,8 @@ export default function PublicProductCard({
         <AddToCartControl
           productId={product.id}
           variantId={preferredVariant?.id ?? null}
-          availableStock={preferredVariant?.stock ?? 0}
+          availableStock={availabilityState.availableStock}
+          isOrderable={availabilityState.isOrderable}
         />
       </div>
     </div>

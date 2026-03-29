@@ -1,3 +1,4 @@
+import Link from "next/link"
 import * as React from "react"
 import {
   ChevronLeftIcon,
@@ -48,18 +49,34 @@ function PaginationLink({
   size = "icon",
   ...props
 }: PaginationLinkProps) {
+  const sharedClassName = cn(
+    buttonVariants({
+      variant: isActive ? "outline" : "ghost",
+      size,
+    }),
+    className
+  )
+
+  if (props.href) {
+    return (
+      <Link
+        aria-current={isActive ? "page" : undefined}
+        data-slot="pagination-link"
+        data-active={isActive}
+        className={sharedClassName}
+        href={props.href}
+      >
+        {props.children}
+      </Link>
+    )
+  }
+
   return (
-    <a
+    <span
       aria-current={isActive ? "page" : undefined}
       data-slot="pagination-link"
       data-active={isActive}
-      className={cn(
-        buttonVariants({
-          variant: isActive ? "outline" : "ghost",
-          size,
-        }),
-        className
-      )}
+      className={sharedClassName}
       {...props}
     />
   )

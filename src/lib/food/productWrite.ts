@@ -129,12 +129,6 @@ export async function syncFoodProductRelationsInTx(
     },
   });
 
-  if (submittedGroupIds.size === 0 && existingGroups.length > 0 && foodOptionGroups.length === 0) {
-    await tx.foodOptionGroup.deleteMany({
-      where: { productId },
-    });
-  }
-
   for (let groupIndex = 0; groupIndex < foodOptionGroups.length; groupIndex += 1) {
     const group = foodOptionGroups[groupIndex];
     const groupData = buildFoodOptionGroupData(group, groupIndex);
@@ -174,34 +168,34 @@ export async function syncFoodProductRelationsInTx(
       },
     });
 
-    if (submittedOptionIds.size === 0 && existingGroup?.options.length && group.options.length === 0) {
-      await tx.foodOption.deleteMany({
-        where: { groupId },
+    const existingOptionIds = new Set(
+      existingGroup?.options.map((existingOption) => existingOption.id) ?? [],
+    );
+    const newOptionRows: Array<ReturnType<typeof buildFoodOptionData>> = [];
+
+    await Promise.all(
+      group.options.map(async (option, optionIndex) => {
+        const optionData = buildFoodOptionData(option, optionIndex);
+
+        if (option.id && existingOptionIds.has(option.id)) {
+          await tx.foodOption.update({
+            where: { id: option.id },
+            data: optionData,
+          });
+          return;
+        }
+
+        newOptionRows.push(optionData);
+      }),
+    );
+
+    if (newOptionRows.length > 0) {
+      await tx.foodOption.createMany({
+        data: newOptionRows.map((optionData) => ({
+          groupId,
+          ...optionData,
+        })),
       });
-    }
-
-    for (let optionIndex = 0; optionIndex < group.options.length; optionIndex += 1) {
-      const option = group.options[optionIndex];
-      const optionData = buildFoodOptionData(option, optionIndex);
-
-      const optionExists = Boolean(
-        option.id &&
-          existingGroup?.options.some((existingOption) => existingOption.id === option.id),
-      );
-
-      if (optionExists && option.id) {
-        await tx.foodOption.update({
-          where: { id: option.id },
-          data: optionData,
-        });
-      } else {
-        await tx.foodOption.create({
-          data: {
-            groupId,
-            ...optionData,
-          },
-        });
-      }
     }
   }
 }

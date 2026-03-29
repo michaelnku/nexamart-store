@@ -78,6 +78,7 @@ export default async function ProductsPage({
       images: {
         include: productImageWithAssetInclude,
       },
+      foodProductConfig: true,
       variants: true,
       store: true,
     },

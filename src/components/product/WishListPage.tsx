@@ -17,6 +17,7 @@ import { Separator } from "../ui/separator";
 import AddToCartControl from "./AddtoCartButton";
 import { useWishlistStore } from "@/stores/useWishlistStore";
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
+import { getProductAvailabilityState } from "@/lib/product/availability";
 
 interface Props {
   initialData: FullProduct[];
@@ -151,6 +152,18 @@ const WishListPage = ({ initialData }: Props) => {
                     .find((variant) => variant.stock > 0) ??
                   [...product.variants].sort((a, b) => a.priceUSD - b.priceUSD)[0]
                 : null;
+            const availabilityState = getProductAvailabilityState({
+              product: {
+                isFoodProduct: product.isFoodProduct,
+                foodProductConfig: product.foodProductConfig ?? null,
+                store: {
+                  timeZone: product.store.timeZone ?? null,
+                  location: product.store.location ?? null,
+                  address: product.store.address ?? null,
+                },
+              },
+              variant: cheapestVariant,
+            });
 
             return (
               <Card
@@ -218,7 +231,8 @@ const WishListPage = ({ initialData }: Props) => {
                   <AddToCartControl
                     productId={product.id}
                     variantId={cheapestVariant?.id ?? null}
-                    availableStock={cheapestVariant?.stock ?? 0}
+                    availableStock={availabilityState.availableStock}
+                    isOrderable={availabilityState.isOrderable}
                   />
                 </div>
               </Card>

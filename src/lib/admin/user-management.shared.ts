@@ -1,5 +1,9 @@
 import { UserRole } from "@/generated/prisma/client";
 import { z } from "zod";
+import {
+  firstSearchParamValue,
+  parseSearchParam,
+} from "@/lib/moderation/searchParamHelpers";
 
 export const ADMIN_USERS_PAGE_SIZE = 12;
 
@@ -136,32 +140,26 @@ const adminUsersSearchParamsSchema = z.object({
   sort: adminUsersSortSchema.default("newest"),
 });
 
-function firstValue(value: string | string[] | undefined) {
-  if (Array.isArray(value)) {
-    return value[0] ?? "";
-  }
-
-  return value ?? "";
-}
-
 export function parseAdminUsersSearchParams(
   searchParams: Record<string, string | string[] | undefined> | undefined,
 ): AdminUsersSearchParams {
-  const parsed = adminUsersSearchParamsSchema.safeParse({
-    page: firstValue(searchParams?.page),
-    query: firstValue(searchParams?.query ?? searchParams?.q),
-    sort: firstValue(searchParams?.sort),
-  });
-
-  if (!parsed.success) {
-    return {
-      page: 1,
-      query: "",
-      sort: "newest",
-    };
-  }
-
-  return parsed.data;
+  return {
+    page: parseSearchParam(
+      z.coerce.number().int().min(1).default(1),
+      firstSearchParamValue(searchParams?.page),
+      1,
+    ),
+    query: parseSearchParam(
+      z.string().trim().max(100).default(""),
+      firstSearchParamValue(searchParams?.q),
+      "",
+    ),
+    sort: parseSearchParam(
+      adminUsersSortSchema.default("newest"),
+      firstSearchParamValue(searchParams?.sort),
+      "newest",
+    ),
+  };
 }
 
 export function isProtectedAdminRole(role: UserRole) {
