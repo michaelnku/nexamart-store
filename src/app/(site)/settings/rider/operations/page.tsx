@@ -5,9 +5,23 @@ import { Switch } from "@/components/ui/switch";
 import { getCurrentRiderProfile } from "@/lib/settings/getCurrentRiderProfile";
 import Link from "next/link";
 import SubmitOperationsButton from "./SubmitOperationsButton";
+import SettingsModuleEmptyState from "../../_components/SettingsModuleEmptyState";
+import { Bike } from "lucide-react";
 
 export default async function RiderOperationsSettingsPage() {
   const profile = await getCurrentRiderProfile();
+
+  if (!profile) {
+    return (
+      <SettingsModuleEmptyState
+        title="Set Up Your Rider Profile"
+        description="Operations settings become available after you register your rider profile and vehicle details."
+        ctaLabel="Set Up Rider Profile"
+        ctaHref="/settings/rider/profile"
+        icon={Bike}
+      />
+    );
+  }
 
   return (
     <Card>

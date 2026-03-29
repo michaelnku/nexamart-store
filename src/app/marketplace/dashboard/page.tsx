@@ -7,11 +7,9 @@ import {
 } from "lucide-react";
 import { redirect } from "next/navigation";
 
-import {
-  getAdminStats,
-  getRiderStats,
-  getSellerStats,
-} from "@/actions/dashboardState";
+import { getAdminStats } from "@/actions/dashboardState/adminStats";
+import { getRiderStats } from "@/actions/dashboardState/riderStats";
+import { getSellerStats } from "@/actions/dashboardState/sellerStats";
 import AdminPage from "@/app/marketplace/_components/AdminPage";
 import {
   DashboardHero,

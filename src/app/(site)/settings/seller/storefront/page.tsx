@@ -2,12 +2,24 @@ import { getCurrentSellerStore } from "@/lib/settings/getCurrentSellerStore";
 import SellerStorefrontFormClient from "../../_components/SellerStorefrontFormClient";
 import { CurrentUser } from "@/lib/currentUser";
 import { UnverifiedEmailBanner } from "@/components/email-verification/UnverifiedEmailBanner";
+import SettingsModuleEmptyState from "../../_components/SettingsModuleEmptyState";
+import { ImageIcon } from "lucide-react";
 
 export default async function SellerStorefrontSettingsPage() {
   const user = await CurrentUser();
   const store = await getCurrentSellerStore();
 
-  if (!store) return null;
+  if (!store) {
+    return (
+      <SettingsModuleEmptyState
+        title="Set Up Your Storefront"
+        description="A storefront needs an active store before you can upload a logo, banner, and brand assets."
+        ctaLabel="Create Store"
+        ctaHref="/marketplace/dashboard/seller/store/create-store"
+        icon={ImageIcon}
+      />
+    );
+  }
 
   const isStoreVerified = store.isVerified;
 

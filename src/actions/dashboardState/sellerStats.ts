@@ -70,7 +70,20 @@ export async function getSellerStats() {
     //  Low-stock variants
     prisma.productVariant.count({
       where: {
-        product: { storeId: store.id },
+        product: {
+          storeId: store.id,
+          OR: [
+            { isFoodProduct: false },
+            { foodProductConfig: { is: null } },
+            {
+              foodProductConfig: {
+                is: {
+                  inventoryMode: "STOCK_TRACKED",
+                },
+              },
+            },
+          ],
+        },
         stock: { lt: 5 },
       },
     }),

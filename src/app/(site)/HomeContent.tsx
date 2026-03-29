@@ -103,9 +103,11 @@ export default async function HomeContent() {
         </section>
       </ScrollReveal>
 
-      <section className="scroll-mt-24">
-        <HowNexaMartWorksSection />
-      </section>
+      <ScrollReveal delay={0.11}>
+        <section className="scroll-mt-24">
+          <HowNexaMartWorksSection />
+        </section>
+      </ScrollReveal>
     </>
   );
 }

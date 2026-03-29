@@ -13,6 +13,7 @@ export default async function TopRatedProductRow() {
     where: { isPublished: true },
     include: {
       images: { include: productImageWithAssetInclude },
+      foodProductConfig: true,
       variants: true,
       store: { include: storeMediaInclude },
     },

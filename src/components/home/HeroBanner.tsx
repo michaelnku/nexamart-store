@@ -123,11 +123,6 @@ export default function HeroBanner({
       {/* Overlay */}
       <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-black/10" />
 
-      {/* Clickable Layer */}
-      {banner.ctaLink && !isDragging && (
-        <Link href={banner.ctaLink} className="absolute inset-0 z-10" />
-      )}
-
       {/* Content */}
       <div className="relative z-20 h-full flex items-center justify-between px-6 sm:px-10 lg:px-16">
         <div className="max-w-xl text-white space-y-5">
@@ -153,27 +148,52 @@ export default function HeroBanner({
             </motion.p>
           )}
 
-          {banner.ctaText && (
-            <motion.span
-              key={`cta-${index}`}
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="
-                inline-block
-                bg-white
-                text-[#3c9ee0]
-                font-semibold
-                px-6 py-2.5
-                rounded-xl
-                shadow-lg
-                hover:scale-105
-                transition-transform
-              "
-            >
-              {banner.ctaText}
-            </motion.span>
-          )}
+          {banner.ctaText &&
+            (banner.ctaLink ? (
+              <motion.div
+                key={`cta-${index}`}
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                <Link
+                  href={banner.ctaLink}
+                  className="
+                    inline-block
+                    bg-white
+                    text-[#3c9ee0]
+                    font-semibold
+                    px-6 py-2.5
+                    rounded-xl
+                    shadow-lg
+                    hover:scale-105
+                    transition-transform
+                  "
+                >
+                  {banner.ctaText}
+                </Link>
+              </motion.div>
+            ) : (
+              <motion.span
+                key={`cta-${index}`}
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="
+                  inline-block
+                  bg-white
+                  text-[#3c9ee0]
+                  font-semibold
+                  px-6 py-2.5
+                  rounded-xl
+                  shadow-lg
+                  hover:scale-105
+                  transition-transform
+                "
+              >
+                {banner.ctaText}
+              </motion.span>
+            ))}
         </div>
 
         {productUrl && (
