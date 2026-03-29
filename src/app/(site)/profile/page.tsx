@@ -8,55 +8,10 @@ import {
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import DeleteAcountModal from "@/components/modal/DeleteAcountModal";
 import ReferralCodeCard from "../_components/ReferralCodeCard";
 import { getUserByEmail } from "@/components/helper/data";
-import { Skeleton } from "@/components/ui/skeleton";
 import { StaffProfileDTO } from "@/lib/types";
-
-function ProfilePageSkeleton() {
-  return (
-    <main className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
-      <div className="space-y-6">
-        <header className="space-y-2">
-          <Skeleton className="h-7 w-40" />
-          <Skeleton className="h-4 w-72" />
-        </header>
-
-        <section className="rounded-2xl bg-white p-6 shadow-md dark:bg-neutral-950">
-          <div className="flex items-start gap-4">
-            <Skeleton className="h-16 w-16 rounded-full" />
-            <div className="min-w-0 space-y-2">
-              <Skeleton className="h-6 w-44" />
-              <Skeleton className="h-4 w-56" />
-              <Skeleton className="h-6 w-20 rounded-full" />
-            </div>
-          </div>
-          <div className="mt-6 border-t border-gray-100 pt-4 dark:border-zinc-800">
-            <Skeleton className="h-4 w-14" />
-            <Skeleton className="mt-2 h-4 w-36" />
-          </div>
-        </section>
-
-        <section className="rounded-2xl bg-white p-6 shadow-md dark:bg-neutral-950">
-          <Skeleton className="h-6 w-24" />
-          <Skeleton className="mt-2 h-4 w-72" />
-        </section>
-
-        <section className="rounded-2xl bg-white p-6 shadow-md dark:bg-neutral-950">
-          <Skeleton className="h-5 w-16" />
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Skeleton className="h-10 w-full sm:w-52" />
-            <Skeleton className="h-10 w-full sm:w-32" />
-          </div>
-        </section>
-      </div>
-    </main>
-  );
-}
+import ProfilePageSkeleton from "@/components/skeletons/ProfilePageSkeleton";
 
 async function ProfilePageContent() {
   const sessionUser = await CurrentUser();

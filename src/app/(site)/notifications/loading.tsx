@@ -1,6 +1,5 @@
-import { SitePageLoading } from "@/components/skeletons/route-loading";
+import NotificationsPageSkeleton from "@/components/skeletons/NotificationsPageSkeleton";
 
 export default function Loading() {
-  return <SitePageLoading />;
+  return <NotificationsPageSkeleton />;
 }
-

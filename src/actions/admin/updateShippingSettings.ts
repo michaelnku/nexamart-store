@@ -1,32 +1,8 @@
 "use server";
 
-import { createAuditLog } from "@/lib/audit/service";
 import { CurrentUser } from "@/lib/currentUser";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { updateSiteConfigurationFields } from "./siteConfig";
-
-const numericField = z
-  .string()
-  .trim()
-  .transform((value) => Number(value))
-  .refine((value) => Number.isFinite(value), { message: "Invalid number" })
-  .refine((value) => value >= 0, {
-    message: "Value must be greater than or equal to 0",
-  });
-
-const shippingSettingsSchema = z.object({
-  foodMinimumDeliveryFee: numericField,
-  generalMinimumDeliveryFee: numericField,
-  foodBaseDeliveryRate: numericField,
-  foodRatePerMile: numericField,
-  generalBaseDeliveryRate: numericField,
-  generalRatePerMile: numericField,
-  expressMultiplier: numericField.refine((value) => value >= 1, {
-    message: "Express multiplier must be at least 1",
-  }),
-  pickupFee: numericField,
-});
+import { shippingSettingsFormSchema } from "@/lib/site-config/siteConfig.schema";
+import { updateSiteConfiguration } from "@/lib/site-config/siteConfig.service";
 
 export async function updateShippingSettings(
   formData: FormData,
@@ -36,7 +12,7 @@ export async function updateShippingSettings(
     throw new Error("Unauthorized");
   }
 
-  const parsed = shippingSettingsSchema.safeParse({
+  const parsed = shippingSettingsFormSchema.safeParse({
     foodMinimumDeliveryFee: formData.get("foodMinimumDeliveryFee")?.toString(),
     generalMinimumDeliveryFee: formData
       .get("generalMinimumDeliveryFee")
@@ -57,20 +33,5 @@ export async function updateShippingSettings(
     );
   }
 
-  await updateSiteConfigurationFields(parsed.data);
-
-  await createAuditLog({
-    actorId: currentUser.id,
-    actorRole: currentUser.role,
-    actionType: "SHIPPING_SETTINGS_UPDATED",
-    targetEntityType: "SITE_CONFIGURATION",
-    summary: "Updated shipping settings.",
-    metadata: {
-      updatedFields: Object.keys(parsed.data),
-    },
-  });
-
-  revalidatePath("/settings/admin");
-  revalidatePath("/settings/admin/shipping");
-  revalidatePath("/");
+  await updateSiteConfiguration(parsed.data);
 }

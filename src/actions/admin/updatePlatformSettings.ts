@@ -1,34 +1,8 @@
 "use server";
 
-import { createAuditLog } from "@/lib/audit/service";
 import { CurrentUser } from "@/lib/currentUser";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { updateSiteConfigurationFields } from "./siteConfig";
-
-const optionalTrimmedField = z
-  .string()
-  .trim()
-  .transform((value) => (value.length > 0 ? value : null));
-
-const optionalNumberField = z
-  .string()
-  .trim()
-  .transform((value) => (value.length > 0 ? Number(value) : undefined))
-  .refine((value) => value === undefined || Number.isFinite(value), {
-    message: "Invalid numeric value",
-  })
-  .refine((value) => value === undefined || value >= 0, {
-    message: "Value must be greater than or equal to 0",
-  });
-
-const platformSettingsSchema = z.object({
-  siteName: z.string().trim().min(1, "Site name is required").optional(),
-  siteEmail: z.string().trim().email("Invalid site email").optional(),
-  sitePhone: optionalTrimmedField.optional(),
-  siteLogo: optionalTrimmedField.optional(),
-  platformCommissionPercent: optionalNumberField.optional(),
-});
+import { platformSettingsFormSchema } from "@/lib/site-config/siteConfig.schema";
+import { updateSiteConfiguration } from "@/lib/site-config/siteConfig.service";
 
 export async function updatePlatformSettings(
   formData: FormData,
@@ -38,11 +12,22 @@ export async function updatePlatformSettings(
     throw new Error("Unauthorized");
   }
 
-  const parsed = platformSettingsSchema.safeParse({
+  const parsed = platformSettingsFormSchema.safeParse({
     siteName: formData.get("siteName")?.toString(),
     siteEmail: formData.get("siteEmail")?.toString(),
     sitePhone: formData.get("sitePhone")?.toString(),
-    siteLogo: formData.get("siteLogo")?.toString(),
+    supportEmail: formData.get("supportEmail")?.toString(),
+    supportPhone: formData.get("supportPhone")?.toString(),
+    whatsappPhone: formData.get("whatsappPhone")?.toString(),
+    facebookUrl: formData.get("facebookUrl")?.toString(),
+    instagramUrl: formData.get("instagramUrl")?.toString(),
+    twitterUrl: formData.get("twitterUrl")?.toString(),
+    youtubeUrl: formData.get("youtubeUrl")?.toString(),
+    tiktokUrl: formData.get("tiktokUrl")?.toString(),
+    seoTitle: formData.get("seoTitle")?.toString(),
+    seoDescription: formData.get("seoDescription")?.toString(),
+    siteLogoUrl: formData.get("siteLogoUrl")?.toString(),
+    siteLogoKey: formData.get("siteLogoKey")?.toString(),
     platformCommissionPercent: formData
       .get("platformCommissionPercent")
       ?.toString(),
@@ -54,41 +39,12 @@ export async function updatePlatformSettings(
     );
   }
 
-  const updates: {
-    siteName?: string;
-    siteEmail?: string;
-    sitePhone?: string | null;
-    siteLogo?: string | null;
-    platformCommissionPercent?: number;
-  } = {};
-
-  const values = parsed.data;
-
-  if (values.siteName !== undefined) updates.siteName = values.siteName;
-  if (values.siteEmail !== undefined) updates.siteEmail = values.siteEmail;
-  if (values.sitePhone !== undefined) updates.sitePhone = values.sitePhone;
-  if (values.siteLogo !== undefined) updates.siteLogo = values.siteLogo;
-  if (values.platformCommissionPercent !== undefined) {
-    updates.platformCommissionPercent = values.platformCommissionPercent;
+  try {
+    await updateSiteConfiguration(parsed.data);
+  } catch (error) {
+    console.error("Failed to update site settings", error);
+    throw new Error(
+      "We couldn't save your site settings right now. Please try again.",
+    );
   }
-
-  await updateSiteConfigurationFields(updates);
-
-  await createAuditLog({
-    actorId: currentUser.id,
-    actorRole: currentUser.role,
-    actionType: "PLATFORM_SETTINGS_UPDATED",
-    targetEntityType: "SITE_CONFIGURATION",
-    summary: "Updated platform settings.",
-    metadata: {
-      updatedFields: Object.keys(updates),
-    },
-  });
-
-  revalidatePath("/settings/admin");
-  revalidatePath("/settings/admin/platform");
-  revalidatePath("/settings/admin/payments");
-  revalidatePath("/settings/admin/marketing");
-  revalidatePath("/settings/admin/security");
-  revalidatePath("/");
 }

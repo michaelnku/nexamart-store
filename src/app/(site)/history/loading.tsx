@@ -1,6 +1,5 @@
-import { SiteGridLoading } from "@/components/skeletons/route-loading";
+import ProductListingSkeleton from "@/components/skeletons/ProductListingSkeleton";
 
 export default function Loading() {
-  return <SiteGridLoading />;
+  return <ProductListingSkeleton variant="history" />;
 }
-

@@ -30,11 +30,14 @@ import { MobileSearchSheet } from "../search/MobileSearchSheet";
 import { getUserInitials } from "@/lib/user";
 import CurrencySelector from "@/components/currency/CurrencySelector";
 import NotificationMenu from "../notifications/NotificationMenu";
+import type { PublicSiteConfiguration } from "@/lib/site-config/siteConfig.types";
 
 export default function MarketPlaceNavbar({
   initialUser,
+  siteConfig,
 }: {
   initialUser: UserDTO | null;
+  siteConfig: PublicSiteConfiguration;
 }) {
   const pathname = usePathname() ?? "";
   const { data: user, isLoading, isError } = useCurrentUserQuery(initialUser);
@@ -193,8 +196,8 @@ export default function MarketPlaceNavbar({
             className="flex shrink-0 items-center gap-2"
           >
             <Image
-              src="https://ijucjait38.ufs.sh/f/rO7LkXAj4RVlnNw2KuOByscQRmqV3jX4rStz8G2Mv0IpxKJA"
-              alt="NexaMart Logo"
+              src={siteConfig.siteLogoUrl ?? "/favicon.ico"}
+              alt={`${siteConfig.siteName} logo`}
               width={42}
               height={42}
               className="object-contain"

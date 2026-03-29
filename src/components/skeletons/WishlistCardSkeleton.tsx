@@ -1,17 +1,16 @@
-"use client";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WishlistCardSkeleton() {
   return (
-    <div className="border rounded-xl bg-white dark:bg-neutral-900 shadow p-2 w-full animate-pulse space-y-4">
-      <Skeleton className="h-48 sm:h-56 md:h-60 w-full rounded-xl" />
+    <div className="w-full space-y-4 rounded-xl border bg-card p-3 shadow-sm">
+      <Skeleton className="aspect-square w-full rounded-xl" />
 
-      <div className="p-3 space-y-4">
-        <Skeleton className="h-5 w-3/4" />
-        <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-4 w-1/3" />
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-3/4 rounded-lg" />
+        <Skeleton className="h-4 w-1/2 rounded-lg" />
+        <Skeleton className="h-3 w-1/3 rounded-lg" />
 
-        <div className="flex gap-2 mt-3">
+        <div className="mt-3 flex gap-2">
           <Skeleton className="h-9 flex-1 rounded-lg" />
           <Skeleton className="h-9 w-9 rounded-lg" />
         </div>

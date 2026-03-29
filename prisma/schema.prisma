@@ -1518,6 +1518,19 @@ model SiteConfiguration {
   siteEmail String
   sitePhone String?
 
+  facebookUrl   String?
+  instagramUrl  String?
+  twitterUrl    String?
+  youtubeUrl    String?
+  tiktokUrl     String?
+  whatsappPhone String?
+
+  supportEmail String?
+  supportPhone String?
+
+  seoTitle       String?
+  seoDescription String?
+
   siteLogoFileAssetId String?
 
   platformCommissionRate    Float @default(0.10)

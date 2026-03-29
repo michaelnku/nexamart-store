@@ -1,6 +1,5 @@
-import { SitePageLoading } from "@/components/skeletons/route-loading";
+import SearchHistorySkeleton from "@/components/skeletons/SearchHistorySkeleton";
 
 export default function Loading() {
-  return <SitePageLoading />;
+  return <SearchHistorySkeleton />;
 }
-

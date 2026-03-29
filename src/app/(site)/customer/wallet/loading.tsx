@@ -1,6 +1,5 @@
-import { SitePageLoading } from "@/components/skeletons/route-loading";
+import { CustomerWalletSkeleton } from "@/components/skeletons/WalletSkeleton";
 
 export default function Loading() {
-  return <SitePageLoading />;
+  return <CustomerWalletSkeleton />;
 }
-

@@ -1,6 +1,5 @@
-import { SiteGridLoading } from "@/components/skeletons/route-loading";
+import SearchPageSkeleton from "@/components/skeletons/SearchPageSkeleton";
 
 export default function Loading() {
-  return <SiteGridLoading />;
+  return <SearchPageSkeleton />;
 }
-

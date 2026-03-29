@@ -1,11 +1,7 @@
 import CheckoutSummarySkeleton from "@/components/skeletons/CheckoutSummarySkeleton";
 
 const loading = () => {
-  return (
-    <div>
-      <CheckoutSummarySkeleton />
-    </div>
-  );
+  return <CheckoutSummarySkeleton />;
 };
 
 export default loading;

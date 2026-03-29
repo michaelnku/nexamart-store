@@ -1,5 +1,3 @@
-"use client";
-
 import { Skeleton } from "@/components/ui/skeleton";
 import { WalletRole } from "@/types/wallet";
 
@@ -11,7 +9,7 @@ export function WalletSkeleton({ role = "buyer" }: WalletSkeletonProps) {
   const isBuyer = role === "buyer";
 
   return (
-    <main className="mx-auto max-w-5xl space-y-8 px-4 py-6">
+    <main className="mx-auto min-h-full max-w-5xl space-y-8 px-4 py-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
           <Skeleton className="h-7 w-28" />

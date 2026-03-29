@@ -300,8 +300,8 @@ export function CroppedImageUploadField({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="relative min-h-[360px] bg-[radial-gradient(circle_at_top,#0f172a_0%,#020617_75%)] lg:min-h-[560px]">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="relative min-h-[360px] bg-[radial-gradient(circle_at_top,#0f172a_0%,#020617_75%)]">
               {selectedImageUrl ? (
                 <Cropper
                   image={selectedImageUrl}
@@ -320,7 +320,7 @@ export function CroppedImageUploadField({
               ) : null}
             </div>
 
-            <div className="flex flex-col gap-6 bg-white px-6 py-5 dark:bg-zinc-950">
+            <div className="flex flex-col gap-6 border-t border-slate-200 bg-white px-6 py-5 dark:border-zinc-800 dark:bg-zinc-950">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-slate-950 dark:text-white">
                   {selectedFile?.name ?? "Selected image"}

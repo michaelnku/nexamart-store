@@ -37,11 +37,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getUserInitials } from "@/lib/user";
 import { CustomerSidebarContent } from "./CustomerSidebarContent";
 import NotificationMenu from "../notifications/NotificationMenu";
+import type { PublicSiteConfiguration } from "@/lib/site-config/siteConfig.types";
 
 export default function SiteNavbar({
   initialUser,
+  siteConfig,
 }: {
   initialUser?: UserDTO | null;
+  siteConfig: PublicSiteConfiguration;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -69,15 +72,15 @@ export default function SiteNavbar({
         <div className="flex items-center justify-between gap-2 sm:gap-4 h-16 px-3 sm:px-4 lg:px-8 xl:px-12">
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="https://ijucjait38.ufs.sh/f/rO7LkXAj4RVlnNw2KuOByscQRmqV3jX4rStz8G2Mv0IpxKJA"
-              alt="logo"
+              src={siteConfig.siteLogoUrl ?? "/favicon.ico"}
+              alt={`${siteConfig.siteName} logo`}
               width={48}
               height={48}
               className="object-contain"
             />
 
             <span className="hidden sm:block font-extrabold text-2xl">
-              Nexa<span className="text-[#3c9ee0]">Mart</span>
+              {siteConfig.siteName}
             </span>
           </Link>
 
@@ -374,7 +377,7 @@ export default function SiteNavbar({
                     <div className="font-medium text-base">
                       {user
                         ? `Welcome back, ${user.name?.split(" ")[0] || user.username}`
-                        : "Welcome to NexaMart"}
+                        : `Welcome to ${siteConfig.siteName}`}
                     </div>
                     <p className="text-sm text-gray-500 dark:text-zinc-400">
                       {user?.email}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import type { ReactNode } from "react";
 import {
   Mail,
   ShieldCheck,
@@ -13,10 +14,34 @@ import {
   Twitter,
   Globe,
 } from "lucide-react";
+
+import type { PublicSiteConfiguration } from "@/lib/site-config/siteConfig.types";
 import CurrencySelector from "../currency/CurrencySelector";
 
-const Footer = () => {
+const Footer = ({ siteConfig }: { siteConfig: PublicSiteConfiguration }) => {
   const year = new Date().getFullYear();
+  const socialLinks = [
+    {
+      href: siteConfig.socialLinks?.facebook,
+      label: "Facebook",
+      icon: <Facebook className="h-5 w-5" />,
+    },
+    {
+      href: siteConfig.socialLinks?.instagram,
+      label: "Instagram",
+      icon: <Instagram className="h-5 w-5" />,
+    },
+    {
+      href: siteConfig.socialLinks?.twitter,
+      label: "Twitter",
+      icon: <Twitter className="h-5 w-5" />,
+    },
+    {
+      href: siteConfig.socialLinks?.youtube,
+      label: "YouTube",
+      icon: <Youtube className="h-5 w-5" />,
+    },
+  ].filter((item) => Boolean(item.href));
 
   return (
     <motion.footer
@@ -26,7 +51,6 @@ const Footer = () => {
       transition={{ duration: 0.6 }}
       className="bg-[#0f172a] text-white"
     >
-      {/* ================= BRAND TRUST BAR ================= */}
       <div className="border-b border-white/10 bg-gradient-to-r from-[#3c9ee0]/20 to-[#3c9ee0]/5">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="grid w-full gap-3 text-sm sm:grid-cols-2 lg:max-w-3xl lg:grid-cols-3">
@@ -60,17 +84,13 @@ const Footer = () => {
         </div>
       </div>
 
-      {/* ================= MAIN FOOTER ================= */}
       <div className="mx-auto grid max-w-7xl grid-cols-2 gap-10 px-6 py-14 md:grid-cols-3 lg:grid-cols-6">
-        {/* BRAND BLOCK */}
         <div className="col-span-2 space-y-4 lg:col-span-2">
-          <h2 className="text-2xl font-bold tracking-tight">
-            Nexa<span className="text-[#3c9ee0]">Mart</span>
-          </h2>
+          <h2 className="text-2xl font-bold tracking-tight">{siteConfig.siteName}</h2>
 
           <p className="max-w-sm text-sm leading-relaxed text-gray-400">
-            NexaMart is building an intelligent digital marketplace that
-            empowers sellers, riders, and customers with secure payments,
+            {siteConfig.siteName} is building an intelligent digital marketplace
+            that empowers sellers, riders, and customers with secure payments,
             transparent logistics, and seamless commerce.
           </p>
 
@@ -98,6 +118,14 @@ const Footer = () => {
             { label: "Track Order", href: "/customer/order/track" },
             { label: "Refund Policy", href: "/refund-policy" },
             { label: "Contact Us", href: "/contact" },
+            ...(siteConfig.supportEmail
+              ? [
+                  {
+                    label: "Email Support",
+                    href: `mailto:${siteConfig.supportEmail}`,
+                  },
+                ]
+              : []),
           ]}
         />
 
@@ -127,14 +155,12 @@ const Footer = () => {
         />
       </div>
 
-      {/* ================= NEWSLETTER + SOCIAL ================= */}
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col justify-between gap-10 px-6 py-10 lg:flex-row">
-          {/* Newsletter */}
           <div className="w-full lg:w-1/2">
             <h4 className="mb-2 flex items-center gap-2 font-semibold">
               <Mail className="h-4 w-4 text-[#3c9ee0]" />
-              Stay ahead with NexaMart
+              Stay ahead with {siteConfig.siteName}
             </h4>
 
             <p className="mb-4 text-sm text-gray-400">
@@ -142,7 +168,7 @@ const Footer = () => {
             </p>
 
             <form
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={(event) => event.preventDefault()}
               className="flex flex-col gap-2 sm:flex-row"
             >
               <input
@@ -160,55 +186,39 @@ const Footer = () => {
             </form>
           </div>
 
-          {/* Currency + Social */}
           <div className="flex w-full flex-col gap-6 lg:w-auto">
             <CurrencySelector />
 
             <div>
               <h4 className="mb-3 font-semibold">Connect with us</h4>
-              <div className="flex gap-4 text-gray-400">
-                <Link
-                  href="#"
-                  aria-label="Facebook"
-                  className="transition hover:text-[#3c9ee0]"
-                >
-                  <Facebook className="h-5 w-5" />
-                </Link>
-                <Link
-                  href="#"
-                  aria-label="Instagram"
-                  className="transition hover:text-[#3c9ee0]"
-                >
-                  <Instagram className="h-5 w-5" />
-                </Link>
-                <Link
-                  href="#"
-                  aria-label="Twitter"
-                  className="transition hover:text-[#3c9ee0]"
-                >
-                  <Twitter className="h-5 w-5" />
-                </Link>
-                <Link
-                  href="#"
-                  aria-label="YouTube"
-                  className="transition hover:text-[#3c9ee0]"
-                >
-                  <Youtube className="h-5 w-5" />
-                </Link>
-              </div>
+              {socialLinks.length > 0 ? (
+                <div className="flex gap-4 text-gray-400">
+                  {socialLinks.map((item) => (
+                    <Link
+                      key={item.label}
+                      href={item.href!}
+                      aria-label={item.label}
+                      className="transition hover:text-[#3c9ee0]"
+                    >
+                      {item.icon}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">
+                  Social profiles will appear here once configured.
+                </p>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ================= BOTTOM ================= */}
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-6 text-center text-xs text-gray-500 md:flex-row md:items-center md:justify-between md:text-left">
           <p>
-            © {year}{" "}
-            <span className="font-semibold text-white">
-              Nexa<span className="text-[#3c9ee0]">Mart</span>
-            </span>
+            (c) {year}{" "}
+            <span className="font-semibold text-white">{siteConfig.siteName}</span>
             . Empowering digital commerce.
           </p>
 
@@ -268,7 +278,7 @@ const TrustBadge = ({
   icon,
   label,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
 }) => (
   <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-gray-200 backdrop-blur-sm">
