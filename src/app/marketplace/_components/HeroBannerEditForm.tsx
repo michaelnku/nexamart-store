@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { HeroBannerImageField } from "@/app/marketplace/_components/HeroBannerImageField";
+import { CroppedImageUploadField } from "@/components/media/CroppedImageUploadField";
 import { heroBannerSchema, HeroBannerInput } from "@/lib/zodValidation";
 import { HeroBannerWithFiles } from "@/lib/types";
 
@@ -192,11 +192,12 @@ export default function HeroBannerEditForm({ banner }: Props) {
             render={() => (
               <FormItem>
                 <FormControl>
-                  <HeroBannerImageField
+                  <CroppedImageUploadField
                     label="Background Image"
                     value={backgroundImage}
                     onChange={(file) => form.setValue("backgroundImage", file)}
                     onDelete={() => deleteSingleImage("backgroundImage")}
+                    endpoint="heroBanner"
                     aspect={2}
                     targetWidth={1600}
                     targetHeight={800}
@@ -210,6 +211,8 @@ export default function HeroBannerEditForm({ banner }: Props) {
                     replaceLabel="Replace Background"
                     uploadLabel="Choose Background"
                     disabled={deletingKeys.size > 0}
+                    previewClassName="rounded-xl"
+                    cropDialogDescription="Replace the hero background with a cropped wide image so the live banner framing stays consistent."
                   />
                 </FormControl>
               </FormItem>
@@ -223,11 +226,12 @@ export default function HeroBannerEditForm({ banner }: Props) {
             render={() => (
               <FormItem>
                 <FormControl>
-                  <HeroBannerImageField
+                  <CroppedImageUploadField
                     label="Product Image"
                     value={productImage}
                     onChange={(file) => form.setValue("productImage", file)}
                     onDelete={() => deleteSingleImage("productImage")}
+                    endpoint="heroBanner"
                     aspect={1}
                     targetWidth={1200}
                     targetHeight={1200}
@@ -241,6 +245,8 @@ export default function HeroBannerEditForm({ banner }: Props) {
                     replaceLabel="Replace Product Image"
                     uploadLabel="Choose Product Image"
                     disabled={deletingKeys.size > 0}
+                    previewClassName="rounded-xl"
+                    cropDialogDescription="Replace the featured product art with a cropped square image so the subject remains centered."
                   />
                 </FormControl>
               </FormItem>

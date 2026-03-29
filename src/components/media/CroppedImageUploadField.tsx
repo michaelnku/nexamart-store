@@ -1,10 +1,23 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import "react-easy-crop/react-easy-crop.css";
-import { ImagePlus, Loader2, RotateCw, Trash2, UploadCloud } from "lucide-react";
+import {
+  ImagePlus,
+  Loader2,
+  RotateCw,
+  Trash2,
+  UploadCloud,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
@@ -33,12 +46,12 @@ const ACCEPTED_IMAGE_TYPES = new Set([
 ]);
 const MAX_SOURCE_FILE_SIZE = 15 * 1024 * 1024;
 
-type HeroBannerImageFieldProps = {
+type CroppedImageUploadFieldProps = {
   label: string;
   value: JsonFile | null;
   onChange: (file: JsonFile | null) => void;
   onDelete: () => Promise<void>;
-  endpoint?: keyof OurFileRouter;
+  endpoint: keyof OurFileRouter;
   aspect: number;
   targetWidth: number;
   targetHeight: number;
@@ -53,14 +66,18 @@ type HeroBannerImageFieldProps = {
   uploadLabel?: string;
   disabled?: boolean;
   previewClassName?: string;
+  previewWrapperClassName?: string;
+  emptyIcon?: ReactNode;
+  emptyStateClassName?: string;
+  cropDialogDescription?: string;
 };
 
-export function HeroBannerImageField({
+export function CroppedImageUploadField({
   label,
   value,
   onChange,
   onDelete,
-  endpoint = "heroBanner",
+  endpoint,
   aspect,
   targetWidth,
   targetHeight,
@@ -75,7 +92,11 @@ export function HeroBannerImageField({
   uploadLabel = "Choose Image",
   disabled = false,
   previewClassName,
-}: HeroBannerImageFieldProps) {
+  previewWrapperClassName,
+  emptyIcon,
+  emptyStateClassName,
+  cropDialogDescription = "Adjust the framing before upload so the saved image matches the intended placement.",
+}: CroppedImageUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -83,7 +104,9 @@ export function HeroBannerImageField({
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(
+    null,
+  );
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isApplyingCrop, setIsApplyingCrop] = useState(false);
@@ -109,6 +132,7 @@ export function HeroBannerImageField({
     setRotation(0);
     setCroppedAreaPixels(null);
     setUploadProgress(0);
+
     if (inputRef.current) {
       inputRef.current.value = "";
     }
@@ -121,11 +145,9 @@ export function HeroBannerImageField({
   }, [revokeCurrentObjectUrl]);
 
   const openPicker = () => {
-    if (busy) {
-      return;
+    if (!busy) {
+      inputRef.current?.click();
     }
-
-    inputRef.current?.click();
   };
 
   const handleFileSelection = (file: File | null) => {
@@ -160,8 +182,7 @@ export function HeroBannerImageField({
   };
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null;
-    handleFileSelection(file);
+    handleFileSelection(event.target.files?.[0] ?? null);
   };
 
   const handleCropComplete = useCallback(
@@ -189,7 +210,7 @@ export function HeroBannerImageField({
           rotation,
           targetWidth,
           targetHeight,
-          fileName: `${selectedFile.name.replace(/\.[^/.]+$/, "")}-banner.webp`,
+          fileName: `${selectedFile.name.replace(/\.[^/.]+$/, "")}-cropped.webp`,
         },
       );
 
@@ -233,11 +254,9 @@ export function HeroBannerImageField({
   };
 
   const handleCancel = () => {
-    if (busy) {
-      return;
+    if (!busy) {
+      resetSelection();
     }
-
-    resetSelection();
   };
 
   return (
@@ -277,7 +296,7 @@ export function HeroBannerImageField({
               Crop {label}
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-600 dark:text-zinc-400">
-              Adjust the framing before upload so the banner fits this placement cleanly.
+              {cropDialogDescription}
             </DialogDescription>
           </DialogHeader>
 
@@ -307,7 +326,7 @@ export function HeroBannerImageField({
                   {selectedFile?.name ?? "Selected image"}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-zinc-400">
-                  Output is optimized to {targetWidth} x {targetHeight} for this banner slot.
+                  Output is optimized to {targetWidth} x {targetHeight}.
                 </p>
               </div>
 
@@ -357,7 +376,8 @@ export function HeroBannerImageField({
               </Button>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-300">
-                Cropping happens before upload, so the banner preview and saved asset stay aligned.
+                Cropping happens before upload, so the saved asset matches the
+                preview you approved.
               </div>
 
               {isUploading ? (
@@ -407,16 +427,18 @@ export function HeroBannerImageField({
 
       {value?.url ? (
         <div className="space-y-3">
-          <Image
-            src={value.url}
-            alt={previewAlt}
-            width={previewWidth}
-            height={previewHeight}
-            className={cn(
-              "rounded-xl border border-slate-200 object-cover",
-              previewClassName,
-            )}
-          />
+          <div className={cn("inline-flex", previewWrapperClassName)}>
+            <Image
+              src={value.url}
+              alt={previewAlt}
+              width={previewWidth}
+              height={previewHeight}
+              className={cn(
+                "border border-slate-200 object-cover",
+                previewClassName,
+              )}
+            />
+          </div>
           <div className="flex flex-wrap gap-3">
             <Button
               type="button"
@@ -447,13 +469,16 @@ export function HeroBannerImageField({
           type="button"
           disabled={busy}
           onClick={openPicker}
-          className="flex w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-dashed border-slate-300 bg-slate-50/80 px-6 py-10 text-center transition hover:border-[#3c9ee0]/60 hover:bg-sky-50/70 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900/70 dark:hover:border-sky-400/60 dark:hover:bg-sky-500/10"
+          className={cn(
+            "flex w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-dashed border-slate-300 bg-slate-50/80 px-6 py-10 text-center transition hover:border-[#3c9ee0]/60 hover:bg-sky-50/70 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900/70 dark:hover:border-sky-400/60 dark:hover:bg-sky-500/10",
+            emptyStateClassName,
+          )}
         >
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#3c9ee0] shadow-sm dark:bg-zinc-950">
             {busy ? (
               <Loader2 className="h-6 w-6 animate-spin" />
             ) : (
-              <ImagePlus className="h-6 w-6" />
+              emptyIcon ?? <ImagePlus className="h-6 w-6" />
             )}
           </div>
           <div className="space-y-1">

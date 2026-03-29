@@ -11,7 +11,7 @@ import {
   createHeroBannerAction,
   deleteHeroBannerImageAction,
 } from "@/actions/banner/banners";
-import { HeroBannerImageField } from "@/app/marketplace/_components/HeroBannerImageField";
+import { CroppedImageUploadField } from "@/components/media/CroppedImageUploadField";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -182,11 +182,12 @@ export default function HeroBannerCreateForm() {
               render={() => (
                 <FormItem>
                   <FormControl>
-                    <HeroBannerImageField
+                    <CroppedImageUploadField
                       label="Background Image"
                       value={backgroundImage}
                       onChange={(file) => form.setValue("backgroundImage", file)}
                       onDelete={() => deleteSingleImage("backgroundImage")}
+                      endpoint="heroBanner"
                       aspect={2}
                       targetWidth={1600}
                       targetHeight={800}
@@ -199,6 +200,8 @@ export default function HeroBannerCreateForm() {
                       removeLabel="Remove Background"
                       replaceLabel="Replace Background"
                       uploadLabel="Choose Background"
+                      previewClassName="rounded-xl"
+                      cropDialogDescription="Adjust the framing before upload so wide banner placements stay composed the way you expect."
                     />
                   </FormControl>
                 </FormItem>
@@ -211,11 +214,12 @@ export default function HeroBannerCreateForm() {
               render={() => (
                 <FormItem>
                   <FormControl>
-                    <HeroBannerImageField
+                    <CroppedImageUploadField
                       label="Product Image"
                       value={productImage}
                       onChange={(file) => form.setValue("productImage", file)}
                       onDelete={() => deleteSingleImage("productImage")}
+                      endpoint="heroBanner"
                       aspect={1}
                       targetWidth={1200}
                       targetHeight={1200}
@@ -228,6 +232,8 @@ export default function HeroBannerCreateForm() {
                       removeLabel="Remove Product Image"
                       replaceLabel="Replace Product Image"
                       uploadLabel="Choose Product Image"
+                      previewClassName="rounded-xl"
+                      cropDialogDescription="Crop the featured product image before upload so the focal subject stays centered in the hero."
                     />
                   </FormControl>
                 </FormItem>
