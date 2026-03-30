@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Button } from "@/components/ui/button";
-import { Heart } from "lucide-react";
+import { Heart, Users } from "lucide-react";
 import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
 
 type Props = {
   storeId: string;
@@ -25,7 +26,7 @@ const FollowStoreClient = ({
   const toggleFollow = async () => {
     if (!userId) return toast.error("Login to follow this store");
 
-    startTransition(() => setState((p) => p));
+    startTransition(() => setState((previous) => previous));
 
     const res = await fetch(`/api/store/${storeId}/follow-toggle`, {
       method: "POST",
@@ -41,33 +42,49 @@ const FollowStoreClient = ({
     if (data.error) return toast.error(data.error);
 
     setState(data.following);
-    setCount((prev) => prev + (data.following ? 1 : -1));
-    toast.success(data.following ? "Followed store 🎉" : "Unfollowed");
+    setCount((previous) => previous + (data.following ? 1 : -1));
+    toast.success(data.following ? "Store followed" : "Store unfollowed");
   };
 
-  const formatFollowers = (n: number) => {
-    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-    if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";
-    return n.toString();
+  const formatFollowers = (value: number) => {
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+    return value.toString();
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-[0_16px_40px_-28px_rgba(15,23,42,0.3)] dark:border-zinc-800 dark:bg-zinc-950">
       <Button
         variant={state ? "secondary" : "default"}
         onClick={toggleFollow}
         disabled={pending}
-        className="flex items-center gap-2 bg-[#146EB4] hover:bg-[#125c99] text-white"
+        className={`rounded-xl px-4 text-sm font-medium ${
+          state
+            ? "border border-slate-200 bg-slate-50 text-slate-900 hover:bg-slate-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+            : "bg-[#3c9ee0] text-white hover:bg-[#2d8fd4]"
+        }`}
       >
         <Heart
-          className={`w-4 h-4 ${state ? "fill-red-500 stroke-red-500" : ""}`}
+          className={`h-4 w-4 ${
+            state ? "fill-[#3c9ee0] text-[#3c9ee0]" : ""
+          }`}
         />
-        {state ? "Following" : "Follow Store"}
+        {pending ? "Updating..." : state ? "Following" : "Follow Store"}
       </Button>
 
-      <span className="text-gray-500 text-sm">
-        {formatFollowers(count)} {count === 1 ? "Follower" : "Followers"}
-      </span>
+      <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-left">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-zinc-900 dark:text-zinc-300">
+          <Users className="h-4 w-4" />
+        </div>
+        <div className="leading-tight">
+          <p className="text-sm font-medium text-slate-900 dark:text-zinc-100">
+            {formatFollowers(count)}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-zinc-400">
+            {count === 1 ? "Follower" : "Followers"}
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

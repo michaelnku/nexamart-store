@@ -18,7 +18,6 @@ import { getReviewableStorePurchases } from "@/actions/storeReviews/getReviewabl
 import { getStoreReviews } from "@/actions/storeReviews/getStoreReviews";
 import { getStoreReviewSummary } from "@/actions/storeReviews/getStoreReviewSummary";
 import { updateStoreReview } from "@/actions/storeReviews/updateStoreReview";
-import StarRating from "@/components/reviews/StarRating";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -73,6 +72,30 @@ function getReviewerInitial(name?: string | null): string {
   return trimmed.charAt(0).toUpperCase();
 }
 
+function InlineStars({ rating }: { rating: number }) {
+  const normalizedRating = Math.max(0, Math.min(5, rating));
+
+  return (
+    <div className="flex items-center gap-0.5" aria-hidden="true">
+      {Array.from({ length: 5 }, (_, index) => {
+        const fill = Math.max(0, Math.min(1, normalizedRating - index));
+
+        return (
+          <div key={index} className="relative h-3.5 w-3.5">
+            <Star className="h-3.5 w-3.5 text-slate-300 dark:text-zinc-700" />
+            <div
+              className="absolute inset-0 overflow-hidden"
+              style={{ width: `${fill * 100}%` }}
+            >
+              <Star className="h-3.5 w-3.5 fill-[#3c9ee0] text-[#3c9ee0]" />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ReviewAvatar({ review }: { review: StoreReviewRecord }) {
   const name = review.user.name || "NexaMart shopper";
 
@@ -101,29 +124,29 @@ function StoreReviewCard({ review }: { review: StoreReviewRecord }) {
   const wasEdited = review.updatedAt.getTime() !== review.createdAt.getTime();
 
   return (
-    <article className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-[0_12px_38px_-24px_rgba(15,23,42,0.18)] dark:border-zinc-800 dark:bg-zinc-950 sm:p-6">
-      <div className="flex flex-col gap-4">
+    <article className="rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_20px_50px_-36px_rgba(15,23,42,0.2)] dark:border-zinc-800 dark:bg-zinc-950 sm:p-6">
+      <div className="flex flex-col gap-5">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
+          <div className="flex min-w-0 items-start gap-4">
             <ReviewAvatar review={review} />
 
-            <div className="min-w-0 space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-0 space-y-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <h3 className="text-sm font-semibold tracking-[0.01em] text-slate-950 dark:text-zinc-50">
                   {review.user.name || "NexaMart shopper"}
                 </h3>
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                   <BadgeCheck className="h-3.5 w-3.5" />
                   Completed purchase
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <StarRating value={review.rating} readonly size="sm" />
-                  <span className="font-medium text-slate-700 dark:text-zinc-200">
+              <div className="flex flex-wrap items-center gap-2.5 text-sm">
+                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 dark:bg-zinc-900 dark:text-zinc-200">
+                  <span className="text-xs font-semibold">
                     {review.rating.toFixed(1)}
                   </span>
+                  <InlineStars rating={review.rating} />
                 </div>
                 <span className="text-slate-400 dark:text-zinc-500">&bull;</span>
                 <time
@@ -146,21 +169,21 @@ function StoreReviewCard({ review }: { review: StoreReviewRecord }) {
             </div>
           </div>
 
-          <div className="inline-flex w-fit items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 dark:bg-zinc-900 dark:text-zinc-300">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
             <MessageSquareQuote className="h-3.5 w-3.5" />
-            Store review
+            Store experience
           </div>
         </header>
 
         {review.title ? (
-          <h4 className="text-base font-semibold tracking-tight text-slate-950 dark:text-zinc-50">
+          <h4 className="text-lg font-semibold tracking-tight text-slate-950 dark:text-zinc-50">
             {review.title}
           </h4>
         ) : null}
 
         {review.comment ? (
-          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900/70 sm:px-5">
-            <p className="whitespace-pre-line text-sm leading-7 text-slate-700 dark:text-zinc-300">
+          <div className="border-l-2 border-[#3c9ee0]/20 pl-4 sm:pl-5">
+            <p className="whitespace-pre-line text-sm leading-7 text-slate-600 dark:text-zinc-300">
               {review.comment}
             </p>
           </div>
@@ -176,11 +199,11 @@ function StoreReviewCard({ review }: { review: StoreReviewRecord }) {
 
 function EmptyReviewState({ canReview }: { canReview: boolean }) {
   return (
-    <Empty className="mx-auto w-full rounded-3xl border-slate-200/80 bg-slate-50/75 py-12 dark:border-zinc-800 dark:bg-zinc-950/45">
+    <Empty className="mx-auto w-full rounded-[28px] border-slate-200/80 bg-white py-12 shadow-[0_20px_55px_-42px_rgba(15,23,42,0.18)] dark:border-zinc-800 dark:bg-zinc-950">
       <EmptyHeader className="max-w-xl">
         <EmptyMedia
           variant="icon"
-          className="size-12 rounded-2xl bg-white text-slate-500 shadow-sm dark:bg-zinc-900 dark:text-zinc-300"
+          className="size-12 rounded-2xl bg-slate-50 text-slate-500 shadow-sm dark:bg-zinc-900 dark:text-zinc-300"
         >
           <MessageSquareQuote className="size-5" />
         </EmptyMedia>
@@ -374,9 +397,9 @@ export default function StoreReviewsSectionClient({
 
   return (
     <section className="mt-12 space-y-6">
-      <div className="flex flex-col gap-4 rounded-[28px] border border-slate-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,1)_0%,rgba(241,245,249,0.92)_46%,rgba(224,242,254,0.95)_100%)] p-5 shadow-[0_24px_65px_-42px_rgba(15,23,42,0.32)] dark:border-zinc-800 dark:bg-[linear-gradient(135deg,rgba(9,9,11,1)_0%,rgba(24,24,27,0.96)_55%,rgba(3,105,161,0.22)_100%)] sm:p-6">
+      <div className="flex flex-col gap-6 rounded-[30px] border border-slate-200/80 bg-white p-5 shadow-[0_24px_70px_-46px_rgba(15,23,42,0.22)] dark:border-zinc-800 dark:bg-zinc-950 sm:p-6 md:p-7">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-zinc-400">
               Store reviews
             </p>
@@ -384,15 +407,15 @@ export default function StoreReviewsSectionClient({
               Trusted feedback for {store.name}
             </h2>
             <p className="max-w-2xl text-sm leading-6 text-slate-600 dark:text-zinc-400">
-              Only shoppers with completed, non-cancelled purchases from this
-              store can leave a review.
+              Marketplace feedback from shoppers whose purchases with this store
+              reached completion.
             </p>
           </div>
 
           {canReview ? (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="rounded-full px-5">
+                <Button className="rounded-full bg-[#3c9ee0] px-5 text-white hover:bg-[#2d8fd4]">
                   {reviewablePurchases.some((purchase) => purchase.existingReview)
                     ? "Write or edit your review"
                     : "Write a review"}
@@ -433,8 +456,8 @@ export default function StoreReviewsSectionClient({
                               {purchase.trackingNumber
                                 ? `Order #${purchase.trackingNumber}`
                                 : `Order ${purchase.orderId.slice(0, 8)}`}{" "}
-                              • {formatReviewDate(purchase.purchasedAt)}
-                              {purchase.existingReview ? " • existing review" : ""}
+                              - {formatReviewDate(purchase.purchasedAt)}
+                              {purchase.existingReview ? " - existing review" : ""}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -446,7 +469,12 @@ export default function StoreReviewsSectionClient({
                         Rating
                       </label>
                       <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900/60">
-                        <StarRating value={rating} onChange={setRating} />
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-slate-900 dark:text-zinc-100">
+                            {rating.toFixed(1)}
+                          </span>
+                          <InlineStars rating={rating} />
+                        </div>
                       </div>
                     </div>
 
@@ -504,7 +532,7 @@ export default function StoreReviewsSectionClient({
                       type="button"
                       onClick={handleSubmit}
                       disabled={isSaving}
-                      className="rounded-full"
+                      className="rounded-full bg-[#3c9ee0] text-white hover:bg-[#2d8fd4]"
                     >
                       <PencilLine className="h-4 w-4" />
                       {isSaving ? "Saving..." : submitLabel}
@@ -516,38 +544,46 @@ export default function StoreReviewsSectionClient({
           ) : null}
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-center">
+        <div className="grid gap-5 border-t border-slate-200/80 pt-6 dark:border-zinc-800 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200/80 bg-white px-5 py-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-              <div className="flex items-center gap-2">
-                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                <span className="text-sm font-medium text-slate-600 dark:text-zinc-300">
-                  Average rating
-                </span>
+            <div className="rounded-[24px] border border-slate-200/80 bg-slate-50/80 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900/60">
+              <div className="text-sm font-medium text-slate-600 dark:text-zinc-300">
+                Average rating
               </div>
               <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-zinc-50">
                 {summary.averageRating.toFixed(1)}
               </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+              <div className="mt-2">
+                <InlineStars rating={summary.averageRating} />
+              </div>
+              <p className="mt-2 text-xs text-slate-500 dark:text-zinc-400">
                 Based on {summary.reviewCount} completed purchase review
                 {summary.reviewCount === 1 ? "" : "s"}
               </p>
             </div>
 
-            <div className="rounded-3xl border border-slate-200/80 bg-white px-5 py-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="rounded-[24px] border border-slate-200/80 bg-slate-50/80 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900/60">
               <p className="text-sm font-medium text-slate-600 dark:text-zinc-300">
                 Total reviews
               </p>
               <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-zinc-50">
                 {summary.reviewCount}
               </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+              <p className="mt-2 text-xs text-slate-500 dark:text-zinc-400">
                 Verified store feedback from NexaMart shoppers
               </p>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="rounded-[24px] border border-slate-200/80 bg-slate-50/80 p-5 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <div className="mb-4">
+              <p className="text-sm font-semibold text-slate-950 dark:text-zinc-100">
+                Rating distribution
+              </p>
+              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                A quick look at how customers rate their overall store experience.
+              </p>
+            </div>
             <div className="space-y-3">
               {summary.ratingBreakdown.map((row) => (
                 <div
@@ -556,12 +592,12 @@ export default function StoreReviewsSectionClient({
                 >
                   <div className="flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-zinc-300">
                     <span>{row.rating}</span>
-                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                    <Star className="h-3.5 w-3.5 fill-[#3c9ee0] text-[#3c9ee0]" />
                   </div>
 
-                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-200/80 dark:bg-zinc-800">
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-200/80 dark:bg-zinc-800">
                     <div
-                      className="h-full rounded-full bg-[linear-gradient(90deg,#0ea5e9_0%,#06b6d4_45%,#14b8a6_100%)] transition-[width]"
+                      className="h-full rounded-full bg-[#3c9ee0] transition-[width]"
                       style={{ width: `${row.percentage}%` }}
                     />
                   </div>
@@ -585,7 +621,7 @@ export default function StoreReviewsSectionClient({
           </div>
 
           {reviewsPage.totalPages > 1 ? (
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="flex items-center justify-between gap-3 rounded-[24px] border border-slate-200/80 bg-white px-4 py-3 shadow-[0_18px_45px_-36px_rgba(15,23,42,0.18)] dark:border-zinc-800 dark:bg-zinc-950">
               <p className="text-sm text-slate-500 dark:text-zinc-400">
                 Page {reviewsPage.page} of {reviewsPage.totalPages}
               </p>
