@@ -1,9 +1,15 @@
 "use client";
 
 import { MousePointerClick, ShoppingBag } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import { AnalyticsRankedList, AnalyticsTrendPanel } from "@/app/marketplace/dashboard/admin/_components/AdminAnalyticsPanels";
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { PremiumPanel } from "@/app/marketplace/_components/PremiumDashboard";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import type { AdminMarketingDashboardResponse } from "@/lib/services/admin/adminMarketingService";
@@ -16,6 +22,13 @@ export function MarketingAnalyticsSection({
   dashboard: AdminMarketingDashboardResponse;
   formatMoney: (value: number) => string;
 }) {
+  const ordersUsingCouponsChartConfig = {
+    orders: {
+      label: "Orders",
+      color: "#0f766e",
+    },
+  } satisfies ChartConfig;
+
   const ordersUsingCouponsChartData = dashboard.trends.ordersUsingCoupons.map(
     (point) => ({
       label: point.label,
@@ -79,39 +92,56 @@ export function MarketingAnalyticsSection({
               </EmptyHeader>
             </Empty>
           ) : (
-            <div className="h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={ordersUsingCouponsChartData}
-                  margin={{ top: 8, right: 12, left: -16, bottom: 0 }}
-                >
-                  <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={10}
-                    fontSize={12}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={10}
-                    fontSize={12}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    formatter={(value: number | string | undefined) => [
-                      formatAnalyticsCount(
-                        typeof value === "number" ? value : Number(value ?? 0),
-                      ),
-                      "Orders",
-                    ]}
-                  />
-                  <Bar dataKey="orders" radius={[8, 8, 0, 0]} fill="#0f766e" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ChartContainer
+              config={ordersUsingCouponsChartConfig}
+              className="h-[320px] w-full aspect-auto"
+            >
+              <BarChart
+                accessibilityLayer
+                data={ordersUsingCouponsChartData}
+                margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="label"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={10}
+                  fontSize={12}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={10}
+                  fontSize={12}
+                  allowDecimals={false}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value) => (
+                        <div className="flex min-w-[8rem] items-center justify-between gap-4">
+                          <span className="text-muted-foreground">Orders</span>
+                          <span className="font-mono font-medium text-foreground tabular-nums">
+                            {formatAnalyticsCount(
+                              typeof value === "number"
+                                ? value
+                                : Number(value ?? 0),
+                            )}
+                          </span>
+                        </div>
+                      )}
+                    />
+                  }
+                />
+                <Bar
+                  dataKey="orders"
+                  radius={[8, 8, 0, 0]}
+                  fill="var(--color-orders)"
+                />
+              </BarChart>
+            </ChartContainer>
           )}
         </PremiumPanel>
 

@@ -1,4 +1,3 @@
-import type { SiteConfiguration } from "@/generated/prisma/client";
 import {
   SEO_DEFAULT_LOGO_PATH,
   SEO_SITE_NAME,
@@ -10,12 +9,9 @@ import type {
 } from "./siteConfig.types";
 
 export const SITE_CONFIG_CACHE_TAG = "site-config";
+export const SITE_CONFIGURATION_ID = "default";
 
-export const DEFAULT_SITE_CONFIGURATION_VALUES: Omit<
-  SiteConfiguration,
-  "id" | "createdAt" | "updatedAt"
-> = {
-  singleton: true,
+export const DEFAULT_SITE_CONFIGURATION_VALUES = {
   siteName: SEO_SITE_NAME,
   siteEmail: "support@nexamart.com",
   sitePhone: null,
@@ -39,7 +35,7 @@ export const DEFAULT_SITE_CONFIGURATION_VALUES: Omit<
   generalRatePerMile: 1,
   expressMultiplier: 1.5,
   pickupFee: 0,
-};
+} as const;
 
 export const DEFAULT_PUBLIC_SITE_CONFIGURATION: PublicSiteConfiguration = {
   siteName: SEO_SITE_NAME,

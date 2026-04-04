@@ -3,16 +3,6 @@
 import Image from "next/image";
 import { useState } from "react";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  Legend,
-} from "recharts";
-import {
   Package,
   ShoppingBag,
   DollarSign,
@@ -21,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { useFormatMoneyFromUSD } from "@/hooks/useFormatMoneyFromUSD";
+import { AnalyticsLineChart } from "@/components/analytics/AnalyticsLineChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const mockAnalyticsData = [
@@ -173,50 +164,25 @@ const SellerAnalyticsPage = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <LineChart data={mockAnalyticsData}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-              <XAxis dataKey="name" stroke="#6b7280" />
-              <YAxis
-                stroke="#6b7280"
-                tickFormatter={(value) => formatMoneyFromUSD(Number(value))}
-              />
-              <Tooltip
-                formatter={(value, name) =>
-                  name === "revenue"
-                    ? formatMoneyFromUSD(Number(value))
-                    : value
-                }
-              />
-              <Legend />
-              <defs>
-                <linearGradient id="revenueLine" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.8} />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity={0.1} />
-                </linearGradient>
-                <linearGradient id="salesLine" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8} />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.1} />
-                </linearGradient>
-              </defs>
-              <Line
-                type="monotone"
-                dataKey="revenue"
-                stroke="url(#revenueLine)"
-                strokeWidth={3}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="sales"
-                stroke="url(#salesLine)"
-                strokeWidth={3}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <AnalyticsLineChart
+            data={mockAnalyticsData}
+            xKey="name"
+            showLegend
+            series={[
+              {
+                key: "revenue",
+                label: "Revenue",
+                color: "#10b981",
+                valueFormatter: (value) => formatMoneyFromUSD(value),
+              },
+              {
+                key: "sales",
+                label: "Sales",
+                color: "#3b82f6",
+                valueFormatter: (value) => value.toLocaleString(),
+              },
+            ]}
+          />
         </CardContent>
       </Card>
 

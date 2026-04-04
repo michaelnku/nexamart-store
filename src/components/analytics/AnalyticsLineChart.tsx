@@ -2,14 +2,20 @@
 
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
-  ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 
 type AnalyticsLineChartSeries = {
   key: string;
@@ -33,50 +39,75 @@ export function AnalyticsLineChart<TData extends Record<string, string | number>
   yAxisFormatter,
   showLegend = false,
 }: AnalyticsLineChartProps<TData>) {
+  const chartConfig = series.reduce<ChartConfig>((config, item) => {
+    config[item.key] = {
+      label: item.label,
+      color: item.color,
+    };
+
+    return config;
+  }, {});
+
   return (
-    <div className="h-[320px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-          <XAxis dataKey={xKey} tickLine={false} axisLine={false} />
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={yAxisFormatter}
-            width={72}
-          />
-          <Tooltip
-            formatter={(value, name) => {
-              const activeSeries = series.find((item) => item.key === name);
-              const numericValue = Number(value);
+    <ChartContainer config={chartConfig} className="h-[320px] w-full aspect-auto">
+      <LineChart
+        accessibilityLayer
+        data={data}
+        margin={{ top: 8, right: 12, left: 12, bottom: 0 }}
+      >
+        <CartesianGrid vertical={false} strokeDasharray="3 3" strokeOpacity={0.2} />
+        <XAxis
+          dataKey={xKey}
+          tickLine={false}
+          axisLine={false}
+          tickMargin={8}
+        />
+        <YAxis
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={yAxisFormatter}
+          width={72}
+        />
+        <ChartTooltip
+          cursor={false}
+          content={
+            <ChartTooltipContent
+              formatter={(value, name) => {
+                const activeSeries = series.find((item) => item.key === name);
+                const numericValue = Number(value);
 
-              if (!activeSeries) {
-                return [value, name];
-              }
-
-              return [
-                activeSeries.valueFormatter
-                  ? activeSeries.valueFormatter(numericValue)
-                  : numericValue,
-                activeSeries.label,
-              ];
-            }}
-          />
-          {showLegend ? <Legend /> : null}
-          {series.map((item) => (
-            <Line
-              key={item.key}
-              type="monotone"
-              dataKey={item.key}
-              name={item.label}
-              stroke={item.color}
-              strokeWidth={2.5}
-              dot={false}
-              activeDot={{ r: 5 }}
+                return (
+                  <div className="flex min-w-[8rem] items-center justify-between gap-4">
+                    <span className="text-muted-foreground">
+                      {activeSeries?.label ?? String(name)}
+                    </span>
+                    <span className="font-mono font-medium text-foreground tabular-nums">
+                      {activeSeries?.valueFormatter
+                        ? activeSeries.valueFormatter(numericValue)
+                        : numericValue.toLocaleString()}
+                    </span>
+                  </div>
+                );
+              }}
             />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+          }
+        />
+        {showLegend ? (
+          <ChartLegend content={<ChartLegendContent />} />
+        ) : null}
+        {series.map((item) => (
+          <Line
+            key={item.key}
+            type="monotone"
+            dataKey={item.key}
+            name={item.label}
+            stroke={`var(--color-${item.key})`}
+            strokeWidth={2.5}
+            dot={false}
+            activeDot={{ r: 5 }}
+          />
+        ))}
+      </LineChart>
+    </ChartContainer>
   );
 }

@@ -14,6 +14,7 @@ import type { SiteConfig } from "@/lib/types";
 import {
   DEFAULT_SITE_CONFIGURATION_VALUES,
   SITE_CONFIG_CACHE_TAG,
+  SITE_CONFIGURATION_ID,
   getSiteConfigurationUpdateKeys,
 } from "./siteConfig.defaults";
 import type {
@@ -35,17 +36,34 @@ function mapAdminSiteConfiguration(
 }
 
 export async function getOrCreateSiteConfiguration() {
-  const existing = await prisma.siteConfiguration.findUnique({
-    where: { singleton: true },
-    include: siteConfigurationMediaInclude,
-  });
+  const existing =
+    (await prisma.siteConfiguration.findUnique({
+      where: { id: SITE_CONFIGURATION_ID },
+      include: siteConfigurationMediaInclude,
+    })) ??
+    (await prisma.siteConfiguration.findFirst({
+      include: siteConfigurationMediaInclude,
+    }));
 
   if (existing) {
+    if (existing.id !== SITE_CONFIGURATION_ID) {
+      const normalized = await prisma.siteConfiguration.update({
+        where: { id: existing.id },
+        data: { id: SITE_CONFIGURATION_ID },
+        include: siteConfigurationMediaInclude,
+      });
+
+      return mapAdminSiteConfiguration(normalized);
+    }
+
     return mapAdminSiteConfiguration(existing);
   }
 
   const created = await prisma.siteConfiguration.create({
-    data: DEFAULT_SITE_CONFIGURATION_VALUES,
+    data: {
+      id: SITE_CONFIGURATION_ID,
+      ...DEFAULT_SITE_CONFIGURATION_VALUES,
+    },
     include: siteConfigurationMediaInclude,
   });
 
@@ -66,10 +84,14 @@ export async function updateSiteConfiguration(
   }
 
   const result = await prisma.$transaction(async (tx) => {
-    const existing = await tx.siteConfiguration.findUnique({
-      where: { singleton: true },
-      include: siteConfigurationMediaInclude,
-    });
+    const existing =
+      (await tx.siteConfiguration.findUnique({
+        where: { id: SITE_CONFIGURATION_ID },
+        include: siteConfigurationMediaInclude,
+      })) ??
+      (await tx.siteConfiguration.findFirst({
+        include: siteConfigurationMediaInclude,
+      }));
 
     const nextLogo =
       input.siteLogo === undefined
@@ -86,20 +108,28 @@ export async function updateSiteConfiguration(
 
     const { siteLogo, ...rest } = input;
 
-    const updated = await tx.siteConfiguration.upsert({
-      where: { singleton: true },
-      create: {
-        ...DEFAULT_SITE_CONFIGURATION_VALUES,
-        ...rest,
-        siteLogoFileAssetId: nextLogo?.id ?? null,
-      },
-      update: {
-        ...rest,
-        siteLogoFileAssetId:
-          nextLogo === undefined ? undefined : nextLogo?.id ?? null,
-      },
-      include: siteConfigurationMediaInclude,
-    });
+    const updated = existing
+      ? await tx.siteConfiguration.update({
+          where: { id: existing.id },
+          data: {
+            ...(existing.id !== SITE_CONFIGURATION_ID
+              ? { id: SITE_CONFIGURATION_ID }
+              : {}),
+            ...rest,
+            siteLogoFileAssetId:
+              nextLogo === undefined ? undefined : nextLogo?.id ?? null,
+          },
+          include: siteConfigurationMediaInclude,
+        })
+      : await tx.siteConfiguration.create({
+          data: {
+            id: SITE_CONFIGURATION_ID,
+            ...DEFAULT_SITE_CONFIGURATION_VALUES,
+            ...rest,
+            siteLogoFileAssetId: nextLogo?.id ?? null,
+          },
+          include: siteConfigurationMediaInclude,
+        });
 
     if (
       existing?.siteLogoFileAssetId &&

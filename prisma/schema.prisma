@@ -1525,9 +1525,7 @@ model Address {
 }
 
 model SiteConfiguration {
-  id String @id @default(cuid())
-
-  singleton Boolean @unique @default(true)
+  id String @id @default("default")
 
   siteName  String
   siteEmail String
