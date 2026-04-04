@@ -7,6 +7,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { DataKey } from "recharts/types/util/types";
 
 import {
   ChartConfig,
@@ -17,22 +18,34 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-type AnalyticsLineChartSeries = {
-  key: string;
+type ChartDatum = Record<string, string | number>;
+
+type ChartAxisKey<TData extends ChartDatum> = Extract<
+  DataKey<TData, string | number>,
+  string
+>;
+
+type ChartSeriesKey<TData extends ChartDatum> = Extract<
+  DataKey<TData, number>,
+  string
+>;
+
+type AnalyticsLineChartSeries<TData extends ChartDatum> = {
+  key: ChartSeriesKey<TData>;
   label: string;
   color: string;
   valueFormatter?: (value: number) => string;
 };
 
-type AnalyticsLineChartProps<TData extends Record<string, string | number>> = {
+type AnalyticsLineChartProps<TData extends ChartDatum> = {
   data: TData[];
-  xKey: keyof TData & string;
-  series: AnalyticsLineChartSeries[];
+  xKey: ChartAxisKey<TData>;
+  series: AnalyticsLineChartSeries<TData>[];
   yAxisFormatter?: (value: number) => string;
   showLegend?: boolean;
 };
 
-export function AnalyticsLineChart<TData extends Record<string, string | number>>({
+export function AnalyticsLineChart<TData extends ChartDatum>({
   data,
   xKey,
   series,
