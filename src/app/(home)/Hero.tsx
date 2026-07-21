@@ -34,14 +34,14 @@ export default async function Hero() {
   );
 
   return (
-    <section className="space-y-3 lg:space-y-0">
-      <div className="grid gap-3 lg:min-h-[320px] lg:grid-cols-[260px_1fr] lg:gap-4">
-        <ScrollReveal className="order-2 lg:order-1" y={20} delay={0.06}>
+    <section className="w-full max-w-full space-y-3 overflow-hidden lg:space-y-0">
+      <div className="grid min-w-0 gap-3 lg:min-h-[320px] lg:grid-cols-[minmax(220px,260px)_minmax(0,1fr)] lg:gap-4">
+        <ScrollReveal className="order-2 min-w-0 lg:order-1" y={20} delay={0.06}>
           <CategoryMiniList categories={categories} />
         </ScrollReveal>
 
         <ScrollReveal
-          className="order-1 lg:order-2"
+          className="order-1 min-w-0 lg:order-2"
           y={24}
           duration={0.7}
           amount={0.2}

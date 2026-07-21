@@ -18,25 +18,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { changePassword } from "@/actions/auth/user";
-
-const schema = z
-  .object({
-    currentPassword: z.string().min(6),
-    newPassword: z.string().min(6),
-    confirmPassword: z.string(),
-  })
-  .refine((d) => d.newPassword === d.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
-
-type FormValues = z.infer<typeof schema>;
+import {
+  changePasswordSchema,
+  ChangePasswordSchemaType,
+} from "@/lib/validation/auth.schemas";
 
 export default function PasswordForm() {
   const [isPending, startTransition] = useTransition();
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  const form = useForm<ChangePasswordSchemaType>({
+    resolver: zodResolver(changePasswordSchema),
     defaultValues: {
       currentPassword: "",
       newPassword: "",
@@ -44,7 +35,7 @@ export default function PasswordForm() {
     },
   });
 
-  const onSubmit = (values: FormValues) => {
+  const onSubmit = (values: ChangePasswordSchemaType) => {
     startTransition(async () => {
       const res = await changePassword(values);
 

@@ -1260,27 +1260,33 @@ model StoreAnalytics {
 /// * MESSAGE SYSTEM & CHAT
 /// * ===========================
 model Conversation {
-  id            String               @id @default(cuid())
-  userId        String
-  orderId       String?
-  storeId       String?
-  productId     String?
-  type          ConversationType
-  status        ConversationStatus   @default(OPEN)
+  id String @id @default(cuid())
+
+  orderId   String?
+  storeId   String?
+  productId String?
+
+  type   ConversationType
+  status ConversationStatus @default(OPEN)
+
   subject       String?
   lastMessageAt DateTime?
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  agentId       String?
-  agent         User?                @relation("ConversationAgent", fields: [agentId], references: [id])
-  store         Store?               @relation(fields: [storeId], references: [id])
-  product       Product?             @relation(fields: [productId], references: [id])
-  members       ConversationMember[]
-  messages      Message[]
 
-  @@index([userId, updatedAt])
-  @@index([type, userId, storeId, productId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agentId String?
+  agent   User?   @relation("ConversationAgent", fields: [agentId], references: [id])
+
+  store   Store?   @relation(fields: [storeId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  members  ConversationMember[]
+  messages Message[]
+
   @@index([lastMessageAt])
+  @@index([type, storeId])
+  @@index([orderId])
 }
 
 model AgentProfile {
@@ -1293,25 +1299,37 @@ model AgentProfile {
 }
 
 model Message {
-  id             String       @id @default(cuid())
+  id             String @id @default(cuid())
   conversationId String
-  senderId       String?
-  senderType     SenderType
-  content        String
-  createdAt      DateTime     @default(now())
-  readAt         DateTime?
-  deliveredAt    DateTime?
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  senderId   String?
+  senderType SenderType
+
+  content String
+
+  createdAt   DateTime  @default(now())
+  readAt      DateTime?
+  deliveredAt DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
 
   @@index([conversationId, createdAt])
 }
 
 model ConversationMember {
-  id             String       @id @default(cuid())
+  id             String @id @default(cuid())
   conversationId String
   userId         String
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role ConversationRole @default(USER)
+
+  joinedAt DateTime @default(now())
+
+  lastReadAt  DateTime?
+  unreadCount Int       @default(0)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, userId])
   @@index([userId])
@@ -1580,6 +1598,11 @@ model UserPreference {
   updatedAt            DateTime @updatedAt
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+/// *
+/// * ===========================
+/// * NOTIFICATIONS & MESSAGING
+/// * ===========================
 
 model Notification {
   id      String  @id @default(cuid())
@@ -1873,6 +1896,14 @@ model UserReport {
 /// * ===========================
 /// * ENUMS AND CONSTANTS
 /// * ===========================
+enum ConversationRole {
+  USER
+  SELLER
+  SUPPORT
+  ADMIN
+  SYSTEM
+}
+
 enum ProductImageRole {
   GALLERY
   THUMBNAIL

@@ -56,10 +56,10 @@ function CategoryMiniList({ categories }: Props) {
   }
 
   return (
-    <section className="bg-card border h-full rounded-xl p-4">
+    <section className="bg-card border h-full w-full min-w-0 max-w-full overflow-hidden rounded-xl p-3 sm:p-4">
       <div
         className="
-          grid grid-cols-2 gap-3
+          grid min-w-0 grid-cols-2 gap-3
           lg:grid-cols-1 lg:gap-6
         "
       >
@@ -67,9 +67,9 @@ function CategoryMiniList({ categories }: Props) {
           const CardContent = (
             <div
               className="
-                group flex min-h-[110px] flex-col items-center justify-center gap-2
+                group flex min-h-[96px] min-w-0 flex-col items-center justify-center gap-2
                 lg:min-h-[64px] lg:flex-row lg:justify-start
-                rounded-xl border bg-background p-4
+                rounded-xl border bg-background p-3 sm:min-h-[110px] sm:p-4
                 transition-colors hover:bg-muted
               "
             >
@@ -95,7 +95,7 @@ function CategoryMiniList({ categories }: Props) {
                 )}
               </div>
 
-              <span className="text-sm font-medium text-center lg:text-left">
+              <span className="max-w-full break-words text-center text-xs font-medium leading-snug sm:text-sm lg:text-left">
                 {cat.name}
               </span>
             </div>
@@ -160,9 +160,9 @@ function CategoryMiniList({ categories }: Props) {
         <Link
           href="/category"
           className="
-            group flex min-h-[110px] flex-col items-center justify-center gap-2
+            group flex min-h-[96px] min-w-0 flex-col items-center justify-center gap-2
             lg:min-h-[64px] lg:flex-row lg:justify-start
-            rounded-xl border bg-background p-4
+            rounded-xl border bg-background p-3 sm:min-h-[110px] sm:p-4
             transition-colors hover:bg-muted
           "
         >
@@ -179,7 +179,7 @@ function CategoryMiniList({ categories }: Props) {
             <LayoutGrid className="w-5 h-5" />
           </div>
 
-          <span className="text-sm font-medium text-center lg:text-left">
+          <span className="max-w-full break-words text-center text-xs font-medium leading-snug sm:text-sm lg:text-left">
             All Categories
           </span>
         </Link>

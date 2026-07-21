@@ -27,12 +27,11 @@ export default function HeroBanner({
   return (
     <section
       className="
-        group relative w-full overflow-hidden rounded-2xl
-        h-[260px]
-        sm:h-[360px]
-        lg:h-[48vh]
-        xl:h-[52vh]
-        2xl:h-[58vh]
+        group relative isolate w-full min-w-0 max-w-full overflow-hidden rounded-2xl
+        h-[clamp(180px,52vw,250px)]
+        sm:h-[clamp(240px,44vw,340px)]
+        lg:h-[clamp(320px,48vh,520px)]
+        xl:h-[clamp(360px,52vh,600px)]
       "
       onMouseEnter={() => {
         setShowControls(true);
@@ -65,7 +64,7 @@ export default function HeroBanner({
               }
             : false
         }
-        className="hero-banner-swiper h-full"
+        className="hero-banner-swiper h-full w-full min-w-0 max-w-full overflow-hidden"
       >
         {banners.map((banner, index) => {
           const backgroundUrl =
@@ -73,67 +72,72 @@ export default function HeroBanner({
           const productUrl = banner.productImage?.url ?? null;
 
           return (
-            <SwiperSlide key={banner.id}>
-              <div className="relative h-full w-full">
+            <SwiperSlide
+              key={banner.id}
+              className="!h-full !w-full min-w-0 overflow-hidden"
+            >
+              <div className="relative h-full w-full min-w-0 overflow-hidden">
                 <Image
                   src={backgroundUrl}
                   alt={banner.title || "Banner"}
                   fill
                   priority={index === 0}
                   quality={75}
-                  sizes="100vw"
+                  sizes="(min-width: 1280px) calc(100vw - 360px), (min-width: 1024px) calc(100vw - 300px), 100vw"
                   className="object-cover"
                 />
 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent sm:from-black/45 lg:bg-gradient-to-r lg:from-black/60 lg:via-black/20 lg:to-transparent" />
 
-                <div className="relative z-10 flex h-full items-end px-4 pb-5 sm:px-6 sm:pb-6 lg:items-center lg:justify-between lg:px-16 lg:pb-0">
-                  <div
-                    className="
-                      max-w-[12rem] rounded-2xl bg-black/20 px-3 py-3 text-white
-                      backdrop-blur-[2px]
-                      sm:max-w-[15rem] sm:px-4 sm:py-4
-                      lg:max-w-xl lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-0
-                    "
-                  >
-                    {banner.title ? (
-                      <h1 className="text-base font-semibold leading-snug sm:text-lg lg:text-4xl lg:font-bold xl:text-5xl">
-                        {banner.title}
-                      </h1>
-                    ) : null}
+                <div className="relative z-10 flex h-full w-full min-w-0 items-end px-3 pb-5 sm:px-5 sm:pb-6 md:px-6 lg:items-center lg:px-10 lg:pb-0 xl:px-16">
+                  <div className="flex w-full min-w-0 items-end lg:items-center lg:justify-between lg:gap-8">
+                    <div
+                      className="
+                        min-w-0 max-w-[min(12rem,calc(100vw-2rem))] rounded-2xl bg-black/20 px-3 py-3 text-white
+                        backdrop-blur-[2px]
+                        sm:max-w-[15rem] sm:px-4 sm:py-4 md:max-w-xs
+                        lg:max-w-xl lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-0
+                      "
+                    >
+                      {banner.title ? (
+                        <h1 className="line-clamp-2 overflow-hidden break-words text-sm font-semibold leading-snug sm:text-lg md:text-xl lg:text-4xl lg:font-bold xl:text-5xl">
+                          {banner.title}
+                        </h1>
+                      ) : null}
 
-                    {banner.subtitle ? (
-                      <p className="mt-4 hidden max-w-lg text-lg text-white/90 lg:block">
-                        {banner.subtitle}
-                      </p>
-                    ) : null}
+                      {banner.subtitle ? (
+                        <p className="mt-4 hidden max-w-lg text-lg text-white/90 lg:block">
+                          {banner.subtitle}
+                        </p>
+                      ) : null}
 
-                    {banner.ctaText && banner.ctaLink ? (
-                      <Link
-                        href={banner.ctaLink}
-                        className="
-                          mt-3 inline-flex items-center rounded-full bg-white/95 px-3 py-1.5
-                          text-xs font-semibold text-slate-950 transition hover:bg-white
-                          sm:px-4 sm:py-2
-                          lg:mt-5 lg:text-sm
-                        "
-                      >
-                        {banner.ctaText}
-                      </Link>
+                      {banner.ctaText && banner.ctaLink ? (
+                        <Link
+                          href={banner.ctaLink}
+                          className="
+                            mt-3 inline-flex max-w-full items-center rounded-full bg-white/95 px-3 py-1.5
+                            text-xs font-semibold text-slate-950 transition hover:bg-white
+                            sm:px-4 sm:py-2
+                            lg:mt-5 lg:text-sm
+                          "
+                        >
+                          <span className="truncate">{banner.ctaText}</span>
+                        </Link>
+                      ) : null}
+                    </div>
+
+                    {productUrl ? (
+                      <div className="hidden min-w-0 flex-1 justify-end lg:flex">
+                        <Image
+                          src={productUrl}
+                          alt="Product"
+                          width={460}
+                          height={460}
+                          className="max-h-[78%] w-auto max-w-[42vw] object-contain drop-shadow-2xl"
+                        />
+                      </div>
                     ) : null}
                   </div>
-
-                  {productUrl ? (
-                    <div className="hidden lg:flex lg:flex-1 lg:justify-end">
-                      <Image
-                        src={productUrl}
-                        alt="Product"
-                        width={460}
-                        height={460}
-                        className="object-contain drop-shadow-2xl"
-                      />
-                    </div>
-                  ) : null}
                 </div>
               </div>
             </SwiperSlide>
