@@ -175,7 +175,7 @@ export async function updateSiteConfiguration(
     return mapAdminSiteConfiguration(updated);
   });
 
-  revalidateTag(SITE_CONFIG_CACHE_TAG);
+  revalidateTag(SITE_CONFIG_CACHE_TAG, { expire: 0 });
   revalidatePath("/");
   revalidatePath("/auth/login");
   revalidatePath("/auth/register");
