@@ -24,7 +24,6 @@ export async function createConversationAction({
   const conversation = await prisma.$transaction(async (tx) => {
     const createdConversation = await tx.conversation.create({
       data: {
-        userId,
         type: "SUPPORT",
         status: "OPEN",
         subject: subject?.trim() || "Support Request",

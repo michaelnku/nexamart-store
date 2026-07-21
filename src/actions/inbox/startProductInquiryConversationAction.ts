@@ -69,17 +69,15 @@ export async function startProductInquiryConversationAction({
       const existing = await tx.conversation.findFirst({
         where: {
           type: "PRODUCT_INQUIRY",
-          userId: buyerId,
           storeId: product.store.id,
           productId: product.id,
           status: {
             in: [...ACTIVE_INQUIRY_STATUSES],
           },
-          members: {
-            some: {
-              userId: sellerId,
-            },
-          },
+          AND: [
+            { members: { some: { userId: buyerId } } },
+            { members: { some: { userId: sellerId } } },
+          ],
         },
         select: {
           id: true,
@@ -91,7 +89,6 @@ export async function startProductInquiryConversationAction({
         (
           await tx.conversation.create({
             data: {
-              userId: buyerId,
               type: "PRODUCT_INQUIRY",
               status: "OPEN",
               subject: product.name,
