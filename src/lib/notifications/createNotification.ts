@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NotificationEvent } from "./notificationEvents";
 import { Prisma } from "@/generated/prisma";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 
 type CreateNotificationInput = {
   userId: string;

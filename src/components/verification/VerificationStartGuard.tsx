@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { pusherClient } from "@/lib/pusher";
+import { pusherClient } from "@/lib/pusher-client";
 import StartVerificationButton from "./StartVerificationButton";
 import { VerificationRole } from "@/generated/prisma";
 import { VerificationUpdatedEvent } from "@/lib/types/pusher";

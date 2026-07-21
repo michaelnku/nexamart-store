@@ -1,5 +1,5 @@
 import { prisma } from "../prisma";
-import { pusherServer } from "../pusher";
+import { pusherServer } from "../pusher-server";
 import { createOrderTimelineIfMissing } from "@/lib/order/timeline";
 import { DeliveryStatus } from "@/generated/prisma/edge";
 import { createRealtimeNotification } from "../notifications/createNotification";

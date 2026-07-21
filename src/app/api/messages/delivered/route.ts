@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CurrentRole, CurrentUserId } from "@/lib/currentUser";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 import { SenderType } from "@/generated/prisma/client";
 
 export async function POST(req: Request) {

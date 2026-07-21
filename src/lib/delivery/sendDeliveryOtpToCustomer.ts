@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 import { InvalidOtpPhoneError, OtpProviderUnavailableError } from "@/lib/otp";
 import { hasConfiguredOtpMessagingProvider } from "@/lib/otp/config";
 import { sendOtpSms } from "@/services/sendOtpSms";

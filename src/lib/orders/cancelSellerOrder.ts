@@ -16,7 +16,7 @@ import {
 } from "@/lib/order/orderLifecycle";
 import { refundCapturedCardPayment } from "@/lib/payments/refundCapturedCardPayment";
 import { prisma } from "@/lib/prisma";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 import { creditBuyerWalletRefundInTx } from "@/lib/refunds/creditBuyerWalletRefund";
 
 type Tx = Prisma.TransactionClient;

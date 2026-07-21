@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { DeliveryType } from "@/generated/prisma/client";
 import { placeOrderAction } from "@/actions/checkout/placeOrder";
 import { prisma } from "@/lib/prisma";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 import { applyReferralRewardsForPaidOrder } from "@/lib/referrals/applyReferralRewards";
 import { completeOrderPayment } from "@/lib/payments/completeOrderPayment";
 import { createServiceContext } from "@/lib/system/serviceContext";

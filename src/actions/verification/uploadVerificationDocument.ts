@@ -12,7 +12,7 @@ import { createImageFingerprint } from "@/lib/security/createImageFingerprint";
 import { fetchImageBuffer } from "@/lib/verification/fetchImageBuffer";
 import { validateDocumentAI } from "@/lib/verification/validateDocumentAI";
 import { handleVerificationFraud } from "@/lib/verification/handleVerificationFraud";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 import { ensureFileAsset } from "@/lib/file-assets";
 
 export async function uploadVerificationDocument(

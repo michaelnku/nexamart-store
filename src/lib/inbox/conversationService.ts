@@ -7,7 +7,7 @@ import {
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { moderateMessageAfterCreate } from "@/lib/moderation/messageModeration";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 
 export type RealtimeMessagePayload = {
   id: string;

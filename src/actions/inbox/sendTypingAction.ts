@@ -1,7 +1,7 @@
 "use server";
 
 import { CurrentUserId } from "@/lib/currentUser";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 
 export async function sendTypingAction({
   conversationId,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 import { CurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/prisma";
 

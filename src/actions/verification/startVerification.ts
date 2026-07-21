@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { CurrentUserId } from "@/lib/currentUser";
 import { VerificationRole } from "@/generated/prisma";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 
 export async function startVerification(role: VerificationRole) {
   const userId = await CurrentUserId();

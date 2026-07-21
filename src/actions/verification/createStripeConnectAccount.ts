@@ -2,7 +2,7 @@
 
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 
 export async function createStripeConnectAccount(userId: string) {
   const user = await prisma.user.findUnique({

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { pusherClient } from "@/lib/pusher";
+import { pusherClient } from "@/lib/pusher-client";
 import type { PresenceChannel } from "pusher-js";
 
 type Role = "ADMIN" | "MODERATOR" | "SELLER" | "RIDER" | "USER";

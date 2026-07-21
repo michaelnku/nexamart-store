@@ -8,8 +8,12 @@ export async function getUserSupportTickets() {
 
   const tickets = await prisma.conversation.findMany({
     where: {
-      userId: user.id,
       type: "SUPPORT",
+      members: {
+        some: {
+          userId: user.id,
+        },
+      },
     },
     orderBy: {
       updatedAt: "desc",

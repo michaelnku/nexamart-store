@@ -1,7 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 import { createNotification } from "@/lib/notifications/createNotification";
 import { createSellerOrderNotification } from "@/lib/notifications/createSellerOrderNotification";
 import type { CreatedOrdersPayload, StoreGroup } from "./placeOrder.types";

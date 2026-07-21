@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 import { createStripeConnectAccount } from "@/actions/verification/createStripeConnectAccount";
 
 export async function handleVerificationEvent(

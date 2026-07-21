@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import VerificationProgressUI from "./VerificationProgressUI";
-import { pusherClient } from "@/lib/pusher";
+import { pusherClient } from "@/lib/pusher-client";
 import { VerificationProgressType } from "@/lib/types/verification";
 import { VerificationUpdatedEvent } from "@/lib/types/pusher";
 
