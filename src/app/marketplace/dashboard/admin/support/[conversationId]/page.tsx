@@ -41,6 +41,14 @@ export default async function AdminSupportChatPage({
     },
     include: {
       messages: { orderBy: { createdAt: "asc" } },
+      members: {
+        select: {
+          user: {
+            select: { name: true, username: true, email: true },
+          },
+        },
+        take: 1,
+      },
     },
   });
 
@@ -63,10 +71,7 @@ export default async function AdminSupportChatPage({
     },
   });
 
-  const customer = await prisma.user.findUnique({
-    where: { id: conversation.userId },
-    select: { name: true, username: true, email: true },
-  });
+  const customer = conversation.members[0]?.user;
 
   const customerName =
     customer?.name ?? customer?.username ?? customer?.email ?? "Customer";
